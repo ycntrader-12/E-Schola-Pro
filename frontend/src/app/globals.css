@@ -1,0 +1,171 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: var(--bg-color);
+  --color-surface: var(--surface-color);
+  --color-surface-hover: var(--surface-hover-color);
+  --color-primary: var(--primary-color);
+  --color-primary-hover: var(--primary-hover-color);
+  --color-secondary: var(--secondary-color);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-border: var(--border-color);
+  
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, "Helvetica Neue", Arial, sans-serif;
+}
+
+@layer base {
+  /* ========================================================================= */
+  /* MODE CLAIR (PRO STYLE - Rouge Foncé Noble, Épuré, Confortable & Lisible)  */
+  /* ========================================================================= */
+  :root {
+    --bg-color: #faf7f8;
+    --surface-color: #ffffff;
+    --surface-hover-color: #f5eff1;
+    --primary-color: #b91c1c;
+    --primary-hover-color: #991b1b;
+    --secondary-color: #e11d48;
+    --text-primary: #1a0f12;
+    --text-secondary: #5a4b4f;
+    --border-color: #e8dfe2;
+  }
+
+  /* ========================================================================= */
+  /* MODE SOMBRE (DARK TECH PRO - Rouge Foncé Profond & Noir Obsidian Cyber)   */
+  /* ========================================================================= */
+  .dark {
+    --bg-color: #09090b;
+    --surface-color: #131215;
+    --surface-hover-color: #1d1a20;
+    --primary-color: #dc2626;
+    --primary-hover-color: #b91c1c;
+    --secondary-color: #f43f5e;
+    --text-primary: #f8fafc;
+    --text-secondary: #9ca3af;
+    --border-color: #272228;
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-text-primary);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    min-height: 100vh;
+  }
+
+  /* Haute lisibilité garantie pour tous les champs de saisie */
+  input, textarea, select {
+    color: var(--color-text-primary);
+  }
+
+  input::placeholder, textarea::placeholder {
+    color: var(--color-text-secondary);
+    opacity: 0.8;
+  }
+
+  /* Scrollbar discrète et douce */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.3);
+    border-radius: 9999px;
+  }
+
+  .dark ::-webkit-scrollbar-thumb {
+    background: rgba(139, 148, 158, 0.3);
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.5);
+  }
+}
+
+@layer components {
+  /* ========================================================================= */
+  /* CARTES & PANNEAUX (Design sobre et soigné)                               */
+  /* ========================================================================= */
+  .glass-panel {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+
+  .dark .glass-panel {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+  }
+  
+  .glass-card {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    @apply rounded-2xl transition-all duration-200;
+  }
+
+  .dark .glass-card {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+  }
+  
+  .glass-card:hover {
+    border-color: var(--color-primary);
+    box-shadow: 0 4px 20px -2px rgba(185, 28, 28, 0.15);
+    transform: translateY(-1px);
+  }
+
+  .dark .glass-card:hover {
+    border-color: #dc2626;
+    box-shadow: 0 4px 20px -2px rgba(220, 38, 38, 0.25);
+  }
+
+  /* ========================================================================= */
+  /* TYPOGRAPHIE ET DÉGRADÉS SOBRES (Rouge Foncé & Rubis)                      */
+  /* ========================================================================= */
+  .text-brand-gradient {
+    background: linear-gradient(135deg, #991b1b 0%, #dc2626 50%, #e11d48 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .dark .text-brand-gradient {
+    background: linear-gradient(135deg, #f87171 0%, #ef4444 50%, #f43f5e 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* ========================================================================= */
+  /* BOUTON PRO MAX (Rouge Foncé & Noir Cyber Tech)                            */
+  /* ========================================================================= */
+  .btn-primary {
+    @apply rounded-xl px-6 py-3 font-semibold text-white transition-all duration-200 flex items-center justify-center;
+    background: linear-gradient(135deg, #b91c1c 0%, #dc2626 50%, #991b1b 100%);
+    box-shadow: 0 2px 8px rgba(185, 28, 28, 0.3);
+  }
+
+  .btn-primary:hover {
+    box-shadow: 0 4px 18px rgba(220, 38, 38, 0.4);
+    transform: translateY(-1px);
+  }
+
+  .dark .btn-primary {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 50%, #7f1d1d 100%);
+    box-shadow: 0 2px 12px rgba(220, 38, 38, 0.4);
+  }
+
+  .dark .btn-primary:hover {
+    box-shadow: 0 4px 22px rgba(239, 68, 68, 0.5);
+  }
+}

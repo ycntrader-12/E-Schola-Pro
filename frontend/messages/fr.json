@@ -1,0 +1,30 @@
+{
+  "Dashboard": {
+    "online_course": "COURS EN LIGNE",
+    "title": "Aiguisez vos compétences avec des cours professionnels",
+    "join_now": "Rejoindre",
+    "watched": "Visionné",
+    "continue_watching": "Continuer à regarder",
+    "your_mentor": "Votre Mentor",
+    "see_all": "Voir tout",
+    "mentor_name": "Nom de l'instructeur & Date",
+    "course_type": "Type de cours",
+    "course_title": "Titre du cours",
+    "actions": "Actions",
+    "show_details": "VOIR DÉTAILS",
+    "good_morning": "Bonjour",
+    "continue_journey": "Continuez votre voyage et atteignez vos objectifs",
+    "follow": "Suivre"
+  },
+  "Navigation": {
+    "dashboard": "Tableau de bord",
+    "inbox": "Messages",
+    "lesson": "Leçon",
+    "task": "Tâche",
+    "group": "Groupe",
+    "virtual_classroom": "Classe Virtuelle",
+    "overview": "VUE D'ENSEMBLE",
+    "settings": "PARAMÈTRES",
+    "logout": "DÉCONNEXION"
+  }
+}

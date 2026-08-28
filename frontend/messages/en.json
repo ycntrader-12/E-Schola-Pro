@@ -1,0 +1,30 @@
+{
+  "Dashboard": {
+    "online_course": "ONLINE COURSE",
+    "title": "Sharpen Your Skills With Professional Online Courses",
+    "join_now": "Join Now",
+    "watched": "Watched",
+    "continue_watching": "Continue Watching",
+    "your_mentor": "Your Mentor",
+    "see_all": "See All",
+    "mentor_name": "Instructor Name & Date",
+    "course_type": "Course Type",
+    "course_title": "Course Title",
+    "actions": "Actions",
+    "show_details": "SHOW DETAILS",
+    "good_morning": "Good Morning",
+    "continue_journey": "Continue Your Journey And Achieve Your Target",
+    "follow": "Follow"
+  },
+  "Navigation": {
+    "dashboard": "Dashboard",
+    "inbox": "Messages",
+    "lesson": "Lesson",
+    "task": "Task",
+    "group": "Group",
+    "virtual_classroom": "Virtual Classroom",
+    "overview": "OVERVIEW",
+    "settings": "SETTINGS",
+    "logout": "LOGOUT"
+  }
+}

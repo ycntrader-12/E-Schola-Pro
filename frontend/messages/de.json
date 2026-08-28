@@ -1,0 +1,30 @@
+{
+  "Dashboard": {
+    "online_course": "ONLINE KURS",
+    "title": "Verbessern Sie Ihre Fähigkeiten mit professionellen Online-Kursen",
+    "join_now": "Jetzt beitreten",
+    "watched": "Gesehen",
+    "continue_watching": "Weiter ansehen",
+    "your_mentor": "Ihr Mentor",
+    "see_all": "Alle ansehen",
+    "mentor_name": "Name des Lehrers & Datum",
+    "course_type": "Kurstyp",
+    "course_title": "Kurstitel",
+    "actions": "Aktionen",
+    "show_details": "DETAILS ANZEIGEN",
+    "good_morning": "Guten Morgen",
+    "continue_journey": "Setzen Sie Ihre Reise fort und erreichen Sie Ihr Ziel",
+    "follow": "Folgen"
+  },
+  "Navigation": {
+    "dashboard": "Armaturenbrett",
+    "inbox": "Posteingang",
+    "lesson": "Lektion",
+    "task": "Aufgabe",
+    "group": "Gruppe",
+    "virtual_classroom": "Virtuelles Klassenzimmer",
+    "overview": "ÜBERBLICK",
+    "settings": "EINSTELLUNGEN",
+    "logout": "ABMELDEN"
+  }
+}

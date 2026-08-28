@@ -1,0 +1,30 @@
+{
+  "Dashboard": {
+    "online_course": "CURSO EN LÍNEA",
+    "title": "Perfecciona tus habilidades con cursos profesionales",
+    "join_now": "Únete ahora",
+    "watched": "Visto",
+    "continue_watching": "Continuar viendo",
+    "your_mentor": "Tu Mentor",
+    "see_all": "Ver todo",
+    "mentor_name": "Nombre del instructor & Fecha",
+    "course_type": "Tipo de curso",
+    "course_title": "Título del curso",
+    "actions": "Acciones",
+    "show_details": "VER DETALLES",
+    "good_morning": "Buenos días",
+    "continue_journey": "Continúa tu viaje y alcanza tus objetivos",
+    "follow": "Seguir"
+  },
+  "Navigation": {
+    "dashboard": "Panel de control",
+    "inbox": "Bandeja de entrada",
+    "lesson": "Lección",
+    "task": "Tarea",
+    "group": "Grupo",
+    "virtual_classroom": "Clase Virtual",
+    "overview": "VISIÓN GENERAL",
+    "settings": "AJUSTES",
+    "logout": "CERRAR SESIÓN"
+  }
+}

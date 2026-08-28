@@ -1,0 +1,1540 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>E-Schola Pro — Documentation Technique</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+    :root {
+      --primary: #dc2626;
+      --primary-light: #fecaca;
+      --bg-dark: #0f0f14;
+      --bg-card: #1a1a24;
+      --border: #2a2a3a;
+      --text-primary: #f5f5f7;
+      --text-secondary: #9ca3af;
+      --accent-green: #22c55e;
+      --accent-blue: #3b82f6;
+      --accent-amber: #f59e0b;
+      --accent-purple: #a855f7;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-primary);
+      line-height: 1.7;
+      font-size: 14px;
+    }
+
+    /* ============ PRINT STYLES ============ */
+    @media print {
+      body { background: white; color: #111; font-size: 11pt; }
+      .page-break { page-break-before: always; }
+      .no-print { display: none !important; }
+      .cover {
+        background: linear-gradient(180deg, rgba(15, 15, 20, 0.72) 0%, rgba(10, 10, 15, 0.88) 100%),
+                    url('docs_screenshots/hd_tech_ai_server.jpg') no-repeat center center / cover !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .cover .cover-content {
+        background: rgba(22, 22, 34, 0.85) !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      section { padding: 20px 0 !important; }
+      .doc-container { max-width: 100%; padding: 0 30px; }
+      table { font-size: 9pt; }
+      h1 { font-size: 20pt; }
+      h2 { font-size: 16pt; }
+      h3 { font-size: 13pt; }
+      .screenshot-container { break-inside: avoid; page-break-inside: avoid; border: 1px solid #ccc !important; box-shadow: none !important; margin: 16px 0 !important; }
+      .screenshot-header { background: #f0f0f5 !important; color: #333 !important; border-bottom: 1px solid #ccc !important; }
+      .screenshot-img { max-width: 100% !important; height: auto !important; }
+    }
+
+    /* ============ LAYOUT ============ */
+    .doc-container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* ============ COVER PAGE ============ */
+    .cover {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      background: linear-gradient(180deg, rgba(15, 15, 20, 0.72) 0%, rgba(10, 10, 16, 0.88) 100%),
+                  url('docs_screenshots/hd_tech_ai_server.jpg') no-repeat center center / cover;
+      padding: 60px 40px;
+      position: relative;
+      overflow: hidden;
+    }
+    .cover::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 50% 45%, rgba(220, 38, 38, 0.22) 0%, rgba(15, 15, 20, 0.45) 50%, rgba(10, 10, 16, 0.9) 100%);
+      pointer-events: none;
+    }
+    .cover .cover-content {
+      position: relative;
+      z-index: 1;
+      max-width: 740px;
+      padding: 56px 48px;
+      border-radius: 28px;
+      background: rgba(22, 22, 34, 0.75);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(220, 38, 38, 0.35);
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), 0 0 50px rgba(220, 38, 38, 0.2);
+    }
+    .cover .logo {
+      font-size: 56px;
+      font-weight: 900;
+      letter-spacing: -2px;
+      margin-bottom: 12px;
+      position: relative;
+    }
+    .cover .logo span { color: var(--primary); }
+    .cover .subtitle {
+      font-size: 20px;
+      color: var(--text-secondary);
+      font-weight: 400;
+      margin-bottom: 48px;
+    }
+    .cover .doc-title {
+      font-size: 36px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #fff, #ccc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 16px;
+    }
+    .cover .doc-version {
+      display: inline-block;
+      background: var(--primary);
+      color: white;
+      padding: 6px 20px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 13px;
+      margin-bottom: 48px;
+    }
+    .cover .meta-info {
+      color: var(--text-secondary);
+      font-size: 13px;
+      line-height: 2;
+    }
+    .cover .meta-info strong { color: var(--text-primary); }
+
+    /* ============ TOC ============ */
+    .toc {
+      padding: 60px 0;
+    }
+    .toc h2 {
+      font-size: 28px;
+      font-weight: 800;
+      margin-bottom: 32px;
+      padding-bottom: 16px;
+      border-bottom: 2px solid var(--primary);
+      display: inline-block;
+    }
+    .toc-list {
+      list-style: none;
+      counter-reset: toc-counter;
+    }
+    .toc-list li {
+      counter-increment: toc-counter;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+    }
+    .toc-list li::before {
+      content: counter(toc-counter, decimal-leading-zero);
+      font-weight: 800;
+      color: var(--primary);
+      font-size: 18px;
+      min-width: 30px;
+    }
+    .toc-list li a {
+      color: var(--text-primary);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 16px;
+    }
+
+    /* ============ SECTIONS ============ */
+    section {
+      padding: 48px 0;
+    }
+    section h2 {
+      font-size: 28px;
+      font-weight: 800;
+      margin-bottom: 8px;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    section h2 .section-number {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      background: var(--primary);
+      color: white;
+      border-radius: 12px;
+      font-size: 18px;
+      font-weight: 900;
+      flex-shrink: 0;
+    }
+    section h2 + p {
+      color: var(--text-secondary);
+      margin-bottom: 32px;
+      font-size: 15px;
+    }
+
+    h3 {
+      font-size: 20px;
+      font-weight: 700;
+      margin-top: 32px;
+      margin-bottom: 12px;
+      color: var(--text-primary);
+      padding-left: 16px;
+      border-left: 3px solid var(--primary);
+    }
+
+    h4 {
+      font-size: 16px;
+      font-weight: 700;
+      margin-top: 24px;
+      margin-bottom: 8px;
+      color: var(--accent-blue);
+    }
+
+    p { margin-bottom: 12px; color: var(--text-secondary); }
+    ul, ol { margin-bottom: 16px; padding-left: 24px; color: var(--text-secondary); }
+    li { margin-bottom: 6px; }
+    strong { color: var(--text-primary); }
+
+    /* ============ CARDS ============ */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      text-align: center;
+    }
+    .stat-card .stat-value {
+      font-size: 36px;
+      font-weight: 900;
+      color: var(--primary);
+    }
+    .stat-card .stat-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-top: 4px;
+    }
+
+    /* ============ TABLES ============ */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 24px;
+      font-size: 13px;
+    }
+    thead th {
+      background: var(--bg-card);
+      color: var(--text-primary);
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 10px;
+      letter-spacing: 1px;
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 2px solid var(--primary);
+    }
+    tbody td {
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-secondary);
+    }
+    tbody tr:hover { background: rgba(220, 38, 38, 0.03); }
+
+    /* ============ CODE ============ */
+    code {
+      background: rgba(220, 38, 38, 0.1);
+      color: var(--primary);
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    }
+    pre {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      overflow-x: auto;
+      margin-bottom: 20px;
+      font-size: 12px;
+      line-height: 1.8;
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      color: var(--text-secondary);
+    }
+
+    /* ============ BADGES ============ */
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .badge-get { background: rgba(34, 197, 94, 0.15); color: var(--accent-green); }
+    .badge-post { background: rgba(59, 130, 246, 0.15); color: var(--accent-blue); }
+    .badge-put { background: rgba(245, 158, 11, 0.15); color: var(--accent-amber); }
+    .badge-delete { background: rgba(220, 38, 38, 0.15); color: var(--primary); }
+
+    .role-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 700;
+    }
+    .role-admin { background: rgba(220, 38, 38, 0.15); color: var(--primary); }
+    .role-formateur { background: rgba(168, 85, 247, 0.15); color: var(--accent-purple); }
+    .role-etudiant { background: rgba(59, 130, 246, 0.15); color: var(--accent-blue); }
+    .role-stagiaire { background: rgba(245, 158, 11, 0.15); color: var(--accent-amber); }
+    .role-employer { background: rgba(34, 197, 94, 0.15); color: var(--accent-green); }
+
+    /* ============ FEATURE CARDS ============ */
+    .feature-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+      margin-bottom: 16px;
+    }
+    .feature-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      flex-shrink: 0;
+    }
+    .feature-card h4 { margin-top: 0; color: var(--text-primary); }
+    .feature-card p { margin-bottom: 0; font-size: 13px; }
+
+    /* ============ DIVIDER ============ */
+    hr {
+      border: none;
+      height: 1px;
+      background: var(--border);
+      margin: 48px 0;
+    }
+
+    /* ============ ARCHITECTURE DIAGRAM ============ */
+    .arch-diagram {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px;
+      text-align: center;
+      margin-bottom: 24px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      line-height: 2;
+      overflow-x: auto;
+      white-space: pre;
+      color: var(--text-secondary);
+    }
+
+    /* ============ PRINT BUTTON ============ */
+    .print-btn {
+      position: fixed;
+      bottom: 32px;
+      right: 32px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 16px 32px;
+      border-radius: 16px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 8px 32px rgba(220, 38, 38, 0.4);
+      z-index: 999;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: transform 0.2s;
+    }
+    .print-btn:hover { transform: translateY(-2px); }
+
+    .warning-box {
+      background: rgba(245, 158, 11, 0.1);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 20px;
+      color: var(--accent-amber);
+      font-size: 13px;
+    }
+    .info-box {
+      background: rgba(59, 130, 246, 0.1);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 20px;
+      color: var(--accent-blue);
+      font-size: 13px;
+    }
+
+    .endpoint-row td:first-child { white-space: nowrap; }
+
+    /* ============ SCREENSHOTS MOCKUP ============ */
+    .screenshot-container {
+      margin: 20px 0 24px;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: #0d0d12;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6);
+    }
+    .screenshot-header {
+      background: #181824;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid var(--border);
+      font-size: 11px;
+      color: var(--text-secondary);
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .screenshot-dots {
+      display: flex;
+      gap: 6px;
+    }
+    .screenshot-dots span {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .dot-red { background: #ef4444; }
+    .dot-yellow { background: #f59e0b; }
+    .dot-green { background: #10b981; }
+    .screenshot-img {
+      width: 100%;
+      height: auto;
+      display: block;
+      border-bottom-left-radius: 13px;
+      border-bottom-right-radius: 13px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- PAGE DE COUVERTURE                                            -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="cover">
+  <div class="cover-content">
+    <div class="logo">E-Schola <span>Pro</span></div>
+    <div class="subtitle">Plateforme de Gestion Éducative Intégrée</div>
+    <div class="doc-title">Documentation Technique</div>
+    <div class="doc-version">Version 1.0.0 — Août 2026</div>
+    <div class="meta-info">
+      <strong>Type :</strong> Documentation Technique Complète<br>
+      <strong>Date :</strong> 28 Août 2026<br>
+      <strong>Stack :</strong> Next.js 15 · FastAPI · SQLAlchemy · SQLite<br>
+      <strong>Statut :</strong> Production-Ready
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- TABLE DES MATIÈRES                                            -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="page-break"></div>
+<div class="doc-container">
+  <div class="toc">
+    <h2>Table des Matières</h2>
+    <ol class="toc-list">
+      <li><a href="#overview">Présentation Générale du Projet</a></li>
+      <li><a href="#architecture">Architecture Technique</a></li>
+      <li><a href="#stack">Stack Technologique</a></li>
+      <li><a href="#database">Modèles de Base de Données</a></li>
+      <li><a href="#api">API Endpoints (REST)</a></li>
+      <li><a href="#roles">Rôles & Permissions</a></li>
+      <li><a href="#modules">Modules Fonctionnels</a></li>
+      <li><a href="#frontend">Architecture Frontend</a></li>
+      <li><a href="#installation">Guide d'Installation</a></li>
+      <li><a href="#env">Variables d'Environnement</a></li>
+    </ol>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- 01 — PRÉSENTATION GÉNÉRALE                                    -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div class="page-break"></div>
+  <section id="overview">
+    <h2><span class="section-number">01</span> Présentation Générale</h2>
+    <p>Vue d'ensemble de la plateforme E-Schola Pro et de ses objectifs.</p>
+
+    <div class="card">
+      <p><strong>E-Schola Pro</strong> est une plateforme de gestion éducative complète et intégrée, conçue pour connecter les administrateurs, les formateurs et les apprenants (étudiants, stagiaires, employés) dans un écosystème numérique unique.</p>
+      <p>Elle permet la gestion complète du cycle de formation : cours, quiz, présences, messagerie, classes virtuelles, calendrier et gestion des groupes.</p>
+    </div>
+
+    <div class="card-grid">
+      <div class="stat-card">
+        <div class="stat-value">11</div>
+        <div class="stat-label">Modules API</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">12</div>
+        <div class="stat-label">Pages Frontend</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">10</div>
+        <div class="stat-label">Tables DB</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">5</div>
+        <div class="stat-label">Rôles Utilisateur</div>
+      </div>
+    </div>
+
+    <h3>Fonctionnalités Principales</h3>
+    <div class="feature-card">
+      <div class="feature-icon" style="background: rgba(220,38,38,0.1);">📚</div>
+      <div>
+        <h4>Gestion des Cours</h4>
+        <p>Création, édition et suppression de cours avec support de vidéos, documents PDF et images de couverture. Inscription automatique des étudiants.</p>
+      </div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon" style="background: rgba(168,85,247,0.1);">🏆</div>
+      <div>
+        <h4>Quiz & Évaluations</h4>
+        <p>Système complet de QCM avec timer configurable, correction automatique, calcul du score en pourcentage et tableau de classement.</p>
+      </div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon" style="background: rgba(34,197,94,0.1);">✅</div>
+      <div>
+        <h4>Présences & Émargement</h4>
+        <p>Suivi des présences par session avec statuts (Présent, En retard, Absent, Excusé), filtrage par groupe et par date, et statistiques globales.</p>
+      </div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon" style="background: rgba(59,130,246,0.1);">📅</div>
+      <div>
+        <h4>Calendrier & Planning</h4>
+        <p>Planification des cours et événements avec navigation mensuelle, ciblage par rôle, et système de soumission de livrables (fichiers et liens).</p>
+      </div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon" style="background: rgba(245,158,11,0.1);">💬</div>
+      <div>
+        <h4>Messagerie Interne</h4>
+        <p>Système de messagerie complet avec boîte de réception, messages envoyés, brouillons, corbeille, pièces jointes et signalement.</p>
+      </div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon" style="background: rgba(168,85,247,0.1);">🎥</div>
+      <div>
+        <h4>Classe Virtuelle</h4>
+        <p>Création de salles de visioconférence intégrées avec identifiant unique, accessibles par tous les utilisateurs inscrits.</p>
+      </div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon" style="background: rgba(220,38,38,0.1);">👥</div>
+      <div>
+        <h4>Gestion des Groupes & Classes</h4>
+        <p>Création de classes et niveaux par les formateurs/admins avec affectation dynamique des étudiants aux groupes.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- 02 — ARCHITECTURE TECHNIQUE                                   -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div class="page-break"></div>
+  <section id="architecture">
+    <h2><span class="section-number">02</span> Architecture Technique</h2>
+    <p>Diagramme d'architecture et organisation des composants.</p>
+
+    <div class="arch-diagram">
+┌─────────────────────────────────────────────────────────────┐
+│                    <strong style="color: var(--text-primary);">CLIENT (Navigateur Web)</strong>                       │
+│                                                             │
+│   Next.js 15  ·  React 19  ·  TypeScript  ·  Lucide Icons  │
+│                 Port : <strong style="color: var(--primary);">3000</strong>                              │
+└───────────────────────┬─────────────────────────────────────┘
+                        │  HTTP / REST (JSON)
+                        │  Authorization: Bearer JWT
+                        ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    <strong style="color: var(--text-primary);">BACKEND API (FastAPI)</strong>                        │
+│                                                             │
+│   FastAPI  ·  Pydantic  ·  SQLAlchemy ORM  ·  Alembic      │
+│   JWT Auth  ·  Cloudinary (Upload Media)                    │
+│                 Port : <strong style="color: var(--primary);">8000</strong>                              │
+├─────────────────────────────────────────────────────────────┤
+│  Routes API :                                               │
+│  /api/v1/login    /api/v1/users     /api/v1/courses         │
+│  /api/v1/events   /api/v1/quizzes   /api/v1/attendance      │
+│  /api/v1/messages /api/v1/classrooms /api/v1/groups         │
+│  /api/v1/enrollments  /api/v1/upload                        │
+└───────────────────────┬─────────────────────────────────────┘
+                        │  SQLAlchemy ORM
+                        ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   <strong style="color: var(--text-primary);">BASE DE DONNÉES (SQLite)</strong>                      │
+│                                                             │
+│   10 Tables :  users, courses, enrollments, events,         │
+│   classrooms, messages, quizzes, quiz_questions,            │
+│   quiz_attempts, attendance, course_videos,                 │
+│   event_deliverables, groups, group_members                 │
+│                 Fichier : <strong style="color: var(--primary);">eschola.db</strong>                     │
+└─────────────────────────────────────────────────────────────┘
+    </div>
+
+    <h3>Structure des Dossiers</h3>
+    <pre>
+E-Schola Pro/
+├── backend/
+│   ├── app/
+│   │   ├── api/
+│   │   │   ├── deps.py              # Dépendances (Auth, DB Session)
+│   │   │   ├── main.py              # Routeur principal API
+│   │   │   └── v1/                  # Endpoints versionnés
+│   │   │       ├── login.py         # Authentification JWT
+│   │   │       ├── users.py         # CRUD Utilisateurs
+│   │   │       ├── courses.py       # CRUD Cours
+│   │   │       ├── enrollments.py   # Inscriptions aux cours
+│   │   │       ├── events.py        # Calendrier & Livrables
+│   │   │       ├── quizzes.py       # Quiz & Questions
+│   │   │       ├── attendance.py    # Présences & Émargement
+│   │   │       ├── messages.py      # Messagerie interne
+│   │   │       ├── classrooms.py    # Classes virtuelles
+│   │   │       ├── groups.py        # Groupes & Classes
+│   │   │       └── upload.py        # Upload de fichiers
+│   │   ├── core/
+│   │   │   ├── config.py            # Configuration (clés, DB URL)
+│   │   │   └── security.py          # Hashing & JWT
+│   │   ├── db/
+│   │   │   ├── base.py              # Déclarative Base SQLAlchemy
+│   │   │   └── database.py          # Engine & SessionLocal
+│   │   ├── models/                  # Modèles SQLAlchemy (ORM)
+│   │   ├── schemas/                 # Schémas Pydantic (validation)
+│   │   ├── admin.py                 # Panel Admin (SQLAdmin)
+│   │   └── main.py                  # Point d'entrée FastAPI
+│   ├── alembic/                     # Migrations de base de données
+│   ├── uploads/                     # Fichiers uploadés
+│   ├── .env                         # Variables d'environnement
+│   └── requirements.txt             # Dépendances Python
+│
+├── frontend/
+│   ├── src/
+│   │   ├── app/
+│   │   │   └── [locale]/            # Routes i18n (fr, en, ar)
+│   │   │       ├── (auth)/          # Pages d'authentification
+│   │   │       ├── dashboard/       # Tableau de bord
+│   │   │       ├── courses/         # Cours & Détails
+│   │   │       ├── calendar/        # Calendrier & Planning
+│   │   │       ├── quizzes/         # Quiz & Tests
+│   │   │       ├── attendance/      # Présences
+│   │   │       ├── inbox/           # Messagerie
+│   │   │       ├── classroom/       # Classes virtuelles
+│   │   │       ├── group/           # Groupes & Classes
+│   │   │       ├── profile/         # Profil utilisateur
+│   │   │       ├── settings/        # Paramètres
+│   │   │       └── tasks/           # Tâches
+│   │   ├── components/              # Composants React réutilisables
+│   │   ├── lib/
+│   │   │   └── api.ts               # Client Axios configuré
+│   │   └── i18n/                    # Internationalisation
+│   ├── messages/                    # Traductions (fr.json, en.json, ar.json)
+│   └── public/                      # Assets statiques
+    </pre>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- 03 — STACK TECHNOLOGIQUE                                      -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div class="page-break"></div>
+  <section id="stack">
+    <h2><span class="section-number">03</span> Stack Technologique</h2>
+    <p>Technologies utilisées côté client et serveur.</p>
+
+    <h3>Frontend</h3>
+    <table>
+      <thead><tr><th>Technologie</th><th>Version</th><th>Rôle</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Next.js</strong></td><td>15.x</td><td>Framework React avec App Router et Server Components</td></tr>
+        <tr><td><strong>React</strong></td><td>19.x</td><td>Bibliothèque d'interface utilisateur</td></tr>
+        <tr><td><strong>TypeScript</strong></td><td>5.x</td><td>Typage statique et sécurité du code</td></tr>
+        <tr><td><strong>Axios</strong></td><td>1.x</td><td>Client HTTP pour les appels API</td></tr>
+        <tr><td><strong>Lucide React</strong></td><td>Dernière</td><td>Bibliothèque d'icônes SVG</td></tr>
+        <tr><td><strong>next-intl</strong></td><td>Dernière</td><td>Internationalisation (FR, EN, AR)</td></tr>
+        <tr><td><strong>CSS Vanilla</strong></td><td>—</td><td>Design system personnalisé (glassmorphism, dark mode)</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Backend</h3>
+    <table>
+      <thead><tr><th>Technologie</th><th>Version</th><th>Rôle</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Python</strong></td><td>3.11+</td><td>Langage de programmation principal</td></tr>
+        <tr><td><strong>FastAPI</strong></td><td>0.110+</td><td>Framework API REST haute performance</td></tr>
+        <tr><td><strong>SQLAlchemy</strong></td><td>2.x</td><td>ORM (Object-Relational Mapping)</td></tr>
+        <tr><td><strong>Alembic</strong></td><td>1.x</td><td>Migration de base de données</td></tr>
+        <tr><td><strong>Pydantic</strong></td><td>2.x</td><td>Validation et sérialisation des données</td></tr>
+        <tr><td><strong>SQLite</strong></td><td>3.x</td><td>Base de données relationnelle embarquée</td></tr>
+        <tr><td><strong>PyJWT / python-jose</strong></td><td>—</td><td>Authentification par tokens JWT</td></tr>
+        <tr><td><strong>Cloudinary</strong></td><td>—</td><td>Stockage et optimisation des médias (images, vidéos)</td></tr>
+        <tr><td><strong>SQLAdmin</strong></td><td>—</td><td>Panel d'administration web auto-généré</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- 04 — MODÈLES DE BASE DE DONNÉES                              -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div class="page-break"></div>
+  <section id="database">
+    <h2><span class="section-number">04</span> Modèles de Base de Données</h2>
+    <p>Schéma complet de toutes les tables et leurs relations.</p>
+
+    <!-- USER -->
+    <h3>User (Utilisateur)</h3>
+    <table>
+      <thead><tr><th>Colonne</th><th>Type</th><th>Contraintes</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code></td><td>Integer</td><td>PK, Auto-increment</td><td>Identifiant unique</td></tr>
+        <tr><td><code>email</code></td><td>String</td><td>Unique, Not Null, Indexé</td><td>Adresse e-mail (login)</td></tr>
+        <tr><td><code>hashed_password</code></td><td>String</td><td>Not Null</td><td>Mot de passe haché (bcrypt)</td></tr>
+        <tr><td><code>role</code></td><td>String</td><td>Default: "étudiant"</td><td>admin | formateur | employer | stagiaire | étudiant</td></tr>
+        <tr><td><code>avatar_url</code></td><td>String</td><td>Nullable</td><td>URL de la photo de profil</td></tr>
+        <tr><td><code>group_name</code></td><td>String</td><td>Nullable</td><td>Nom du groupe (hérité)</td></tr>
+      </tbody>
+    </table>
+
+    <!-- COURSE -->
+    <h3>Course (Cours)</h3>
+    <table>
+      <thead><tr><th>Colonne</th><th>Type</th><th>Contraintes</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code></td><td>Integer</td><td>PK</td><td>Identifiant unique</td></tr>
+        <tr><td><code>title</code></td><td>String</td><td>Not Null, Indexé</td><td>Titre du cours</td></tr>
+        <tr><td><code>description</code></td><td>Text</td><td>Nullable</td><td>Description détaillée</td></tr>
+        <tr><td><code>cover_image_url</code></td><td>String</td><td>Nullable</td><td>Image de couverture</td></tr>
+        <tr><td><code>document_url</code></td><td>String</td><td>Nullable</td><td>Document PDF associé</td></tr>
+        <tr><td><code>instructor_id</code></td><td>Integer</td><td>FK → users.id</td><td>Formateur propriétaire</td></tr>
+      </tbody>
+    </table>
+
+    <!-- COURSE VIDEO -->
+    <h3>CourseVideo (Vidéo de Cours)</h3>
+    <table>
+      <thead><tr><th>Colonne</th><th>Type</th><th>Contraintes</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code></td><td>Integer</td><td>PK</td><td>Identifiant unique</td></tr>
+        <tr><td><code>course_id</code></td><td>Integer</td><td>FK → courses.id, CASCADE</td><td>Cours parent</td></tr>
+        <tr><td><code>title</code></td><td>String</td><td>Not Null</td><td>Titre de la vidéo</td></tr>
+        <tr><td><code>description</code></td><td>Text</td><td>Nullable</td><td>Description</td></tr>
+        <tr><td><code>video_url</code></td><td>String</td><td>Not Null</td><td>URL de la vidéo (Cloudinary)</td></tr>
+        <tr><td><code>order_index</code></td><td>Integer</td><td>Default: 0</td><td>Ordre d'affichage</td></tr>
+        <tr><td><code>created_at</code></td><td>DateTime</td><td>Auto</td><td>Date de création</td></tr>
+      </tbody>
+    </table>
+
+    <!-- ENROLLMENT -->
+    <h3>Enrollment (Inscription)</h3>
+    <table>
+      <thead><tr><th>Colonne</th><th>Type</th><th>Contraintes</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code></td><td>Integer</td><td>PK</td><td>Identifiant unique</td></tr>
+        <tr><td><code>user_id</code></td><td>Integer</td><td>FK → users.id, CASCADE</td><td>Étudiant inscrit</td></tr>
+        <tr><td><code>course_id</code></td><td>Integer</td><td>FK → courses.id, CASCADE</td><td>Cours cible</td></tr>
+        <tr><td><code>enrolled_at</code></td><td>DateTime</td><td>Auto</td><td>Date d'inscription</td></tr>
+      </tbody>
+    </table>
+
+    <!-- EVENT -->
+    <h3>Event (Événement / Planning)</h3>
+    <table>
+      <thead><tr><th>Colonne</th><th>Type</th><th>Contraintes</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code></td><td>Integer</td><td>PK</td><td>Identifiant unique</td></tr>
+        <tr><td><code>title</code></td><td>String</td><td>Not Null, Indexé</td><td>Titre de l'événement</td></tr>
+        <tr><td><code>description</code></td><td>Text</td><td>Nullable</td><td>Description</td></tr>
+        <tr><td><code>start_time</code></td><td>DateTime</td><td>Not Null</td><td>Début de l'événement</td></tr>
+        <tr><td><code>end_time</code></td><td>DateTime</td><td>Not Null</td><td>Fin de l'événement</td></tr>
+        <tr><td><code>target_roles</code></td><td>String</td><td>Default: "étudiant,stagiaire,employer"</td><td>Rôles ciblés</td></tr>
+      </tbody>
+    </table>
+
+    <!-- EVENT DELIVERABLE -->
+    <h3>EventDeliverable (Livrable)</h3>
+    <table>
+      <thead><tr><th>Colonne</th><th>Type</th><th>Contraintes</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code></td><td>Integer</td><td>PK</td><td>Identifiant unique</td></tr>
+        <tr><td><code>event_id</code></td><td>Integer</td><td>FK → events.id</td><td>Événement associé</td></tr>
+        <tr><td><code>user_id</code></td><td>Integer</td><td>FK → users.id</td><td>Étudiant soumetteur</td></tr>
+        <tr><td><code>file_url</code></td><td>String</td><td>Nullable</td><td>URL du fichier uploadé</td></tr>
+        <tr><td><code>link_url</code></td><td>String</td><td>Nullable</td><td>Lien externe (Google Drive, GitHub…)</td></tr>
+        <tr><td><code>submitted_at</code></td><td>DateTime</td><td>Auto</td><td>Date de soumission</td></tr>
+      </tbody>
+    </table>
+
+    <!-- QUIZ -->
+    <h3>Quiz</h3>
+    <table>
+      <thead><tr><th>Colonne</th><th>Type</th><th>Contraintes</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code></td><td>Integer</td><td>PK</td><td>Identifiant unique</td></tr>
+        <tr><td><code>title</code></td><td>String</td><td>Not Null</td><td>Titre du quiz</td></tr>
+        <tr><td><code>description</code></td><td>Text</td><td>Nullable</td><td>Description</td></tr>
+        <tr><td><code>course_id</code></td><td>Integer</td><td>FK → courses.id, Nullable</td><td>Cours lié (optionnel)</td></tr>
+        <tr><td><code>created_by_id</code></td><td>Integer</td><td>FK → users.id</td><td>Créateur du quiz</td></tr>
+        <tr><td><code>target_roles</code></td><td>String</td><td>Default: "étudiant,stagiaire,employer"</td><td>Public cible</td></tr>
+        <tr><td><code>time_limit_minutes</code></td><td>Integer</td><td>Default: 15</td><td>Durée maximale (minutes)</td></tr>
+        <tr><td><code>created_at</code></td><td>DateTime</td><td>Auto</td><td>Date de création</td></tr>
+      </tbody>
+    </table>
+
+    <!-- QUIZ QUESTION -->
+    <h3>QuizQuestion</h3>
+    <table>
+      <thead><tr><th>Colonne</th><th>Type</th><th>Contraintes</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code></td><td>Integer</td><td>PK</td><td>Identifiant unique</td></tr>
+        <tr><td><code>quiz_id</code></td><td>Integer</td><td>FK → quizzes.id</td><td>Quiz parent</td></tr>
+        <tr><td><code>question_text</code></td><td>Text</td><td>Not Null</td><td>Énoncé de la question</td></tr>
+        <tr><td><code>options</code></td><td>Text (JSON)</td><td>Not Null</td><td>Choix possibles ["A", "B", "C", "D"]</td></tr>
+        <tr><td><code>correct_option_index</code></td><td>Integer</td><td>Not Null</td><td>Index de la bonne réponse (0–3)</td></tr>
+        <tr><td><code>points</code></td><td>Integer</td><td>Default: 1</td><td>Points attribués</td></tr>
+      </tbody>
+    </table>
+
+    <!-- QUIZ ATTEMPT -->
+    <h3>QuizAttempt (Tentative)</h3>
+    <table>
+      <thead><tr><th>Colonne</th><th>Type</th><th>Contraintes</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code></td><td>Integer</td><td>PK</td><td>Identifiant unique</td></tr>
+        <tr><td><code>quiz_id</code></td><td>Integer</td><td>FK → quizzes.id</td><td>Quiz passé</td></tr>
+        <tr><td><code>user_id</code></td><td>Integer</td><td>FK → users.id</td><td>Étudiant</td></tr>
+        <tr><td><code>score</code></td><td>Integer</td><td>Not Null</td><td>Score obtenu</td></tr>
+        <tr><td><code>max_score</code></td><td>Integer</td><td>Not Null</td><td>Score maximum possible</td></tr>
+        <tr><td><code>percentage</code></td><td>Float</td><td>Not Null</td><td>Pourcentage de réussite</td></tr>
+        <tr><td><code>answers</code></td><td>Text (JSON)</td><td>Nullable</td><td>Réponses de l'étudiant</td></tr>
+        <tr><td><code>completed_at</code></td><td>DateTime</td><td>Auto</td><td>Date de complétion</td></tr>
+      </tbody>
+    </table>
+
+    <!-- ATTENDANCE -->
+    <h3>Attendance (Présence)</h3>
+    <table>
+      <thead><tr><th>Colonne</th><th>Type</th><th>Contraintes</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code></td><td>Integer</td><td>PK</td><td>Identifiant unique</td></tr>
+        <tr><td><code>user_id</code></td><td>Integer</td><td>FK → users.id, CASCADE</td><td>Apprenant</td></tr>
+        <tr><td><code>marked_by_id</code></td><td>Integer</td><td>FK → users.id, Nullable</td><td>Formateur ayant marqué</td></tr>
+        <tr><td><code>date</code></td><td>Date</td><td>Not Null, Indexé</td><td>Date de la session</td></tr>
+        <tr><td><code>status</code></td><td>String</td><td>Default: "present"</td><td>present | late | absent | excused</td></tr>
+        <tr><td><code>minutes_late</code></td><td>Integer</td><td>Default: 0</td><td>Minutes de retard</td></tr>
+        <tr><td><code>session_name</code></td><td>String</td><td>Default: "Session Principale"</td><td>Nom de la session</td></tr>
+        <tr><td><code>remarks</code></td><td>Text</td><td>Nullable</td><td>Remarques</td></tr>
+      </tbody>
+    </table>
+
+    <!-- MESSAGE -->
+    <h3>Message</h3>
+    <table>
+      <thead><tr><th>Colonne</th><th>Type</th><th>Contraintes</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code></td><td>Integer</td><td>PK</td><td>Identifiant unique</td></tr>
+        <tr><td><code>sender_id</code></td><td>Integer</td><td>FK → users.id, CASCADE</td><td>Expéditeur</td></tr>
+        <tr><td><code>recipient_id</code></td><td>Integer</td><td>FK → users.id, Nullable</td><td>Destinataire</td></tr>
+        <tr><td><code>subject</code></td><td>String(255)</td><td>Not Null</td><td>Objet du message</td></tr>
+        <tr><td><code>body</code></td><td>Text</td><td>Not Null</td><td>Corps du message</td></tr>
+        <tr><td><code>attachment_url</code></td><td>String</td><td>Nullable</td><td>URL pièce jointe</td></tr>
+        <tr><td><code>is_read</code></td><td>Boolean</td><td>Default: False</td><td>Lu / Non-lu</td></tr>
+        <tr><td><code>is_draft</code></td><td>Boolean</td><td>Default: False</td><td>Brouillon</td></tr>
+        <tr><td><code>is_trash</code></td><td>Boolean</td><td>Default: False</td><td>Corbeille</td></tr>
+        <tr><td><code>is_reported</code></td><td>Boolean</td><td>Default: False</td><td>Signalé</td></tr>
+      </tbody>
+    </table>
+
+    <!-- CLASSROOM -->
+    <h3>Classroom (Classe Virtuelle)</h3>
+    <table>
+      <thead><tr><th>Colonne</th><th>Type</th><th>Contraintes</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code></td><td>Integer</td><td>PK</td><td>Identifiant unique</td></tr>
+        <tr><td><code>room_id</code></td><td>String</td><td>Unique, Indexé</td><td>Identifiant de salle</td></tr>
+        <tr><td><code>title</code></td><td>String</td><td>Not Null</td><td>Titre de la session</td></tr>
+        <tr><td><code>description</code></td><td>Text</td><td>Nullable</td><td>Description</td></tr>
+        <tr><td><code>instructor_id</code></td><td>Integer</td><td>FK → users.id</td><td>Formateur hôte</td></tr>
+        <tr><td><code>is_active</code></td><td>Boolean</td><td>Default: True</td><td>Session active ?</td></tr>
+      </tbody>
+    </table>
+
+    <!-- GROUP -->
+    <h3>Group (Groupe / Classe)</h3>
+    <table>
+      <thead><tr><th>Colonne</th><th>Type</th><th>Contraintes</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code></td><td>Integer</td><td>PK</td><td>Identifiant unique</td></tr>
+        <tr><td><code>name</code></td><td>String</td><td>Not Null, Indexé</td><td>Nom du groupe</td></tr>
+        <tr><td><code>level</code></td><td>String</td><td>Nullable, Indexé</td><td>Niveau (Master 1, L3, etc.)</td></tr>
+        <tr><td><code>description</code></td><td>String</td><td>Nullable</td><td>Description</td></tr>
+        <tr><td><code>created_at</code></td><td>DateTime</td><td>Auto</td><td>Date de création</td></tr>
+      </tbody>
+    </table>
+
+    <!-- GROUP MEMBER -->
+    <h3>GroupMember (Membre de Groupe)</h3>
+    <table>
+      <thead><tr><th>Colonne</th><th>Type</th><th>Contraintes</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code></td><td>Integer</td><td>PK</td><td>Identifiant unique</td></tr>
+        <tr><td><code>group_id</code></td><td>Integer</td><td>FK → groups.id</td><td>Groupe parent</td></tr>
+        <tr><td><code>user_id</code></td><td>Integer</td><td>FK → users.id</td><td>Utilisateur membre</td></tr>
+        <tr><td><code>joined_at</code></td><td>DateTime</td><td>Auto</td><td>Date d'ajout</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- 05 — API ENDPOINTS                                            -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div class="page-break"></div>
+  <section id="api">
+    <h2><span class="section-number">05</span> API Endpoints (REST)</h2>
+    <p>Liste exhaustive de tous les endpoints exposés par le backend FastAPI. Base URL : <code>http://localhost:8000/api/v1</code></p>
+
+    <h3>Authentification (/login)</h3>
+    <table>
+      <thead><tr><th>Méthode</th><th>Endpoint</th><th>Description</th><th>Accès</th></tr></thead>
+      <tbody class="endpoint-row">
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/login/access-token</code></td><td>Obtenir un token JWT</td><td>Public</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Utilisateurs (/users)</h3>
+    <table>
+      <thead><tr><th>Méthode</th><th>Endpoint</th><th>Description</th><th>Accès</th></tr></thead>
+      <tbody class="endpoint-row">
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/users/</code></td><td>Lister tous les utilisateurs</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/users/me</code></td><td>Profil de l'utilisateur connecté</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/users/</code></td><td>Créer un utilisateur (inscription)</td><td>Public</td></tr>
+        <tr><td><span class="badge badge-put">PUT</span></td><td><code>/users/me</code></td><td>Modifier son profil</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-delete">DELETE</span></td><td><code>/users/{id}</code></td><td>Supprimer un utilisateur</td><td>Admin</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Cours (/courses)</h3>
+    <table>
+      <thead><tr><th>Méthode</th><th>Endpoint</th><th>Description</th><th>Accès</th></tr></thead>
+      <tbody class="endpoint-row">
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/courses/</code></td><td>Lister tous les cours</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/courses/{id}</code></td><td>Détail d'un cours</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/courses/</code></td><td>Créer un cours</td><td>Admin, Formateur</td></tr>
+        <tr><td><span class="badge badge-put">PUT</span></td><td><code>/courses/{id}</code></td><td>Modifier un cours</td><td>Propriétaire, Admin</td></tr>
+        <tr><td><span class="badge badge-delete">DELETE</span></td><td><code>/courses/{id}</code></td><td>Supprimer un cours</td><td>Propriétaire, Admin</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Événements & Calendrier (/events)</h3>
+    <table>
+      <thead><tr><th>Méthode</th><th>Endpoint</th><th>Description</th><th>Accès</th></tr></thead>
+      <tbody class="endpoint-row">
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/events/</code></td><td>Lister les événements du calendrier</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/events/</code></td><td>Créer un événement</td><td>Admin, Formateur</td></tr>
+        <tr><td><span class="badge badge-put">PUT</span></td><td><code>/events/{id}</code></td><td>Modifier un événement</td><td>Admin, Formateur</td></tr>
+        <tr><td><span class="badge badge-delete">DELETE</span></td><td><code>/events/{id}</code></td><td>Supprimer un événement</td><td>Admin, Formateur</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/events/{id}/deliverables</code></td><td>Soumettre un livrable</td><td>Étudiant</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/events/{id}/deliverables</code></td><td>Consulter les livrables</td><td>Authentifié</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Quiz (/quizzes)</h3>
+    <table>
+      <thead><tr><th>Méthode</th><th>Endpoint</th><th>Description</th><th>Accès</th></tr></thead>
+      <tbody class="endpoint-row">
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/quizzes/</code></td><td>Lister tous les quiz</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/quizzes/{id}</code></td><td>Détail d'un quiz avec questions</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/quizzes/</code></td><td>Créer un quiz</td><td>Admin, Formateur</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/quizzes/{id}/submit</code></td><td>Soumettre les réponses</td><td>Étudiant</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/quizzes/{id}/leaderboard</code></td><td>Classement du quiz</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-delete">DELETE</span></td><td><code>/quizzes/{id}</code></td><td>Supprimer un quiz</td><td>Admin, Formateur</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Présences (/attendance)</h3>
+    <table>
+      <thead><tr><th>Méthode</th><th>Endpoint</th><th>Description</th><th>Accès</th></tr></thead>
+      <tbody class="endpoint-row">
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/attendance/groups</code></td><td>Lister les groupes disponibles</td><td>Admin, Formateur</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/attendance/learners</code></td><td>Lister les apprenants (avec filtre)</td><td>Admin, Formateur</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/attendance/learners</code></td><td>Ajouter un apprenant</td><td>Admin, Formateur</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/attendance/mark</code></td><td>Marquer la présence</td><td>Admin, Formateur</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/attendance/records</code></td><td>Historique des présences</td><td>Authentifié</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Messagerie (/messages)</h3>
+    <table>
+      <thead><tr><th>Méthode</th><th>Endpoint</th><th>Description</th><th>Accès</th></tr></thead>
+      <tbody class="endpoint-row">
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/messages/inbox</code></td><td>Boîte de réception</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/messages/sent</code></td><td>Messages envoyés</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/messages/drafts</code></td><td>Brouillons</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/messages/trash</code></td><td>Corbeille</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/messages/</code></td><td>Envoyer un message</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/messages/unread-count</code></td><td>Nombre de non-lus</td><td>Authentifié</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Classes Virtuelles (/classrooms)</h3>
+    <table>
+      <thead><tr><th>Méthode</th><th>Endpoint</th><th>Description</th><th>Accès</th></tr></thead>
+      <tbody class="endpoint-row">
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/classrooms/</code></td><td>Lister les salles virtuelles</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/</code></td><td>Créer une salle</td><td>Admin, Formateur</td></tr>
+        <tr><td><span class="badge badge-delete">DELETE</span></td><td><code>/classrooms/{id}</code></td><td>Supprimer une salle</td><td>Admin, Formateur</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Groupes (/groups)</h3>
+    <table>
+      <thead><tr><th>Méthode</th><th>Endpoint</th><th>Description</th><th>Accès</th></tr></thead>
+      <tbody class="endpoint-row">
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/groups/</code></td><td>Lister tous les groupes</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/groups/</code></td><td>Créer un groupe</td><td>Admin, Formateur</td></tr>
+        <tr><td><span class="badge badge-put">PUT</span></td><td><code>/groups/{id}</code></td><td>Modifier un groupe</td><td>Admin, Formateur</td></tr>
+        <tr><td><span class="badge badge-delete">DELETE</span></td><td><code>/groups/{id}</code></td><td>Supprimer un groupe</td><td>Admin, Formateur</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/groups/{id}/members</code></td><td>Lister les membres</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/groups/{id}/members</code></td><td>Ajouter un membre</td><td>Admin, Formateur</td></tr>
+        <tr><td><span class="badge badge-delete">DELETE</span></td><td><code>/groups/{id}/members/{uid}</code></td><td>Retirer un membre</td><td>Admin, Formateur</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/groups/available-users</code></td><td>Utilisateurs disponibles</td><td>Admin, Formateur</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Upload (/upload)</h3>
+    <table>
+      <thead><tr><th>Méthode</th><th>Endpoint</th><th>Description</th><th>Accès</th></tr></thead>
+      <tbody class="endpoint-row">
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/upload/file</code></td><td>Upload de fichier (tout format)</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/upload/image</code></td><td>Upload d'image (Cloudinary)</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/upload/video</code></td><td>Upload de vidéo (Cloudinary)</td><td>Authentifié</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- 06 — RÔLES & PERMISSIONS                                      -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div class="page-break"></div>
+  <section id="roles">
+    <h2><span class="section-number">06</span> Rôles & Permissions</h2>
+    <p>Matrice d'accès et description de chaque rôle utilisateur.</p>
+
+    <h3>Rôles Disponibles</h3>
+    <div class="card-grid">
+      <div class="card">
+        <p><span class="role-badge role-admin">ADMIN</span></p>
+        <p style="margin-top:8px"><strong>Administrateur</strong> — Accès total au système. Peut gérer les utilisateurs, les cours, les quiz, les présences, les groupes, les classes virtuelles et la messagerie.</p>
+      </div>
+      <div class="card">
+        <p><span class="role-badge role-formateur">FORMATEUR</span></p>
+        <p style="margin-top:8px"><strong>Formateur</strong> — Peut créer et gérer ses propres cours, quiz, événements, groupes et marquer les présences. Accès à la messagerie et aux classes virtuelles.</p>
+      </div>
+      <div class="card">
+        <p><span class="role-badge role-etudiant">ÉTUDIANT</span></p>
+        <p style="margin-top:8px"><strong>Étudiant</strong> — Peut consulter les cours, passer les quiz, soumettre des livrables, accéder à la messagerie et rejoindre les classes virtuelles.</p>
+      </div>
+      <div class="card">
+        <p><span class="role-badge role-stagiaire">STAGIAIRE</span></p>
+        <p style="margin-top:8px"><strong>Stagiaire</strong> — Mêmes droits que l'étudiant. Peut être ciblé spécifiquement par des événements ou quiz dédiés.</p>
+      </div>
+      <div class="card">
+        <p><span class="role-badge role-employer">EMPLOYER</span></p>
+        <p style="margin-top:8px"><strong>Employé</strong> — Mêmes droits que l'étudiant. Accès aux formations en entreprise et aux livrables professionnels.</p>
+      </div>
+    </div>
+
+    <h3>Matrice de Permissions</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Fonctionnalité</th>
+          <th><span class="role-badge role-admin">Admin</span></th>
+          <th><span class="role-badge role-formateur">Formateur</span></th>
+          <th><span class="role-badge role-etudiant">Étudiant</span></th>
+          <th><span class="role-badge role-stagiaire">Stagiaire</span></th>
+          <th><span class="role-badge role-employer">Employer</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>Créer/Modifier/Supprimer des cours</strong></td><td>✅</td><td>✅</td><td>❌</td><td>❌</td><td>❌</td></tr>
+        <tr><td><strong>Consulter les cours</strong></td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+        <tr><td><strong>Créer/Gérer les quiz</strong></td><td>✅</td><td>✅</td><td>❌</td><td>❌</td><td>❌</td></tr>
+        <tr><td><strong>Passer un quiz</strong></td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+        <tr><td><strong>Marquer les présences</strong></td><td>✅</td><td>✅</td><td>❌</td><td>❌</td><td>❌</td></tr>
+        <tr><td><strong>Créer des événements</strong></td><td>✅</td><td>✅</td><td>❌</td><td>❌</td><td>❌</td></tr>
+        <tr><td><strong>Soumettre des livrables</strong></td><td>❌</td><td>❌</td><td>✅</td><td>✅</td><td>✅</td></tr>
+        <tr><td><strong>Gérer les groupes</strong></td><td>✅</td><td>✅</td><td>❌</td><td>❌</td><td>❌</td></tr>
+        <tr><td><strong>Créer des classes virtuelles</strong></td><td>✅</td><td>✅</td><td>❌</td><td>❌</td><td>❌</td></tr>
+        <tr><td><strong>Envoyer/Recevoir messages</strong></td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+        <tr><td><strong>Gérer les utilisateurs</strong></td><td>✅</td><td>❌</td><td>❌</td><td>❌</td><td>❌</td></tr>
+        <tr><td><strong>Panel Admin (/admin)</strong></td><td>✅</td><td>❌</td><td>❌</td><td>❌</td><td>❌</td></tr>
+        <tr><td><strong>Portail Backend & BDD (Paramètres)</strong></td><td>✅</td><td>❌</td><td>❌</td><td>❌</td><td>❌</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- 07 — MODULES FONCTIONNELS                                     -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div class="page-break"></div>
+  <section id="modules">
+    <h2><span class="section-number">07</span> Modules Fonctionnels</h2>
+    <p>Description détaillée de chaque module de la plateforme.</p>
+
+    <h3>Module 1 — Tableau de Bord (Dashboard)</h3>
+    <div class="card">
+      <p><strong>Route Frontend :</strong> <code>/dashboard</code></p>
+      <p>Le tableau de bord est la page d'accueil après connexion. Il affiche :</p>
+      <ul>
+        <li>Statistiques clés : nombre de cours, quiz disponibles, présences</li>
+        <li>Widget de performance de présence et taux d'assiduité</li>
+        <li>Accès rapide aux modules les plus utilisés</li>
+        <li>Événements et plannings à venir du calendrier</li>
+      </ul>
+      <div class="screenshot-container">
+        <div class="screenshot-header">
+          <div class="screenshot-dots"><span class="dot-red"></span><span class="dot-yellow"></span><span class="dot-green"></span></div>
+          <span>Aperçu de l'interface : Tableau de Bord (/dashboard)</span>
+        </div>
+        <img src="docs_screenshots/dashboard.png" alt="Interface Tableau de Bord E-Schola Pro" class="screenshot-img" />
+      </div>
+    </div>
+
+    <h3>Module 2 — Gestion des Cours</h3>
+    <div class="card">
+      <p><strong>Routes Frontend :</strong> <code>/courses</code> · <code>/courses/new</code> · <code>/courses/{id}</code></p>
+      <p><strong>Options et propriétés :</strong></p>
+      <ul>
+        <li><strong>Création :</strong> Formulaire avec titre, description, image de couverture (upload Cloudinary), document PDF</li>
+        <li><strong>Vidéos :</strong> Ajout de plusieurs vidéos ordonnées par cours (upload Cloudinary)</li>
+        <li><strong>Inscription :</strong> Les étudiants peuvent s'inscrire/se désinscrire automatiquement</li>
+        <li><strong>Détail du cours :</strong> Affichage du contenu, lecteur vidéo intégré, téléchargement du document</li>
+        <li><strong>Suppression :</strong> Cascade automatique (vidéos et inscriptions supprimées)</li>
+      </ul>
+      <div class="screenshot-container">
+        <div class="screenshot-header">
+          <div class="screenshot-dots"><span class="dot-red"></span><span class="dot-yellow"></span><span class="dot-green"></span></div>
+          <span>Aperçu de l'interface : Catalogue et gestion des Cours (/courses)</span>
+        </div>
+        <img src="docs_screenshots/courses.png" alt="Interface Cours E-Schola Pro" class="screenshot-img" />
+      </div>
+    </div>
+
+    <h3>Module 3 — Quiz & Évaluations</h3>
+    <div class="card">
+      <p><strong>Route Frontend :</strong> <code>/quizzes</code></p>
+      <p><strong>Options et propriétés :</strong></p>
+      <ul>
+        <li><strong>Création :</strong> Titre, description, cours associé (optionnel), rôles cibles, durée limite</li>
+        <li><strong>Questions :</strong> QCM à 4 choix, points par question, indication de la bonne réponse</li>
+        <li><strong>Timer :</strong> Compte à rebours configurable (1 à 120 minutes)</li>
+        <li><strong>Correction :</strong> Automatique après soumission, score en pourcentage</li>
+        <li><strong>Classement :</strong> Tableau des meilleurs scores par quiz</li>
+        <li><strong>Limitation :</strong> Un seul passage par étudiant par quiz</li>
+      </ul>
+      <div class="screenshot-container">
+        <div class="screenshot-header">
+          <div class="screenshot-dots"><span class="dot-red"></span><span class="dot-yellow"></span><span class="dot-green"></span></div>
+          <span>Aperçu de l'interface : Quiz & Évaluations (/quizzes)</span>
+        </div>
+        <img src="docs_screenshots/quizzes.png" alt="Interface Quiz E-Schola Pro" class="screenshot-img" />
+      </div>
+    </div>
+
+    <h3>Module 4 — Calendrier & Planning</h3>
+    <div class="card">
+      <p><strong>Route Frontend :</strong> <code>/calendar</code></p>
+      <p><strong>Options et propriétés :</strong></p>
+      <ul>
+        <li><strong>Vue mensuelle :</strong> Navigation mois par mois avec grille visuelle</li>
+        <li><strong>Création d'événement :</strong> Titre, description, date/heure de début et fin, public ciblé</li>
+        <li><strong>Ciblage & Public concerné :</strong> Choix du public par rôle (Tous, Étudiants, Stagiaires, Employés, Formateurs/Admin) ou sélection directe d'un <strong>Groupe / Classe</strong> créé dans le système (ex: <code>Groupe : Master 1</code>), avec affichage d'un badge distinctif 👥 sur les cartes du calendrier</li>
+        <li><strong>Livrables :</strong> Bouton global "Soumettre un livrable" pour les apprenants</li>
+        <li><strong>Upload :</strong> Support de tout format de fichier + liens externes</li>
+        <li><strong>Consultation :</strong> Les formateurs peuvent consulter les livrables soumis</li>
+      </ul>
+      <div class="screenshot-container">
+        <div class="screenshot-header">
+          <div class="screenshot-dots"><span class="dot-red"></span><span class="dot-yellow"></span><span class="dot-green"></span></div>
+          <span>Aperçu de l'interface : Calendrier & Planning (/calendar)</span>
+        </div>
+        <img src="docs_screenshots/calendar.png" alt="Interface Calendrier E-Schola Pro" class="screenshot-img" />
+      </div>
+    </div>
+
+    <h3>Module 5 — Présences & Émargement</h3>
+    <div class="card">
+      <p><strong>Route Frontend :</strong> <code>/attendance</code></p>
+      <p><strong>Options et propriétés :</strong></p>
+      <ul>
+        <li><strong>Marquage :</strong> Présent, En retard (avec minutes), Absent, Excusé</li>
+        <li><strong>Filtrage :</strong> Par groupe, par date, par session</li>
+        <li><strong>Sessions :</strong> Nom de session personnalisable</li>
+        <li><strong>Ajout d'apprenant :</strong> Inscription directe avec e-mail, mot de passe et groupe</li>
+        <li><strong>Historique :</strong> Consultation des présences passées</li>
+        <li><strong>Remarques :</strong> Ajout de commentaires par apprenant</li>
+      </ul>
+      <div class="screenshot-container">
+        <div class="screenshot-header">
+          <div class="screenshot-dots"><span class="dot-red"></span><span class="dot-yellow"></span><span class="dot-green"></span></div>
+          <span>Aperçu de l'interface : Feuille de Présences & Émargement (/attendance)</span>
+        </div>
+        <img src="docs_screenshots/attendance.png" alt="Interface Présences E-Schola Pro" class="screenshot-img" />
+      </div>
+    </div>
+
+    <h3>Module 6 — Messagerie Interne</h3>
+    <div class="card">
+      <p><strong>Route Frontend :</strong> <code>/inbox</code></p>
+      <p><strong>Options et propriétés :</strong></p>
+      <ul>
+        <li><strong>Boîte de réception :</strong> Messages reçus avec statut lu/non-lu</li>
+        <li><strong>Messages envoyés :</strong> Historique des messages expédiés</li>
+        <li><strong>Brouillons :</strong> Sauvegarde automatique des messages non envoyés</li>
+        <li><strong>Corbeille :</strong> Récupération des messages supprimés</li>
+        <li><strong>Pièces jointes :</strong> Support d'upload de fichiers dans les messages</li>
+        <li><strong>Signalement :</strong> Possibilité de signaler un message abusif</li>
+        <li><strong>Compteur :</strong> Badge de non-lus dans la sidebar</li>
+      </ul>
+      <div class="screenshot-container">
+        <div class="screenshot-header">
+          <div class="screenshot-dots"><span class="dot-red"></span><span class="dot-yellow"></span><span class="dot-green"></span></div>
+          <span>Aperçu de l'interface : Boîte de Messagerie (/inbox)</span>
+        </div>
+        <img src="docs_screenshots/inbox.png" alt="Interface Messagerie E-Schola Pro" class="screenshot-img" />
+      </div>
+    </div>
+
+    <h3>Module 7 — Classes Virtuelles</h3>
+    <div class="card">
+      <p><strong>Route Frontend :</strong> <code>/classroom</code> · <code>/classroom/{id}</code></p>
+      <p><strong>Options et propriétés :</strong></p>
+      <ul>
+        <li><strong>Création :</strong> Titre, description, identifiant de salle unique</li>
+        <li><strong>Accès :</strong> Tous les utilisateurs authentifiés peuvent rejoindre une session</li>
+        <li><strong>Visioconférence :</strong> Interface de conférence intégrée</li>
+        <li><strong>Gestion :</strong> Le formateur peut fermer/supprimer la session</li>
+      </ul>
+      <div class="screenshot-container">
+        <div class="screenshot-header">
+          <div class="screenshot-dots"><span class="dot-red"></span><span class="dot-yellow"></span><span class="dot-green"></span></div>
+          <span>Aperçu de l'interface : Salle de Classe Virtuelle (/classroom)</span>
+        </div>
+        <img src="docs_screenshots/classroom.png" alt="Interface Classe Virtuelle E-Schola Pro" class="screenshot-img" />
+      </div>
+    </div>
+
+    <h3>Module 8 — Groupes & Classes</h3>
+    <div class="card">
+      <p><strong>Route Frontend :</strong> <code>/group</code></p>
+      <p><strong>Options et propriétés :</strong></p>
+      <ul>
+        <li><strong>Création :</strong> Nom du groupe, niveau (optionnel), description</li>
+        <li><strong>Modification :</strong> Édition du nom, niveau et description</li>
+        <li><strong>Suppression :</strong> Suppression en cascade (tous les membres sont dissociés)</li>
+        <li><strong>Gestion des membres :</strong> Ajout via liste déroulante filtrée, retrait individuel</li>
+        <li><strong>Protection :</strong> Pas de doublons (un utilisateur ne peut être ajouté deux fois)</li>
+        <li><strong>Compteur :</strong> Affichage du nombre de membres sur chaque carte de groupe</li>
+      </ul>
+      <div class="screenshot-container">
+        <div class="screenshot-header">
+          <div class="screenshot-dots"><span class="dot-red"></span><span class="dot-yellow"></span><span class="dot-green"></span></div>
+          <span>Aperçu de l'interface : Gestion des Groupes & Classes (/group)</span>
+        </div>
+        <img src="docs_screenshots/groups.png" alt="Interface Groupes E-Schola Pro" class="screenshot-img" />
+      </div>
+    </div>
+
+    <h3>Module 9 — Profil & Paramètres</h3>
+    <div class="card">
+      <p><strong>Routes Frontend :</strong> <code>/profile</code> · <code>/settings</code></p>
+      <p><strong>Options et propriétés :</strong></p>
+      <ul>
+        <li><strong>Photo de profil :</strong> Upload et modification de l'avatar</li>
+        <li><strong>Informations :</strong> Modification de l'e-mail et des données personnelles</li>
+        <li><strong>Mot de passe :</strong> Changement sécurisé du mot de passe</li>
+        <li><strong>Langue :</strong> Basculement entre Français, Anglais et Arabe</li>
+        <li><strong>Portail Backend & Base de Données (Exclusif Admin) :</strong> Onglet dédié contenant tous les accès techniques directs :
+          <ul>
+            <li>Accès direct aux <strong>14 tables de la base de données</strong> dans SQLAdmin (Utilisateurs, Cours, Vidéos, Inscriptions, Événements, Livrables, Quiz, Questions, Notes, Présences, Groupes, Membres, Classes virtuelles, Messages)</li>
+            <li>Accès direct à <strong>Swagger UI</strong> (<code>/docs</code>) et <strong>ReDoc</strong> (<code>/redoc</code>)</li>
+            <li>Accès au schéma <strong>OpenAPI JSON</strong> brut et à l'endpoint racine healthcheck</li>
+            <li>Accès au répertoire public de stockage des <strong>fichiers et livrables</strong> (<code>/uploads</code>)</li>
+            <li>Tableau récapitulatif complet des <strong>16 endpoints REST</strong> avec méthodes HTTP, rôles requis et liens de test directs</li>
+          </ul>
+        </li>
+      </ul>
+      <div class="screenshot-container">
+        <div class="screenshot-header">
+          <div class="screenshot-dots"><span class="dot-red"></span><span class="dot-yellow"></span><span class="dot-green"></span></div>
+          <span>Aperçu de l'interface : Profil & Paramètres (/profile)</span>
+        </div>
+        <img src="docs_screenshots/profile.png" alt="Interface Profil E-Schola Pro" class="screenshot-img" />
+      </div>
+      <div class="screenshot-container">
+        <div class="screenshot-header">
+          <div class="screenshot-dots"><span class="dot-red"></span><span class="dot-yellow"></span><span class="dot-green"></span></div>
+          <span>Aperçu de l'interface : Portail Base de Données & Backend réservé à l'Admin (/profile)</span>
+        </div>
+        <img src="docs_screenshots/profile_admin.png" alt="Portail Backend et Base de Données Admin" class="screenshot-img" />
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- 08 — ARCHITECTURE FRONTEND                                    -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div class="page-break"></div>
+  <section id="frontend">
+    <h2><span class="section-number">08</span> Architecture Frontend</h2>
+    <p>Organisation des composants et système de navigation.</p>
+
+    <h3>Navigation (Sidebar)</h3>
+    <div class="card">
+      <p>La navigation principale est gérée par un <strong>Sidebar fixe</strong> de 256px de large, contenant les liens suivants dans l'ordre :</p>
+      <ol>
+        <li>🏠 <strong>Tableau de bord</strong> → <code>/dashboard</code></li>
+        <li>📅 <strong>Calendrier</strong> → <code>/calendar</code></li>
+        <li>🎥 <strong>Classe Virtuelle</strong> → <code>/classroom</code></li>
+        <li>💬 <strong>Boîte de réception</strong> → <code>/inbox</code> (avec badge non-lus)</li>
+        <li>📚 <strong>Cours</strong> → <code>/courses</code></li>
+        <li>🏆 <strong>Quiz & Tests</strong> → <code>/quizzes</code></li>
+        <li>✅ <strong>Présences</strong> → <code>/attendance</code></li>
+        <li>📋 <strong>Tâches</strong> → <code>/tasks</code></li>
+        <li>👥 <strong>Groupes</strong> → <code>/group</code></li>
+      </ol>
+      <p>Section inférieure séparée :</p>
+      <ol start="10">
+        <li>⚙️ <strong>Paramètres</strong> → <code>/profile</code></li>
+      </ol>
+    </div>
+
+    <h3>Design System</h3>
+    <div class="card">
+      <p><strong>Thème :</strong> Dark mode exclusif avec glassmorphism</p>
+      <p><strong>Couleur principale :</strong> <code>#dc2626</code> (Rouge)</p>
+      <p><strong>Palette :</strong></p>
+      <ul>
+        <li>Background : <code>#0f0f14</code></li>
+        <li>Surface (cartes) : <code>#1a1a24</code></li>
+        <li>Bordures : <code>#2a2a3a</code></li>
+        <li>Texte principal : <code>#f5f5f7</code></li>
+        <li>Texte secondaire : <code>#9ca3af</code></li>
+      </ul>
+      <p><strong>Typographie :</strong> Inter (Google Fonts)</p>
+      <p><strong>Icônes :</strong> Lucide React</p>
+      <p><strong>Animations :</strong> fade-in-up, transitions, hover effects</p>
+    </div>
+
+    <h3>Authentification</h3>
+    <div class="card">
+      <p>L'authentification utilise des <strong>tokens JWT</strong> stockés dans le <code>localStorage</code> du navigateur.</p>
+      <ul>
+        <li>Le token est envoyé dans le header <code>Authorization: Bearer {token}</code> via un intercepteur Axios</li>
+        <li>Le payload du token contient : <code>sub</code> (user_id), <code>email</code>, <code>role</code></li>
+        <li>Expiration configurable (par défaut : 7 jours)</li>
+        <li>La déconnexion supprime le token du localStorage et redirige vers <code>/login</code></li>
+      </ul>
+    </div>
+
+    <h3>Internationalisation (i18n)</h3>
+    <div class="card">
+      <p><strong>Langues supportées :</strong> Français (fr), Anglais (en), Arabe (ar)</p>
+      <p><strong>Bibliothèque :</strong> next-intl</p>
+      <p><strong>Structure des URL :</strong> <code>/{locale}/page</code> (ex: <code>/fr/dashboard</code>, <code>/en/courses</code>)</p>
+      <p><strong>Fichiers de traduction :</strong> <code>frontend/messages/fr.json</code>, <code>en.json</code>, <code>ar.json</code></p>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- 09 — GUIDE D'INSTALLATION                                     -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div class="page-break"></div>
+  <section id="installation">
+    <h2><span class="section-number">09</span> Guide d'Installation</h2>
+    <p>Instructions complètes pour déployer l'application en local.</p>
+
+    <h3>Prérequis</h3>
+    <ul>
+      <li><strong>Python</strong> 3.11 ou supérieur</li>
+      <li><strong>Node.js</strong> 18 ou supérieur</li>
+      <li><strong>npm</strong> ou <strong>yarn</strong></li>
+      <li><strong>Git</strong></li>
+    </ul>
+
+    <h3>Installation du Backend</h3>
+    <pre>
+# 1. Accéder au dossier backend
+cd backend
+
+# 2. Créer un environnement virtuel Python
+python -m venv venv
+
+# 3. Activer l'environnement virtuel
+# Windows :
+venv\Scripts\activate
+# Linux/Mac :
+source venv/bin/activate
+
+# 4. Installer les dépendances
+pip install -r requirements.txt
+
+# 5. Configurer les variables d'environnement
+# Copier le fichier .env.example vers .env et renseigner les valeurs
+
+# 6. Appliquer les migrations de base de données
+alembic upgrade head
+
+# 7. (Optionnel) Créer un compte administrateur
+python create_admin.py
+
+# 8. Lancer le serveur backend
+uvicorn app.main:app --reload --port 8000
+    </pre>
+
+    <h3>Installation du Frontend</h3>
+    <pre>
+# 1. Accéder au dossier frontend
+cd frontend
+
+# 2. Installer les dépendances Node.js
+npm install
+
+# 3. Lancer le serveur de développement
+npm run dev
+
+# Le frontend sera accessible sur http://localhost:3000
+    </pre>
+
+    <div class="info-box">
+      <strong>💡 Note :</strong> Le backend doit être lancé en premier (port 8000) avant le frontend (port 3000). Le frontend communique avec le backend via les appels API configurés dans <code>src/lib/api.ts</code>.
+    </div>
+
+    <h3>Panel d'Administration (SQLAdmin)</h3>
+    <pre>
+# Le panel d'administration SQLAdmin est accessible à :
+http://localhost:8000/admin
+
+# 14 tables de base de données gérées directement en interface web :
+# - Utilisateurs, Cours, Vidéos de cours, Inscriptions
+# - Événements calendrier, Livrables déposés
+# - Quiz, Questions QCM, Tentatives & notes
+# - Présences & feuilles d'émargement
+# - Groupes/Classes, Membres des groupes
+# - Salles de classe virtuelle, Messagerie & signalements
+
+# Ce panel est également accessible en 1 clic depuis l'onglet :
+# "Paramètres" -> "Base de Données & Backend (Admin)"
+    </pre>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- 10 — VARIABLES D'ENVIRONNEMENT                               -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <section id="env">
+    <h2><span class="section-number">10</span> Variables d'Environnement</h2>
+    <p>Configuration requise dans le fichier <code>.env</code> du backend.</p>
+
+    <table>
+      <thead><tr><th>Variable</th><th>Valeur par défaut</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>SECRET_KEY</code></td><td>supersecretkey_please_change</td><td>Clé secrète pour signer les tokens JWT. <strong>⚠️ À changer en production.</strong></td></tr>
+        <tr><td><code>DATABASE_URL</code></td><td>sqlite:///./sql_app.db</td><td>URL de connexion à la base de données (SQLite, PostgreSQL…)</td></tr>
+        <tr><td><code>ACCESS_TOKEN_EXPIRE_MINUTES</code></td><td>10080 (7 jours)</td><td>Durée de validité des tokens JWT en minutes</td></tr>
+        <tr><td><code>CLOUDINARY_CLOUD_NAME</code></td><td>—</td><td>Nom du cloud Cloudinary pour l'upload de médias</td></tr>
+        <tr><td><code>CLOUDINARY_API_KEY</code></td><td>—</td><td>Clé API Cloudinary</td></tr>
+        <tr><td><code>CLOUDINARY_API_SECRET</code></td><td>—</td><td>Secret API Cloudinary</td></tr>
+      </tbody>
+    </table>
+
+    <div class="warning-box">
+      <strong>⚠️ Sécurité :</strong> Ne jamais committer le fichier <code>.env</code> dans un dépôt Git. Assurez-vous qu'il figure bien dans le <code>.gitignore</code>. En production, utilisez des variables d'environnement système ou un gestionnaire de secrets.
+    </div>
+  </section>
+
+  <hr>
+
+  <!-- FOOTER -->
+  <div style="text-align: center; padding: 40px 0 60px; color: var(--text-secondary); font-size: 12px;">
+    <p><strong>E-Schola Pro</strong> — Documentation Technique v1.0.0</p>
+    <p>Générée automatiquement le 28 Août 2026</p>
+    <p style="margin-top: 12px; color: var(--border);">© 2026 E-Schola Pro. Tous droits réservés.</p>
+  </div>
+
+</div>
+
+<!-- PRINT BUTTON -->
+<button class="print-btn no-print" onclick="window.print()">
+  📄 Exporter en PDF
+</button>
+
+</body>
+</html>

@@ -1,0 +1,30 @@
+{
+  "Dashboard": {
+    "online_course": "دورة عبر الإنترنت",
+    "title": "صقل مهاراتك من خلال دورات احترافية عبر الإنترنت",
+    "join_now": "انضم الآن",
+    "watched": "شوهد",
+    "continue_watching": "مواصلة المشاهدة",
+    "your_mentor": "مرشدك",
+    "see_all": "عرض الكل",
+    "mentor_name": "اسم المدرب والتاريخ",
+    "course_type": "نوع الدورة",
+    "course_title": "عنوان الدورة",
+    "actions": "إجراءات",
+    "show_details": "إظهار التفاصيل",
+    "good_morning": "صباح الخير",
+    "continue_journey": "واصل رحلتك وحقق هدفك",
+    "follow": "متابعة"
+  },
+  "Navigation": {
+    "dashboard": "لوحة القيادة",
+    "inbox": "صندوق الوارد",
+    "lesson": "درس",
+    "task": "مهمة",
+    "group": "مجموعة",
+    "virtual_classroom": "الفصل الافتراضي",
+    "overview": "نظرة عامة",
+    "settings": "إعدادات",
+    "logout": "تسجيل خروج"
+  }
+}
