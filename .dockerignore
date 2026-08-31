@@ -1,0 +1,25 @@
+# Ignore Git and Agent folders
+.git
+.agents
+.gitignore
+.dockerignore
+AGENTS.md
+Documentation_Technique_E-Schola_Pro.html
+docs_screenshots
+
+# Ignore Node.js dependencies and builds
+node_modules
+**/node_modules
+.next
+**/.next
+out
+build
+
+# Ignore Python virtual envs and DBs
+venv
+**/venv
+*.db
+*.sqlite3
+backend/uploads
+backend/.env
+frontend/.env.local
