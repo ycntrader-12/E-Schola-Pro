@@ -22,7 +22,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.db.base import Base
-from app.models import user, course, enrollment, course_video
+from app.models import *
 from app.core.config import settings
 
 target_metadata = Base.metadata
