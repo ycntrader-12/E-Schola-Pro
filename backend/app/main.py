@@ -85,6 +85,24 @@ admin.add_view(GroupAdmin)
 admin.add_view(GroupMemberAdmin)
 
 
+@app.get("/api/v1/debug-users")
+def debug_users():
+    from app.db.database import SessionLocal
+    from app.models.user import User
+    from app.core.config import settings
+    db = SessionLocal()
+    try:
+        users = db.query(User).all()
+        user_list = [{"email": u.email, "role": u.role} for u in users]
+        return {
+            "database_url": settings.DATABASE_URL,
+            "users": user_list
+        }
+    except Exception as e:
+        return {"error": str(e)}
+    finally:
+        db.close()
+
 @app.get("/")
 def read_root():
     return {"message": "Welcome to E-Schola Pro API"}
