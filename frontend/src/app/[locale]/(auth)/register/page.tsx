@@ -42,13 +42,11 @@ export default function RegisterPage() {
       });
 
       // 2. Automatically log them in
-      const formData = new FormData();
-      formData.append('username', email);
-      formData.append('password', password);
+      const params = new URLSearchParams();
+      params.append('username', email);
+      params.append('password', password);
 
-      const loginResponse = await apiClient.post('/login/access-token', formData, {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-      });
+      const loginResponse = await apiClient.post('/login/access-token', params);
       
       localStorage.setItem('access_token', loginResponse.data.access_token);
       document.cookie = `access_token=${loginResponse.data.access_token}; path=/; max-age=86400; SameSite=Lax`;

@@ -20,13 +20,11 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      const formData = new FormData();
-      formData.append('username', email);
-      formData.append('password', password);
+      const params = new URLSearchParams();
+      params.append('username', email);
+      params.append('password', password);
 
-      const response = await apiClient.post('/login/access-token', formData, {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-      });
+      const response = await apiClient.post('/login/access-token', params);
       
       localStorage.setItem('access_token', response.data.access_token);
       document.cookie = `access_token=${response.data.access_token}; path=/; max-age=86400; SameSite=Lax`;
