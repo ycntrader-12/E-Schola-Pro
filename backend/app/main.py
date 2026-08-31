@@ -18,6 +18,34 @@ from app.admin import (
 # Ensure all tables exist in SQLite
 Base.metadata.create_all(bind=engine)
 
+# Seed default admin account
+try:
+    from app.core.security import get_password_hash
+    from app.db.database import SessionLocal
+    from app.models.user import User
+    
+    db = SessionLocal()
+    email = 'admin'
+    password = 'Abc1234'
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        new_admin = User(
+            email=email,
+            hashed_password=get_password_hash(password),
+            role='admin'
+        )
+        db.add(new_admin)
+        db.commit()
+        print(f"Created default admin account: {email}")
+    else:
+        user.hashed_password = get_password_hash(password)
+        user.role = 'admin'
+        db.commit()
+        print(f"Verified default admin account: {email}")
+    db.close()
+except Exception as e:
+    print(f"Failed to seed admin user: {e}")
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_V1_STR}/openapi.json"
