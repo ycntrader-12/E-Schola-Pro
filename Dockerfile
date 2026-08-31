@@ -47,5 +47,11 @@ COPY start.sh .
 RUN sed -i 's/\r$//' start.sh
 RUN chmod +x start.sh
 
+# Variables d'environnement par defaut (overridable via Railway)
+ENV DATABASE_URL=sqlite:///./eschola.db
+ENV SECRET_KEY=supersecretkey_please_change_in_production
+ENV ACCESS_TOKEN_EXPIRE_MINUTES=10080
+
 # Port d'écoute dynamique géré par start.sh et Nginx
+EXPOSE 8080
 CMD ["./start.sh"]

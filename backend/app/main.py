@@ -6,8 +6,12 @@ from app.api.main import api_router
 from app.core.config import settings
 
 from sqladmin import Admin
+from sqladmin.authentication import AuthenticationBackend
+from starlette.requests import Request
+from starlette.responses import RedirectResponse
 from app.db.database import engine
 from app.db.base import Base
+from app.core.security import verify_password
 from app.admin import (
     UserAdmin, CourseAdmin, CourseVideoAdmin, EnrollmentAdmin, 
     ClassroomAdmin, MessageAdmin, EventAdmin, EventDeliverableAdmin,
@@ -56,7 +60,11 @@ cors_origins_str = os.getenv("BACKEND_CORS_ORIGINS")
 if cors_origins_str:
     allow_origins = [o.strip() for o in cors_origins_str.split(",") if o.strip()]
 else:
-    allow_origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
+    allow_origins = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "https://e-schola-pro-production.up.railway.app",
+    ]
 
 app.add_middleware(
     CORSMiddleware,
@@ -68,7 +76,37 @@ app.add_middleware(
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
-admin = Admin(app, engine)
+
+# --- SQLAdmin Authentication Backend ---
+class AdminAuth(AuthenticationBackend):
+    async def login(self, request: Request) -> bool:
+        form = await request.form()
+        username = form.get("username")
+        password = form.get("password")
+        
+        from app.db.database import SessionLocal
+        from app.models.user import User as UserModel
+        db = SessionLocal()
+        try:
+            user = db.query(UserModel).filter(UserModel.email == username).first()
+            if user and user.role == "admin" and verify_password(str(password), user.hashed_password):
+                request.session.update({"admin_token": settings.SECRET_KEY})
+                return True
+        finally:
+            db.close()
+        return False
+
+    async def logout(self, request: Request) -> bool:
+        request.session.clear()
+        return True
+
+    async def authenticate(self, request: Request) -> bool:
+        token = request.session.get("admin_token")
+        return token == settings.SECRET_KEY
+
+
+authentication_backend = AdminAuth(secret_key=settings.SECRET_KEY)
+admin = Admin(app, engine, authentication_backend=authentication_backend)
 admin.add_view(UserAdmin)
 admin.add_view(CourseAdmin)
 admin.add_view(CourseVideoAdmin)
