@@ -10,7 +10,8 @@ Ce runbook décrit les procédures opérationnelles standards pour le développe
 3. [Gestion des Utilisateurs & Comptes Admin](#3-gestion-des-utilisateurs--comptes-admin)
 4. [Gestion des Uploads & Médias](#4-gestion-des-uploads--médias)
 5. [Internationalisation (i18n)](#5-internationalisation-i18n)
-6. [Résolution des Problèmes (Troubleshooting)](#6-résolution-des-problèmes-troubleshooting)
+6. [Guide de Déploiement sur Railway](#6-guide-de-déploiement-sur-railway)
+7. [Résolution des Problèmes (Troubleshooting)](#7-résolution-des-problèmes-troubleshooting)
 
 ---
 
@@ -179,7 +180,50 @@ Si vous ajoutez une clé de traduction dans un fichier JSON, **veillez à l'ajou
 
 ---
 
-## 6. Résolution des Problèmes (Troubleshooting)
+## 6. Guide de Déploiement sur Railway
+
+[Railway.com](https://railway.com/) permet de déployer facilement des applications à partir d'un dépôt GitHub. Comme **E-Schola Pro** est structuré sous forme de monorepo, vous devez configurer **deux services distincts** sur Railway à partir du même dépôt.
+
+### Étape 1 : Créer le Projet sur Railway
+1. Connectez-vous à Railway et cliquez sur **New Project**.
+2. Sélectionnez **Deploy from GitHub repo** et choisissez votre dépôt `E-Schola-Pro`.
+3. Railway va initialiser le premier service. Nous l'utiliserons pour le **Backend**.
+
+### Étape 2 : Configurer le Service Backend (FastAPI)
+1. Cliquez sur le service créé et allez dans **Settings**.
+2. Renommez le service en `eschola-backend` (ou un nom similaire).
+3. Dans la section **General**, configurez le **Root Directory** sur `/backend`.
+4. Dans la section **Build & Deploy**, configurez le **Start Command** :
+   ```bash
+   uvicorn app.main:app --host 0.0.0.0 --port $PORT
+   ```
+5. Allez dans l'onglet **Variables** et ajoutez les variables d'environnement requises (voir tableau ci-dessous).
+6. Générez un domaine public pour ce service dans l'onglet **Settings** -> **Public Networking** -> **Generate Domain**. Notez cette URL (ex: `https://eschola-backend-production.up.railway.app`).
+
+#### Variables d'environnement requises pour le Backend :
+| Variable | Valeur recommandée | Description |
+| :--- | :--- | :--- |
+| `DATABASE_URL` | `sqlite:///./eschola.db` | Chemin de la base de données SQLite. |
+| `SECRET_KEY` | *[Générer une clé sécurisée]* | Clé secrète pour signer les jetons JWT. |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | `10080` (7 jours) | Expiration des jetons d'authentification. |
+| `BACKEND_CORS_ORIGINS` | *[URL du service Frontend]* | L'URL publique que Railway générera pour votre Frontend (étape suivante). |
+| `CLOUDINARY_CLOUD_NAME` | *[Votre Cloud Name]* | Requis si vous souhaitez utiliser Cloudinary en production. |
+| `CLOUDINARY_API_KEY` | *[Votre API Key]* | Requis si vous souhaitez utiliser Cloudinary en production. |
+| `CLOUDINARY_API_SECRET` | *[Votre API Secret]* | Requis si vous souhaitez utiliser Cloudinary en production. |
+
+### Étape 3 : Configurer le Service Frontend (Next.js)
+1. Dans l'interface de votre projet Railway, cliquez sur **+ New** -> **GitHub Repo** et sélectionnez à nouveau le dépôt `E-Schola-Pro`.
+2. Cliquez sur ce nouveau service et allez dans **Settings**.
+3. Renommez le service en `eschola-frontend`.
+4. Dans **Settings** -> **General**, configurez le **Root Directory** sur `/frontend`.
+5. Allez dans l'onglet **Variables** et ajoutez la variable d'environnement de build suivante :
+   - `NEXT_PUBLIC_API_URL` = `https://[votre-url-backend]/api/v1` (en remplaçant par l'URL publique générée pour le Backend à l'Étape 2).
+6. Générez un domaine public pour ce service dans **Settings** -> **Public Networking** -> **Generate Domain**.
+7. Copiez cette URL du Frontend et allez la coller dans les variables d'environnement du **Backend** pour la clé `BACKEND_CORS_ORIGINS` afin d'autoriser les requêtes HTTP entre les deux domaines.
+
+---
+
+## 7. Résolution des Problèmes (Troubleshooting)
 
 ### A. Erreur : `port 8000` ou `3000` déjà utilisé
 * **Solution :** Suivez la procédure [Arrêt propre & Libération des ports](#c-arrêt-propre--libération-des-ports) pour tuer le processus fantôme.
@@ -193,7 +237,7 @@ Si vous ajoutez une clé de traduction dans un fichier JSON, **veillez à l'ajou
    ```
 
 ### C. Problème : Images/Vidéos non affichées sur le Frontend
-* **Cause :** Le serveur backend est éteint (les images locales sont servies par FastAPI), ou le dossier `uploads/` a été supprimé.
+* **Cause :** Le serveur backend éteint (les images locales sont servies par FastAPI), ou le dossier `uploads/` a été supprimé.
 * **Solution :** Lancez le backend sur le port `8000`. Vérifiez que le dossier `backend/uploads` existe bien.
 
 ### D. Problème : Déconnexion immédiate après Login

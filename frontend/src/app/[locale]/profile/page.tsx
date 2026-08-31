@@ -104,6 +104,9 @@ export default function ProfilePage() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [avatarLoading, setAvatarLoading] = useState(false);
 
+  const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api/v1';
+  const backendBaseUrl = rawApiUrl.replace(/\/api\/v1\/?$/, '');
+
   // Admin & Formateur state
   const [adminTab, setAdminTab] = useState<'users' | 'courses' | 'quizzes' | 'system'>('users');
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
@@ -639,7 +642,7 @@ export default function ProfilePage() {
 
                 <div className="flex items-center gap-3">
                   <button 
-                    onClick={fetchAdminData}
+                    onClick={() => fetchAdminData()}
                     disabled={adminLoading}
                     className="px-3 py-2 text-xs font-semibold rounded-xl bg-surface border border-border hover:bg-surface-hover transition-colors"
                   >
@@ -1010,7 +1013,7 @@ export default function ProfilePage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {/* Panneau SQLAdmin Général */}
                   <a
-                    href="http://127.0.0.1:8000/admin"
+                    href={`${backendBaseUrl}/admin`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="p-5 rounded-2xl bg-surface/50 border border-border hover:border-primary transition-all group flex flex-col justify-between hover:shadow-lg hover:shadow-primary/10"
@@ -1028,14 +1031,14 @@ export default function ProfilePage() {
                       </p>
                     </div>
                     <div className="mt-4 pt-3 border-t border-border/50 flex items-center justify-between text-xs font-bold text-primary">
-                      <span>http://127.0.0.1:8000/admin</span>
+                      <span>{backendBaseUrl}/admin</span>
                       <ExternalLink size={14} />
                     </div>
                   </a>
 
                   {/* Swagger UI */}
                   <a
-                    href="http://127.0.0.1:8000/docs"
+                    href={`${backendBaseUrl}/docs`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="p-5 rounded-2xl bg-surface/50 border border-border hover:border-accent-blue transition-all group flex flex-col justify-between hover:shadow-lg hover:shadow-accent-blue/10"
@@ -1053,14 +1056,14 @@ export default function ProfilePage() {
                       </p>
                     </div>
                     <div className="mt-4 pt-3 border-t border-border/50 flex items-center justify-between text-xs font-bold text-accent-blue">
-                      <span>http://127.0.0.1:8000/docs</span>
+                      <span>{backendBaseUrl}/docs</span>
                       <ExternalLink size={14} />
                     </div>
                   </a>
 
                   {/* ReDoc */}
                   <a
-                    href="http://127.0.0.1:8000/redoc"
+                    href={`${backendBaseUrl}/redoc`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="p-5 rounded-2xl bg-surface/50 border border-border hover:border-purple-500 transition-all group flex flex-col justify-between hover:shadow-lg hover:shadow-purple-500/10"
@@ -1078,14 +1081,14 @@ export default function ProfilePage() {
                       </p>
                     </div>
                     <div className="mt-4 pt-3 border-t border-border/50 flex items-center justify-between text-xs font-bold text-purple-400">
-                      <span>http://127.0.0.1:8000/redoc</span>
+                      <span>{backendBaseUrl}/redoc</span>
                       <ExternalLink size={14} />
                     </div>
                   </a>
 
                   {/* OpenAPI JSON Raw */}
                   <a
-                    href="http://127.0.0.1:8000/api/v1/openapi.json"
+                    href={`${backendBaseUrl}/api/v1/openapi.json`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="p-5 rounded-2xl bg-surface/50 border border-border hover:border-amber-500 transition-all group flex flex-col justify-between"
@@ -1110,7 +1113,7 @@ export default function ProfilePage() {
 
                   {/* Racine API Backend */}
                   <a
-                    href="http://127.0.0.1:8000/"
+                    href={`${backendBaseUrl}/`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="p-5 rounded-2xl bg-surface/50 border border-border hover:border-emerald-500 transition-all group flex flex-col justify-between"
@@ -1128,14 +1131,14 @@ export default function ProfilePage() {
                       </p>
                     </div>
                     <div className="mt-4 pt-3 border-t border-border/50 flex items-center justify-between text-xs font-bold text-emerald-400">
-                      <span>http://127.0.0.1:8000/</span>
+                      <span>{backendBaseUrl}/</span>
                       <ExternalLink size={14} />
                     </div>
                   </a>
 
                   {/* Dossier Uploads & Fichiers Statiques */}
                   <a
-                    href="http://127.0.0.1:8000/uploads"
+                    href={`${backendBaseUrl}/uploads`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="p-5 rounded-2xl bg-surface/50 border border-border hover:border-cyan-500 transition-all group flex flex-col justify-between"
@@ -1172,20 +1175,20 @@ export default function ProfilePage() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                   {[
-                    { title: "Utilisateurs", table: "users", link: "http://127.0.0.1:8000/admin/user/list", icon: UserIcon, desc: "Comptes, emails, hashs, rôles" },
-                    { title: "Cours", table: "courses", link: "http://127.0.0.1:8000/admin/course/list", icon: BookOpen, desc: "Modules, descriptions, documents" },
-                    { title: "Vidéos de Cours", table: "course_videos", link: "http://127.0.0.1:8000/admin/coursevideo/list", icon: Video, desc: "Vidéos ordonnées par cours" },
-                    { title: "Inscriptions", table: "enrollments", link: "http://127.0.0.1:8000/admin/enrollment/list", icon: Award, desc: "Liaisons étudiants ↔ cours" },
-                    { title: "Calendrier & Planning", table: "events", link: "http://127.0.0.1:8000/admin/event/list", icon: Calendar, desc: "Événements, dates début/fin" },
-                    { title: "Livrables Événements", table: "event_deliverables", link: "http://127.0.0.1:8000/admin/eventdeliverable/list", icon: Folder, desc: "Devoirs, fichiers, liens soumis" },
-                    { title: "Quiz & Évaluations", table: "quizzes", link: "http://127.0.0.1:8000/admin/quiz/list", icon: FileQuestion, desc: "Titres, timer, rôles cibles" },
-                    { title: "Questions Quiz", table: "quiz_questions", link: "http://127.0.0.1:8000/admin/quizquestion/list", icon: HelpCircle, desc: "QCM, options JSON, points" },
-                    { title: "Tentatives Quiz", table: "quiz_attempts", link: "http://127.0.0.1:8000/admin/quizattempt/list", icon: BarChart3, desc: "Scores, pourcentages, réponses" },
-                    { title: "Présences", table: "attendance", link: "http://127.0.0.1:8000/admin/attendance/list", icon: ClipboardCheck, desc: "Statuts d'émargement & retards" },
-                    { title: "Groupes & Classes", table: "groups", link: "http://127.0.0.1:8000/admin/group/list", icon: Users, desc: "Classes, niveaux scolaires" },
-                    { title: "Membres de Groupes", table: "group_members", link: "http://127.0.0.1:8000/admin/groupmember/list", icon: UserPlus, desc: "Affectation utilisateurs ↔ groupes" },
-                    { title: "Classes Virtuelles", table: "classrooms", link: "http://127.0.0.1:8000/admin/classroom/list", icon: Video, desc: "Salles visioconférence & hôtes" },
-                    { title: "Messagerie", table: "messages", link: "http://127.0.0.1:8000/admin/message/list", icon: MessageSquare, desc: "Boîtes de réception, signalements" },
+                    { title: "Utilisateurs", table: "users", link: `${backendBaseUrl}/admin/user/list`, icon: UserIcon, desc: "Comptes, emails, hashs, rôles" },
+                    { title: "Cours", table: "courses", link: `${backendBaseUrl}/admin/course/list`, icon: BookOpen, desc: "Modules, descriptions, documents" },
+                    { title: "Vidéos de Cours", table: "course_videos", link: `${backendBaseUrl}/admin/coursevideo/list`, icon: Video, desc: "Vidéos ordonnées par cours" },
+                    { title: "Inscriptions", table: "enrollments", link: `${backendBaseUrl}/admin/enrollment/list`, icon: Award, desc: "Liaisons étudiants ↔ cours" },
+                    { title: "Calendrier & Planning", table: "events", link: `${backendBaseUrl}/admin/event/list`, icon: Calendar, desc: "Événements, dates début/fin" },
+                    { title: "Livrables Événements", table: "event_deliverables", link: `${backendBaseUrl}/admin/eventdeliverable/list`, icon: Folder, desc: "Devoirs, fichiers, liens soumis" },
+                    { title: "Quiz & Évaluations", table: "quizzes", link: `${backendBaseUrl}/admin/quiz/list`, icon: FileQuestion, desc: "Titres, timer, rôles cibles" },
+                    { title: "Questions Quiz", table: "quiz_questions", link: `${backendBaseUrl}/admin/quizquestion/list`, icon: HelpCircle, desc: "QCM, options JSON, points" },
+                    { title: "Tentatives Quiz", table: "quiz_attempts", link: `${backendBaseUrl}/admin/quizattempt/list`, icon: BarChart3, desc: "Scores, pourcentages, réponses" },
+                    { title: "Présences", table: "attendance", link: `${backendBaseUrl}/admin/attendance/list`, icon: ClipboardCheck, desc: "Statuts d'émargement & retards" },
+                    { title: "Groupes & Classes", table: "groups", link: `${backendBaseUrl}/admin/group/list`, icon: Users, desc: "Classes, niveaux scolaires" },
+                    { title: "Membres de Groupes", table: "group_members", link: `${backendBaseUrl}/admin/groupmember/list`, icon: UserPlus, desc: "Affectation utilisateurs ↔ groupes" },
+                    { title: "Classes Virtuelles", table: "classrooms", link: `${backendBaseUrl}/admin/classroom/list`, icon: Video, desc: "Salles visioconférence & hôtes" },
+                    { title: "Messagerie", table: "messages", link: `${backendBaseUrl}/admin/message/list`, icon: MessageSquare, desc: "Boîtes de réception, signalements" },
                   ].map((tbl, idx) => {
                     const IconComp = tbl.icon;
                     return (
@@ -1223,7 +1226,7 @@ export default function ProfilePage() {
               <div className="space-y-4">
                 <div className="flex items-center gap-2">
                   <Code size={18} className="text-primary" />
-                  <h4 className="text-base font-bold text-white">Endpoints REST de l'API (Base : <code>http://127.0.0.1:8000/api/v1</code>)</h4>
+                  <h4 className="text-base font-bold text-white">Endpoints REST de l'API (Base : <code>{backendBaseUrl}/api/v1</code>)</h4>
                 </div>
 
                 <div className="p-4 rounded-2xl bg-surface/30 border border-border overflow-x-auto">
@@ -1280,7 +1283,7 @@ export default function ProfilePage() {
                           </td>
                           <td className="py-2.5 text-right">
                             <a
-                              href={`http://127.0.0.1:8000/docs#${ep.route}`}
+                              href={`${backendBaseUrl}/docs#${ep.route}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="text-primary hover:underline font-semibold text-[11px] inline-flex items-center gap-1"

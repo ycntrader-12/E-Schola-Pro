@@ -6,7 +6,7 @@ import { apiClient } from '@/lib/api';
 
 interface Deliverable {
   id: number;
-  event_id: int;
+  event_id: number;
   user_id: number;
   file_url: string | null;
   link_url: string | null;
