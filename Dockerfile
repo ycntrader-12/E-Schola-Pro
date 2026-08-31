@@ -38,6 +38,7 @@ COPY nginx.conf /etc/nginx/nginx.conf
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY start.sh .
 
+RUN sed -i 's/\r$//' start.sh
 RUN chmod +x start.sh
 
 # Port d'écoute dynamique géré par start.sh et Nginx
