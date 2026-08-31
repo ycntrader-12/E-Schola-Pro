@@ -180,46 +180,30 @@ Si vous ajoutez une clé de traduction dans un fichier JSON, **veillez à l'ajou
 
 ---
 
-## 6. Guide de Déploiement sur Railway
+## 6. Guide de Déploiement sur Railway (Méthode Simplifiée - Conteneur Unique)
 
-[Railway.com](https://railway.com/) permet de déployer facilement des applications à partir d'un dépôt GitHub. Comme **E-Schola Pro** est structuré sous forme de monorepo, vous devez configurer **deux services distincts** sur Railway à partir du même dépôt.
+[Railway.com](https://railway.com/) permet de déployer facilement des applications à partir d'un dépôt GitHub. Grâce au `Dockerfile` présent à la racine du dépôt, **E-Schola Pro** est automatiquement configuré pour compiler et s'exécuter dans un **conteneur Docker unique** combinant le frontend Next.js, le backend FastAPI et un serveur reverse-proxy Nginx.
 
-### Étape 1 : Créer le Projet sur Railway
-1. Connectez-vous à Railway et cliquez sur **New Project**.
-2. Sélectionnez **Deploy from GitHub repo** et choisissez votre dépôt `E-Schola-Pro`.
-3. Railway va initialiser le premier service. Nous l'utiliserons pour le **Backend**.
+### Étape 1 : Lancer le Déploiement
+1. Connectez-vous à votre compte Railway.
+2. Cliquez sur **New Project** -> **Deploy from GitHub repo** et choisissez votre dépôt `E-Schola-Pro`.
+3. Railway va détecter le `Dockerfile` à la racine et lancer automatiquement la compilation et le déploiement du conteneur unifié.
 
-### Étape 2 : Configurer le Service Backend (FastAPI)
-1. Cliquez sur le service créé et allez dans **Settings**.
-2. Renommez le service en `eschola-backend` (ou un nom similaire).
-3. Dans la section **General**, configurez le **Root Directory** sur `/backend`.
-4. Dans la section **Build & Deploy**, configurez le **Start Command** :
-   ```bash
-   uvicorn app.main:app --host 0.0.0.0 --port $PORT
-   ```
-5. Allez dans l'onglet **Variables** et ajoutez les variables d'environnement requises (voir tableau ci-dessous).
-6. Générez un domaine public pour ce service dans l'onglet **Settings** -> **Public Networking** -> **Generate Domain**. Notez cette URL (ex: `https://eschola-backend-production.up.railway.app`).
+### Étape 2 : Configurer les Variables d'Environnement
+1. Une fois le service créé sur Railway, cliquez sur le bloc du service (`E-Schola-Pro`) et allez dans l'onglet **Variables**.
+2. Ajoutez les variables d'environnement suivantes :
+   * `DATABASE_URL` = `sqlite:///./eschola.db`
+   * `SECRET_KEY` = *[Votre clé secrète JWT]* (ex: générée avec `openssl rand -hex 32`)
+   * `ACCESS_TOKEN_EXPIRE_MINUTES` = `10080` (7 jours)
+   * `CLOUDINARY_CLOUD_NAME` = *[Votre Cloud Name]* (Requis si vous souhaitez utiliser Cloudinary pour les images/vidéos de cours en production)
+   * `CLOUDINARY_API_KEY` = *[Votre API Key]*
+   * `CLOUDINARY_API_SECRET` = *[Votre API Secret]*
+3. *(Optionnel pour la persistance)* Par défaut, le fichier de base de données SQLite `eschola.db` est stocké sur le système de fichiers éphémère du conteneur. Pour conserver vos données lors des redémarrages de service, vous pouvez ajouter un **Volume Persistant** sur Railway (ex: monté sur `/app/backend/db`) et configurer `DATABASE_URL=sqlite:////app/backend/db/eschola.db` dans vos variables d'environnement.
 
-#### Variables d'environnement requises pour le Backend :
-| Variable | Valeur recommandée | Description |
-| :--- | :--- | :--- |
-| `DATABASE_URL` | `sqlite:///./eschola.db` | Chemin de la base de données SQLite. |
-| `SECRET_KEY` | *[Générer une clé sécurisée]* | Clé secrète pour signer les jetons JWT. |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | `10080` (7 jours) | Expiration des jetons d'authentification. |
-| `BACKEND_CORS_ORIGINS` | *[URL du service Frontend]* | L'URL publique que Railway générera pour votre Frontend (étape suivante). |
-| `CLOUDINARY_CLOUD_NAME` | *[Votre Cloud Name]* | Requis si vous souhaitez utiliser Cloudinary en production. |
-| `CLOUDINARY_API_KEY` | *[Votre API Key]* | Requis si vous souhaitez utiliser Cloudinary en production. |
-| `CLOUDINARY_API_SECRET` | *[Votre API Secret]* | Requis si vous souhaitez utiliser Cloudinary en production. |
-
-### Étape 3 : Configurer le Service Frontend (Next.js)
-1. Dans l'interface de votre projet Railway, cliquez sur **+ New** -> **GitHub Repo** et sélectionnez à nouveau le dépôt `E-Schola-Pro`.
-2. Cliquez sur ce nouveau service et allez dans **Settings**.
-3. Renommez le service en `eschola-frontend`.
-4. Dans **Settings** -> **General**, configurez le **Root Directory** sur `/frontend`.
-5. Allez dans l'onglet **Variables** et ajoutez la variable d'environnement de build suivante :
-   - `NEXT_PUBLIC_API_URL` = `https://[votre-url-backend]/api/v1` (en remplaçant par l'URL publique générée pour le Backend à l'Étape 2).
-6. Générez un domaine public pour ce service dans **Settings** -> **Public Networking** -> **Generate Domain**.
-7. Copiez cette URL du Frontend et allez la coller dans les variables d'environnement du **Backend** pour la clé `BACKEND_CORS_ORIGINS` afin d'autoriser les requêtes HTTP entre les deux domaines.
+### Étape 3 : Générer le Domaine Public
+1. Allez dans l'onglet **Settings** du service sur Railway.
+2. Dans la section **Public Networking**, cliquez sur **Generate Domain** (ou configurez votre nom de domaine personnalisé).
+3. L'application est maintenant accessible en ligne via cette adresse unique (Nginx gère intelligemment la répartition du trafic vers Next.js et l'API FastAPI en interne).
 
 ---
 
