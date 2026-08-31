@@ -46,7 +46,9 @@ export default function RegisterPage() {
       params.append('username', email);
       params.append('password', password);
 
-      const loginResponse = await apiClient.post('/login/access-token', params);
+      const loginResponse = await apiClient.post('/login/access-token', params, {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+      });
       
       localStorage.setItem('access_token', loginResponse.data.access_token);
       document.cookie = `access_token=${loginResponse.data.access_token}; path=/; max-age=86400; SameSite=Lax`;
