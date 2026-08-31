@@ -1,5 +1,5 @@
 # Etape 1 : Construction du Frontend Next.js
-FROM node:20-alpine AS frontend-builder
+FROM node:20-slim AS frontend-builder
 WORKDIR /app/frontend
 
 COPY frontend/package*.json ./
