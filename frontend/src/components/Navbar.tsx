@@ -91,6 +91,12 @@ export default function Navbar() {
           ) : isAuthenticated ? (
             <div className="flex items-center gap-4">
               <Link 
+                href="/dashboard"
+                className="text-xs font-bold text-primary hover:text-primary/80 transition-colors uppercase tracking-wider"
+              >
+                Dashboard
+              </Link>
+              <Link 
                 href="/profile"
                 className="flex items-center gap-2 text-sm font-medium text-text-secondary hover:text-white transition-colors"
               >

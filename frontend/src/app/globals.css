@@ -12,6 +12,31 @@
   --color-border: var(--border-color);
   
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, "Helvetica Neue", Arial, sans-serif;
+
+  /* Overrides to map standard Tailwind red- and rose- utility classes to our mint green & purple theme */
+  --color-red-50: #f0fdf6;
+  --color-red-100: #dcfce7;
+  --color-red-200: #bbf7d0;
+  --color-red-300: #86efac;
+  --color-red-400: #2ecc71;
+  --color-red-500: #10b981;
+  --color-red-600: #059669;
+  --color-red-700: #047857;
+  --color-red-800: #065f46;
+  --color-red-900: #064e3b;
+  --color-red-950: #022c22;
+
+  --color-rose-50: #faf5ff;
+  --color-rose-100: #f3e8ff;
+  --color-rose-200: #e9d5ff;
+  --color-rose-300: #d8b4fe;
+  --color-rose-400: #c084fc;
+  --color-rose-500: #a855f7;
+  --color-rose-600: #9333ea;
+  --color-rose-700: #7e22ce;
+  --color-rose-800: #6b21a8;
+  --color-rose-900: #581c87;
+  --color-rose-950: #3b0764;
 }
 
 @layer base {
@@ -19,40 +44,48 @@
   /* MODE CLAIR (PRO STYLE - Rouge Foncé Noble, Épuré, Confortable & Lisible)  */
   /* ========================================================================= */
   :root {
-    --bg-color: #faf7f8;
+    --bg-color: #fafbfa;
     --surface-color: #ffffff;
-    --surface-hover-color: #f5eff1;
-    --primary-color: #b91c1c;
-    --primary-hover-color: #991b1b;
-    --secondary-color: #e11d48;
-    --text-primary: #1a0f12;
-    --text-secondary: #5a4b4f;
-    --border-color: #e8dfe2;
+    --surface-hover-color: #f0f7f4;
+    --primary-color: #10b981; /* Bright emerald green from screenshot */
+    --primary-hover-color: #059669;
+    --secondary-color: #00cc88;
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --border-color: #e2e8f0;
   }
 
   /* ========================================================================= */
-  /* MODE SOMBRE (DARK TECH PRO - Rouge Foncé Profond & Noir Obsidian Cyber)   */
+  /* MODE SOMBRE (DARK TECH PRO - Vert Émeraude & Noir Obsidian Cyber)         */
   /* ========================================================================= */
   .dark {
-    --bg-color: #09090b;
-    --surface-color: #131215;
-    --surface-hover-color: #1d1a20;
-    --primary-color: #dc2626;
-    --primary-hover-color: #b91c1c;
-    --secondary-color: #f43f5e;
+    --bg-color: #090b0a;
+    --surface-color: #111413;
+    --surface-hover-color: #18211d;
+    --primary-color: #00cc88;
+    --primary-hover-color: #00b077;
+    --secondary-color: #00e699;
     --text-primary: #f8fafc;
-    --text-secondary: #9ca3af;
-    --border-color: #272228;
+    --text-secondary: #94a3b8;
+    --border-color: #1e2522;
   }
 
   body {
     background-color: var(--color-background);
+    background-image: radial-gradient(at 10% 20%, rgba(16, 185, 129, 0.08) 0%, transparent 45%),
+                      radial-gradient(at 90% 80%, rgba(168, 85, 247, 0.08) 0%, transparent 45%);
+    background-attachment: fixed;
     color: var(--color-text-primary);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     transition: background-color 0.2s ease, color 0.2s ease;
     min-height: 100vh;
+  }
+
+  .dark body {
+    background-image: radial-gradient(at 10% 20%, rgba(0, 204, 136, 0.1) 0%, transparent 45%),
+                      radial-gradient(at 90% 80%, rgba(168, 85, 247, 0.1) 0%, transparent 45%);
   }
 
   /* Haute lisibilité garantie pour tous les champs de saisie */
@@ -120,52 +153,68 @@
   
   .glass-card:hover {
     border-color: var(--color-primary);
-    box-shadow: 0 4px 20px -2px rgba(185, 28, 28, 0.15);
+    box-shadow: 0 4px 20px -2px rgba(16, 185, 129, 0.15);
     transform: translateY(-1px);
   }
 
   .dark .glass-card:hover {
-    border-color: #dc2626;
-    box-shadow: 0 4px 20px -2px rgba(220, 38, 38, 0.25);
+    border-color: var(--color-primary);
+    box-shadow: 0 4px 20px -2px rgba(0, 204, 136, 0.25);
   }
 
   /* ========================================================================= */
   /* TYPOGRAPHIE ET DÉGRADÉS SOBRES (Rouge Foncé & Rubis)                      */
   /* ========================================================================= */
   .text-brand-gradient {
-    background: linear-gradient(135deg, #991b1b 0%, #dc2626 50%, #e11d48 100%);
+    background: linear-gradient(135deg, #059669 0%, #10b981 50%, #00cc88 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
 
   .dark .text-brand-gradient {
-    background: linear-gradient(135deg, #f87171 0%, #ef4444 50%, #f43f5e 100%);
+    background: linear-gradient(135deg, #6ee7b7 0%, #00cc88 50%, #00e699 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
 
   /* ========================================================================= */
-  /* BOUTON PRO MAX (Rouge Foncé & Noir Cyber Tech)                            */
+  /* BOUTON PRO MAX (Vert Émeraude & Menthe Cyber Tech)                       */
   /* ========================================================================= */
   .btn-primary {
     @apply rounded-xl px-6 py-3 font-semibold text-white transition-all duration-200 flex items-center justify-center;
-    background: linear-gradient(135deg, #b91c1c 0%, #dc2626 50%, #991b1b 100%);
-    box-shadow: 0 2px 8px rgba(185, 28, 28, 0.3);
+    background: linear-gradient(135deg, #10b981 0%, #00cc88 50%, #059669 100%);
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
   }
 
   .btn-primary:hover {
-    box-shadow: 0 4px 18px rgba(220, 38, 38, 0.4);
+    box-shadow: 0 4px 18px rgba(0, 204, 136, 0.4);
     transform: translateY(-1px);
   }
 
   .dark .btn-primary {
-    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 50%, #7f1d1d 100%);
-    box-shadow: 0 2px 12px rgba(220, 38, 38, 0.4);
+    background: linear-gradient(135deg, #00cc88 0%, #10b981 50%, #047857 100%);
+    box-shadow: 0 2px 12px rgba(0, 204, 136, 0.4);
   }
 
   .dark .btn-primary:hover {
-    box-shadow: 0 4px 22px rgba(239, 68, 68, 0.5);
+    box-shadow: 0 4px 22px rgba(0, 230, 153, 0.5);
+  }
+
+  /* Custom UI/UX Premium Animations */
+  @keyframes modalFadeIn {
+    from { opacity: 0; backdrop-filter: blur(0px); }
+    to { opacity: 1; backdrop-filter: blur(4px); }
+  }
+  @keyframes modalZoomIn {
+    from { transform: scale(0.95) translateY(10px); opacity: 0; }
+    to { transform: scale(1) translateY(0); opacity: 1; }
+  }
+  .animate-fade-in {
+    animation: modalFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  .animate-zoom-in {
+    animation: modalZoomIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
   }
 }

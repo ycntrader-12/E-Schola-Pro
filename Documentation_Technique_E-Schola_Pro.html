@@ -989,6 +989,8 @@ E-Schola Pro/
         <tr><td><span class="badge badge-post">POST</span></td><td><code>/courses/</code></td><td>Créer un cours</td><td>Admin, Formateur</td></tr>
         <tr><td><span class="badge badge-put">PUT</span></td><td><code>/courses/{id}</code></td><td>Modifier un cours</td><td>Propriétaire, Admin</td></tr>
         <tr><td><span class="badge badge-delete">DELETE</span></td><td><code>/courses/{id}</code></td><td>Supprimer un cours</td><td>Propriétaire, Admin</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/courses/{course_id}/videos</code></td><td>Ajouter une vidéo à la playlist</td><td>Admin, Formateur</td></tr>
+        <tr><td><span class="badge badge-delete">DELETE</span></td><td><code>/courses/{course_id}/videos/{video_id}</code></td><td>Supprimer une vidéo de la playlist</td><td>Admin, Formateur</td></tr>
       </tbody>
     </table>
 
@@ -1174,9 +1176,9 @@ E-Schola Pro/
       <p><strong>Options et propriétés :</strong></p>
       <ul>
         <li><strong>Création :</strong> Formulaire avec titre, description, image de couverture (upload Cloudinary), document PDF</li>
-        <li><strong>Vidéos :</strong> Ajout de plusieurs vidéos ordonnées par cours (upload Cloudinary)</li>
+        <li><strong>Vidéos &amp; Playlist :</strong> Gestion d'une playlist de vidéos ordonnées par cours. Les formateurs et administrateurs peuvent téléverser des fichiers vidéo locaux (MP4, WebM) via un modal d'upload dédié directement depuis la page de détail du cours (<code>/courses/{id}</code>) ou en tant que raccourci depuis la liste globale des cours (<code>/courses</code>).</li>
         <li><strong>Inscription :</strong> Les étudiants peuvent s'inscrire/se désinscrire automatiquement</li>
-        <li><strong>Détail du cours :</strong> Affichage du contenu, lecteur vidéo intégré, téléchargement du document</li>
+        <li><strong>Détail du cours :</strong> Affichage du contenu, lecteur vidéo intégré, playlist de leçons interactive et téléchargement du document de cours</li>
         <li><strong>Suppression :</strong> Cascade automatique (vidéos et inscriptions supprimées)</li>
       </ul>
       <div class="screenshot-container">
@@ -1379,15 +1381,23 @@ E-Schola Pro/
 
     <h3>Design System</h3>
     <div class="card">
-      <p><strong>Thème :</strong> Dark mode exclusif avec glassmorphism</p>
-      <p><strong>Couleur principale :</strong> <code>#dc2626</code> (Rouge)</p>
-      <p><strong>Palette :</strong></p>
+      <p><strong>Thème :</strong> Double mode (Clair & Sombre) adaptatif avec glassmorphism et dégradés fluides</p>
+      <p><strong>Couleur principale :</strong> <code>#10b981</code> (Vert Émeraude) &amp; <code>#00cc88</code> (Vert Menthe)</p>
+      <p><strong>Palette (Clair) :</strong></p>
       <ul>
-        <li>Background : <code>#0f0f14</code></li>
-        <li>Surface (cartes) : <code>#1a1a24</code></li>
-        <li>Bordures : <code>#2a2a3a</code></li>
-        <li>Texte principal : <code>#f5f5f7</code></li>
-        <li>Texte secondaire : <code>#9ca3af</code></li>
+        <li>Background : <code>#fafbfa</code> (avec dégradé radial vert et violet)</li>
+        <li>Surface (cartes) : <code>#ffffff</code></li>
+        <li>Bordures : <code>#e2e8f0</code></li>
+        <li>Texte principal : <code>#0f172a</code></li>
+        <li>Texte secondaire : <code>#475569</code></li>
+      </ul>
+      <p><strong>Palette (Sombre) :</strong></p>
+      <ul>
+        <li>Background : <code>#090b0a</code> (avec dégradé radial vert et violet)</li>
+        <li>Surface (cartes) : <code>#111413</code></li>
+        <li>Bordures : <code>#1e2522</code></li>
+        <li>Texte principal : <code>#f8fafc</code></li>
+        <li>Texte secondaire : <code>#94a3b8</code></li>
       </ul>
       <p><strong>Typographie :</strong> Inter (Google Fonts)</p>
       <p><strong>Icônes :</strong> Lucide React</p>
@@ -1402,6 +1412,7 @@ E-Schola Pro/
         <li>Le payload du token contient : <code>sub</code> (user_id), <code>email</code>, <code>role</code></li>
         <li>Expiration configurable (par défaut : 7 jours)</li>
         <li>La déconnexion supprime le token du localStorage et redirige vers <code>/login</code></li>
+        <li>Les formulaires de connexion (Login) et d'inscription (Register) incluent un bouton visuel (icône œil) pour afficher/masquer le mot de passe saisi</li>
       </ul>
     </div>
 

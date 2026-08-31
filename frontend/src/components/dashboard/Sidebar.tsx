@@ -3,11 +3,16 @@
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { Link } from '@/i18n/routing';
-import { LayoutDashboard, Inbox, BookOpen, CheckSquare, Users, Settings, Video, Award, UserCheck, Calendar } from 'lucide-react';
+import { LayoutDashboard, Inbox, BookOpen, CheckSquare, Users, Settings, Video, Award, UserCheck, Calendar, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { apiClient } from '@/lib/api';
 
-export default function Sidebar() {
+interface SidebarProps {
+  isOpen?: boolean;
+  setIsOpen?: (open: boolean) => void;
+}
+
+export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
   const pathname = usePathname();
   const t = useTranslations('Navigation');
   const [unreadCount, setUnreadCount] = useState(0);
@@ -38,12 +43,30 @@ export default function Sidebar() {
   ];
 
   return (
-    <aside className="w-64 h-screen fixed left-0 top-0 border-r border-border bg-background pt-8 pb-8 flex flex-col z-40">
-      <div className="px-8 mb-10">
-        <span className="text-xl font-bold tracking-tight">
-          E-Schola <span className="text-primary">Pro</span>
-        </span>
-      </div>
+    <>
+      {/* Mobile Sidebar Overlay */}
+      {isOpen && setIsOpen && (
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 lg:hidden animate-fade-in"
+          onClick={() => setIsOpen(false)}
+        />
+      )}
+
+      <aside className={`w-64 h-screen fixed left-0 top-0 border-r border-border bg-background pt-8 pb-8 flex flex-col z-40 transition-transform duration-300 lg:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="px-8 mb-10 flex items-center justify-between">
+          <span className="text-xl font-bold tracking-tight">
+            E-Schola <span className="text-primary">Pro</span>
+          </span>
+          {setIsOpen && (
+            <button 
+              onClick={() => setIsOpen(false)}
+              className="lg:hidden p-1.5 rounded-lg border border-border text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors"
+              title="Fermer"
+            >
+              <X size={16} />
+            </button>
+          )}
+        </div>
 
       <div className="px-4 mb-2 text-xs font-bold text-text-secondary tracking-wider shrink-0">
         {t('overview')}
@@ -91,5 +114,6 @@ export default function Sidebar() {
         </Link>
       </div>
     </aside>
+    </>
   );
 }

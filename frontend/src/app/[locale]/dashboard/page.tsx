@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { PlayCircle, BookOpen, ChevronLeft, ChevronRight, Play, ArrowRight } from 'lucide-react';
+import { PlayCircle, BookOpen, ChevronLeft, ChevronRight, Play, ArrowRight, Menu, User } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import Sidebar from '@/components/dashboard/Sidebar';
 import RightPanel from '@/components/dashboard/RightPanel';
@@ -35,6 +35,8 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [allCourses, setAllCourses] = useState<Course[]>([]);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isRightPanelOpen, setIsRightPanelOpen] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -82,25 +84,42 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex">
-      <Sidebar />
+    <div className="min-h-screen bg-background flex flex-col lg:flex-row">
+      <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
+      
+      {/* Mobile Header Bar */}
+      <header className="lg:hidden flex items-center justify-between px-6 py-4 border-b border-border bg-surface/50 backdrop-blur-md sticky top-0 z-30 w-full">
+        <button 
+          onClick={() => setIsSidebarOpen(true)}
+          className="p-2 rounded-xl bg-surface border border-border text-text-primary hover:bg-surface-hover transition-colors cursor-pointer"
+          title="Menu"
+        >
+          <Menu size={18} />
+        </button>
+        <span className="font-extrabold text-sm tracking-tight">E-Schola <span className="text-primary">Pro</span></span>
+        <button 
+          onClick={() => setIsRightPanelOpen(true)}
+          className="p-2 rounded-xl bg-surface border border-border text-text-primary hover:bg-surface-hover transition-colors cursor-pointer"
+          title="Profil"
+        >
+          <User size={18} />
+        </button>
+      </header>
       
       {/* Main Content Area */}
-      <main className="flex-1 ml-64 mr-80 p-8">
+      <main className="flex-1 lg:ml-64 xl:mr-80 p-4 sm:p-6 md:p-8 transition-all min-w-0">
         
         {/* Banner (High-Tech PC AI Server with Light/Dark Adaptive Styles) */}
         <div className="w-full relative rounded-3xl p-6 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 overflow-hidden mb-8 border border-red-500/20 dark:border-red-500/30 shadow-xl dark:shadow-2xl shadow-red-950/10 dark:shadow-red-950/40 min-h-[170px] group transition-all">
           
-          {/* Light Mode Tech Image */}
+          {/* Light Mode Theme Gradient */}
           <div 
-            className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105 dark:hidden"
-            style={{ backgroundImage: "url('/images/hd_tech_ai_server_light.jpg')" }}
+            className="absolute inset-0 bg-gradient-to-r from-red-500/15 via-red-500/5 to-rose-500/15 transition-transform duration-700 group-hover:scale-105 dark:hidden"
           />
 
-          {/* Dark Mode Tech Image */}
+          {/* Dark Mode Theme Gradient */}
           <div 
-            className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105 hidden dark:block"
-            style={{ backgroundImage: "url('/images/hd_tech_ai_server.jpg')" }}
+            className="absolute inset-0 bg-gradient-to-r from-red-500/25 via-red-500/10 to-rose-500/25 transition-transform duration-700 group-hover:scale-105 hidden dark:block"
           />
 
           {/* Dynamic Overlay Gradient: Clean white in light mode, obsidian cyber in dark mode */}
@@ -279,7 +298,7 @@ export default function DashboardPage() {
 
       </main>
 
-      <RightPanel />
+      <RightPanel isOpen={isRightPanelOpen} setIsOpen={setIsRightPanelOpen} />
     </div>
   );
 }

@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { BookOpen, Star, Users, Search } from "lucide-react";
 import CreateCourseButton from "@/components/CreateCourseButton";
+import UploadVideoButton from "@/components/UploadVideoButton";
 import BackButton from "@/components/BackButton";
 
 interface Course {
@@ -77,6 +78,7 @@ export default function CourseSearchClient({ initialCourses }: CourseSearchClien
               </select>
             </div>
           </form>
+          <UploadVideoButton courses={initialCourses} />
           <CreateCourseButton />
         </div>
       </div>

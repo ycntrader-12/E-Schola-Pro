@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { apiClient } from '@/lib/api';
-import { UserPlus } from 'lucide-react';
+import { UserPlus, Eye, EyeOff } from 'lucide-react';
 import BackButton from '@/components/BackButton';
 
 export default function RegisterPage() {
@@ -12,6 +12,8 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [role, setRole] = useState('étudiant');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -61,35 +63,7 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen relative flex items-center justify-center pt-24 pb-12 px-4 overflow-y-auto select-none">
       
-      {/* 1. Background Image - Light Mode Tech Laboratory */}
-      <div 
-        className="fixed inset-0 bg-cover bg-center transition-all duration-700 scale-105 dark:hidden"
-        style={{ backgroundImage: "url('/images/hd_tech_ai_server_light.jpg')" }}
-      />
 
-      {/* 1. Background Image - Dark Mode Tech AI Supercomputer */}
-      <div 
-        className="fixed inset-0 bg-cover bg-center transition-all duration-700 scale-105 hidden dark:block"
-        style={{ backgroundImage: "url('/images/hd_tech_ai_server.jpg')" }}
-      />
-
-      {/* 2. Light Mode Vignette */}
-      <div className="fixed inset-0 bg-gradient-to-b from-white/70 via-white/40 to-white/80 dark:hidden" />
-      <div 
-        className="fixed inset-0 pointer-events-none dark:hidden"
-        style={{
-          background: "radial-gradient(ellipse at center, rgba(255,255,255,0.2) 0%, rgba(250,247,248,0.7) 75%, rgba(250,247,248,0.95) 100%)"
-        }}
-      />
-
-      {/* 2. Dark Mode Cyber Vignette (Preserves luminous center) */}
-      <div className="fixed inset-0 bg-gradient-to-b from-black/50 via-black/20 to-black/75 hidden dark:block" />
-      <div 
-        className="fixed inset-0 pointer-events-none hidden dark:block"
-        style={{
-          background: "radial-gradient(ellipse at center, rgba(0,0,0,0.1) 0%, rgba(9,9,11,0.6) 75%, rgba(9,9,11,0.9) 100%)"
-        }}
-      />
 
       {/* 3. Ambient Glowing Red Lights */}
       <div className="fixed top-1/4 right-1/4 w-96 h-96 bg-red-500/15 dark:bg-red-600/25 rounded-full blur-3xl pointer-events-none animate-pulse" />
@@ -160,28 +134,46 @@ export default function RegisterPage() {
             <label className="block text-[11px] font-bold text-slate-700 dark:text-gray-300 uppercase tracking-wider mb-1">
               Mot de Passe
             </label>
-            <input 
-              type="password" 
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="w-full px-3.5 py-2.5 rounded-xl bg-white/90 dark:bg-black/60 border border-slate-200 dark:border-white/10 focus:border-red-600 dark:focus:border-red-500 text-slate-900 dark:text-white text-xs outline-none transition-all placeholder-gray-400 dark:placeholder-gray-500 shadow-sm"
-              placeholder="••••••••"
-            />
+            <div className="relative">
+              <input 
+                type={showPassword ? 'text' : 'password'} 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="w-full px-3.5 py-2.5 pr-10 rounded-xl bg-white/90 dark:bg-black/60 border border-slate-200 dark:border-white/10 focus:border-red-600 dark:focus:border-red-500 text-slate-900 dark:text-white text-xs outline-none transition-all placeholder-gray-400 dark:placeholder-gray-500 shadow-sm"
+                placeholder="••••••••"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-3 flex items-center text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-500 transition-colors"
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
           </div>
 
           <div>
             <label className="block text-[11px] font-bold text-slate-700 dark:text-gray-300 uppercase tracking-wider mb-1">
               Confirmer le Mot de Passe
             </label>
-            <input 
-              type="password" 
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              className="w-full px-3.5 py-2.5 rounded-xl bg-white/90 dark:bg-black/60 border border-slate-200 dark:border-white/10 focus:border-red-600 dark:focus:border-red-500 text-slate-900 dark:text-white text-xs outline-none transition-all placeholder-gray-400 dark:placeholder-gray-500 shadow-sm"
-              placeholder="••••••••"
-            />
+            <div className="relative">
+              <input 
+                type={showConfirmPassword ? 'text' : 'password'} 
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                className="w-full px-3.5 py-2.5 pr-10 rounded-xl bg-white/90 dark:bg-black/60 border border-slate-200 dark:border-white/10 focus:border-red-600 dark:focus:border-red-500 text-slate-900 dark:text-white text-xs outline-none transition-all placeholder-gray-400 dark:placeholder-gray-500 shadow-sm"
+                placeholder="••••••••"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute inset-y-0 right-3 flex items-center text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-500 transition-colors"
+              >
+                {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
           </div>
 
           <button 
