@@ -3,28 +3,34 @@ from app.core.security import get_password_hash
 from app.db.database import SessionLocal
 from app.models.user import User
 
-db = SessionLocal()
-email = 'admin'
-password = 'Abc1234'
+def seed_users():
+    db = SessionLocal()
+    default_users = [
+        {"email": "admin", "password": "password", "role": "admin"},
+        {"email": "admin", "password": "Abc1234", "role": "admin"},
+        {"email": "admin@eschola.pro", "password": "Abc1234", "role": "admin"},
+        {"email": "formateur@eschola.pro", "password": "Abc1234", "role": "formateur"},
+        {"email": "etudiant@eschola.pro", "password": "Abc1234", "role": "étudiant"},
+    ]
 
-# Check if user exists
-user = db.query(User).filter(User.email == email).first()
+    for u_info in default_users:
+        user = db.query(User).filter(User.email == u_info["email"]).first()
+        if user:
+            user.hashed_password = get_password_hash(u_info["password"])
+            user.role = u_info["role"]
+            db.commit()
+            print(f"Updated user '{u_info['email']}' ({u_info['role']}).")
+        else:
+            new_user = User(
+                email=u_info["email"],
+                hashed_password=get_password_hash(u_info["password"]),
+                role=u_info["role"]
+            )
+            db.add(new_user)
+            db.commit()
+            print(f"Created user '{u_info['email']}' ({u_info['role']}).")
+            
+    db.close()
 
-if user:
-    # Update password and role if it already exists
-    user.hashed_password = get_password_hash(password)
-    user.role = 'admin'
-    db.commit()
-    print(f"Updated existing user '{email}' with role admin and new password.")
-else:
-    # Create new admin user
-    new_admin = User(
-        email=email,
-        hashed_password=get_password_hash(password),
-        role='admin'
-    )
-    db.add(new_admin)
-    db.commit()
-    print(f"Created new admin account '{email}'.")
-
-db.close()
+if __name__ == "__main__":
+    seed_users()

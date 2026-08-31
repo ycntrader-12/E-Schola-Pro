@@ -42,12 +42,10 @@ export default function RegisterPage() {
       });
 
       // 2. Automatically log them in
-      const params = new URLSearchParams();
-      params.append('username', email);
-      params.append('password', password);
-
-      const loginResponse = await apiClient.post('/login/access-token', params, {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+      const loginResponse = await apiClient.post('/login/access-token', {
+        username: email,
+        email: email,
+        password: password
       });
       
       localStorage.setItem('access_token', loginResponse.data.access_token);

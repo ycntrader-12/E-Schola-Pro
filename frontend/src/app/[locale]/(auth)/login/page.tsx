@@ -20,12 +20,10 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      params.append('username', email);
-      params.append('password', password);
-
-      const response = await apiClient.post('/login/access-token', params, {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+      const response = await apiClient.post('/login/access-token', {
+        username: email,
+        email: email,
+        password: password
       });
       
       localStorage.setItem('access_token', response.data.access_token);
