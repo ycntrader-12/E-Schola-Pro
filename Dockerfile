@@ -16,10 +16,14 @@ WORKDIR /app
 # Installation de Node.js, Nginx et Supervisor
 RUN apt-get update && apt-get install -y \
     curl \
+    gnupg \
+    ca-certificates \
     nginx \
     supervisor \
-    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get install -y nodejs \
+    && mkdir -p /etc/apt/keyrings \
+    && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
+    && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list \
+    && apt-get update && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
 
 # Configuration du Backend FastAPI
@@ -32,6 +36,8 @@ COPY --from=frontend-builder /app/frontend/package*.json ./frontend/
 COPY --from=frontend-builder /app/frontend/.next ./frontend/.next
 COPY --from=frontend-builder /app/frontend/public ./frontend/public
 COPY --from=frontend-builder /app/frontend/node_modules ./frontend/node_modules
+COPY --from=frontend-builder /app/frontend/next.config.ts ./frontend/
+COPY --from=frontend-builder /app/frontend/messages ./frontend/messages
 
 # Fichiers de configuration
 COPY nginx.conf /etc/nginx/nginx.conf
