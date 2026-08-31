@@ -7,3 +7,4 @@ from app.models.message import Message
 from app.models.quiz import Quiz, QuizQuestion, QuizAttempt
 from app.models.attendance import Attendance
 from app.models.group import Group, GroupMember
+from app.models.course_video import CourseVideo
