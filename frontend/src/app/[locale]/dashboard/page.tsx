@@ -163,7 +163,7 @@ export default function DashboardPage() {
               <p className="text-xs font-black leading-tight text-slate-900">
                 E-Schola <span className="text-[#1877f2]">Pro</span>
               </p>
-              <p className="text-[10px] text-slate-500 font-semibold leading-tight">Plateforme LMS</p>
+              <p className="text-[10px] text-slate-500 font-medium leading-tight">E-Learning Professionnel</p>
             </div>
           </div>
 

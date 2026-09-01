@@ -65,7 +65,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
               <span className="text-lg font-black tracking-tight text-white flex items-center gap-1">
                 E-Schola <span className="text-[#38bdf8]">Pro</span>
               </span>
-              <p className="text-[10px] text-blue-200/70 font-semibold tracking-wider uppercase">LMS Learning Platform</p>
+              <p className="text-[9.5px] text-blue-200/70 font-medium tracking-wide">E-Learning Professionnel</p>
             </div>
           </Link>
           
