@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
 
-from app.db.database import get_db
+from app.api.deps import get_db, get_current_user
 from app.models.task import Task, TaskSubmission
 from app.models.user import User
 from app.schemas.task import (
@@ -13,7 +13,6 @@ from app.schemas.task import (
     TaskSubmissionGrade, 
     TaskSubmissionResponse
 )
-from app.api.v1.users import get_current_user
 
 router = APIRouter()
 

@@ -950,6 +950,41 @@ E-Schola Pro/
         <tr><td><code>joined_at</code></td><td>DateTime</td><td>Auto</td><td>Date d'ajout</td></tr>
       </tbody>
     </table>
+
+    <!-- TASK -->
+    <h3>Task (Devoir / Tâche Académique)</h3>
+    <table>
+      <thead><tr><th>Colonne</th><th>Type</th><th>Contraintes</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code></td><td>Integer</td><td>PK</td><td>Identifiant unique</td></tr>
+        <tr><td><code>title</code></td><td>String</td><td>Not Null, Indexé</td><td>Intitulé du devoir</td></tr>
+        <tr><td><code>description</code></td><td>Text</td><td>Nullable</td><td>Consignes et instructions</td></tr>
+        <tr><td><code>course_name</code></td><td>String</td><td>Not Null, Indexé</td><td>Matière ou cours référent</td></tr>
+        <tr><td><code>assigned_by_id</code></td><td>Integer</td><td>FK → users.id</td><td>Formateur ou administrateur émetteur</td></tr>
+        <tr><td><code>target_role</code></td><td>String</td><td>Default: "all"</td><td>Public ciblé (all, étudiant, stagiaire, employer)</td></tr>
+        <tr><td><code>target_group</code></td><td>String</td><td>Default: "all"</td><td>Groupe / Classe ciblée</td></tr>
+        <tr><td><code>due_date</code></td><td>String</td><td>Not Null</td><td>Date limite de remise (YYYY-MM-DD)</td></tr>
+        <tr><td><code>points</code></td><td>Integer</td><td>Default: 20</td><td>Barème / Total points</td></tr>
+        <tr><td><code>priority</code></td><td>String</td><td>Default: "moyenne"</td><td>Niveau de priorité (haute, moyenne, basse)</td></tr>
+        <tr><td><code>created_at</code></td><td>DateTime</td><td>Auto</td><td>Date de création</td></tr>
+      </tbody>
+    </table>
+
+    <!-- TASK SUBMISSION -->
+    <h3>TaskSubmission (Livrable de Devoir)</h3>
+    <table>
+      <thead><tr><th>Colonne</th><th>Type</th><th>Contraintes</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code></td><td>Integer</td><td>PK</td><td>Identifiant unique</td></tr>
+        <tr><td><code>task_id</code></td><td>Integer</td><td>FK → tasks.id, CASCADE</td><td>Devoir parent</td></tr>
+        <tr><td><code>user_id</code></td><td>Integer</td><td>FK → users.id, CASCADE</td><td>Apprenant soumetteur</td></tr>
+        <tr><td><code>content_link</code></td><td>Text</td><td>Not Null</td><td>Lien GitHub, Google Drive, PDF ou synthèse</td></tr>
+        <tr><td><code>status</code></td><td>String</td><td>Default: "submitted"</td><td>Statut (submitted | graded)</td></tr>
+        <tr><td><code>grade</code></td><td>Float</td><td>Nullable</td><td>Note attribuée sur 20</td></tr>
+        <tr><td><code>feedback</code></td><td>Text</td><td>Nullable</td><td>Appréciation du formateur</td></tr>
+        <tr><td><code>submitted_at</code></td><td>DateTime</td><td>Auto</td><td>Date et heure de transmission</td></tr>
+      </tbody>
+    </table>
   </section>
 
   <!-- ═══════════════════════════════════════════════════════════════ -->
@@ -1069,7 +1104,19 @@ E-Schola Pro/
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/groups/{id}/members</code></td><td>Lister les membres</td><td>Authentifié</td></tr>
         <tr><td><span class="badge badge-post">POST</span></td><td><code>/groups/{id}/members</code></td><td>Ajouter un membre</td><td>Admin, Formateur</td></tr>
         <tr><td><span class="badge badge-delete">DELETE</span></td><td><code>/groups/{id}/members/{uid}</code></td><td>Retirer un membre</td><td>Admin, Formateur</td></tr>
-        <tr><td><span class="badge badge-get">GET</span></td><td><code>/groups/available-users</code></td><td>Utilisateurs disponibles</td><td>Admin, Formateur</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Tâches & Devoirs (/tasks)</h3>
+    <table>
+      <thead><tr><th>Méthode</th><th>Endpoint</th><th>Description</th><th>Accès</th></tr></thead>
+      <tbody class="endpoint-row">
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/tasks/</code></td><td>Lister les devoirs avec statuts et soumissions personnelles</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/tasks/</code></td><td>Créer et attribuer un nouveau devoir / projet</td><td>Admin, Formateur</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/tasks/{task_id}/submissions</code></td><td>Consulter la liste de tous les livrables rendus pour un devoir</td><td>Admin, Formateur</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/tasks/{task_id}/submit</code></td><td>Téléverser / mettre à jour son livrable académique (lien/fichier)</td><td>Authentifié (Apprenants)</td></tr>
+        <tr><td><span class="badge badge-put">PUT</span></td><td><code>/tasks/submissions/{submission_id}/grade</code></td><td>Évaluer un livrable (Note /20 & Appréciation)</td><td>Admin, Formateur</td></tr>
+        <tr><td><span class="badge badge-delete">DELETE</span></td><td><code>/tasks/{task_id}</code></td><td>Supprimer un devoir et ses livrables associés</td><td>Admin, Formateur</td></tr>
       </tbody>
     </table>
 
@@ -1352,6 +1399,23 @@ E-Schola Pro/
           <span>Aperçu de l'interface : Portail Base de Données & Backend réservé à l'Admin (/profile)</span>
         </div>
         <img src="docs_screenshots/profile_admin.png" alt="Portail Backend et Base de Données Admin" class="screenshot-img" />
+      </div>
+    </div>
+
+    <h3>Module 10 — Tâches, Devoirs &amp; Livrables Officiels</h3>
+    <div class="card">
+      <p><strong>Routes Frontend :</strong> <code>/assignments</code> · <code>/tasks</code></p>
+      <p><strong>Options et propriétés :</strong></p>
+      <ul>
+        <li><strong>Vue Apprenant (Étudiant, Stagiaire, Employé) :</strong> Tableau de bord des travaux attribués (4 cartes de statistiques KPI : devoirs reçus, travaux à faire, livrables validés, moyenne des notes /20), filtres par état (<em>Toutes, À faire, Soumis, Noté/Validé</em>), modale de dépôt de livrables (liens GitHub, Drive, PDF ou compte-rendu textuel) et consultation des corrections avec appréciations des enseignants.</li>
+        <li><strong>Vue Formateur &amp; Administrateur :</strong> Modal de création et distribution de devoirs ciblés par rôle (<em>Tous, Étudiants, Stagiaires, Employés</em>), définition des échéances, barèmes et priorités, tiroir d'évaluation des livrables reçus avec saisie directe des notes sur 20 et appréciations, et option de suppression.</li>
+      </ul>
+      <div class="screenshot-container">
+        <div class="screenshot-header">
+          <div class="screenshot-dots"><span class="dot-red"></span><span class="dot-yellow"></span><span class="dot-green"></span></div>
+          <span>Aperçu de l'interface : Tâches, Devoirs &amp; Livrables Officiels (/assignments)</span>
+        </div>
+        <img src="docs_screenshots/assignments.png" alt="Interface Tâches et Devoirs E-Schola Pro" class="screenshot-img" />
       </div>
     </div>
   </section>

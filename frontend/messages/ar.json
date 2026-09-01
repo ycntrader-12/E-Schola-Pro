@@ -235,5 +235,24 @@
     "etudiant": "طالب",
     "stagiaire": "متدرب",
     "employer": "موظف"
+  },
+  "Auth": {
+    "login_title": "تسجيل الدخول إلى حسابك",
+    "login_subtitle": "ادخل إلى دوراتك وفصولك الافتراضية وأدواتك التعاونية",
+    "register_title": "إنشاء حساب",
+    "register_subtitle": "انضم إلى منصة E-Schola Pro",
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "confirm_password": "تأكيد كلمة المرور",
+    "role": "دورك",
+    "show_password": "إظهار كلمة المرور",
+    "hide_password": "إخفاء كلمة المرور",
+    "submit_login": "تسجيل الدخول",
+    "submit_register": "إنشاء حسابي",
+    "error": "بيانات الاعتماد غير صحيحة",
+    "no_account": "ليس لديك حساب؟",
+    "sign_up_link": "سجّل هنا",
+    "already_account": "لديك حساب بالفعل؟",
+    "sign_in_link": "سجّل الدخول"
   }
 }

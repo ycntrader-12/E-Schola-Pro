@@ -235,5 +235,24 @@
     "etudiant": "Estudiante",
     "stagiaire": "Pasante",
     "employer": "Empleado"
+  },
+  "Auth": {
+    "login_title": "Iniciar sesión",
+    "login_subtitle": "Accede a tus cursos, aulas virtuales y herramientas colaborativas",
+    "register_title": "Crear una cuenta",
+    "register_subtitle": "Únete a la plataforma E-Schola Pro",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "confirm_password": "Confirmar contraseña",
+    "role": "Tu rol",
+    "show_password": "Mostrar contraseña",
+    "hide_password": "Ocultar contraseña",
+    "submit_login": "Iniciar sesión",
+    "submit_register": "Crear mi cuenta",
+    "error": "Credenciales incorrectas",
+    "no_account": "¿No tienes cuenta?",
+    "sign_up_link": "Regístrate aquí",
+    "already_account": "¿Ya tienes cuenta?",
+    "sign_in_link": "Inicia sesión"
   }
 }

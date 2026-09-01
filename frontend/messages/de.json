@@ -235,5 +235,24 @@
     "etudiant": "Student",
     "stagiaire": "Praktikant",
     "employer": "Mitarbeiter"
+  },
+  "Auth": {
+    "login_title": "Anmelden",
+    "login_subtitle": "Zugang zu Ihren Kursen, virtuellen Klassen und kollaborativen Werkzeugen",
+    "register_title": "Konto erstellen",
+    "register_subtitle": "Treten Sie der E-Schola Pro Plattform bei",
+    "email": "E-Mail-Adresse",
+    "password": "Passwort",
+    "confirm_password": "Passwort bestätigen",
+    "role": "Ihre Rolle",
+    "show_password": "Passwort anzeigen",
+    "hide_password": "Passwort verbergen",
+    "submit_login": "Anmelden",
+    "submit_register": "Mein Konto erstellen",
+    "error": "Ungültige Anmeldedaten",
+    "no_account": "Noch kein Konto?",
+    "sign_up_link": "Hier registrieren",
+    "already_account": "Bereits registriert?",
+    "sign_in_link": "Anmelden"
   }
 }
