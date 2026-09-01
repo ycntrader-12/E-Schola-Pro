@@ -102,7 +102,7 @@ def get_my_dashboard_performance(
 
     recent_attendances = session.query(Attendance).filter(
         Attendance.user_id == current_user.id
-    ).order_by(Attendance.date.desc()).limit(10).all()
+    ).order_by(Attendance.date.desc()).limit(50).all()
 
     return DashboardPerformanceOut(
         user_id=current_user.id,
@@ -114,6 +114,22 @@ def get_my_dashboard_performance(
         overall=overall_stats,
         recent_attendances=recent_attendances
     )
+
+
+@router.get("/my-records", response_model=List[AttendanceOut])
+def get_my_attendance_records(
+    session: SessionDep,
+    current_user: CurrentUser,
+    target_date: Optional[date] = Query(None),
+    status_filter: Optional[str] = Query(None)
+):
+    query = session.query(Attendance).filter(Attendance.user_id == current_user.id)
+    if target_date:
+        query = query.filter(Attendance.date == target_date)
+    if status_filter:
+        query = query.filter(Attendance.status == status_filter)
+    return query.order_by(Attendance.date.desc(), Attendance.id.desc()).all()
+
 
 
 # --------------------------------------------------------------------------

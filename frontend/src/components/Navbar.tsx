@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { LogOut, User, GraduationCap } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { apiClient } from '@/lib/api';
 import LanguageSwitcher from './LanguageSwitcher';
 import BackButton from './BackButton';
@@ -12,6 +13,7 @@ import ForwardButton from './ForwardButton';
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
+  const tNav = useTranslations('Navigation');
   const [isMounted, setIsMounted] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
@@ -85,14 +87,9 @@ export default function Navbar() {
           ) : isAuthenticated ? (
             <div className="flex items-center gap-4">
               <Link 
-                href="/dashboard"
-                className="text-xs font-bold text-[#1877f2] hover:text-[#166fe5] transition-colors uppercase tracking-wider"
-              >
-                Dashboard
-              </Link>
-              <Link 
                 href="/profile"
                 className="flex items-center gap-2 text-sm font-medium text-[#65676b] hover:text-[#050505] transition-colors"
+                title={tNav('profile')}
               >
                 <User size={18} />
               </Link>
@@ -101,7 +98,7 @@ export default function Navbar() {
                 className="flex items-center gap-2 text-sm font-medium text-[#65676b] hover:text-red-500 transition-colors cursor-pointer"
               >
                 <LogOut size={16} />
-                <span className="hidden sm:inline">Sign Out</span>
+                <span className="hidden sm:inline">{tNav('logout')}</span>
               </button>
             </div>
           ) : (
@@ -110,13 +107,13 @@ export default function Navbar() {
                 href="/login"
                 className="hidden sm:block text-sm font-bold text-[#65676b] hover:text-[#050505] transition-colors px-2 py-1"
               >
-                Sign In
+                {tNav('sign_in')}
               </Link>
               <Link 
                 href="/register"
                 className="px-4 py-2 bg-[#1877f2] text-white rounded-xl text-sm font-bold hover:bg-[#166fe5] transition-colors shadow-xs"
               >
-                Sign Up
+                {tNav('sign_up')}
               </Link>
             </>
           )}

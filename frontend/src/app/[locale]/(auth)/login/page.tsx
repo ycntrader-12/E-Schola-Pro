@@ -5,10 +5,13 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { apiClient } from '@/lib/api';
 import { Cpu, Eye, EyeOff } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import BackButton from '@/components/BackButton';
 
 export default function LoginPage() {
   const router = useRouter();
+  const t = useTranslations('Auth');
+  const tCommon = useTranslations('Common');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -30,7 +33,7 @@ export default function LoginPage() {
       document.cookie = `access_token=${response.data.access_token}; path=/; max-age=86400; SameSite=Lax`;
       router.push('/dashboard');
     } catch {
-      setError('Identifiants incorrects (email ou mot de passe)');
+      setError(t('error') || 'Identifiants incorrects');
     } finally {
       setLoading(false);
     }
@@ -51,14 +54,14 @@ export default function LoginPage() {
         <div className="text-center space-y-2">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-[#1877f2] text-[10px] font-extrabold uppercase tracking-wider shadow-xs">
             <Cpu size={13} className="text-[#1877f2] animate-pulse" />
-            <span>Plateforme Sécurisée E-Schola</span>
+            <span>E-Schola Pro Security</span>
           </div>
 
           <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-            Bienvenue
+            {t('login_title')}
           </h2>
           <p className="text-slate-500 text-xs sm:text-sm">
-            Connectez-vous à votre espace académique
+            {t('login_subtitle')}
           </p>
         </div>
 
@@ -73,7 +76,7 @@ export default function LoginPage() {
         <form onSubmit={handleLogin} className="space-y-4 text-xs">
           <div>
             <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-              Email ou Nom d'utilisateur
+              {t('email')}
             </label>
             <input 
               type="text" 
@@ -87,7 +90,7 @@ export default function LoginPage() {
           
           <div>
             <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-              Mot de Passe
+              {t('password')}
             </label>
             <div className="relative">
               <input 
@@ -102,6 +105,7 @@ export default function LoginPage() {
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute inset-y-0 right-3 flex items-center text-slate-400 hover:text-[#1877f2] transition-colors cursor-pointer"
+                title={showPassword ? t('hide_password') : t('show_password')}
               >
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
@@ -113,15 +117,15 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full py-3 mt-2 rounded-xl text-xs font-extrabold text-white bg-[#1877f2] hover:bg-[#166fe5] hover:scale-[1.005] active:scale-[0.99] transition-all shadow-md shadow-blue-500/25 flex items-center justify-center gap-2 cursor-pointer"
           >
-            <span>{loading ? 'Connexion en cours...' : 'Se Connecter'}</span>
+            <span>{loading ? tCommon('loading') : t('submit_login')}</span>
           </button>
         </form>
 
         {/* Sign up prompt */}
         <div className="text-center text-xs text-slate-500 pt-3 border-t border-slate-100">
-          Vous n'avez pas de compte ?{' '}
+          {t('no_account')}{' '}
           <Link href="/register" className="text-[#1877f2] font-bold hover:underline">
-            S'inscrire
+            {t('sign_up_link')}
           </Link>
         </div>
 

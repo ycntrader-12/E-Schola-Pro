@@ -5,10 +5,14 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { apiClient } from '@/lib/api';
 import { UserPlus, Eye, EyeOff } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import BackButton from '@/components/BackButton';
 
 export default function RegisterPage() {
   const router = useRouter();
+  const t = useTranslations('Auth');
+  const tRoles = useTranslations('Roles');
+  const tCommon = useTranslations('Common');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -23,12 +27,12 @@ export default function RegisterPage() {
     setError('');
 
     if (password !== confirmPassword) {
-      setError('Les mots de passe ne correspondent pas');
+      setError(t('confirm_password') + ' != ' + t('password'));
       return;
     }
 
     if (role === 'formateur' || role === 'admin') {
-      setError("Le rôle de formateur ne peut pas être choisi publiquement. Il doit être accordé par l'administrateur.");
+      setError("Le rôle de formateur ne peut pas être choisi publiquement.");
       return;
     }
 
@@ -52,7 +56,7 @@ export default function RegisterPage() {
       document.cookie = `access_token=${loginResponse.data.access_token}; path=/; max-age=86400; SameSite=Lax`;
       router.push('/dashboard');
     } catch (err: any) {
-      setError(err?.response?.data?.detail || "Une erreur est survenue lors de l'inscription.");
+      setError(err?.response?.data?.detail || tCommon('error'));
     } finally {
       setLoading(false);
     }
@@ -73,14 +77,14 @@ export default function RegisterPage() {
         <div className="text-center space-y-1.5">
           <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-[#1877f2] text-[10px] font-extrabold uppercase tracking-wider shadow-xs">
             <UserPlus size={12} className="text-[#1877f2]" />
-            <span>Nouveau Compte Apprenant</span>
+            <span>E-Schola Pro</span>
           </div>
 
           <h2 className="text-2xl font-black text-slate-900 tracking-tight">
-            Créer un Compte
+            {t('register_title')}
           </h2>
           <p className="text-slate-500 text-xs">
-            Rejoignez la plateforme d'apprentissage E-Schola
+            {t('register_subtitle')}
           </p>
         </div>
 
@@ -95,7 +99,7 @@ export default function RegisterPage() {
         <form onSubmit={handleRegister} className="space-y-3 text-xs">
           <div>
             <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-              Adresse Email
+              {t('email')}
             </label>
             <input 
               type="email" 
@@ -109,22 +113,22 @@ export default function RegisterPage() {
           
           <div>
             <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-              Profil / Rôle
+              {t('role')}
             </label>
             <select 
               value={role}
               onChange={(e) => setRole(e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-slate-900 text-xs outline-none transition-all cursor-pointer shadow-xs font-medium"
             >
-              <option value="étudiant">Étudiant</option>
-              <option value="stagiaire">Stagiaire</option>
-              <option value="employer">Employé</option>
+              <option value="étudiant">{tRoles('etudiant')}</option>
+              <option value="stagiaire">{tRoles('stagiaire')}</option>
+              <option value="employer">{tRoles('employer')}</option>
             </select>
           </div>
           
           <div>
             <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-              Mot de Passe
+              {t('password')}
             </label>
             <div className="relative">
               <input 
@@ -139,6 +143,7 @@ export default function RegisterPage() {
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute inset-y-0 right-3 flex items-center text-slate-400 hover:text-[#1877f2] transition-colors cursor-pointer"
+                title={showPassword ? t('hide_password') : t('show_password')}
               >
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
@@ -147,7 +152,7 @@ export default function RegisterPage() {
 
           <div>
             <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-              Confirmer le Mot de Passe
+              {t('confirm_password')}
             </label>
             <div className="relative">
               <input 
@@ -162,6 +167,7 @@ export default function RegisterPage() {
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 className="absolute inset-y-0 right-3 flex items-center text-slate-400 hover:text-[#1877f2] transition-colors cursor-pointer"
+                title={showConfirmPassword ? t('hide_password') : t('show_password')}
               >
                 {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
@@ -173,15 +179,15 @@ export default function RegisterPage() {
             disabled={loading}
             className="w-full py-3 mt-1 rounded-xl text-xs font-extrabold text-white bg-[#1877f2] hover:bg-[#166fe5] hover:scale-[1.005] active:scale-[0.99] transition-all shadow-md shadow-blue-500/25 flex items-center justify-center gap-2 cursor-pointer"
           >
-            <span>{loading ? 'Création en cours...' : 'Créer mon Compte'}</span>
+            <span>{loading ? tCommon('loading') : t('submit_register')}</span>
           </button>
         </form>
 
         {/* Sign in prompt */}
         <div className="text-center text-xs text-slate-500 pt-2 border-t border-slate-100">
-          Vous avez déjà un compte ?{' '}
+          {t('already_account')}{' '}
           <Link href="/login" className="text-[#1877f2] font-bold hover:underline">
-            Se Connecter
+            {t('sign_in_link')}
           </Link>
         </div>
 

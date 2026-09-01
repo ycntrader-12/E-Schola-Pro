@@ -23,6 +23,7 @@ import {
   GraduationCap
 } from 'lucide-react';
 import Link from 'next/link';
+import { useTranslations, useLocale } from 'next-intl';
 import { apiClient } from '@/lib/api';
 
 interface Learner {
@@ -56,8 +57,39 @@ interface GlobalOverview {
   monthly_attendance_rate: number;
 }
 
+interface PeriodStats {
+  period_name: string;
+  total_sessions: number;
+  present: number;
+  late: number;
+  absent: number;
+  excused: number;
+  attendance_rate: number;
+  quiz_points: number;
+  quiz_average_note: number;
+  quizzes_taken: number;
+  quiz_success_rate: number;
+}
+
+interface DashboardPerformance {
+  user_id: number;
+  user_email: string;
+  user_role: string;
+  daily: PeriodStats;
+  monthly: PeriodStats;
+  semester: PeriodStats;
+  overall: PeriodStats;
+  recent_attendances: AttendanceRecord[];
+}
+
 export default function AttendancePage() {
-  const [currentUser, setCurrentUser] = useState<{ id: number; email: string; role: string } | null>(null);
+  const t = useTranslations('Attendance');
+  const tCommon = useTranslations('Common');
+  const tRoles = useTranslations('Roles');
+  const tNav = useTranslations('Navigation');
+  const locale = useLocale();
+
+  const [currentUser, setCurrentUser] = useState<{ id: number; email: string; role: string; group_name?: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Manager data
@@ -66,6 +98,14 @@ export default function AttendancePage() {
   const [selectedGroup, setSelectedGroup] = useState<string>('all');
   const [historyRecords, setHistoryRecords] = useState<AttendanceRecord[]>([]);
   const [overview, setOverview] = useState<GlobalOverview | null>(null);
+
+  // Learner data (étudiant, stagiaire, employer)
+  const [myStats, setMyStats] = useState<DashboardPerformance | null>(null);
+  const [myRecords, setMyRecords] = useState<AttendanceRecord[]>([]);
+  const [selectedPeriodTab, setSelectedPeriodTab] = useState<'overall' | 'semester' | 'monthly' | 'daily'>('overall');
+  const [mySearchQuery, setMySearchQuery] = useState('');
+  const [myStatusFilter, setMyStatusFilter] = useState('');
+  const [myDateFilter, setMyDateFilter] = useState('');
 
   // Roll call form state
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
@@ -134,6 +174,14 @@ export default function AttendancePage() {
           }
         });
         setRollCallState(initialRollCall);
+      } else {
+        // Fetch personal stats and records for learner
+        const [statsRes, recordsRes] = await Promise.all([
+          apiClient.get('/attendance/my-stats'),
+          apiClient.get('/attendance/my-records').catch(() => ({ data: [] }))
+        ]);
+        setMyStats(statsRes.data);
+        setMyRecords(recordsRes.data && recordsRes.data.length > 0 ? recordsRes.data : statsRes.data.recent_attendances || []);
       }
     } catch (err) {
       console.error('Error fetching attendance data:', err);
@@ -279,31 +327,375 @@ export default function AttendancePage() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="animate-spin text-primary" size={32} />
+        <Loader2 className="animate-spin text-[#1877f2]" size={32} />
       </div>
     );
   }
 
-  // If learner (étudiant / stagiaire / employer), show confidential banner
+  // =========================================================================
+  // VIEW FOR LEARNERS (ÉTUDIANT, STAGIAIRE, EMPLOYER)
+  // Bilan d'engagement personnel & Tableau de bord d'assiduité individuel
+  // =========================================================================
   if (!isManager) {
+    const activeStats = myStats ? myStats[selectedPeriodTab] : null;
+    const rate = activeStats?.attendance_rate ?? 100;
+
+    // Filter personal records
+    const filteredMyRecords = myRecords.filter(r => {
+      if (myDateFilter && r.date !== myDateFilter) return false;
+      if (myStatusFilter && r.status !== myStatusFilter) return false;
+      if (mySearchQuery) {
+        const query = mySearchQuery.toLowerCase();
+        const session = (r.session_name || '').toLowerCase();
+        const remarks = (r.remarks || '').toLowerCase();
+        if (!session.includes(query) && !remarks.includes(query)) return false;
+      }
+      return true;
+    });
+
+    const getRateStatus = (val: number) => {
+      if (val >= 90) return { label: 'Assiduité Exemplaire', color: 'text-emerald-600 bg-emerald-50 border-emerald-200', bar: 'bg-emerald-500' };
+      if (val >= 75) return { label: 'Bon Engagement', color: 'text-blue-600 bg-blue-50 border-blue-200', bar: 'bg-blue-600' };
+      if (val >= 60) return { label: 'Attention Requise', color: 'text-amber-600 bg-amber-50 border-amber-200', bar: 'bg-amber-500' };
+      return { label: 'Risque de Non-Validation', color: 'text-rose-600 bg-rose-50 border-rose-200', bar: 'bg-rose-500' };
+    };
+
+    const statusBadge = getRateStatus(rate);
+
     return (
-      <div className="min-h-screen pt-28 pb-16 px-4 max-w-4xl mx-auto space-y-6">
-        <div className="glass-card p-8 rounded-3xl border border-primary/20 text-center space-y-4">
-          <div className="w-14 h-14 rounded-full bg-primary/10 text-primary mx-auto flex items-center justify-center">
-            <ShieldCheck size={28} />
+      <div className="min-h-screen pt-28 pb-20 px-4 max-w-7xl mx-auto space-y-8 select-none">
+        
+        {/* 1. Header Hero Personnel */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-slate-200">
+          <div>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-[#1877f2] border border-blue-200 mb-2.5">
+              <UserCheck size={14} />
+              <span>{t('page_sub_learner')}</span>
+            </div>
+            <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+              {t('page_title_learner')}
+            </h1>
+            <p className="text-slate-600 text-sm max-w-2xl mt-1">
+              {t('cert_sub')}
+            </p>
           </div>
-          <h2 className="text-xl font-bold text-text-primary">Espace Réservé aux Formateurs & Administrateurs</h2>
-          <p className="text-xs text-text-secondary max-w-md mx-auto leading-relaxed">
-            La feuille d'émargement et la liste globale des présences ne sont consultables que par l'administration et les professeurs. 
-            Vous pouvez consulter vos taux personnels directement sur votre tableau de bord.
-          </p>
-          <Link href="/dashboard" className="btn-primary inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold">
-            <ArrowLeft size={14} /> Retourner à mon Tableau de Bord
-          </Link>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => window.print()}
+              className="px-4 py-2.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold flex items-center gap-2 shadow-xs transition-all cursor-pointer"
+            >
+              <span>{t('print_sheet')}</span>
+            </button>
+
+            <Link
+              href="/dashboard"
+              className="px-4 py-2.5 rounded-xl bg-[#1877f2] hover:bg-[#166fe5] text-white text-xs font-bold flex items-center gap-2 shadow-md shadow-blue-500/20 transition-all cursor-pointer"
+            >
+              <ArrowLeft size={14} />
+              <span>{tNav('dashboard')}</span>
+            </Link>
+          </div>
         </div>
+
+        {/* 2. User Profile Card & Info */}
+        <div className="p-5 sm:p-6 rounded-2xl bg-white border border-slate-200/90 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-[#1877f2] text-white flex items-center justify-center font-black text-lg uppercase shadow-sm">
+              {currentUser?.email.charAt(0)}
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h2 className="font-extrabold text-base text-slate-900">{currentUser?.email}</h2>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-blue-50 text-[#1877f2] border border-blue-200">
+                  {currentUser?.role}
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 font-medium mt-0.5 flex items-center gap-2">
+                <span>Groupe : <strong className="text-slate-800">{currentUser?.group_name || 'Groupe A - Informatique & IA'}</strong></span>
+                <span>•</span>
+                <span>ID #{currentUser?.id}</span>
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 pt-3 md:pt-0 border-slate-100">
+            <div className={`px-4 py-2 rounded-xl text-xs font-extrabold border ${statusBadge.color} flex items-center gap-2`}>
+              <span className="w-2 h-2 rounded-full bg-current animate-pulse" />
+              <span>{statusBadge.label}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* 3. Analysis Period Tabs */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-extrabold uppercase text-slate-500 tracking-wider flex items-center gap-1.5">
+              <Calendar size={14} className="text-[#1877f2]" />
+              <span>{t('select_group')} / {tCommon('filter')} :</span>
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
+            {[
+              { key: 'overall', label: t('period_overall') },
+              { key: 'semester', label: t('period_semester') },
+              { key: 'monthly', label: t('period_monthly') },
+              { key: 'daily', label: t('period_daily') },
+            ].map(tab => (
+              <button
+                key={tab.key}
+                onClick={() => setSelectedPeriodTab(tab.key as any)}
+                className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all shrink-0 text-left cursor-pointer ${
+                  selectedPeriodTab === tab.key
+                    ? 'bg-[#1877f2] text-white shadow-md shadow-blue-500/25 ring-2 ring-blue-500/30'
+                    : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+                }`}
+              >
+                <div className="font-extrabold">{tab.label}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 4. KPI Counters Grid for Selected Period */}
+        {activeStats && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-4">
+            
+            {/* Taux d'assiduité */}
+            <div className="p-5 rounded-2xl bg-white border border-slate-200/90 shadow-sm col-span-2 sm:col-span-2 lg:col-span-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-extrabold uppercase text-slate-500">{t('personal_rate')}</span>
+                <Sparkles size={16} className="text-[#1877f2]" />
+              </div>
+              <p className="text-3xl font-black text-slate-900 mt-2">{activeStats.attendance_rate}%</p>
+              <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden mt-3">
+                <div className={`h-full rounded-full transition-all duration-500 ${statusBadge.bar}`} style={{ width: `${Math.min(activeStats.attendance_rate, 100)}%` }} />
+              </div>
+              <p className="text-[10px] text-slate-500 font-medium mt-1.5">
+                {activeStats.present + activeStats.late} {t('personal_sessions').toLowerCase()}
+              </p>
+            </div>
+
+            {/* Présences Confirmées */}
+            <div className="p-5 rounded-2xl bg-white border border-slate-200/90 shadow-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-extrabold uppercase text-slate-500">{t('personal_sessions')}</span>
+                <CheckCircle2 size={16} className="text-emerald-500" />
+              </div>
+              <p className="text-3xl font-black text-emerald-600 mt-2">{activeStats.present}</p>
+              <p className="text-[10px] text-slate-500 font-medium mt-1">/ {activeStats.total_sessions}</p>
+            </div>
+
+            {/* Retards */}
+            <div className="p-5 rounded-2xl bg-white border border-slate-200/90 shadow-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-extrabold uppercase text-slate-500">{t('personal_punctuality')}</span>
+                <Clock size={16} className="text-amber-500" />
+              </div>
+              <p className="text-3xl font-black text-amber-500 mt-2">{activeStats.late}</p>
+              <p className="text-[10px] text-slate-500 font-medium mt-1">{t('late')}</p>
+            </div>
+
+            {/* Absences */}
+            <div className="p-5 rounded-2xl bg-white border border-slate-200/90 shadow-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-extrabold uppercase text-slate-500">{t('personal_absences')}</span>
+                <XCircle size={16} className="text-rose-500" />
+              </div>
+              <div className="flex items-baseline gap-1.5 mt-2">
+                <span className="text-3xl font-black text-rose-500">{activeStats.absent}</span>
+                <span className="text-xs font-bold text-slate-400">/ {activeStats.excused} {t('excused').toLowerCase()}</span>
+              </div>
+              <p className="text-[10px] text-slate-500 font-medium mt-1">{t('absent')}</p>
+            </div>
+
+            {/* Note & Quiz */}
+            <div className="p-5 rounded-2xl bg-white border border-slate-200/90 shadow-sm col-span-2 sm:col-span-2 lg:col-span-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-extrabold uppercase text-slate-500">{t('personal_quiz')}</span>
+                <GraduationCap size={16} className="text-indigo-500" />
+              </div>
+              <p className="text-3xl font-black text-indigo-600 mt-2">
+                {activeStats.quiz_average_note > 0 ? `${activeStats.quiz_average_note}/20` : '—'}
+              </p>
+              <p className="text-[10px] text-slate-500 font-medium mt-1">
+                {activeStats.quizzes_taken} test(s) • {activeStats.quiz_success_rate}%
+              </p>
+            </div>
+
+          </div>
+        )}
+
+        {/* 5. Tableau d'Historique Personnel des Émargements */}
+        <div className="rounded-3xl border border-slate-200/90 bg-white p-6 sm:p-8 space-y-5 shadow-sm">
+          
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+            <div>
+              <h3 className="font-extrabold text-base text-slate-900">
+                {t('history_title')}
+              </h3>
+              <p className="text-xs text-slate-500">
+                {t('history_sub')}
+              </p>
+            </div>
+
+            {/* Filters */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="relative">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={mySearchQuery}
+                  onChange={(e) => setMySearchQuery(e.target.value)}
+                  placeholder={tCommon('search')}
+                  className="pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-[#1877f2] text-slate-800"
+                />
+              </div>
+
+              <select
+                value={myStatusFilter}
+                onChange={(e) => setMyStatusFilter(e.target.value)}
+                className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-[#1877f2] text-slate-800 cursor-pointer"
+              >
+                <option value="">{tCommon('all')} {tCommon('status').toLowerCase()}</option>
+                <option value="present">{t('present')}</option>
+                <option value="late">{t('late')}</option>
+                <option value="absent">{t('absent')}</option>
+                <option value="excused">{t('excused')}</option>
+              </select>
+
+              <input
+                type="date"
+                value={myDateFilter}
+                onChange={(e) => setMyDateFilter(e.target.value)}
+                className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-[#1877f2] text-slate-800"
+              />
+            </div>
+          </div>
+
+          {/* Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-400 uppercase text-[10px] font-extrabold tracking-wider">
+                  <th className="pb-3 px-3">{t('date_session')}</th>
+                  <th className="pb-3 px-3">{t('session_name')}</th>
+                  <th className="pb-3 px-3">{tCommon('status')}</th>
+                  <th className="pb-3 px-3">{t('late')}</th>
+                  <th className="pb-3 px-3">Enseignant</th>
+                  <th className="pb-3 px-3">{tCommon('details')}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredMyRecords.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-10 text-center text-slate-400">
+                      <div className="flex flex-col items-center justify-center space-y-2">
+                        <CheckCircle2 size={24} className="text-emerald-500/60" />
+                        <p className="text-sm font-semibold text-slate-700">{tCommon('none')}</p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredMyRecords.map((rec) => (
+                    <tr key={rec.id} className="hover:bg-slate-50/80 transition-colors">
+                      {/* Date */}
+                      <td className="py-3.5 px-3 font-bold text-slate-800">
+                        {rec.date}
+                      </td>
+
+                      {/* Session Name */}
+                      <td className="py-3.5 px-3">
+                        <span className="font-semibold text-slate-900">
+                          {rec.session_name || 'Cours Magistral'}
+                        </span>
+                      </td>
+
+                      {/* Status */}
+                      <td className="py-3.5 px-3">
+                        {rec.status === 'present' && (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <CheckCircle2 size={13} className="text-emerald-500" />
+                            <span>{t('present')}</span>
+                          </span>
+                        )}
+                        {rec.status === 'late' && (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                            <Clock size={13} className="text-amber-500" />
+                            <span>{t('late')}</span>
+                          </span>
+                        )}
+                        {rec.status === 'absent' && (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                            <XCircle size={13} className="text-rose-500" />
+                            <span>{t('absent')}</span>
+                          </span>
+                        )}
+                        {rec.status === 'excused' && (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                            <ShieldCheck size={13} className="text-blue-500" />
+                            <span>{t('excused')}</span>
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Minutes Late */}
+                      <td className="py-3.5 px-3">
+                        {rec.minutes_late > 0 ? (
+                          <span className="font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 text-xs">
+                            +{rec.minutes_late} min
+                          </span>
+                        ) : (
+                          <span className="text-slate-300 font-normal">—</span>
+                        )}
+                      </td>
+
+                      {/* Marked By */}
+                      <td className="py-3.5 px-3">
+                        <span className="text-slate-600 text-xs font-medium">
+                          {rec.marked_by?.email || 'Formateur Référent'}
+                        </span>
+                      </td>
+
+                      {/* Remarks */}
+                      <td className="py-3.5 px-3">
+                        {rec.remarks ? (
+                          <span className="text-slate-700 italic bg-slate-50 px-2 py-1 rounded-md border border-slate-200">
+                            {rec.remarks}
+                          </span>
+                        ) : (
+                          <span className="text-slate-300">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+
+        {/* 6. Certification & Conformité Banner */}
+        <div className="p-5 rounded-2xl bg-blue-50/70 border border-blue-200 flex items-center gap-4">
+          <div className="w-10 h-10 rounded-xl bg-[#1877f2] text-white flex items-center justify-center shrink-0 shadow-xs">
+            <ShieldCheck size={20} />
+          </div>
+          <div>
+            <h4 className="text-xs font-extrabold text-slate-900 uppercase tracking-wide">
+              {t('cert_title')}
+            </h4>
+            <p className="text-xs text-slate-600 mt-0.5">
+              {t('cert_sub')}
+            </p>
+          </div>
+        </div>
+
       </div>
     );
   }
+
 
   // Filtered learners for roll call
   const filteredLearners = learners.filter(l => {

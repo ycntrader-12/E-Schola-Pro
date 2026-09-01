@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { Link } from '@/i18n/routing';
-import { LayoutDashboard, Inbox, BookOpen, CheckSquare, Users, Settings, Video, Award, UserCheck, Calendar, X, GraduationCap } from 'lucide-react';
+import { LayoutDashboard, Inbox, BookOpen, CheckSquare, Settings, Video, Award, UserCheck, Calendar, X, GraduationCap } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { apiClient } from '@/lib/api';
 
@@ -39,8 +39,9 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
     { name: t('quizzes'), href: '/quizzes', icon: Award },
     { name: t('task'), href: '/assignments', icon: CheckSquare },
     { name: t('attendance'), href: '/attendance', icon: UserCheck },
-    { name: t('users'), href: '/admin/users', icon: Users, adminOnly: true },
   ];
+
+  const isSettingsActive = pathname === '/profile' || pathname.startsWith('/profile');
 
   return (
     <>
@@ -88,7 +89,6 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
         <nav className="flex-1 px-3 space-y-1.5 overflow-y-auto">
           {navItems.map((item) => {
             const Icon = item.icon;
-            // Exact matching or parent matching
             const isActive = pathname === item.href || (pathname.startsWith(item.href) && item.href !== '/');
             
             return (
@@ -123,17 +123,27 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
           })}
         </nav>
 
-        {/* Settings Footer */}
+        {/* Settings Footer (Paramètres) */}
         <div className="px-6 mb-2 mt-4 text-[11px] font-bold text-blue-200/70 uppercase tracking-wider shrink-0 border-t border-white/10 pt-4">
           {t('settings')}
         </div>
         <div className="px-3 shrink-0">
           <Link
             href="/profile"
-            className="w-full group flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all text-sm font-medium text-slate-200 hover:bg-white/10 hover:text-white"
+            onClick={() => setIsOpen && setIsOpen(false)}
+            className={`w-full group flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all text-sm font-medium ${
+              isSettingsActive
+                ? 'bg-[#2563eb] text-white font-bold shadow-md shadow-blue-600/30'
+                : 'text-slate-200 hover:bg-white/10 hover:text-white'
+            }`}
           >
-            <Settings size={19} className="text-blue-200/80 group-hover:text-white transition-colors" />
-            <span>{t('settings').charAt(0) + t('settings').slice(1).toLowerCase()}</span>
+            <Settings 
+              size={19} 
+              className={`transition-colors ${
+                isSettingsActive ? 'text-white' : 'text-blue-200/80 group-hover:text-white'
+              }`} 
+            />
+            <span>{t('settings').charAt(0).toUpperCase() + t('settings').slice(1).toLowerCase()}</span>
           </Link>
         </div>
       </aside>

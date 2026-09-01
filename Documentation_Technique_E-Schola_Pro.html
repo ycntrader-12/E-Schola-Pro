@@ -1024,11 +1024,14 @@ E-Schola Pro/
     <table>
       <thead><tr><th>Méthode</th><th>Endpoint</th><th>Description</th><th>Accès</th></tr></thead>
       <tbody class="endpoint-row">
-        <tr><td><span class="badge badge-get">GET</span></td><td><code>/attendance/groups</code></td><td>Lister les groupes disponibles</td><td>Admin, Formateur</td></tr>
-        <tr><td><span class="badge badge-get">GET</span></td><td><code>/attendance/learners</code></td><td>Lister les apprenants (avec filtre)</td><td>Admin, Formateur</td></tr>
-        <tr><td><span class="badge badge-post">POST</span></td><td><code>/attendance/learners</code></td><td>Ajouter un apprenant</td><td>Admin, Formateur</td></tr>
-        <tr><td><span class="badge badge-post">POST</span></td><td><code>/attendance/mark</code></td><td>Marquer la présence</td><td>Admin, Formateur</td></tr>
-        <tr><td><span class="badge badge-get">GET</span></td><td><code>/attendance/records</code></td><td>Historique des présences</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/attendance/my-stats</code></td><td>Bilan d'engagement et assiduité personnelle de l'apprenant (Journalier, Mensuel, Semestriel, Global)</td><td>Authentifié (Étudiant, Stagiaire, Employé)</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/attendance/my-records</code></td><td>Historique complet des émargements personnels certifiés</td><td>Authentifié (Étudiant, Stagiaire, Employé)</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/attendance/groups</code></td><td>Lister les groupes / promotions d'apprenants</td><td>Admin, Formateur</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/attendance/learners</code></td><td>Lister les apprenants par groupe pour l'émargement</td><td>Admin, Formateur</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/attendance/learners</code></td><td>Inscrire un apprenant réel à un groupe</td><td>Admin, Formateur</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/attendance/batch</code></td><td>Validation par lot de la feuille d'émargement</td><td>Admin, Formateur</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/attendance/overview</code></td><td>Statistiques et compteurs globaux d'assiduité</td><td>Admin, Formateur</td></tr>
+        <tr><td><span class="badge badge-delete">DELETE</span></td><td><code>/attendance/{id}</code></td><td>Supprimer un pointage de présence</td><td>Admin, Formateur</td></tr>
       </tbody>
     </table>
 
@@ -1235,22 +1238,18 @@ E-Schola Pro/
       </div>
     </div>
 
-    <h3>Module 5 — Présences & Émargement</h3>
+    <h3>Module 5 — Présences, Émargement &amp; Engagement Personnel</h3>
     <div class="card">
       <p><strong>Route Frontend :</strong> <code>/attendance</code></p>
       <p><strong>Options et propriétés :</strong></p>
       <ul>
-        <li><strong>Marquage :</strong> Présent, En retard (avec minutes), Absent, Excusé</li>
-        <li><strong>Filtrage :</strong> Par groupe, par date, par session</li>
-        <li><strong>Sessions :</strong> Nom de session personnalisable</li>
-        <li><strong>Ajout d'apprenant :</strong> Inscription directe avec e-mail, mot de passe et groupe</li>
-        <li><strong>Historique :</strong> Consultation des présences passées</li>
-        <li><strong>Remarques :</strong> Ajout de commentaires par apprenant</li>
+        <li><strong>Vue Apprenant (Étudiant, Stagiaire, Employé) :</strong> Tableau de bord d'engagement personnel individualisé lié au compte (Taux d'assiduité avec badge d'honneur, KPI des présences/retards/absences, score d'engagement aux quiz, sélecteur de périodes <em>Journalier, Mensuel, Semestriel, Global</em>, historique exhaustif et filtrable des pointages certifiés avec option d'impression du bilan officiel).</li>
+        <li><strong>Vue Formateur &amp; Administrateur :</strong> Feuille d'émargement et d'appel en direct par groupe/classe, pointage multi-statuts (<em>Présent, En retard avec minutes, Absent, Justifié</em>), boutons d'émargement rapide (<em>Tout marquer présent</em>), validation par lot (batch), inscription directe d'apprenants réels dans les promotions et vue d'ensemble des statistiques globales.</li>
       </ul>
       <div class="screenshot-container">
         <div class="screenshot-header">
           <div class="screenshot-dots"><span class="dot-red"></span><span class="dot-yellow"></span><span class="dot-green"></span></div>
-          <span>Aperçu de l'interface : Feuille de Présences & Émargement (/attendance)</span>
+          <span>Aperçu de l'interface : Feuille de Présences &amp; Émargement (/attendance)</span>
         </div>
         <img src="docs_screenshots/attendance.png" alt="Interface Présences E-Schola Pro" class="screenshot-img" />
       </div>
@@ -1382,6 +1381,15 @@ E-Schola Pro/
       </ol>
     </div>
 
+    <h3>Portail d'Accueil &amp; Landing Page Visuelle</h3>
+    <div class="card">
+      <p>La page d'accueil (<code>/</code>) propose une expérience <strong>100% visuelle, épurée et immersive</strong> :</p>
+      <ul>
+        <li><strong>Canvas Visuel Plein Écran :</strong> Rendu en haute définition de la fresque d'écosystème <em>Connect LMS</em> (Éducation, Innovation, Ingénierie, IA &amp; Robotique) couvrant l'intégralité du viewport.</li>
+        <li><strong>Barre d'Action Flottante Minimisée :</strong> Suppression des blocs centraux encombrants au profit d'un dock compact semi-transparent (<code>backdrop-blur-xl bg-white/90</code>) positionné en bas d'écran avec accès direct <em>Se Connecter</em> et <em>Créer un Compte</em>.</li>
+      </ul>
+    </div>
+
     <h3>Design System</h3>
     <div class="card">
       <p><strong>Thème :</strong> Interface épurée et moderne <strong>Mode Clair Exclusif</strong> (Fond blanc pur <code>#FFFFFF</code>, Panneaux &amp; Cartes blanc pur <code>#FFFFFF</code>, Arrière-plan héro haute définition et Colonne Sidebar Bleu Marine / Ciel <code>#16325C</code> avec capsule active <code>#2563EB</code>)</p>
@@ -1413,12 +1421,25 @@ E-Schola Pro/
       </ul>
     </div>
 
-    <h3>Internationalisation (i18n)</h3>
+    <h3>Internationalisation (i18n) &amp; Multilinguisme Intégral</h3>
     <div class="card">
-      <p><strong>Langues supportées :</strong> Français (fr), Anglais (en), Arabe (ar)</p>
-      <p><strong>Bibliothèque :</strong> next-intl</p>
-      <p><strong>Structure des URL :</strong> <code>/{locale}/page</code> (ex: <code>/fr/dashboard</code>, <code>/en/courses</code>)</p>
-      <p><strong>Fichiers de traduction :</strong> <code>frontend/messages/fr.json</code>, <code>en.json</code>, <code>ar.json</code></p>
+      <p><strong>Langues supportées :</strong> Français (<code>fr</code>), Anglais (<code>en</code>), Arabe (<code>ar</code> - support RTL automatique), Espagnol (<code>es</code>), Allemand (<code>de</code>)</p>
+      <p><strong>Bibliothèque &amp; Moteur :</strong> <code>next-intl</code> avec <code>NextIntlClientProvider</code> et détection de locale dynamique.</p>
+      <p><strong>Structure des URL :</strong> <code>/{locale}/page</code> (ex: <code>/fr/dashboard</code>, <code>/ar/attendance</code>, <code>/en/courses</code>, <code>/es/classroom</code>, <code>/de/profile</code>)</p>
+      <p><strong>Fichiers de dictionnaires complets :</strong> <code>frontend/messages/fr.json</code>, <code>en.json</code>, <code>ar.json</code>, <code>es.json</code>, <code>de.json</code></p>
+      <p><strong>Couverture intégrale des namespaces :</strong></p>
+      <ul>
+        <li><code>Navigation</code> : Liens de barre latérale (Sidebar), barre supérieure (Navbar), déconnexion, dashboard, profils et rôles.</li>
+        <li><code>Common</code> : Boutons génériques, actions, filtres, statuts, dates, recherche, impression et états de chargement.</li>
+        <li><code>Landing</code> : Titres, slogans, badges, et boutons d'appel à l'action de la vitrine d'accueil.</li>
+        <li><code>Auth</code> : Formulaires complets de connexion (Login) et d'inscription (Register), labels, messages d'erreur et sélecteurs de rôle.</li>
+        <li><code>Dashboard</code> : Salutations, cartes de cours, mentors, boutons d'action et métriques.</li>
+        <li><code>Courses</code> &amp; <code>Quizzes</code> : Catalogues de formation, syllabus, niveaux de difficulté, questionnaires et classements.</li>
+        <li><code>Attendance</code> : Feuilles d'émargement formateurs, tableaux de bord d'engagement personnel des apprenants et certificats.</li>
+        <li><code>Calendar</code> &amp; <code>Classroom</code> : Planification, dépôts de livrables, contrôles audio/vidéo et visioconférence HD.</li>
+        <li><code>Inbox</code> &amp; <code>Profile</code> : Boîtes de messagerie, pièces jointes, sécurité, changement de mot de passe et gestion des permissions.</li>
+        <li><code>Roles</code> : Dénominations officielles (Administrateur, Formateur, Étudiant, Stagiaire, Employé).</li>
+      </ul>
     </div>
   </section>
 

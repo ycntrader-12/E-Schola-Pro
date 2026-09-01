@@ -18,13 +18,13 @@ export default function LanguageSwitcher() {
     <select
       value={locale}
       onChange={onChange}
-      className="bg-surface border border-border rounded-md px-2 py-1 text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+      className="bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer shadow-xs transition-all"
     >
-      <option value="en">🇺🇸 EN</option>
-      <option value="fr">🇫🇷 FR</option>
-      <option value="es">🇪🇸 ES</option>
-      <option value="de">🇩🇪 DE</option>
-      <option value="ar">🇸🇦 AR</option>
+      <option value="fr">🇫🇷 Français</option>
+      <option value="en">🇺🇸 English</option>
+      <option value="ar">🇸🇦 العربية</option>
+      <option value="es">🇪🇸 Español</option>
+      <option value="de">🇩🇪 Deutsch</option>
     </select>
   );
 }
