@@ -73,6 +73,7 @@ export default function AssignmentsPage() {
   // Submit modal state for Learners
   const [selectedTaskToSubmit, setSelectedTaskToSubmit] = useState<TaskItem | null>(null);
   const [submissionContent, setSubmissionContent] = useState('');
+  const [submissionFile, setSubmissionFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Create Task modal state for Trainers/Admins
@@ -118,12 +119,34 @@ export default function AssignmentsPage() {
   // Handle Learner Submission
   const handleSubmitDeliverable = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedTaskToSubmit || !submissionContent.trim()) return;
+    if (!selectedTaskToSubmit) return;
+    if (!submissionContent.trim() && !submissionFile) return;
 
     setIsSubmitting(true);
     try {
+      let finalContentLink = submissionContent.trim();
+      
+      // Upload file if selected
+      if (submissionFile) {
+        const formData = new FormData();
+        formData.append('file', submissionFile);
+        
+        const uploadRes = await apiClient.post('/upload/file', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        });
+        
+        const fileUrl = uploadRes.data.url;
+        if (finalContentLink) {
+          finalContentLink += `\n\nFichier joint : ${fileUrl}`;
+        } else {
+          finalContentLink = fileUrl;
+        }
+      }
+
       const res = await apiClient.post(`/tasks/${selectedTaskToSubmit.id}/submit`, {
-        content_link: submissionContent
+        content_link: finalContentLink
       });
 
       // Update task in state
@@ -136,6 +159,7 @@ export default function AssignmentsPage() {
 
       setSelectedTaskToSubmit(null);
       setSubmissionContent('');
+      setSubmissionFile(null);
       alert("Livrable soumis avec succès au corps pédagogique !");
     } catch (err: any) {
       alert(err?.response?.data?.detail || "Erreur lors de la soumission du livrable.");
@@ -503,6 +527,7 @@ export default function AssignmentsPage() {
                           onClick={() => {
                             setSelectedTaskToSubmit(task);
                             setSubmissionContent('');
+                            setSubmissionFile(null);
                           }}
                           className="w-full py-2.5 rounded-xl bg-[#1877f2] hover:bg-[#166fe5] text-white text-xs font-extrabold flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer"
                         >
@@ -557,7 +582,10 @@ export default function AssignmentsPage() {
                 </h3>
               </div>
               <button 
-                onClick={() => setSelectedTaskToSubmit(null)}
+                onClick={() => {
+                  setSelectedTaskToSubmit(null);
+                  setSubmissionFile(null);
+                }}
                 className="text-slate-400 hover:text-slate-600 text-sm font-bold cursor-pointer"
               >
                 ✕
@@ -573,13 +601,24 @@ export default function AssignmentsPage() {
             <form onSubmit={handleSubmitDeliverable} className="space-y-4 text-xs">
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Fichier joint (Optionnel)
+                </label>
+                <input
+                  type="file"
+                  onChange={(e) => setSubmissionFile(e.target.files?.[0] || null)}
+                  className="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-[#1877f2] hover:file:bg-blue-100 cursor-pointer"
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar,.tar,.gz,.mp3,.wav,.mp4,.webm,.jpg,.jpeg,.png,.webp,.gif,.py,.js,.html,.css,.ts,.java,.cpp,.c"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                   Lien ou Contenu du Livrable (GitHub, PDF, URL Drive, Compte-Rendu)
                 </label>
                 <textarea
                   rows={4}
                   value={submissionContent}
                   onChange={(e) => setSubmissionContent(e.target.value)}
-                  required
                   placeholder="Collez ici le lien GitHub, Google Drive, OneDrive ou la synthèse de votre devoir..."
                   className="w-full p-3.5 rounded-xl border border-slate-300 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-slate-900 outline-none shadow-xs font-mono"
                 />
@@ -588,7 +627,10 @@ export default function AssignmentsPage() {
               <div className="flex items-center justify-end gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => setSelectedTaskToSubmit(null)}
+                  onClick={() => {
+                    setSelectedTaskToSubmit(null);
+                    setSubmissionFile(null);
+                  }}
                   className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-100 cursor-pointer"
                 >
                   Annuler

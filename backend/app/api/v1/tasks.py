@@ -6,6 +6,7 @@ from datetime import datetime
 from app.api.deps import get_db, get_current_user
 from app.models.task import Task, TaskSubmission
 from app.models.user import User
+from app.models.message import Message
 from app.schemas.task import (
     TaskCreate, 
     TaskResponse, 
@@ -231,6 +232,35 @@ def submit_task_deliverable(
         db.add(sub_obj)
         db.commit()
         db.refresh(sub_obj)
+
+    # Auto-message to trainers, admins and pedagogical team
+    staff_users = db.query(User).filter(
+        User.role.in_(["admin", "formateur", "pedagogique"])
+    ).all()
+
+    alert_subject = f"[LIVRABLE] Soumission pour le devoir : {task.title}"
+    alert_body = (
+        f"L'apprenant {current_user.email} (Rôle: {current_user.role}) a soumis son livrable.\n\n"
+        f"Devoir : {task.title}\n"
+        f"Cours : {task.course_name}\n\n"
+        f"Lien / Fichier : {submission_in.content_link}\n\n"
+        f"Vous pouvez consulter les soumissions dans l'espace 'Tâches & Devoirs' ou 'Messages'."
+    )
+
+    for staff in staff_users:
+        if staff.id != current_user.id:
+            msg = Message(
+                sender_id=current_user.id,
+                recipient_id=staff.id,
+                subject=alert_subject,
+                body=alert_body,
+                is_read=False,
+                is_draft=False,
+                is_trash=False
+            )
+            db.add(msg)
+    
+    db.commit()
 
     return TaskSubmissionResponse(
         id=sub_obj.id,
