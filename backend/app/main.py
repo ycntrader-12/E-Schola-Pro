@@ -87,8 +87,16 @@ class AdminAuth(AuthenticationBackend):
         return token == settings.SECRET_KEY
 
 
+TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), "templates")
+
 authentication_backend = AdminAuth(secret_key=settings.SECRET_KEY)
-admin = Admin(app, engine, authentication_backend=authentication_backend)
+admin = Admin(
+    app, 
+    engine, 
+    title="E-Schola Pro Admin", 
+    templates_dir=TEMPLATES_DIR, 
+    authentication_backend=authentication_backend
+)
 admin.add_view(UserAdmin)
 admin.add_view(CourseAdmin)
 admin.add_view(CourseVideoAdmin)

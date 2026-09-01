@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+  {% block head_meta %}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  {% endblock %}
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Tabler Core CSS from CDN with Local Fallback -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/css/tabler.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+
+  {% block head_css %}
+  <link rel="stylesheet" href="{{ url_for('admin:statics', path='css/tabler.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('admin:statics', path='css/tabler-icons.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('admin:statics', path='css/fontawesome-all.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('admin:statics', path='css/select2.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('admin:statics', path='css/flatpickr.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('admin:statics', path='css/main.css') }}">
+  {% endblock %}
+
+  <style>
+    :root {
+      --tblr-font-sans-serif: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --tblr-primary: #1877f2;
+      --tblr-primary-rgb: 24, 119, 242;
+    }
+    body {
+      font-family: var(--tblr-font-sans-serif);
+      background-color: #f8fafc;
+      color: #0f172a;
+    }
+    .navbar {
+      border-bottom: 1px solid #e2e8f0;
+      background: #ffffff !important;
+    }
+    .card {
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.03);
+    }
+    .btn-primary {
+      background-color: #1877f2 !important;
+      border-color: #1877f2 !important;
+      font-weight: 600;
+      border-radius: 10px;
+    }
+    .btn-primary:hover {
+      background-color: #166fe5 !important;
+      border-color: #166fe5 !important;
+    }
+  </style>
+
+  {% if admin.favicon_url %}
+  <link rel="icon" href="{{ admin.favicon_url }}">
+  {% endif %}
+  <title>{{ admin.title }}</title>
+  {% block head %}
+  {% endblock %}
+  {% block head_tail %}
+  {% endblock %}
+</head>
+
+<body>
+  {% block body %}
+  <main>
+    {% block main %}
+    {% endblock %}
+  </main>
+  {% endblock %}
+
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/js/tabler.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+  {% block tail_js %}
+  <script type="text/javascript" src="{{ url_for('admin:statics', path='js/jquery.min.js') }}"></script>
+  <script type="text/javascript" src="{{ url_for('admin:statics', path='js/tabler.min.js') }}"></script>
+  <script type="text/javascript" src="{{ url_for('admin:statics', path='js/select2.full.min.js') }}"></script>
+  <script type="text/javascript" src="{{ url_for('admin:statics', path='js/flatpickr.min.js') }}"></script>
+  <script type="text/javascript" src="{{ url_for('admin:statics', path='js/main.js') }}"></script>
+  {% endblock %}
+  {% block tail %}
+  {% endblock %}
+</body>
+
+</html>
