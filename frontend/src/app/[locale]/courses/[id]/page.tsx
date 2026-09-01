@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import Image from "next/image";
 import Link from "next/link";
-import { BookOpen, Users, ArrowLeft, Star, Clock, CheckCircle, Loader2, PlayCircle, Plus, Trash2, Upload, Video } from "lucide-react";
+import { BookOpen, Users, ArrowLeft, Star, Clock, CheckCircle, Loader2, PlayCircle, Plus, Trash2, Upload, Video, Sparkles } from "lucide-react";
 import { useParams, useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api';
 import DownloadCourseButton from "@/components/DownloadCourseButton";
@@ -315,141 +315,153 @@ export default function CourseDetailPage() {
       </div>
 
       {/* Content Section */}
-      <div className="max-w-5xl mx-auto px-4 pt-12 grid grid-cols-1 lg:grid-cols-3 gap-12">
-        <div className="lg:col-span-2 space-y-8">
-          
-          {/* Video Player */}
-          {activeVideo && (isEnrolled || isCourseManager) ? (
-            <div className="w-full">
-              <h2 className="text-2xl font-bold mb-4">{activeVideo.title}</h2>
-              <YoutubePlayer src={activeVideo.video_url} title={activeVideo.title} />
-            </div>
-          ) : activeVideo && !isEnrolled ? (
-            <div className="w-full aspect-video bg-surface flex flex-col items-center justify-center rounded-2xl border border-border">
-              <PlayCircle size={48} className="text-text-secondary opacity-50 mb-4" />
-              <p className="text-text-secondary">Inscrivez-vous pour visionner les vidéos de ce cours.</p>
-            </div>
-          ) : null}
-
-          <div className="glass-card p-8">
-            <h2 className="text-2xl font-bold mb-6">About this course</h2>
-            <div className="text-text-secondary leading-relaxed whitespace-pre-line">
-              {course.description || "No detailed description is available for this course yet."}
-            </div>
-          </div>
-        </div>
-
-        {/* Action Sidebar */}
-        <div className="lg:col-span-1 space-y-6">
-          <div className="glass-card p-6 sticky top-24 border border-white/10">
-            <h3 className="text-xl font-bold mb-4">
-              {isEnrolled ? 'You are enrolled!' : 'Enroll in course'}
+      <div className="max-w-5xl mx-auto px-4 pt-8 space-y-8">
+        
+        {/* 1. Horizontal Action & Enrollment Banner */}
+        <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-1.5 max-w-xl">
+            <h3 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
+              <Sparkles size={20} className="text-[#1877f2]" />
+              <span>{isEnrolled ? 'Inscrit au cours !' : 'Rejoindre ce cours'}</span>
             </h3>
-            <p className="text-text-secondary text-sm mb-6">
+            <p className="text-slate-600 text-xs sm:text-sm leading-relaxed">
               {isEnrolled 
-                ? 'You have full access to all materials, assignments, and discussions.' 
-                : 'Join this course to get full access to all materials, assignments, and discussions.'}
+                ? 'Vous avez un accès complet à tous les supports, vidéos et devoirs.' 
+                : 'Inscrivez-vous pour accéder à toutes les ressources pédagogiques et vidéos.'}
             </p>
 
             {enrollError && (
-              <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-3 rounded-lg text-sm mb-4">
+              <div className="bg-red-500/10 border border-red-500/30 text-red-600 p-2.5 rounded-xl text-xs font-semibold">
                 {enrollError}
               </div>
             )}
+            {!isAuthenticated && !isEnrolled && (
+              <p className="text-xs text-slate-500 pt-1">
+                <Link href="/login" className="text-[#1877f2] font-bold hover:underline">Connectez-vous</Link> pour suivre ce cours.
+              </p>
+            )}
+          </div>
 
+          {/* Horizontal Action Buttons */}
+          <div className="flex flex-wrap items-center gap-3 shrink-0">
             {isEnrolled ? (
-              <button disabled className="w-full py-3 px-4 bg-green-600/20 text-green-400 border border-green-500/30 font-semibold rounded-lg flex items-center justify-center gap-2 cursor-default">
-                <CheckCircle size={20} />
-                Enrolled
-              </button>
+              <div className="px-5 py-2.5 bg-emerald-50 text-emerald-700 border border-emerald-300 font-bold rounded-xl flex items-center gap-2 shadow-xs text-xs sm:text-sm">
+                <CheckCircle size={17} className="text-emerald-600" />
+                <span>Inscrit</span>
+              </div>
             ) : (
               <button 
                 onClick={handleEnroll}
                 disabled={isEnrolling}
-                className="w-full py-3 px-4 bg-primary text-white font-semibold rounded-lg hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-6 py-2.5 bg-[#1877f2] hover:bg-[#166fe5] text-white font-bold rounded-xl shadow-md shadow-blue-500/25 transition-all flex items-center gap-2 disabled:opacity-50 cursor-pointer text-xs sm:text-sm hover:scale-[1.01] active:scale-[0.99]"
               >
                 {isEnrolling ? (
-                  <><Loader2 size={20} className="animate-spin" /> Enrolling...</>
+                  <><Loader2 size={16} className="animate-spin" /> Inscription...</>
                 ) : (
-                  <><BookOpen size={20} /> Enroll Now</>
+                  <><BookOpen size={16} /> S'inscrire au cours</>
                 )}
               </button>
             )}
 
-            {!isAuthenticated && !isEnrolled && (
-              <p className="text-center text-xs text-text-secondary mt-4">
-                <Link href="/login" className="text-primary hover:underline">Sign in</Link> to enroll in this course.
-              </p>
-            )}
-            
             {course.document_url && (
-              <div className="mt-4">
-                <DownloadCourseButton documentUrl={course.document_url} />
-              </div>
+              <DownloadCourseButton documentUrl={course.document_url} />
             )}
 
             {isCourseManager && (
-              <div className="mt-4">
-                <button 
-                  onClick={handleDeleteCourse}
-                  disabled={isDeletingCourse}
-                  className="w-full py-3 px-4 bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white border border-red-500/20 rounded-xl font-bold flex items-center justify-center gap-2 transition-all cursor-pointer text-xs disabled:opacity-50"
-                >
-                  {isDeletingCourse ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
-                  <span>Supprimer le cours</span>
-                </button>
-              </div>
+              <button 
+                onClick={handleDeleteCourse}
+                disabled={isDeletingCourse}
+                className="py-2.5 px-4 bg-red-50 hover:bg-red-600 text-red-600 hover:text-white border border-red-200 rounded-xl font-bold flex items-center gap-2 transition-all cursor-pointer text-xs disabled:opacity-50"
+                title="Supprimer le cours"
+              >
+                {isDeletingCourse ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
+                <span>Supprimer</span>
+              </button>
             )}
           </div>
+        </div>
 
-          {/* Playlist Section */}
-          <div className="glass-card p-6 border border-white/10">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold">Playlist ({course.videos?.length || 0})</h3>
-              {isCourseManager && (
-                <button 
-                  onClick={() => setIsUploadModalOpen(true)}
-                  className="px-3 py-1.5 rounded-xl bg-primary/10 text-primary border border-primary/20 text-xs font-bold flex items-center gap-1.5 hover:bg-primary/20 transition-all cursor-pointer"
-                  title="Ajouter une vidéo"
-                >
-                  <Plus size={14} />
-                  <span>Ajouter</span>
-                </button>
-              )}
-            </div>
+        {/* 2. Main Course Content Grid (Video + About + Playlist) */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-8">
+            {/* Video Player */}
+            {activeVideo && (isEnrolled || isCourseManager) ? (
+              <div className="w-full bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+                <h2 className="text-xl font-bold text-slate-900">{activeVideo.title}</h2>
+                <YoutubePlayer src={activeVideo.video_url} title={activeVideo.title} />
+              </div>
+            ) : activeVideo && !isEnrolled ? (
+              <div className="w-full aspect-video bg-white flex flex-col items-center justify-center rounded-3xl border border-slate-200 p-8 text-center shadow-sm">
+                <PlayCircle size={48} className="text-slate-400 mb-3" />
+                <p className="text-slate-600 text-sm font-medium">Inscrivez-vous pour visionner les vidéos de ce cours.</p>
+              </div>
+            ) : null}
 
-            <div className="space-y-2">
-              {!course.videos || course.videos.length === 0 ? (
-                <p className="text-sm text-text-secondary">Aucune vidéo disponible pour le moment.</p>
-              ) : (
-                course.videos.map((video, index) => (
-                  <div 
-                    key={video.id}
-                    onClick={() => setActiveVideo(video)}
-                    className={`flex justify-between items-center p-3 rounded-xl cursor-pointer transition-colors ${activeVideo?.id === video.id ? 'bg-primary/20 border border-primary/30' : 'bg-surface hover:bg-surface-hover'}`}
-                  >
-                    <div className="flex items-center gap-3 overflow-hidden">
-                      <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${activeVideo?.id === video.id ? 'bg-primary text-white' : 'bg-black/20 text-text-secondary'}`}>
-                        {index + 1}
-                      </div>
-                      <span className="text-sm font-medium truncate">{video.title}</span>
-                    </div>
-                    {isCourseManager && (
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); handleDeleteVideo(video.id); }}
-                        className="text-text-secondary hover:text-red-400 p-1 rounded-md hover:bg-red-500/10 transition-colors"
-                        title="Supprimer"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    )}
-                  </div>
-                ))
-              )}
+            {/* About this course */}
+            <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+              <h2 className="text-xl font-bold text-slate-900">About this course</h2>
+              <div className="text-slate-600 leading-relaxed whitespace-pre-line text-sm">
+                {course.description || "No detailed description is available for this course yet."}
+              </div>
             </div>
           </div>
-          
+
+          {/* Playlist Section (Sidebar next to Description) */}
+          <div className="lg:col-span-1">
+            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4 sticky top-24">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                <h3 className="text-base font-bold text-slate-900">Playlist ({course.videos?.length || 0})</h3>
+                {isCourseManager && (
+                  <button 
+                    onClick={() => setIsUploadModalOpen(true)}
+                    className="px-3 py-1.5 rounded-xl bg-blue-50 text-[#1877f2] border border-blue-200 text-xs font-bold flex items-center gap-1.5 hover:bg-blue-100 transition-all cursor-pointer"
+                    title="Ajouter une vidéo"
+                  >
+                    <Plus size={14} />
+                    <span>Ajouter</span>
+                  </button>
+                )}
+              </div>
+
+              <div className="space-y-2 max-h-[450px] overflow-y-auto pr-1">
+                {!course.videos || course.videos.length === 0 ? (
+                  <p className="text-xs text-slate-400 py-4 text-center">Aucune vidéo disponible pour le moment.</p>
+                ) : (
+                  course.videos.map((video, index) => (
+                    <div 
+                      key={video.id}
+                      onClick={() => setActiveVideo(video)}
+                      className={`flex justify-between items-center p-3 rounded-xl cursor-pointer transition-colors ${
+                        activeVideo?.id === video.id 
+                          ? 'bg-blue-50 border border-blue-300 text-[#1877f2]' 
+                          : 'bg-slate-50 hover:bg-slate-100 text-slate-800 border border-transparent'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 overflow-hidden">
+                        <div className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
+                          activeVideo?.id === video.id ? 'bg-[#1877f2] text-white' : 'bg-slate-200 text-slate-600'
+                        }`}>
+                          {index + 1}
+                        </div>
+                        <span className="text-xs font-semibold truncate">{video.title}</span>
+                      </div>
+                      {isCourseManager && (
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); handleDeleteVideo(video.id); }}
+                          className="text-slate-400 hover:text-red-600 p-1 rounded-md hover:bg-red-50 transition-colors ml-1"
+                          title="Supprimer"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
         </div>
+
       </div>
 
       {/* Upload Video Modal */}

@@ -713,14 +713,14 @@ export default function VirtualClassroomLivePage() {
           
           {/* Subgroups Student Invite Banner */}
           {subgroupsState.is_active && mySubgroup && !currentActiveSubgroupId && (
-            <div className="mb-2 p-2.5 sm:p-3.5 rounded-2xl bg-gradient-to-r from-purple-900/90 to-indigo-900/90 border border-purple-500/50 shadow-xl flex items-center justify-between gap-2 text-xs shrink-0 animate-fade-in-up">
+            <div className="mb-2 p-2.5 sm:p-3.5 rounded-2xl bg-gradient-to-r from-blue-900/90 to-indigo-900/90 border border-blue-500/50 shadow-xl flex items-center justify-between gap-2 text-xs shrink-0 animate-fade-in-up">
               <div className="flex items-center gap-2 min-w-0">
-                <div className="p-1.5 rounded-xl bg-purple-500/20 text-purple-300 shrink-0">
+                <div className="p-1.5 rounded-xl bg-blue-500/20 text-blue-300 shrink-0">
                   <Split size={16} />
                 </div>
                 <div className="min-w-0">
                   <p className="font-extrabold text-white text-[11px] sm:text-xs truncate">Atelier sous-groupe disponible</p>
-                  <p className="text-purple-200 text-[10px] truncate">
+                  <p className="text-blue-200 text-[10px] truncate">
                     Assigné(e) au <span className="font-bold underline">{mySubgroup.name}</span>
                   </p>
                 </div>
@@ -1462,7 +1462,7 @@ export default function VirtualClassroomLivePage() {
                   <button
                     type="button"
                     onClick={handleLaunchSubgroups}
-                    className="px-5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 font-bold text-white shadow-md shadow-purple-500/30 flex items-center gap-1.5 text-xs"
+                    className="px-5 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 font-bold text-white shadow-md shadow-blue-500/30 flex items-center gap-1.5 text-xs"
                   >
                     <Split size={14} />
                     <span>Lancer les Salles</span>

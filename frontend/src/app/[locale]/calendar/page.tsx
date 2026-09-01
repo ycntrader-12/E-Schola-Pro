@@ -18,11 +18,15 @@ import {
   AlertCircle,
   Loader2,
   X,
-  Upload
+  Upload,
+  Info,
+  ExternalLink,
+  Search
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import DeliverablesModal from '@/components/calendar/DeliverablesModal';
 import DeliverablesGlobalModal from '@/components/calendar/DeliverablesGlobalModal';
+import { getMoroccanHolidays, getMoroccanHolidayForDate, MoroccanHoliday } from '@/lib/moroccanHolidays';
 
 interface Event {
   id: number;
@@ -56,6 +60,10 @@ export default function CalendarPage() {
   const [availableGroups, setAvailableGroups] = useState<GroupItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // Moroccan Holidays State
+  const [showHolidaysModal, setShowHolidaysModal] = useState(false);
+  const [holidaySearchQuery, setHolidaySearchQuery] = useState('');
 
   // Event Creation & Edit Modal
   const [showAddModal, setShowAddModal] = useState(false);
@@ -244,6 +252,30 @@ export default function CalendarPage() {
       })
     : events;
 
+  // Selected Day Moroccan Holiday
+  const selectedDayHoliday = selectedDay ? getMoroccanHolidayForDate(selectedDay) : null;
+
+  // All Moroccan holidays for currently viewed year
+  const allYearHolidays = getMoroccanHolidays(currentYear);
+  const filteredHolidays = allYearHolidays.filter(h => 
+    h.name.toLowerCase().includes(holidaySearchQuery.toLowerCase()) ||
+    h.nameAr.includes(holidaySearchQuery) ||
+    h.date.includes(holidaySearchQuery) ||
+    h.description.toLowerCase().includes(holidaySearchQuery.toLowerCase())
+  );
+
+  // Jump to holiday from modal
+  const handleJumpToHoliday = (holidayDateStr: string) => {
+    const parts = holidayDateStr.split('-');
+    const y = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10) - 1;
+    const d = parseInt(parts[2], 10);
+    const targetDate = new Date(y, m, d);
+    setViewDate(new Date(y, m, 1));
+    setSelectedDay(targetDate);
+    setShowHolidaysModal(false);
+  };
+
   // Format Helpers
   const formatTime = (isoString: string) => {
     const date = new Date(isoString);
@@ -292,15 +324,15 @@ export default function CalendarPage() {
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           {/* Left Title & System Sync Badge */}
           <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 shadow-sm">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-              <span>SYNCHRONISÉ AVEC LE SYSTÈME</span>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 shadow-sm">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+              <span>SYNCHRONISÉ AVEC LE SYSTÈME &amp; CALENDRIER DU MAROC 🇲🇦</span>
             </div>
             <h1 className="text-3xl sm:text-4xl font-black tracking-tight">
-              Calendrier & <span className="text-gradient">Emploi du Temps</span>
+              Calendrier & <span className="text-brand-gradient">Emploi du Temps</span>
             </h1>
             <p className="text-text-secondary text-xs sm:text-sm max-w-lg">
-              Date et heure système synchronisées en temps réel. Consultez et planifiez vos cours, visioconférences et réunions.
+              Date et heure système synchronisées en temps réel. Les <strong>jours fériés officiels au Royaume du Maroc</strong> sont automatiquement intégrés et mis en évidence.
             </p>
           </div>
 
@@ -341,9 +373,9 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      {/* 2. CALENDAR CONTROLS & ADD BUTTON */}
+      {/* 2. CALENDAR CONTROLS & ADD BUTTON & MOROCCO HOLIDAYS QUICK BUTTON */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
           <button
             onClick={prevMonth}
             className="p-2.5 rounded-xl bg-surface hover:bg-surface-hover border border-border transition-colors text-text-secondary hover:text-text-primary"
@@ -352,7 +384,7 @@ export default function CalendarPage() {
             <ChevronLeft size={18} />
           </button>
           
-          <h2 className="text-lg font-bold capitalize min-w-[180px] text-center text-text-primary">
+          <h2 className="text-base sm:text-lg font-bold capitalize min-w-[170px] text-center text-text-primary">
             {monthName}
           </h2>
 
@@ -366,9 +398,21 @@ export default function CalendarPage() {
 
           <button
             onClick={jumpToToday}
-            className="px-3 py-1.5 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 text-xs font-bold transition-all ml-2"
+            className="px-3 py-1.5 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 text-xs font-bold transition-all"
           >
-            Aujourd'hui (Système)
+            Aujourd'hui
+          </button>
+
+          <button
+            onClick={() => setShowHolidaysModal(true)}
+            className="px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+            title="Voir tous les jours fériés officiels au Maroc"
+          >
+            <span>🇲🇦</span>
+            <span>Jours Fériés Maroc</span>
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-extrabold ml-0.5">
+              {allYearHolidays.length}
+            </span>
           </button>
         </div>
 
@@ -409,13 +453,16 @@ export default function CalendarPage() {
             <div className="grid grid-cols-7 gap-2">
               {/* Empty leading padding days */}
               {Array.from({ length: normalizedStartDay }).map((_, i) => (
-                <div key={`empty-${i}`} className="h-16 rounded-xl border border-transparent opacity-10" />
+                <div key={`empty-${i}`} className="min-h-[72px] rounded-xl border border-transparent opacity-10" />
               ))}
 
               {/* Month Days */}
               {Array.from({ length: daysInMonth }).map((_, i) => {
                 const dayNum = i + 1;
                 const cellDate = new Date(currentYear, currentMonth, dayNum);
+
+                // Moroccan Public Holiday Check
+                const moroccanHoliday = getMoroccanHolidayForDate(cellDate);
 
                 // Is Today (system date)?
                 const isToday = currentTime && 
@@ -443,28 +490,53 @@ export default function CalendarPage() {
                   <button
                     key={dayNum}
                     onClick={() => setSelectedDay(cellDate)}
-                    className={`h-16 p-1.5 rounded-xl border flex flex-col justify-between items-start transition-all relative group text-left ${
+                    className={`min-h-[72px] p-1.5 rounded-xl border flex flex-col justify-between items-start transition-all relative group text-left ${
                       isSelected
-                        ? 'bg-primary/20 border-primary text-text-primary shadow-md shadow-primary/20'
+                        ? 'bg-primary/20 border-primary text-text-primary shadow-md shadow-primary/20 ring-1 ring-primary'
                         : isToday
-                        ? 'bg-primary/10 border-cyan-400 text-text-primary font-bold'
+                        ? 'bg-primary/10 border-blue-500 text-text-primary font-bold'
+                        : moroccanHoliday
+                        ? 'bg-emerald-500/10 dark:bg-emerald-950/25 border-emerald-500/40 text-text-primary hover:border-emerald-500'
                         : 'bg-surface/50 hover:bg-surface border-border text-text-secondary hover:text-text-primary'
                     }`}
                   >
                     <div className="w-full flex items-center justify-between">
-                      <span className={`text-xs ${isToday ? 'w-5 h-5 rounded-full bg-cyan-400 text-slate-950 flex items-center justify-center font-extrabold shadow-sm' : 'font-semibold'}`}>
-                        {dayNum}
-                      </span>
+                      <div className="flex items-center gap-1">
+                        <span className={`text-xs ${
+                          isToday 
+                            ? 'w-5 h-5 rounded-full bg-primary text-white flex items-center justify-center font-extrabold shadow-xs' 
+                            : moroccanHoliday
+                            ? 'font-extrabold text-emerald-600 dark:text-emerald-400'
+                            : 'font-semibold'
+                        }`}>
+                          {dayNum}
+                        </span>
+                        {moroccanHoliday && (
+                          <span className="text-[10px] leading-none" title={`Jour Férié Maroc : ${moroccanHoliday.name}`}>
+                            🇲🇦
+                          </span>
+                        )}
+                      </div>
                       {isToday && (
-                        <span className="text-[9px] uppercase font-bold text-cyan-400 hidden sm:inline">
+                        <span className="text-[9px] uppercase font-bold text-primary hidden sm:inline">
                           Auj.
                         </span>
                       )}
                     </div>
 
+                    {/* Moroccan Holiday Micro Badge */}
+                    {moroccanHoliday && (
+                      <div 
+                        className="w-full text-[8px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100/80 dark:bg-emerald-900/50 px-1 py-0.5 rounded truncate leading-tight my-0.5" 
+                        title={`Jour Férié Officiel : ${moroccanHoliday.name} (${moroccanHoliday.nameAr})`}
+                      >
+                        {moroccanHoliday.name}
+                      </div>
+                    )}
+
                     {/* Event indicators dots */}
                     {dayEvents.length > 0 && (
-                      <div className="flex items-center gap-1 w-full overflow-hidden">
+                      <div className="flex items-center gap-1 w-full overflow-hidden mt-auto">
                         {dayEvents.slice(0, 3).map((ev, idx) => (
                           <span 
                             key={idx} 
@@ -487,6 +559,8 @@ export default function CalendarPage() {
 
         {/* Right : Events of the Selected Day (5 cols) */}
         <div className="lg:col-span-5 space-y-4">
+          
+          {/* Header Card */}
           <div className="glass-card p-5 rounded-2xl border border-border flex items-center justify-between">
             <div>
               <p className="text-xs font-bold text-text-secondary uppercase tracking-wider">
@@ -500,30 +574,69 @@ export default function CalendarPage() {
             </div>
 
             <span className="px-3 py-1 rounded-full text-xs font-extrabold bg-primary/10 text-primary border border-primary/20">
-              {eventsForSelectedDay.length} événement(s)
+              {eventsForSelectedDay.length} cours / événement(s)
             </span>
           </div>
 
+          {/* 🇲🇦 Moroccan Public Holiday Highlight Card */}
+          {selectedDayHoliday && (
+            <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-950 dark:text-emerald-100 space-y-2 animate-fade-in shadow-xs">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">🇲🇦</span>
+                  <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">
+                    Jour Férié Officiel au Maroc
+                  </span>
+                </div>
+                <span className="px-2.5 py-0.5 rounded-full text-[9px] font-extrabold bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+                  {selectedDayHoliday.type === 'national' ? 'Fête Nationale' : 'Fête Religieuse'}
+                </span>
+              </div>
+              
+              <div>
+                <div className="flex items-center justify-between flex-wrap gap-1">
+                  <h4 className="text-sm font-black text-emerald-900 dark:text-emerald-100">
+                    {selectedDayHoliday.name}
+                  </h4>
+                  <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                    {selectedDayHoliday.nameAr}
+                  </span>
+                </div>
+                <p className="text-xs text-emerald-800/90 dark:text-emerald-300/90 mt-1">
+                  {selectedDayHoliday.description}
+                </p>
+                <div className="mt-2 pt-2 border-t border-emerald-500/20 flex items-center justify-between text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold">
+                  <span>Statut</span>
+                  <span className="font-bold">Jour chômé et payé (Maroc)</span>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Events List */}
-          <div className="space-y-3 overflow-y-auto max-h-[500px]">
+          <div className="space-y-3 overflow-y-auto max-h-[460px]">
             {isLoading ? (
               <div className="glass-card p-8 text-center text-text-secondary">
                 <Loader2 className="animate-spin mx-auto mb-2" size={24} />
                 Chargement des événements...
               </div>
             ) : eventsForSelectedDay.length === 0 ? (
-              <div className="glass-card p-10 rounded-2xl border border-border text-center text-text-secondary space-y-3">
-                <CalendarIcon size={36} className="mx-auto opacity-20" />
-                <p className="text-sm font-semibold">Aucun événement prévu ce jour-ci</p>
+              <div className="glass-card p-8 rounded-2xl border border-border text-center text-text-secondary space-y-3">
+                <CalendarIcon size={32} className="mx-auto opacity-20" />
+                <p className="text-sm font-semibold">
+                  {selectedDayHoliday ? "Journée de repos (Férié officiel)" : "Aucun événement prévu ce jour-ci"}
+                </p>
                 <p className="text-xs max-w-xs mx-auto">
-                  Votre emploi du temps est libre pour cette date.
+                  {selectedDayHoliday 
+                    ? "Profitez de cette journée fériée nationale !"
+                    : "Votre emploi du temps est libre pour cette date."}
                 </p>
                 {canManageCalendar && (
                   <button
                     onClick={() => handleOpenAddModal(selectedDay || undefined)}
                     className="px-4 py-2 rounded-xl bg-primary/15 hover:bg-primary/25 text-primary text-xs font-bold transition-colors inline-flex items-center gap-1.5 mt-2"
                   >
-                    <Plus size={14} /> Ajouter un créneau
+                    <Plus size={14} /> Ajouter un cours / créneau
                   </button>
                 )}
               </div>
@@ -558,45 +671,42 @@ export default function CalendarPage() {
                         <div className="flex items-center gap-1 shrink-0">
                           <button
                             onClick={() => handleOpenEditModal(event)}
-                            className="text-text-secondary hover:text-primary p-1.5 rounded-lg hover:bg-primary/10 transition-colors"
-                            title="Modifier ce cours / planning"
+                            className="p-1.5 rounded-lg text-text-secondary hover:text-primary hover:bg-surface transition-colors"
+                            title="Modifier"
                           >
-                            <Pencil size={14} />
+                            <Pencil size={15} />
                           </button>
                           <button
                             onClick={() => handleDeleteEvent(event.id)}
-                            className="text-text-secondary hover:text-rose-400 p-1.5 rounded-lg hover:bg-rose-500/10 transition-colors"
-                            title="Supprimer ce cours / planning"
+                            className="p-1.5 rounded-lg text-text-secondary hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
+                            title="Supprimer"
                           >
-                            <Trash2 size={14} />
+                            <Trash2 size={15} />
                           </button>
                         </div>
                       )}
                     </div>
 
-                    <div className="flex items-center justify-between text-xs text-text-secondary pt-2 border-t border-border/50">
-                      <div className="flex items-center gap-1.5 font-semibold text-primary">
-                        <Clock size={13} />
+                    <div className="flex items-center justify-between text-xs text-text-secondary pt-2 border-t border-border/50 flex-wrap gap-2">
+                      <div className="flex items-center gap-1.5 text-primary font-semibold">
+                        <Clock size={14} />
                         <span>{formatTime(event.start_time)} - {formatTime(event.end_time)}</span>
                       </div>
 
-                      <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full ${
-                        event.target_roles?.startsWith('Groupe:')
-                          ? 'bg-purple-500/20 border border-purple-500/40 text-purple-300'
-                          : 'text-text-secondary'
-                      }`}>
-                        {event.target_roles?.startsWith('Groupe:') ? `👥 ${event.target_roles}` : event.target_roles?.split(',').join(' • ')}
-                      </span>
+                      <div className="flex items-center gap-1.5 text-text-secondary">
+                        <Users size={14} />
+                        <span className="capitalize">{event.target_roles || 'Tous'}</span>
+                      </div>
                     </div>
-                    
-                    {/* Deliverables Button */}
-                    <div className="pt-2">
+
+                    {/* Deliverables quick action */}
+                    <div className="pt-1 flex items-center justify-end">
                       <button
                         onClick={() => setDeliverablesEvent(event)}
-                        className="w-full py-1.5 rounded-lg bg-surface hover:bg-border text-white text-xs font-bold border border-border transition-colors flex items-center justify-center gap-2"
+                        className="text-xs font-bold text-primary hover:underline flex items-center gap-1"
                       >
-                        <ShieldCheck size={14} className="text-primary" />
-                        {canManageCalendar ? "Consulter les livrables" : "Vos livrables"}
+                        <Upload size={13} />
+                        <span>Livrables &amp; Devoirs</span>
                       </button>
                     </div>
                   </div>
@@ -607,6 +717,111 @@ export default function CalendarPage() {
         </div>
 
       </div>
+
+      {/* ========================================================================= */}
+      {/* MODAL : LISTE COMPLÈTE DES JOURS FÉRIÉS AU MAROC                          */}
+      {/* ========================================================================= */}
+      {showHolidaysModal && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="glass-card max-w-2xl w-full p-6 rounded-3xl border border-emerald-500/40 space-y-4 animate-fade-in max-h-[85vh] flex flex-col">
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-border shrink-0">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">🇲🇦</span>
+                <div>
+                  <h3 className="font-extrabold text-base text-text-primary flex items-center gap-2">
+                    Jours Fériés Officiels au Royaume du Maroc ({currentYear})
+                  </h3>
+                  <p className="text-xs text-text-secondary">
+                    Calendrier officiel des fêtes nationales et religieuses chômées et payées
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowHolidaysModal(false)}
+                className="p-1.5 rounded-xl hover:bg-surface text-text-secondary hover:text-text-primary"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Search Input */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" size={15} />
+              <input
+                type="text"
+                placeholder="Rechercher une fête (ex: Trône, Aïd, Yennayer, Indépendance)..."
+                value={holidaySearchQuery}
+                onChange={(e) => setHolidaySearchQuery(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 rounded-xl bg-surface border border-border text-xs text-text-primary outline-none focus:border-emerald-500"
+              />
+            </div>
+
+            {/* Holidays List */}
+            <div className="overflow-y-auto space-y-2.5 flex-1 pr-1 custom-scrollbar">
+              {filteredHolidays.map((holiday) => {
+                const parts = holiday.date.split('-');
+                const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                const formattedDate = d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+
+                return (
+                  <div
+                    key={holiday.id}
+                    className="p-3.5 rounded-2xl bg-surface hover:bg-emerald-500/5 border border-border hover:border-emerald-500/30 transition-all flex items-center justify-between gap-4"
+                  >
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-extrabold text-sm text-text-primary">
+                          {holiday.name}
+                        </span>
+                        <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                          {holiday.nameAr}
+                        </span>
+                        <span className={`px-2 py-0.5 rounded-md text-[9px] font-bold ${
+                          holiday.type === 'national' 
+                            ? 'bg-blue-500/10 text-primary border border-primary/20' 
+                            : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                        }`}>
+                          {holiday.type === 'national' ? 'Fête Civile / Nationale' : 'Fête Religieuse Islamique'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-text-secondary">
+                        {holiday.description}
+                      </p>
+                    </div>
+
+                    <div className="flex flex-col items-end gap-2 shrink-0">
+                      <span className="text-xs font-bold text-text-primary font-mono bg-background px-2.5 py-1 rounded-lg border border-border">
+                        {formattedDate}
+                      </span>
+                      <button
+                        onClick={() => handleJumpToHoliday(holiday.date)}
+                        className="px-3 py-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-colors flex items-center gap-1"
+                      >
+                        <span>Afficher</span>
+                        <ArrowRight size={12} />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Footer */}
+            <div className="pt-2 border-t border-border flex items-center justify-between text-xs text-text-secondary">
+              <span>Total : {allYearHolidays.length} jours fériés officiels pour l'année {currentYear}</span>
+              <button
+                onClick={() => setShowHolidaysModal(false)}
+                className="px-4 py-2 rounded-xl bg-surface hover:bg-surface-hover border border-border font-bold text-text-primary"
+              >
+                Fermer
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
 
       {/* ========================================================================= */}
       {/* MODAL : PLANIFIER UN ÉVÉNEMENT / COURS                                   */}
@@ -631,140 +846,151 @@ export default function CalendarPage() {
 
             <div className="overflow-y-auto custom-scrollbar pr-2 flex-1">
               <form onSubmit={handleCreateEvent} className="space-y-4 text-xs">
+                
+                {/* Notice if selected date is a Moroccan Holiday */}
+                {newStartDate && getMoroccanHolidayForDate(newStartDate) && (
+                  <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-900 dark:text-emerald-200 flex items-start gap-2">
+                    <span className="text-base">🇲🇦</span>
+                    <div>
+                      <span className="font-bold">Information Férié :</span> La date du {newStartDate} correspond à un jour férié officiel au Maroc (<strong>{getMoroccanHolidayForDate(newStartDate)?.name} - {getMoroccanHolidayForDate(newStartDate)?.nameAr}</strong>).
+                    </div>
+                  </div>
+                )}
+
                 {/* Titre */}
-              <div>
-                <label className="block uppercase font-bold text-text-secondary mb-1">
-                  Titre de l'événement *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ex: Cours d'Intelligence Artificielle, Réunion de suivi..."
-                  value={newTitle}
-                  onChange={(e) => setNewTitle(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-border text-xs outline-none focus:border-primary text-text-primary"
-                />
-              </div>
-
-              {/* Description */}
-              <div>
-                <label className="block uppercase font-bold text-text-secondary mb-1">
-                  Description
-                </label>
-                <textarea
-                  rows={3}
-                  placeholder="Objectifs, ordre du jour, lien de visioconférence..."
-                  value={newDescription}
-                  onChange={(e) => setNewDescription(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-border text-xs outline-none focus:border-primary text-text-primary resize-none"
-                />
-              </div>
-
-              {/* Date & Heure de début */}
-              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block uppercase font-bold text-text-secondary mb-1">
-                    Date de début *
+                    Titre de l'événement *
                   </label>
                   <input
-                    type="date"
+                    type="text"
                     required
-                    value={newStartDate}
-                    onChange={(e) => setNewStartDate(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-surface border border-border text-xs outline-none focus:border-primary text-text-primary"
+                    placeholder="Ex: Cours d'Intelligence Artificielle, Réunion de suivi..."
+                    value={newTitle}
+                    onChange={(e) => setNewTitle(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-border text-xs outline-none focus:border-primary text-text-primary"
                   />
                 </div>
+
+                {/* Description */}
                 <div>
                   <label className="block uppercase font-bold text-text-secondary mb-1">
-                    Heure de début *
+                    Description
                   </label>
-                  <input
-                    type="time"
-                    required
-                    value={newStartTime}
-                    onChange={(e) => setNewStartTime(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-surface border border-border text-xs outline-none focus:border-primary text-text-primary"
+                  <textarea
+                    rows={3}
+                    placeholder="Objectifs, ordre du jour, lien de visioconférence..."
+                    value={newDescription}
+                    onChange={(e) => setNewDescription(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-border text-xs outline-none focus:border-primary text-text-primary resize-none"
                   />
                 </div>
-              </div>
 
-              {/* Date & Heure de fin */}
-              <div className="grid grid-cols-2 gap-3">
+                {/* Date & Heure de début */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block uppercase font-bold text-text-secondary mb-1">
+                      Date de début *
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={newStartDate}
+                      onChange={(e) => setNewStartDate(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-surface border border-border text-xs outline-none focus:border-primary text-text-primary"
+                    />
+                  </div>
+                  <div>
+                    <label className="block uppercase font-bold text-text-secondary mb-1">
+                      Heure de début *
+                    </label>
+                    <input
+                      type="time"
+                      required
+                      value={newStartTime}
+                      onChange={(e) => setNewStartTime(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-surface border border-border text-xs outline-none focus:border-primary text-text-primary"
+                    />
+                  </div>
+                </div>
+
+                {/* Date & Heure de fin */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block uppercase font-bold text-text-secondary mb-1">
+                      Date de fin *
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={newEndDate}
+                      onChange={(e) => setNewEndDate(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-surface border border-border text-xs outline-none focus:border-primary text-text-primary"
+                    />
+                  </div>
+                  <div>
+                    <label className="block uppercase font-bold text-text-secondary mb-1">
+                      Heure de fin *
+                    </label>
+                    <input
+                      type="time"
+                      required
+                      value={newEndTime}
+                      onChange={(e) => setNewEndTime(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-surface border border-border text-xs outline-none focus:border-primary text-text-primary"
+                    />
+                  </div>
+                </div>
+
+                {/* Rôles cibles */}
                 <div>
                   <label className="block uppercase font-bold text-text-secondary mb-1">
-                    Date de fin *
+                    Public concerné
                   </label>
-                  <input
-                    type="date"
-                    required
-                    value={newEndDate}
-                    onChange={(e) => setNewEndDate(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-surface border border-border text-xs outline-none focus:border-primary text-text-primary"
-                  />
-                </div>
-                <div>
-                  <label className="block uppercase font-bold text-text-secondary mb-1">
-                    Heure de fin *
-                  </label>
-                  <input
-                    type="time"
-                    required
-                    value={newEndTime}
-                    onChange={(e) => setNewEndTime(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-surface border border-border text-xs outline-none focus:border-primary text-text-primary"
-                  />
-                </div>
-              </div>
-
-              {/* Rôles cibles */}
-              <div>
-                <label className="block uppercase font-bold text-text-secondary mb-1">
-                  Public concerné
-                </label>
-                <select
-                  value={newRoles}
-                  onChange={(e) => setNewRoles(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-surface border border-border text-xs outline-none focus:border-primary text-text-primary cursor-pointer font-medium"
-                >
-                  <optgroup label="Public Général / Rôles">
-                    <option value="étudiant,stagiaire,employer">Tous (Étudiants, Stagiaires, Employés)</option>
-                    <option value="étudiant">Étudiants uniquement</option>
-                    <option value="stagiaire">Stagiaires uniquement</option>
-                    <option value="employer">Employés uniquement</option>
-                    <option value="formateur,admin">Formateurs & Administration</option>
-                  </optgroup>
-
-                  {availableGroups && availableGroups.length > 0 && (
-                    <optgroup label="Groupes & Classes (Ajoutés)">
-                      {availableGroups.map((g) => (
-                        <option key={g.id} value={`Groupe: ${g.name}`}>
-                          👥 Groupe : {g.name} {g.level ? `(${g.level})` : ''}
-                        </option>
-                      ))}
+                  <select
+                    value={newRoles}
+                    onChange={(e) => setNewRoles(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-surface border border-border text-xs outline-none focus:border-primary text-text-primary cursor-pointer font-medium"
+                  >
+                    <optgroup label="Public Général / Rôles">
+                      <option value="étudiant,stagiaire,employer">Tous (Étudiants, Stagiaires, Employés)</option>
+                      <option value="étudiant">Étudiants uniquement</option>
+                      <option value="stagiaire">Stagiaires uniquement</option>
+                      <option value="employer">Employés uniquement</option>
+                      <option value="formateur,admin">Formateurs & Administration</option>
                     </optgroup>
-                  )}
-                </select>
-              </div>
 
-              {/* Boutons */}
-              <div className="flex items-center gap-3 pt-3">
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="w-1/2 py-2.5 bg-surface hover:bg-surface-hover rounded-xl font-semibold border border-border text-text-secondary"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-1/2 btn-primary py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-primary/25"
-                >
-                  {isSubmitting ? <Loader2 size={15} className="animate-spin" /> : editingEventId ? <CheckCircle size={15} /> : <Plus size={15} />}
-                  {editingEventId ? "Sauvegarder" : "Enregistrer"}
-                </button>
-              </div>
-            </form>
+                    {availableGroups && availableGroups.length > 0 && (
+                      <optgroup label="Groupes & Classes (Ajoutés)">
+                        {availableGroups.map((g) => (
+                          <option key={g.id} value={`Groupe: ${g.name}`}>
+                            👥 Groupe : {g.name} {g.level ? `(${g.level})` : ''}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+                  </select>
+                </div>
+
+                {/* Boutons */}
+                <div className="flex items-center gap-3 pt-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddModal(false)}
+                    className="w-1/2 py-2.5 bg-surface hover:bg-surface-hover rounded-xl font-semibold border border-border text-text-secondary"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="w-1/2 btn-primary py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-primary/25"
+                  >
+                    {isSubmitting ? <Loader2 size={15} className="animate-spin" /> : editingEventId ? <CheckCircle size={15} /> : <Plus size={15} />}
+                    {editingEventId ? "Sauvegarder" : "Enregistrer"}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         </div>

@@ -18,9 +18,13 @@
   },
   "Navigation": {
     "dashboard": "لوحة القيادة",
+    "calendar": "التقويم",
     "inbox": "صندوق الوارد",
     "lesson": "درس",
+    "quizzes": "الاختبارات",
     "task": "مهمة",
+    "attendance": "تسجيل الحضور",
+    "users": "المستخدمون",
     "group": "مجموعة",
     "virtual_classroom": "الفصل الافتراضي",
     "overview": "نظرة عامة",

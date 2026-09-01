@@ -18,9 +18,13 @@
   },
   "Navigation": {
     "dashboard": "Dashboard",
+    "calendar": "Calendar",
     "inbox": "Messages",
     "lesson": "Lesson",
+    "quizzes": "Quizzes & Tests",
     "task": "Task",
+    "attendance": "Attendance",
+    "users": "Users",
     "group": "Group",
     "virtual_classroom": "Virtual Classroom",
     "overview": "OVERVIEW",

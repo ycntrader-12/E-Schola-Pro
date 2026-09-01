@@ -44,30 +44,30 @@ export default function PasswordChange() {
   };
 
   return (
-    <div className="pt-6 border-t border-border mt-8">
-      <div className="flex items-center gap-2 mb-8">
-        <Key size={24} className="text-text-primary" />
-        <h2 className="text-2xl font-black text-text-primary">
-          Sécurité & Mot de passe
+    <div className="pt-6 border-t border-slate-200 mt-8">
+      <div className="flex items-center gap-2 mb-6">
+        <Key size={24} className="text-[#1877f2]" />
+        <h2 className="text-xl font-bold text-slate-900">
+          Sécurité &amp; Mot de passe
         </h2>
       </div>
 
-      <div className="p-6 sm:p-8 rounded-3xl bg-surface/30 border border-border backdrop-blur-sm max-w-2xl">
-        <form onSubmit={handleSubmit} className="space-y-5">
+      <div className="p-6 sm:p-8 rounded-3xl bg-white border border-slate-200 shadow-sm max-w-2xl">
+        <form onSubmit={handleSubmit} className="space-y-4 text-xs sm:text-sm">
           
           {message && (
-            <div className={`p-4 rounded-xl flex items-center gap-3 text-sm font-medium ${
+            <div className={`p-3.5 rounded-xl flex items-center gap-2.5 text-xs font-semibold ${
               message.type === 'success' 
-                ? 'bg-green-500/10 border border-green-500/30 text-green-400' 
-                : 'bg-red-500/10 border border-red-500/30 text-red-400'
+                ? 'bg-emerald-50 border border-emerald-200 text-emerald-700' 
+                : 'bg-red-50 border border-red-200 text-red-600'
             }`}>
-              {message.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
+              {message.type === 'success' ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
               <span>{message.text}</span>
             </div>
           )}
 
           <div>
-            <label className="text-xs text-text-secondary uppercase tracking-wider font-semibold mb-1.5 block">
+            <label className="text-xs text-slate-700 font-bold uppercase tracking-wider mb-1.5 block">
               Mot de passe actuel
             </label>
             <input
@@ -75,13 +75,13 @@ export default function PasswordChange() {
               required
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl bg-background border border-border focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 outline-none transition-all text-slate-900 text-xs sm:text-sm"
               placeholder="••••••••"
             />
           </div>
 
           <div>
-            <label className="text-xs text-text-secondary uppercase tracking-wider font-semibold mb-1.5 block">
+            <label className="text-xs text-slate-700 font-bold uppercase tracking-wider mb-1.5 block">
               Nouveau mot de passe
             </label>
             <input
@@ -89,13 +89,13 @@ export default function PasswordChange() {
               required
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl bg-background border border-border focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 outline-none transition-all text-slate-900 text-xs sm:text-sm"
               placeholder="••••••••"
             />
           </div>
 
           <div>
-            <label className="text-xs text-text-secondary uppercase tracking-wider font-semibold mb-1.5 block">
+            <label className="text-xs text-slate-700 font-bold uppercase tracking-wider mb-1.5 block">
               Confirmer le nouveau mot de passe
             </label>
             <input
@@ -103,7 +103,7 @@ export default function PasswordChange() {
               required
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl bg-background border border-border focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 outline-none transition-all text-slate-900 text-xs sm:text-sm"
               placeholder="••••••••"
             />
           </div>
@@ -112,12 +112,12 @@ export default function PasswordChange() {
             <button
               type="submit"
               disabled={isLoading}
-              className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-[#1877f2] text-white font-bold text-xs sm:text-sm rounded-xl hover:bg-[#166fe5] shadow-xs transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
               {isLoading ? (
-                <><Loader2 size={18} className="animate-spin" /> Mise à jour...</>
+                <><Loader2 size={16} className="animate-spin" /> Mise à jour...</>
               ) : (
-                <><Key size={18} /> Mettre à jour le mot de passe</>
+                <><Key size={16} /> Mettre à jour le mot de passe</>
               )}
             </button>
           </div>

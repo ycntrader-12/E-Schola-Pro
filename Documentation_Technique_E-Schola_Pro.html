@@ -8,17 +8,17 @@
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
     :root {
-      --primary: #dc2626;
-      --primary-light: #fecaca;
-      --bg-dark: #0f0f14;
-      --bg-card: #1a1a24;
-      --border: #2a2a3a;
-      --text-primary: #f5f5f7;
-      --text-secondary: #9ca3af;
-      --accent-green: #22c55e;
+      --primary: #2563eb;
+      --primary-light: #dbeafe;
+      --bg-dark: #0b1329;
+      --bg-card: #111c38;
+      --border: #1e2d5a;
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --accent-green: #10b981;
       --accent-blue: #3b82f6;
       --accent-amber: #f59e0b;
-      --accent-purple: #a855f7;
+      --accent-purple: #8b5cf6;
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -83,7 +83,7 @@
       content: '';
       position: absolute;
       inset: 0;
-      background: radial-gradient(circle at 50% 45%, rgba(220, 38, 38, 0.22) 0%, rgba(15, 15, 20, 0.45) 50%, rgba(10, 10, 16, 0.9) 100%);
+      background: radial-gradient(circle at 50% 45%, rgba(37, 99, 235, 0.25) 0%, rgba(15, 23, 42, 0.45) 50%, rgba(11, 19, 41, 0.9) 100%);
       pointer-events: none;
     }
     .cover .cover-content {
@@ -92,11 +92,11 @@
       max-width: 740px;
       padding: 56px 48px;
       border-radius: 28px;
-      background: rgba(22, 22, 34, 0.75);
+      background: rgba(17, 28, 56, 0.75);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
-      border: 1px solid rgba(220, 38, 38, 0.35);
-      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), 0 0 50px rgba(220, 38, 38, 0.2);
+      border: 1px solid rgba(37, 99, 235, 0.35);
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), 0 0 50px rgba(37, 99, 235, 0.2);
     }
     .cover .logo {
       font-size: 56px;
@@ -1156,10 +1156,12 @@ E-Schola Pro/
       <p><strong>Route Frontend :</strong> <code>/dashboard</code></p>
       <p>Le tableau de bord est la page d'accueil après connexion. Il affiche :</p>
       <ul>
-        <li>Statistiques clés : nombre de cours, quiz disponibles, présences</li>
-        <li>Widget de performance de présence et taux d'assiduité</li>
-        <li>Accès rapide aux modules les plus utilisés</li>
-        <li>Événements et plannings à venir du calendrier</li>
+        <li>En-tête de navigation officiel E-Schola Pro avec logo corporate</li>
+        <li>Barre de recherche interactive intelligente : filtrage instantané des cours locaux et intégration d'un accès direct au moteur de recherche Google (<code>google.com/search</code>)</li>
+        <li>Bouton de notification intelligent synchronisé en temps réel avec la boîte de réception des messages (<code>/inbox</code>) et compteur de non-lus</li>
+        <li>Capsule de profil personnalisée avec avatar réel téléversé ou initiales générées dynamiquement (sans modèle fictif) et nom du compte connecté</li>
+        <li>Widget exclusif de Suivi d'Assiduité &amp; Performances Académiques (4 KPI cards d'assiduité, retards/absences, points et moyennes quiz avec sélecteur Aujourd'hui/Mois/Semestre)</li>
+        <li>Tableau synthétique « Votre Mentor » avec liste des formateurs et raccourcis d'accès aux modules</li>
       </ul>
       <div class="screenshot-container">
         <div class="screenshot-header">
@@ -1178,7 +1180,7 @@ E-Schola Pro/
         <li><strong>Création :</strong> Formulaire avec titre, description, image de couverture (upload Cloudinary), document PDF</li>
         <li><strong>Vidéos &amp; Playlist :</strong> Gestion d'une playlist de vidéos ordonnées par cours. Les formateurs et administrateurs peuvent téléverser des fichiers vidéo locaux (MP4, WebM) via un modal d'upload dédié directement depuis la page de détail du cours (<code>/courses/{id}</code>) ou en tant que raccourci depuis la liste globale des cours (<code>/courses</code>).</li>
         <li><strong>Inscription :</strong> Les étudiants peuvent s'inscrire/se désinscrire automatiquement</li>
-        <li><strong>Détail du cours :</strong> Affichage du contenu, lecteur vidéo intégré, playlist de leçons interactive et téléchargement du document de cours</li>
+        <li><strong>Détail du cours (/courses/{id}) :</strong> Bannière horizontale d'inscription et d'actions (statut d'inscription, bouton de téléchargement du support, bouton de suppression), lecteur vidéo intégré, description étendue et playlist interactive des leçons</li>
         <li><strong>Suppression :</strong> Cascade automatique (vidéos et inscriptions supprimées)</li>
       </ul>
       <div class="screenshot-container">
@@ -1219,6 +1221,7 @@ E-Schola Pro/
         <li><strong>Vue mensuelle :</strong> Navigation mois par mois avec grille visuelle</li>
         <li><strong>Création d'événement :</strong> Titre, description, date/heure de début et fin, public ciblé</li>
         <li><strong>Ciblage & Public concerné :</strong> Choix du public par rôle (Tous, Étudiants, Stagiaires, Employés, Formateurs/Admin) ou sélection directe d'un <strong>Groupe / Classe</strong> créé dans le système (ex: <code>Groupe : Master 1</code>), avec affichage d'un badge distinctif 👥 sur les cartes du calendrier</li>
+        <li><strong>Synchronisation Jours Fériés du Maroc 🇲🇦 :</strong> Intégration native et automatique des fêtes nationales et religieuses officielles du Royaume du Maroc (Nouvel An Amazigh Yennayer, Manifeste de l'Indépendance, Fête du Trône, Aïd al-Fitr, Aïd al-Adha, 1er Moharram, Aïd al-Mawlid, etc.) avec pastille émeraude 🇲🇦, bannière d'information juridique (jour chômé et payé), modale de consultation de l'agenda annuel et alerte lors de la planification d'un cours sur un jour férié.</li>
         <li><strong>Livrables :</strong> Bouton global "Soumettre un livrable" pour les apprenants</li>
         <li><strong>Upload :</strong> Support de tout format de fichier + liens externes</li>
         <li><strong>Consultation :</strong> Les formateurs peuvent consulter les livrables soumis</li>
@@ -1381,27 +1384,21 @@ E-Schola Pro/
 
     <h3>Design System</h3>
     <div class="card">
-      <p><strong>Thème :</strong> Double mode (Clair & Sombre) adaptatif avec glassmorphism et dégradés fluides</p>
-      <p><strong>Couleur principale :</strong> <code>#10b981</code> (Vert Émeraude) &amp; <code>#00cc88</code> (Vert Menthe)</p>
-      <p><strong>Palette (Clair) :</strong></p>
+      <p><strong>Thème :</strong> Interface épurée et moderne <strong>Mode Clair Exclusif</strong> (Fond blanc pur <code>#FFFFFF</code>, Panneaux &amp; Cartes blanc pur <code>#FFFFFF</code>, Arrière-plan héro haute définition et Colonne Sidebar Bleu Marine / Ciel <code>#16325C</code> avec capsule active <code>#2563EB</code>)</p>
+      <p><strong>Couleur principale :</strong> <code>#1877f2</code> / <code>#2563eb</code> (Bleu Facebook &amp; Bleu Royal Éclatant)</p>
+      <p><strong>Palette Visuelle :</strong></p>
       <ul>
-        <li>Background : <code>#fafbfa</code> (avec dégradé radial vert et violet)</li>
-        <li>Surface (cartes) : <code>#ffffff</code></li>
-        <li>Bordures : <code>#e2e8f0</code></li>
-        <li>Texte principal : <code>#0f172a</code></li>
-        <li>Texte secondaire : <code>#475569</code></li>
+        <li>Background : <code>#ffffff</code> (Blanc pur haute luminosité)</li>
+        <li>Sidebar Gauche : <code>#16325c</code> (Bleu Marine Corporate) avec onglet actif <code>#2563eb</code> et texte blanc pur</li>
+        <li>Surface (cartes, formulaires &amp; panneau) : <code>#ffffff</code> (Blanc pur avec ombrage doux)</li>
+        <li>Bordures : <code>#e2e8f0</code> / <code>#e4e6eb</code> (Bordures discrètes et nettes)</li>
+        <li>Texte principal : <code>#0f172a</code> / <code>#050505</code> (Noir profond haute lisibilité)</li>
+        <li>Texte secondaire : <code>#475569</code> / <code>#65676b</code> (Gris ardoise)</li>
+        <li>Boutons &amp; Actions : <code>#1877f2</code> / <code>#2563eb</code></li>
+        <li>Badges de statut : <code>#fef3c7</code> / <code>#d97706</code> (Ambre Doré)</li>
       </ul>
-      <p><strong>Palette (Sombre) :</strong></p>
-      <ul>
-        <li>Background : <code>#090b0a</code> (avec dégradé radial vert et violet)</li>
-        <li>Surface (cartes) : <code>#111413</code></li>
-        <li>Bordures : <code>#1e2522</code></li>
-        <li>Texte principal : <code>#f8fafc</code></li>
-        <li>Texte secondaire : <code>#94a3b8</code></li>
-      </ul>
-      <p><strong>Typographie :</strong> Inter (Google Fonts)</p>
+      <p><strong>Typographie :</strong> Inter / Segoe UI / Helvetica (Polices universelles haute lisibilité)</p>
       <p><strong>Icônes :</strong> Lucide React</p>
-      <p><strong>Animations :</strong> fade-in-up, transitions, hover effects</p>
     </div>
 
     <h3>Authentification</h3>

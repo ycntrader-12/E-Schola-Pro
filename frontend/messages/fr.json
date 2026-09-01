@@ -18,9 +18,13 @@
   },
   "Navigation": {
     "dashboard": "Tableau de bord",
+    "calendar": "Calendrier",
     "inbox": "Messages",
     "lesson": "Leçon",
+    "quizzes": "Quiz & Tests",
     "task": "Tâche",
+    "attendance": "Émargement",
+    "users": "Utilisateurs",
     "group": "Groupe",
     "virtual_classroom": "Classe Virtuelle",
     "overview": "VUE D'ENSEMBLE",

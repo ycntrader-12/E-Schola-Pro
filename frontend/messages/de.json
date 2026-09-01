@@ -18,9 +18,13 @@
   },
   "Navigation": {
     "dashboard": "Armaturenbrett",
+    "calendar": "Kalender",
     "inbox": "Posteingang",
     "lesson": "Lektion",
+    "quizzes": "Quiz & Tests",
     "task": "Aufgabe",
+    "attendance": "Anwesenheit",
+    "users": "Benutzer",
     "group": "Gruppe",
     "virtual_classroom": "Virtuelles Klassenzimmer",
     "overview": "ÜBERBLICK",

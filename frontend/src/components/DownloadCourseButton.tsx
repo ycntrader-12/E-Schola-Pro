@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Download, FileText } from 'lucide-react';
+import { Download } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 
 interface Props {
@@ -13,7 +13,6 @@ export default function DownloadCourseButton({ documentUrl }: Props) {
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     setIsMounted(true);
     const checkRole = async () => {
       const token = localStorage.getItem('access_token');
@@ -21,7 +20,6 @@ export default function DownloadCourseButton({ documentUrl }: Props) {
         try {
           const res = await apiClient.get('/users/me');
           if (res.status === 200) {
-            // Allowed roles to download
             if (['étudiant', 'stagiaire', 'employer', 'admin', 'formateur', 'pedagogique'].includes(res.data.role)) {
               setCanDownload(true);
             }
@@ -37,20 +35,14 @@ export default function DownloadCourseButton({ documentUrl }: Props) {
   if (!isMounted || !canDownload || !documentUrl) return null;
 
   return (
-    <div className="mt-6 border-t border-white/10 pt-6">
-      <h3 className="text-sm font-bold mb-4 flex items-center gap-2">
-        <FileText size={16} className="text-primary" />
-        Course Material
-      </h3>
-      <a 
-        href={documentUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="w-full py-3 px-4 bg-surface hover:bg-surface-hover text-white font-semibold rounded-lg border border-border transition-colors flex items-center justify-center gap-2 group"
-      >
-        <Download size={18} className="group-hover:text-primary transition-colors" />
-        Download Document
-      </a>
-    </div>
+    <a 
+      href={documentUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="px-5 py-2.5 bg-[#1877f2] hover:bg-[#166fe5] text-white font-bold rounded-xl shadow-md shadow-blue-500/25 transition-all flex items-center justify-center gap-2 group cursor-pointer hover:scale-[1.01] active:scale-[0.99] text-xs sm:text-sm shrink-0"
+    >
+      <Download size={16} className="text-white group-hover:scale-110 transition-transform" />
+      <span>Télécharger le Fichier</span>
+    </a>
   );
 }

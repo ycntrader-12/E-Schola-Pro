@@ -3,9 +3,8 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { BookOpen, LogOut, User } from 'lucide-react';
+import { LogOut, User, GraduationCap } from 'lucide-react';
 import { apiClient } from '@/lib/api';
-import ThemeToggle from './ThemeToggle';
 import LanguageSwitcher from './LanguageSwitcher';
 import BackButton from './BackButton';
 import ForwardButton from './ForwardButton';
@@ -27,7 +26,6 @@ export default function Navbar() {
           const res = await apiClient.get('/users/me');
           setUserRole(res.data.role);
         } catch {
-          // Token is invalid or API unreachable — clear stale auth state silently
           setIsAuthenticated(false);
           setUserRole(null);
         }
@@ -54,57 +52,53 @@ export default function Navbar() {
   const normalizedPath = pathname.replace(/^\/[a-z]{2}(\/|$)/, '/');
   if (normalizedPath === '/dashboard' || normalizedPath.startsWith('/dashboard/')) return null;
 
-  // Helper to check active path (locale-aware)
-  const isActive = (path: string) => normalizedPath === path || normalizedPath.startsWith(path + '/');
-
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border h-16">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-[#e4e6eb] h-16 transition-colors shadow-xs">
       <div className="max-w-7xl mx-auto px-4 h-full flex items-center justify-between">
         
         {/* Left Section */}
         <div className="flex items-center gap-4">
           {normalizedPath !== '/' && normalizedPath !== '' && (
             <div className="hidden sm:flex items-center gap-2">
-              <BackButton label="" className="p-2 bg-surface/50 border border-border rounded-full hover:bg-surface" />
-              <ForwardButton label="" className="p-2 bg-surface/50 border border-border rounded-full hover:bg-surface" />
+              <BackButton label="" className="p-2 bg-slate-100 border border-slate-200 rounded-full hover:bg-slate-200" />
+              <ForwardButton label="" className="p-2 bg-slate-100 border border-slate-200 rounded-full hover:bg-slate-200" />
             </div>
           )}
           
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2">
-            <BookOpen className="text-primary" size={24} />
-            <span className="text-xl font-bold tracking-tight">
-              E-Schola <span className="text-primary">Pro</span>
+          <Link href="/" className="flex items-center gap-2.5 group">
+            <div className="w-8 h-8 rounded-lg bg-[#1877f2] flex items-center justify-center text-white shadow-xs group-hover:scale-105 transition-transform">
+              <GraduationCap size={18} />
+            </div>
+            <span className="text-xl font-bold tracking-tight text-[#050505]">
+              E-Schola <span className="text-[#1877f2] font-extrabold">Pro</span>
             </span>
           </Link>
         </div>
 
-
-
-        {/* Right Section : Theme Toggle, Language Switcher & Auth */}
+        {/* Right Section : Language Switcher & Auth */}
         <div className="flex items-center gap-3">
-          <ThemeToggle />
           <LanguageSwitcher />
 
           {!isMounted ? (
-            <div className="w-20 h-8 bg-surface/50 animate-pulse rounded-full" />
+            <div className="w-20 h-8 bg-slate-100 animate-pulse rounded-full" />
           ) : isAuthenticated ? (
             <div className="flex items-center gap-4">
               <Link 
                 href="/dashboard"
-                className="text-xs font-bold text-primary hover:text-primary/80 transition-colors uppercase tracking-wider"
+                className="text-xs font-bold text-[#1877f2] hover:text-[#166fe5] transition-colors uppercase tracking-wider"
               >
                 Dashboard
               </Link>
               <Link 
                 href="/profile"
-                className="flex items-center gap-2 text-sm font-medium text-text-secondary hover:text-white transition-colors"
+                className="flex items-center gap-2 text-sm font-medium text-[#65676b] hover:text-[#050505] transition-colors"
               >
                 <User size={18} />
               </Link>
               <button 
                 onClick={handleLogout}
-                className="flex items-center gap-2 text-sm font-medium text-text-secondary hover:text-red-400 transition-colors"
+                className="flex items-center gap-2 text-sm font-medium text-[#65676b] hover:text-red-500 transition-colors cursor-pointer"
               >
                 <LogOut size={16} />
                 <span className="hidden sm:inline">Sign Out</span>
@@ -114,13 +108,13 @@ export default function Navbar() {
             <>
               <Link 
                 href="/login"
-                className="hidden sm:block text-sm font-medium text-text-secondary hover:text-white transition-colors"
+                className="hidden sm:block text-sm font-bold text-[#65676b] hover:text-[#050505] transition-colors px-2 py-1"
               >
                 Sign In
               </Link>
               <Link 
                 href="/register"
-                className="px-4 py-2 bg-primary/20 text-primary border border-primary/50 rounded-full text-sm font-medium hover:bg-primary hover:text-white transition-colors"
+                className="px-4 py-2 bg-[#1877f2] text-white rounded-xl text-sm font-bold hover:bg-[#166fe5] transition-colors shadow-xs"
               >
                 Sign Up
               </Link>
@@ -131,4 +125,3 @@ export default function Navbar() {
     </nav>
   );
 }
-

@@ -1,10 +1,21 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { PlayCircle, BookOpen, ChevronLeft, ChevronRight, Play, ArrowRight, Menu, User } from 'lucide-react';
+import { 
+  Menu, 
+  User, 
+  Search, 
+  Bell, 
+  ChevronDown, 
+  BookOpen,
+  GraduationCap,
+  Globe,
+  ExternalLink,
+  X
+} from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import Sidebar from '@/components/dashboard/Sidebar';
 import RightPanel from '@/components/dashboard/RightPanel';
@@ -18,25 +29,22 @@ interface Course {
   instructor_id: number;
   cover_image_url: string;
   document_url: string;
+  created_at?: string;
   instructor?: { id: number; email: string; role: string };
-}
-
-interface Enrollment {
-  id: number;
-  user_id: number;
-  course_id: number;
-  enrolled_at: string;
-  course?: Course;
 }
 
 export default function DashboardPage() {
   const router = useRouter();
   const t = useTranslations('Dashboard');
   const [isLoading, setIsLoading] = useState(true);
-  const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
+  const [currentUser, setCurrentUser] = useState<{ id: number; email: string; role: string; avatar_url?: string } | null>(null);
   const [allCourses, setAllCourses] = useState<Course[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchDropdownOpen, setIsSearchDropdownOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(false);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -46,24 +54,15 @@ export default function DashboardPage() {
         return;
       }
       try {
-        // Fetch enrollments
-        const enrollmentsRes = await apiClient.get('/enrollments/me');
-        const enrollmentsData = enrollmentsRes.data;
-        const coursesWithDetails = await Promise.all(
-          enrollmentsData.map(async (enrollment: Enrollment) => {
-            try {
-              const courseRes = await apiClient.get(`/courses/${enrollment.course_id}`);
-              return { ...enrollment, course: courseRes.data };
-            } catch {
-              return enrollment;
-            }
-          })
-        );
-        setEnrollments(coursesWithDetails);
-
-        // Fetch all courses for the mentor table
-        const coursesRes = await apiClient.get('/courses/');
+        // Fetch current user, all courses & unread messages
+        const [userRes, coursesRes, unreadRes] = await Promise.all([
+          apiClient.get('/users/me'),
+          apiClient.get('/courses/'),
+          apiClient.get('/messages/unread-count').catch(() => ({ data: { unread_count: 0 } }))
+        ]);
+        setCurrentUser(userRes.data);
         setAllCourses(coursesRes.data);
+        setUnreadCount(unreadRes.data?.unread_count || 0);
       } catch (err) {
         console.error(err);
         localStorage.removeItem('access_token');
@@ -75,6 +74,17 @@ export default function DashboardPage() {
     fetchData();
   }, [router]);
 
+  // Click outside to close search dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+        setIsSearchDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -83,12 +93,42 @@ export default function DashboardPage() {
     );
   }
 
+  const rawName = currentUser?.email ? currentUser.email.split('@')[0] : 'Apprenant';
+  const displayName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
+
+  // Filtered courses based on query
+  const matchingCourses = searchQuery.trim()
+    ? allCourses.filter(c => 
+        c.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        (c.description && c.description.toLowerCase().includes(searchQuery.toLowerCase()))
+      )
+    : [];
+
+  const handleGoogleSearch = (queryToSearch?: string) => {
+    const q = (queryToSearch || searchQuery).trim();
+    if (q) {
+      window.open(`https://www.google.com/search?q=${encodeURIComponent(q)}`, '_blank');
+      setIsSearchDropdownOpen(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      if (matchingCourses.length > 0) {
+        router.push(`/courses/${matchingCourses[0].id}`);
+        setIsSearchDropdownOpen(false);
+      } else if (searchQuery.trim()) {
+        handleGoogleSearch();
+      }
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-background flex flex-col lg:flex-row">
+    <div className="min-h-screen bg-background flex flex-col lg:flex-row text-text-primary">
       <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
       
       {/* Mobile Header Bar */}
-      <header className="lg:hidden flex items-center justify-between px-6 py-4 border-b border-border bg-surface/50 backdrop-blur-md sticky top-0 z-30 w-full">
+      <header className="lg:hidden flex items-center justify-between px-6 py-4 border-b border-border bg-surface/90 backdrop-blur-md sticky top-0 z-30 w-full">
         <button 
           onClick={() => setIsSidebarOpen(true)}
           className="p-2 rounded-xl bg-surface border border-border text-text-primary hover:bg-surface-hover transition-colors cursor-pointer"
@@ -96,7 +136,9 @@ export default function DashboardPage() {
         >
           <Menu size={18} />
         </button>
-        <span className="font-extrabold text-sm tracking-tight">E-Schola <span className="text-primary">Pro</span></span>
+        <span className="font-extrabold text-sm tracking-tight flex items-center gap-1">
+          E-Schola <span className="text-primary font-black">Pro</span>
+        </span>
         <button 
           onClick={() => setIsRightPanelOpen(true)}
           className="p-2 rounded-xl bg-surface border border-border text-text-primary hover:bg-surface-hover transition-colors cursor-pointer"
@@ -106,179 +148,235 @@ export default function DashboardPage() {
         </button>
       </header>
       
-      {/* Main Content Area */}
-      <main className="flex-1 lg:ml-64 xl:mr-80 p-4 sm:p-6 md:p-8 transition-all min-w-0">
+      {/* Main Content Area (Full Center Expansion) */}
+      <main className="flex-1 lg:ml-64 p-4 sm:p-6 md:p-8 transition-all min-w-0 max-w-7xl mx-auto w-full">
         
-        {/* Banner (High-Tech PC AI Server with Light/Dark Adaptive Styles) */}
-        <div className="w-full relative rounded-3xl p-6 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 overflow-hidden mb-8 border border-red-500/20 dark:border-red-500/30 shadow-xl dark:shadow-2xl shadow-red-950/10 dark:shadow-red-950/40 min-h-[170px] group transition-all">
+        {/* Top Navigation & Profile Bar */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-8">
           
-          {/* Light Mode Theme Gradient */}
-          <div 
-            className="absolute inset-0 bg-gradient-to-r from-red-500/15 via-red-500/5 to-rose-500/15 transition-transform duration-700 group-hover:scale-105 dark:hidden"
-          />
-
-          {/* Dark Mode Theme Gradient */}
-          <div 
-            className="absolute inset-0 bg-gradient-to-r from-red-500/25 via-red-500/10 to-rose-500/25 transition-transform duration-700 group-hover:scale-105 hidden dark:block"
-          />
-
-          {/* Dynamic Overlay Gradient: Clean white in light mode, obsidian cyber in dark mode */}
-          <div className="absolute inset-0 bg-gradient-to-r from-white/95 via-white/80 to-white/40 dark:from-[#09090b]/95 dark:via-[#09090b]/80 dark:to-[#09090b]/40 backdrop-blur-[1px]" />
-          
-          {/* Ambient Glows */}
-          <div className="absolute -left-12 -bottom-12 w-48 h-48 bg-red-500/10 dark:bg-red-600/20 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute -right-12 -top-12 w-48 h-48 bg-rose-500/10 dark:bg-rose-600/20 rounded-full blur-3xl pointer-events-none" />
-
-          {/* Banner Text Content */}
-          <div className="space-y-2 z-10 max-w-xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/10 dark:bg-red-500/20 text-red-700 dark:text-red-300 border border-red-500/30 dark:border-red-500/40 text-[10px] font-extrabold tracking-wider uppercase backdrop-blur-md shadow-sm">
-              <span className="w-2 h-2 rounded-full bg-red-600 dark:bg-red-400 animate-pulse" />
-              <span>{t('online_course')} • PC, AI & SERVEURS HAUTE PERFORMANCE</span>
+          {/* E-Schola Pro Brand Logo Header */}
+          <div className="hidden sm:flex items-center gap-2.5 shrink-0">
+            <div className="w-8 h-8 rounded-xl bg-[#1877f2] flex items-center justify-center text-white shadow-sm shadow-blue-500/20">
+              <GraduationCap size={18} />
             </div>
-            <h1 className="text-slate-900 dark:text-white text-xl sm:text-2xl md:text-3xl font-extrabold leading-tight drop-shadow-sm dark:drop-shadow-md">
-              {t('title')}
-            </h1>
-            <p className="text-slate-700 dark:text-gray-300 text-xs sm:text-sm font-medium">
-              Explorez nos modules de pointe en intelligence artificielle, calcul quantique et architectures serveurs.
-            </p>
-          </div>
-
-          {/* Action Button */}
-          <Link 
-            href="/courses" 
-            className="z-10 px-6 py-3 rounded-2xl font-extrabold text-xs flex items-center gap-2.5 text-white bg-gradient-to-r from-red-600 via-red-500 to-rose-600 hover:from-red-500 hover:to-rose-500 hover:scale-105 transition-all shadow-lg shadow-red-600/25 dark:shadow-red-600/35 border border-red-400/30 w-fit shrink-0"
-          >
-            <span>{t('join_now')}</span>
-            <span className="bg-white/20 text-white rounded-full p-1"><Play size={10} fill="currentColor" /></span>
-          </Link>
-        </div>
-
-        {/* Assiduité & Performances Académiques (Journalier, Mensuel, Semestriel) */}
-        <AttendancePerformanceWidget />
-
-        {/* Progress Cards — based on real enrollments */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          {enrollments.length > 0 ? enrollments.slice(0, 3).map(enr => {
-            const course = enr.course;
-            if (!course) return null;
-            return (
-              <Link key={enr.id} href={`/courses/${course.id}`} className="bg-surface rounded-2xl p-4 flex items-center gap-4 border border-border shadow-sm hover:shadow-md hover:border-primary/20 transition-all">
-                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                  <BookOpen size={20} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-text-secondary">{t('watched')}</p>
-                  <p className="font-bold text-sm truncate">{course.title}</p>
-                </div>
-                <ArrowRight size={16} className="text-text-secondary shrink-0" />
-              </Link>
-            );
-          }) : (
-            <div className="col-span-3 bg-surface rounded-2xl p-6 flex items-center gap-4 border border-dashed border-border">
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                <BookOpen size={20} />
-              </div>
-              <div>
-                <p className="font-bold text-sm">No courses yet</p>
-                <p className="text-xs text-text-secondary">Explore and enroll in courses to see your progress here.</p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Continue Watching — real enrolled courses */}
-        <div className="mb-12">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold">{t('continue_watching')}</h2>
-            <div className="flex gap-2">
-              <button className="w-8 h-8 rounded-full border border-border flex items-center justify-center text-text-secondary hover:bg-surface hover:text-primary"><ChevronLeft size={16} /></button>
-              <button className="w-8 h-8 rounded-full border border-border flex items-center justify-center text-text-secondary hover:bg-surface hover:text-primary"><ChevronRight size={16} /></button>
+            <div>
+              <p className="text-xs font-black leading-tight text-slate-900">
+                E-Schola <span className="text-[#1877f2]">Pro</span>
+              </p>
+              <p className="text-[10px] text-slate-500 font-semibold leading-tight">Plateforme LMS</p>
             </div>
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {enrollments.length > 0 ? enrollments.map(enr => {
-              const course = enr.course;
-              if (!course) return null;
-              return (
-                <Link key={enr.id} href={`/courses/${course.id}`} className="bg-surface rounded-2xl p-4 border border-border shadow-sm group cursor-pointer hover:shadow-md transition-shadow block">
-                  <div className="w-full h-40 relative rounded-xl overflow-hidden mb-4 bg-background">
-                    {course.cover_image_url ? (
-                      <Image src={course.cover_image_url} alt={course.title} fill className="object-cover group-hover:scale-105 transition-transform" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center"><PlayCircle size={40} className="text-border" /></div>
-                    )}
-                    <div className="absolute top-3 right-3 w-8 h-8 bg-background/50 backdrop-blur rounded-full flex items-center justify-center text-white hover:bg-primary transition-colors">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
-                    </div>
+
+          {/* Search Bar with Live Local Filter & Google Search Integration */}
+          <div ref={searchContainerRef} className="relative flex-1 max-w-lg w-full">
+            <div className="relative flex items-center">
+              <Search className="absolute left-3.5 text-slate-400 pointer-events-none" size={16} />
+              <input 
+                type="text" 
+                value={searchQuery}
+                onFocus={() => setIsSearchDropdownOpen(true)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setIsSearchDropdownOpen(true);
+                }}
+                onKeyDown={handleKeyDown}
+                placeholder="Rechercher un cours ou sur Google..." 
+                className="w-full pl-9 pr-20 py-2.5 rounded-xl bg-white border border-slate-200 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 outline-none shadow-xs focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 transition-all"
+              />
+              
+              {/* Clear search or Google Search button */}
+              <div className="absolute right-2 flex items-center gap-1">
+                {searchQuery && (
+                  <button 
+                    onClick={() => { setSearchQuery(''); setIsSearchDropdownOpen(false); }}
+                    className="p-1 text-slate-400 hover:text-slate-600 rounded-md transition-colors"
+                    title="Effacer"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+                <button
+                  onClick={() => handleGoogleSearch()}
+                  className="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-[#1877f2] rounded-lg text-[11px] font-bold flex items-center gap-1 border border-blue-200 transition-all shadow-xs"
+                  title="Rechercher sur Google"
+                >
+                  <Globe size={13} />
+                  <span className="hidden md:inline">Google</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Interactive Search Dropdown */}
+            {isSearchDropdownOpen && searchQuery.trim().length > 0 && (
+              <div className="absolute left-0 right-0 top-full mt-2 bg-white rounded-2xl border border-slate-200 shadow-xl z-50 overflow-hidden text-xs animate-fade-in divide-y divide-slate-100">
+                {/* Course Matches Section */}
+                <div className="p-2">
+                  <div className="px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                    Cours &amp; Formations ({matchingCourses.length})
                   </div>
-                  
-                  <span className="px-2 py-1 text-[10px] font-bold bg-primary/10 text-primary rounded-sm uppercase tracking-wider inline-block mb-3">
-                    Course
-                  </span>
-                  
-                  <h3 className="font-bold text-sm mb-4 line-clamp-2 h-10">{course.title}</h3>
-                  
-                  <div className="flex items-center gap-2 pt-4 border-t border-border">
-                    <Image src={`https://ui-avatars.com/api/?name=${course.instructor?.email?.split('@')[0] || course.instructor_id}&background=random`} alt="Formateur" width={24} height={24} className="rounded-full" />
-                    <div>
-                      <p className="text-[10px] font-bold">{course.instructor?.email?.split('@')[0] || `Formateur #${course.instructor_id}`}</p>
-                      <p className="text-[9px] text-text-secondary">Instructor</p>
+                  {matchingCourses.length > 0 ? (
+                    <div className="space-y-1">
+                      {matchingCourses.slice(0, 4).map(course => (
+                        <Link
+                          key={course.id}
+                          href={`/courses/${course.id}`}
+                          onClick={() => setIsSearchDropdownOpen(false)}
+                          className="flex items-center justify-between p-2.5 rounded-xl hover:bg-blue-50/70 transition-colors group cursor-pointer"
+                        >
+                          <div className="flex items-center gap-2.5 overflow-hidden">
+                            <div className="w-7 h-7 rounded-lg bg-blue-100 text-[#1877f2] flex items-center justify-center shrink-0">
+                              <BookOpen size={14} />
+                            </div>
+                            <div className="truncate">
+                              <p className="font-bold text-slate-900 group-hover:text-[#1877f2] transition-colors truncate">
+                                {course.title}
+                              </p>
+                              <p className="text-[10px] text-slate-500 truncate">
+                                {course.description || 'Support & Modules pédagogiques'}
+                              </p>
+                            </div>
+                          </div>
+                          <span className="text-[10px] font-bold text-[#1877f2] px-2 py-0.5 rounded bg-blue-50 border border-blue-200 shrink-0 ml-2">
+                            Voir
+                          </span>
+                        </Link>
+                      ))}
                     </div>
-                  </div>
-                </Link>
-              );
-            }) : (
-              <div className="col-span-3 text-center p-8 text-text-secondary border border-dashed border-border rounded-2xl">
-                <PlayCircle size={48} className="mx-auto mb-4 opacity-20" />
-                <p className="font-medium">No active courses</p>
-                <p className="text-sm mt-1">
-                  <Link href="/courses" className="text-primary hover:underline">Browse courses</Link> and enroll to get started!
-                </p>
+                  ) : (
+                    <p className="px-3 py-2 text-slate-400 text-center text-xs">
+                      Aucun cours trouvé pour « {searchQuery} »
+                    </p>
+                  )}
+                </div>
+
+                {/* Direct Google Search Action */}
+                <div className="p-2 bg-slate-50/60">
+                  <button
+                    onClick={() => handleGoogleSearch()}
+                    className="w-full flex items-center justify-between p-2.5 rounded-xl text-[#1877f2] font-bold hover:bg-blue-100/60 transition-colors cursor-pointer text-left"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Globe size={15} className="text-[#1877f2]" />
+                      <span>Rechercher <strong>« {searchQuery} »</strong> sur Google</span>
+                    </div>
+                    <ExternalLink size={13} />
+                  </button>
+                </div>
               </div>
             )}
           </div>
+
+          {/* Right Header Controls : Notification Bell (linked to Inbox) + Real Profile Capsule */}
+          <div className="flex items-center gap-4 shrink-0">
+            {/* Notification Bell Connected to Messages / Inbox */}
+            <button 
+              onClick={() => router.push('/inbox')} 
+              className="p-2.5 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors relative cursor-pointer"
+              title="Boîte de Réception & Messages"
+            >
+              <Bell size={20} className="text-slate-700" />
+              {unreadCount > 0 ? (
+                <span className="absolute top-1 right-1 min-w-4 h-4 px-1 bg-[#1877f2] text-white text-[10px] font-black rounded-full flex items-center justify-center ring-2 ring-white">
+                  {unreadCount}
+                </span>
+              ) : (
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#1877f2] rounded-full ring-2 ring-white" />
+              )}
+            </button>
+
+            {/* Real Profile Capsule (Real Avatar or Initial Circle) */}
+            <Link 
+              href="/profile" 
+              className="flex items-center gap-3 py-1 px-2 rounded-xl hover:bg-slate-100/80 transition-colors group cursor-pointer"
+            >
+              {/* Circular Avatar Photo or Real Initials */}
+              <div className="w-10 h-10 rounded-full overflow-hidden relative shadow-xs border border-slate-200 shrink-0 flex items-center justify-center">
+                {currentUser?.avatar_url ? (
+                  <Image 
+                    src={currentUser.avatar_url} 
+                    alt={displayName} 
+                    fill 
+                    className="object-cover" 
+                    unoptimized 
+                  />
+                ) : (
+                  <div className="w-full h-full rounded-full bg-gradient-to-tr from-[#1877f2] to-[#38bdf8] flex items-center justify-center text-white font-extrabold text-sm shadow-xs">
+                    {displayName.charAt(0)}
+                  </div>
+                )}
+              </div>
+
+              {/* Real User Name & Mon Compte */}
+              <div className="text-left">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm font-bold text-slate-900 group-hover:text-[#1877f2] transition-colors leading-snug">
+                    {displayName}
+                  </span>
+                  <ChevronDown size={14} className="text-slate-400 group-hover:text-slate-600 transition-colors shrink-0" />
+                </div>
+                <span className="text-xs text-slate-500 font-medium leading-none block mt-0.5">
+                  Mon Compte
+                </span>
+              </div>
+            </Link>
+          </div>
         </div>
 
-        {/* Courses & Instructors Table — real data from API */}
-        <div>
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold">{t('your_mentor')}</h2>
-            <Link href="/courses" className="text-primary text-sm font-bold hover:underline">{t('see_all')}</Link>
+        {/* 1. Suivi d'Assiduité & Performances Académiques */}
+        <AttendancePerformanceWidget />
+
+        {/* 2. Votre Mentor (Courses & Instructors Table) */}
+        <div className="mt-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-base font-bold text-slate-900">{t('your_mentor')}</h2>
+            <Link href="/courses" className="text-[#1877f2] text-xs font-bold hover:underline">
+              {t('see_all')}
+            </Link>
           </div>
           
-          <div className="bg-surface rounded-2xl border border-border overflow-hidden">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
             <table className="w-full text-left text-sm">
-              <thead className="bg-background text-text-secondary text-[10px] uppercase font-bold tracking-wider">
+              <thead className="bg-slate-50/80 text-slate-500 text-[10px] uppercase font-bold tracking-wider">
                 <tr>
-                  <th className="px-6 py-4">{t('mentor_name')}</th>
-                  <th className="px-6 py-4">{t('course_type')}</th>
-                  <th className="px-6 py-4">{t('course_title')}</th>
-                  <th className="px-6 py-4 text-right">{t('actions')}</th>
+                  <th className="px-6 py-3.5">NOM DE L'INSTRUCTEUR & DATE</th>
+                  <th className="px-6 py-3.5">TYPE DE COURS</th>
+                  <th className="px-6 py-3.5">TITRE DU COURS</th>
+                  <th className="px-6 py-3.5 text-right">ACTIONS</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody className="divide-y divide-slate-100">
                 {allCourses.length > 0 ? allCourses.slice(0, 5).map(course => {
                   const instructorName = course.instructor?.email 
                     ? course.instructor.email.split('@')[0]
                     : `Formateur #${course.instructor_id}`;
                   return (
-                    <tr key={course.id} className="hover:bg-surface-hover transition-colors">
-                      <td className="px-6 py-4 flex items-center gap-3">
-                        <Image src={`https://ui-avatars.com/api/?name=${instructorName}&background=8b5cf6&color=fff`} alt="Mentor" width={32} height={32} className="rounded-full" />
+                    <tr key={course.id} className="hover:bg-slate-50/60 transition-colors">
+                      <td className="px-6 py-3.5 flex items-center gap-3">
+                        <Image 
+                          src={`https://ui-avatars.com/api/?name=${instructorName}&background=1877f2&color=fff`} 
+                          alt="Mentor" 
+                          width={32} 
+                          height={32} 
+                          className="rounded-full" 
+                        />
                         <div>
-                          <p className="font-bold">{instructorName}</p>
-                          <p className="text-[10px] text-text-secondary">Instructor</p>
+                          <p className="font-bold text-xs text-slate-900">{instructorName}</p>
+                          <p className="text-[10px] text-slate-500">Instructor</p>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <span className="px-2 py-1 text-[10px] font-bold bg-primary/10 text-primary rounded-sm uppercase tracking-wider">COURSE</span>
+                      <td className="px-6 py-3.5">
+                        <span className="px-2 py-0.5 text-[10px] font-bold bg-blue-50 text-[#1877f2] rounded-md uppercase tracking-wider">
+                          COURSE
+                        </span>
                       </td>
-                      <td className="px-6 py-4 font-medium">
+                      <td className="px-6 py-3.5 font-medium text-xs text-slate-900">
                         {course.title}
                       </td>
-                      <td className="px-6 py-4 text-right">
-                        <Link href={`/courses/${course.id}`} className="px-4 py-2 text-[10px] font-bold bg-background border border-border text-primary rounded-lg hover:bg-primary/10 transition-colors">
+                      <td className="px-6 py-3.5 text-right">
+                        <Link 
+                          href={`/courses/${course.id}`} 
+                          className="px-4 py-2 text-xs font-bold text-white bg-[#1877f2] hover:bg-[#166fe5] rounded-xl transition-all shadow-xs inline-block"
+                        >
                           {t('show_details')}
                         </Link>
                       </td>
@@ -286,7 +384,7 @@ export default function DashboardPage() {
                   );
                 }) : (
                   <tr>
-                    <td colSpan={4} className="px-6 py-8 text-center text-text-secondary">
+                    <td colSpan={4} className="px-6 py-12 text-center text-slate-400 text-xs">
                       No courses available yet.
                     </td>
                   </tr>
@@ -298,7 +396,10 @@ export default function DashboardPage() {
 
       </main>
 
-      <RightPanel isOpen={isRightPanelOpen} setIsOpen={setIsRightPanelOpen} />
+      {/* Mobile Slide-Over Drawer Only */}
+      {isRightPanelOpen && (
+        <RightPanel isOpen={isRightPanelOpen} setIsOpen={setIsRightPanelOpen} />
+      )}
     </div>
   );
 }

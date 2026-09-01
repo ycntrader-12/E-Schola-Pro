@@ -1,52 +1,65 @@
+import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, BrainCircuit } from "lucide-react";
 
 export default function Home() {
   return (
-    <div className="relative min-h-screen flex flex-col items-center justify-center px-4 pt-28 pb-20 text-center overflow-hidden select-none">
+    <div className="relative min-h-screen flex flex-col items-center justify-center px-4 pt-28 pb-20 text-center overflow-hidden select-none bg-slate-50">
       
-      {/* Ambient Glowing Lights (Mint Green & Purple) */}
-      <div className="fixed top-1/4 left-1/4 w-96 h-96 bg-red-500/15 dark:bg-red-600/25 rounded-full blur-3xl pointer-events-none animate-pulse" />
-      <div className="fixed bottom-1/4 right-1/4 w-96 h-96 bg-rose-500/15 dark:bg-rose-600/20 rounded-full blur-3xl pointer-events-none" />
+      {/* High-Clarity Ecosystem Background Illustration */}
+      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+        <Image 
+          src="/images/landing-bg.jpg" 
+          alt="E-Schola Pro Connect LMS Ecosystem" 
+          fill 
+          priority
+          className="object-cover object-center opacity-90 scale-100" 
+          unoptimized 
+        />
+        {/* Soft edge blending gradient for optimal readability */}
+        <div className="absolute inset-0 bg-gradient-to-t from-white/60 via-transparent to-white/40" />
+      </div>
 
-      {/* Hero Section */}
-      <div className="relative z-10 max-w-3xl mx-auto space-y-7 animate-fade-in-up">
+      {/* Hero Section with Pure White Floating Card */}
+      <div className="relative z-10 max-w-3xl mx-auto space-y-7 animate-fade-in-up p-8 sm:p-12 rounded-3xl bg-white/95 backdrop-blur-xl border border-slate-200 shadow-2xl shadow-slate-900/10">
         
-        {/* Soft, Professional Badge */}
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20">
-          <span className="w-2 h-2 rounded-full bg-primary" />
+        {/* Soft Badge */}
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold bg-blue-50 text-[#1877f2] border border-blue-200 shadow-xs">
+          <span className="w-2 h-2 rounded-full bg-[#1877f2] animate-pulse" />
           <BrainCircuit size={15} />
-          <span>Plateforme d'Apprentissage & Intelligence Artificielle</span>
+          <span>Plateforme d'Apprentissage &amp; Intelligence Artificielle</span>
         </div>
         
-        {/* Main Title - Crystal Clear Contrast in Both Modes */}
-        <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight leading-tight text-text-primary">
+        {/* Main Title - Crystal Clear */}
+        <h1 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tight leading-tight text-[#0f172a]">
           Propulsez Vos Compétences avec <br className="hidden sm:block" />
-          <span className="text-brand-gradient">
+          <span className="text-[#1877f2]">
             E-Schola Pro
           </span>
         </h1>
         
-        {/* Subtitle - Smooth, Highly Legible */}
-        <p className="text-base sm:text-lg text-text-secondary max-w-2xl mx-auto leading-relaxed">
+        {/* Subtitle */}
+        <p className="text-base sm:text-lg text-[#475569] max-w-2xl mx-auto leading-relaxed font-medium">
           L'écosystème numérique d'excellence pour l'apprentissage académique et professionnel. Profitez de classes virtuelles HD, d'une messagerie intégrée et de parcours sur-mesure.
         </p>
         
         {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 pt-2">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
+          {/* Primary Button: Solid Application Blue */}
           <Link 
             href="/login" 
-            className="btn-primary gap-2 w-full sm:w-auto text-sm px-8"
+            className="w-full sm:w-auto px-8 py-3.5 rounded-xl font-extrabold text-sm text-white bg-[#1877f2] hover:bg-[#166fe5] hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/30 cursor-pointer"
           >
             <span>Se Connecter</span>
             <ArrowRight size={17} />
           </Link>
 
+          {/* Secondary Button: Application Blue Outline */}
           <Link 
             href="/register" 
-            className="w-full sm:w-auto px-6 py-3 rounded-xl font-semibold text-sm bg-surface/80 backdrop-blur-md border border-border text-text-primary hover:bg-surface-hover transition-colors shadow-sm"
+            className="w-full sm:w-auto px-8 py-3.5 rounded-xl font-extrabold text-sm text-[#1877f2] bg-blue-50/80 hover:bg-blue-100/80 border-2 border-[#1877f2] hover:scale-[1.01] active:scale-[0.99] transition-all shadow-xs cursor-pointer flex items-center justify-center"
           >
-            Créer un Compte
+            <span>Créer un Compte</span>
           </Link>
         </div>
 

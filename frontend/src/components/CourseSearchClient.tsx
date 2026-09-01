@@ -49,7 +49,7 @@ export default function CourseSearchClient({ initialCourses }: CourseSearchClien
       <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-6">
         <div className="space-y-4">
           <h1 className="text-4xl font-bold tracking-tight">
-            Explore <span className="text-gradient">Courses</span>
+            Explore <span className="text-brand-gradient">Courses</span>
           </h1>
           <p className="text-text-secondary max-w-xl">
             Discover our curated library of premium courses designed to accelerate your career and expand your knowledge base.

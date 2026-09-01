@@ -134,7 +134,7 @@ export default function ClassroomHubPage() {
             <Radio size={14} className="animate-pulse" /> Direct & Visioconférence
           </div>
           <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight leading-tight">
-            Classes <span className="text-gradient">Virtuelles</span>
+            Classes <span className="text-brand-gradient">Virtuelles</span>
           </h1>
           <p className="text-text-secondary text-base leading-relaxed">
             Rejoignez des sessions de cours en direct avec vos formateurs et camarades. Activez votre caméra, votre micro et partagez votre écran pour collaborer.

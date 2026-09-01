@@ -402,24 +402,24 @@ export default function ProfilePage() {
   const isAdmin = user.role === 'admin';
 
   return (
-    <div className="min-h-screen px-4 py-24 max-w-5xl mx-auto space-y-12">
-      <BackButton className="mb-[-20px]" />
+    <div className="min-h-screen bg-white text-slate-900 p-6 md:p-12 space-y-8 max-w-5xl mx-auto">
+      <BackButton label="Retour au tableau de bord" />
       
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Paramètres & Profil</h1>
-          <p className="text-text-secondary mt-1">Gérez vos informations personnelles et vos préférences.</p>
+          <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">Paramètres & Profil</h1>
+          <p className="text-slate-500 mt-1">Gérez vos informations personnelles et vos préférences.</p>
         </div>
         {isAdmin && (
-          <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/20 text-primary border border-primary/40 text-sm font-semibold w-fit">
+          <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 text-[#1877f2] border border-blue-200 text-xs font-bold w-fit">
             <Shield size={16} /> Mode Administrateur Actif
           </span>
         )}
       </div>
 
       {/* Profil Card (Visible par tous les utilisateurs) */}
-      <div className="glass-card p-8 space-y-8">
+      <div className="bg-white p-8 space-y-8 rounded-3xl border border-slate-200 shadow-sm">
         
         {/* Avatar Section */}
         <div className="flex flex-col md:flex-row items-center gap-8 pb-8 border-b border-border">
@@ -522,13 +522,13 @@ export default function ProfilePage() {
       {/* SECTION OUTILS ADMINISTRATEUR & FORMATEUR (GESTION PLATEFORME)             */}
       {/* ========================================================================= */}
       {(user?.role === 'admin' || user?.role === 'formateur') && (
-        <div className="glass-card p-8 space-y-8 border-2 border-primary/30 shadow-[0_0_30px_rgba(139,92,246,0.15)]">
+        <div className="bg-white p-8 space-y-8 border border-slate-200 shadow-sm rounded-3xl">
           
           {/* Header Outils Admin / Formateur */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-border">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-200">
             <div>
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-primary/20 text-primary flex items-center justify-center">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#1877f2] flex items-center justify-center">
                   <Shield size={22} />
                 </div>
                 <div>
@@ -947,7 +947,7 @@ export default function ProfilePage() {
             <div className="space-y-8 animate-fade-in-up">
               
               {/* Security Banner */}
-              <div className="p-6 rounded-3xl bg-gradient-to-r from-red-950/40 via-red-900/20 to-surface/40 border border-primary/40 shadow-xl space-y-3">
+              <div className="p-6 rounded-3xl bg-gradient-to-r from-blue-950/40 via-blue-900/20 to-surface/40 border border-primary/40 shadow-xl space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-2xl bg-primary/20 text-primary border border-primary/30 flex items-center justify-center shadow-lg shadow-primary/20">

@@ -18,9 +18,13 @@
   },
   "Navigation": {
     "dashboard": "Panel de control",
+    "calendar": "Calendario",
     "inbox": "Bandeja de entrada",
     "lesson": "Lección",
+    "quizzes": "Cuestionarios y Pruebas",
     "task": "Tarea",
+    "attendance": "Asistencia",
+    "users": "Usuarios",
     "group": "Grupo",
     "virtual_classroom": "Clase Virtual",
     "overview": "VISIÓN GENERAL",
