@@ -1,7 +1,10 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Float
-from sqlalchemy.orm import relationship
 from datetime import datetime
+
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy.orm import relationship
+
 from app.db.base import Base
+
 
 class Quiz(Base):
     __tablename__ = "quizzes"
@@ -16,13 +19,18 @@ class Quiz(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
-    questions = relationship("QuizQuestion", back_populates="quiz", cascade="all, delete-orphan")
-    attempts = relationship("QuizAttempt", back_populates="quiz", cascade="all, delete-orphan")
+    questions = relationship(
+        "QuizQuestion", back_populates="quiz", cascade="all, delete-orphan"
+    )
+    attempts = relationship(
+        "QuizAttempt", back_populates="quiz", cascade="all, delete-orphan"
+    )
     creator = relationship("User", foreign_keys=[created_by_id])
     course = relationship("Course", foreign_keys=[course_id])
 
     def __str__(self):
         return self.title
+
 
 class QuizQuestion(Base):
     __tablename__ = "quiz_questions"
@@ -30,11 +38,14 @@ class QuizQuestion(Base):
     id = Column(Integer, primary_key=True, index=True)
     quiz_id = Column(Integer, ForeignKey("quizzes.id"), nullable=False)
     question_text = Column(Text, nullable=False)
-    options = Column(Text, nullable=False)  # JSON string e.g. ["Choix A", "Choix B", "Choix C", "Choix D"]
+    options = Column(
+        Text, nullable=False
+    )  # JSON string e.g. ["Choix A", "Choix B", "Choix C", "Choix D"]
     correct_option_index = Column(Integer, nullable=False)  # 0 to 3
     points = Column(Integer, default=1)
 
     quiz = relationship("Quiz", back_populates="questions")
+
 
 class QuizAttempt(Base):
     __tablename__ = "quiz_attempts"

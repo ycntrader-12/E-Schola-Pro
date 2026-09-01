@@ -1,18 +1,22 @@
 import uuid
-from typing import Any, List
+from typing import Any
+
 from fastapi import APIRouter, HTTPException
-from app.api.deps import SessionDep, CurrentUser
+
+from app.api.deps import CurrentUser, SessionDep
 from app.models.classroom import Classroom
 from app.schemas.classroom import ClassroomCreate, ClassroomResponse
 
 router = APIRouter()
+
 
 def generate_room_code() -> str:
     # Generates a Google Meet style code: xxx-yyyy-zzz
     raw = uuid.uuid4().hex[:10]
     return f"{raw[:3]}-{raw[3:7]}-{raw[7:]}"
 
-@router.get("/", response_model=List[ClassroomResponse])
+
+@router.get("/", response_model=list[ClassroomResponse])
 def get_classrooms(
     session: SessionDep,
     current_user: CurrentUser,
@@ -22,8 +26,16 @@ def get_classrooms(
     """
     Retrieve all active virtual classrooms.
     """
-    classrooms = session.query(Classroom).filter(Classroom.is_active == True).order_by(Classroom.created_at.desc()).offset(skip).limit(limit).all()
+    classrooms = (
+        session.query(Classroom)
+        .filter(Classroom.is_active == True)
+        .order_by(Classroom.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
     return classrooms
+
 
 @router.post("/", response_model=ClassroomResponse)
 def create_classroom(
@@ -36,15 +48,24 @@ def create_classroom(
     Create a new virtual classroom. Restricted to formateurs, pedagogique, and admins.
     """
     if current_user.role not in ["formateur", "admin", "pedagogique"]:
-        raise HTTPException(status_code=403, detail="Seuls les formateurs et administrateurs peuvent créer une classe virtuelle.")
+        raise HTTPException(
+            status_code=403,
+            detail="Seuls les formateurs et administrateurs peuvent créer une classe virtuelle.",
+        )
 
-    room_code = classroom_in.room_id.strip().lower() if classroom_in.room_id else generate_room_code()
+    room_code = (
+        classroom_in.room_id.strip().lower()
+        if classroom_in.room_id
+        else generate_room_code()
+    )
 
     # Check for uniqueness
     existing = session.query(Classroom).filter(Classroom.room_id == room_code).first()
     if existing:
         if existing.is_active:
-            raise HTTPException(status_code=400, detail="Ce code de classe virtuelle est déjà utilisé.")
+            raise HTTPException(
+                status_code=400, detail="Ce code de classe virtuelle est déjà utilisé."
+            )
         else:
             # Reactivate
             existing.title = classroom_in.title
@@ -60,12 +81,13 @@ def create_classroom(
         title=classroom_in.title,
         description=classroom_in.description,
         instructor_id=current_user.id,
-        is_active=True
+        is_active=True,
     )
     session.add(classroom)
     session.commit()
     session.refresh(classroom)
     return classroom
+
 
 @router.get("/{room_id}", response_model=ClassroomResponse)
 def get_classroom_by_code(
@@ -82,6 +104,7 @@ def get_classroom_by_code(
         raise HTTPException(status_code=404, detail="Classe virtuelle introuvable.")
     return classroom
 
+
 @router.delete("/{room_id}")
 def delete_classroom(
     room_id: str,
@@ -97,11 +120,14 @@ def delete_classroom(
         raise HTTPException(status_code=404, detail="Classe virtuelle introuvable.")
 
     if current_user.role != "admin" and classroom.instructor_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Non autorisé à supprimer cette classe virtuelle.")
+        raise HTTPException(
+            status_code=403, detail="Non autorisé à supprimer cette classe virtuelle."
+        )
 
     classroom.is_active = False
     session.commit()
     return {"message": "Classe virtuelle clôturée avec succès.", "room_id": cleaned_id}
+
 
 @router.delete("/history/purge")
 def purge_classroom_history(
@@ -112,12 +138,19 @@ def purge_classroom_history(
     Permanently delete all closed (inactive) virtual classrooms from history. Admin only.
     """
     if current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Seul un administrateur peut supprimer l'historique.")
-        
-    deleted_count = session.query(Classroom).filter(Classroom.is_active == False).delete()
+        raise HTTPException(
+            status_code=403,
+            detail="Seul un administrateur peut supprimer l'historique.",
+        )
+
+    deleted_count = (
+        session.query(Classroom).filter(Classroom.is_active == False).delete()
+    )
     session.commit()
-    
-    return {"message": f"Historique purgé. {deleted_count} anciennes sessions supprimées."}
+
+    return {
+        "message": f"Historique purgé. {deleted_count} anciennes sessions supprimées."
+    }
 
 
 # =========================================================================
@@ -126,35 +159,27 @@ def purge_classroom_history(
 ROOM_SUBGROUPS: dict = {}
 ROOM_MESSAGES: dict = {}
 
+
 @router.get("/{room_id}/subgroups")
-def get_room_subgroups(
-    room_id: str,
-    current_user: CurrentUser
-):
+def get_room_subgroups(room_id: str, current_user: CurrentUser):
     """
     Get active breakout rooms / sub-groups for this classroom.
     """
     cleaned_id = room_id.strip().lower()
-    return ROOM_SUBGROUPS.get(cleaned_id, {
-        "is_active": False,
-        "timer_minutes": 15,
-        "subgroups": []
-    })
+    return ROOM_SUBGROUPS.get(
+        cleaned_id, {"is_active": False, "timer_minutes": 15, "subgroups": []}
+    )
 
 
 @router.post("/{room_id}/subgroups")
-def create_or_update_subgroups(
-    room_id: str,
-    payload: dict,
-    current_user: CurrentUser
-):
+def create_or_update_subgroups(room_id: str, payload: dict, current_user: CurrentUser):
     """
     Create and launch breakout rooms. Strictly Formateurs and Admins.
     """
     if current_user.role not in ["formateur", "admin", "pedagogique"]:
         raise HTTPException(
-            status_code=403, 
-            detail="Seuls les formateurs et administrateurs peuvent créer et lancer des sous-groupes."
+            status_code=403,
+            detail="Seuls les formateurs et administrateurs peuvent créer et lancer des sous-groupes.",
         )
 
     cleaned_id = room_id.strip().lower()
@@ -162,39 +187,33 @@ def create_or_update_subgroups(
         "is_active": True,
         "timer_minutes": payload.get("timer_minutes", 15),
         "subgroups": payload.get("subgroups", []),
-        "launched_by": current_user.email
+        "launched_by": current_user.email,
     }
     return ROOM_SUBGROUPS[cleaned_id]
 
 
 @router.delete("/{room_id}/subgroups")
-def close_room_subgroups(
-    room_id: str,
-    current_user: CurrentUser
-):
+def close_room_subgroups(room_id: str, current_user: CurrentUser):
     """
     Close all breakout rooms and recall all participants to main room. Strictly Formateurs and Admins.
     """
     if current_user.role not in ["formateur", "admin", "pedagogique"]:
         raise HTTPException(
-            status_code=403, 
-            detail="Seuls les formateurs et administrateurs peuvent clôturer les sous-groupes."
+            status_code=403,
+            detail="Seuls les formateurs et administrateurs peuvent clôturer les sous-groupes.",
         )
 
     cleaned_id = room_id.strip().lower()
     ROOM_SUBGROUPS[cleaned_id] = {
         "is_active": False,
         "timer_minutes": 15,
-        "subgroups": []
+        "subgroups": [],
     }
     return {"message": "Sous-groupes clôturés, retour à la salle principale."}
 
 
 @router.get("/{room_id}/messages")
-def get_room_messages(
-    room_id: str,
-    current_user: CurrentUser
-):
+def get_room_messages(room_id: str, current_user: CurrentUser):
     """
     Get room chat messages (group, private, and sub-group).
     """
@@ -209,19 +228,19 @@ def get_room_messages(
     for m in all_msgs:
         rec = m.get("recipient", "everyone").lower()
         snd = m.get("sender", "").lower()
-        if rec == "everyone" or rec == user_email or snd == user_email or current_user.role == "admin":
-            visible.append(m)
-        elif rec.startswith("subgroup:"):
+        if (
+            rec == "everyone"
+            or rec == user_email
+            or snd == user_email
+            or current_user.role == "admin"
+            or rec.startswith("subgroup:")
+        ):
             visible.append(m)
     return visible
 
 
 @router.post("/{room_id}/messages")
-def post_room_message(
-    room_id: str,
-    message: dict,
-    current_user: CurrentUser
-):
+def post_room_message(room_id: str, message: dict, current_user: CurrentUser):
     """
     Send a message to group or private recipient in the virtual classroom.
     """
@@ -237,7 +256,7 @@ def post_room_message(
         "time": message.get("time", "12:00"),
         "recipient": message.get("recipient", "everyone"),
         "subgroup_id": message.get("subgroup_id"),
-        "attachment": message.get("attachment")
+        "attachment": message.get("attachment"),
     }
     ROOM_MESSAGES[cleaned_id].append(msg_record)
     return msg_record

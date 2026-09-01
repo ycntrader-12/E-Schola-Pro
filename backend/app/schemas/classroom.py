@@ -1,14 +1,18 @@
-from typing import Optional
 from datetime import datetime
+
 from pydantic import BaseModel
+
 from app.schemas.user import UserResponse
+
 
 class ClassroomBase(BaseModel):
     title: str
-    description: Optional[str] = None
+    description: str | None = None
+
 
 class ClassroomCreate(ClassroomBase):
-    room_id: Optional[str] = None
+    room_id: str | None = None
+
 
 class ClassroomResponse(ClassroomBase):
     id: int
@@ -16,7 +20,7 @@ class ClassroomResponse(ClassroomBase):
     instructor_id: int
     is_active: bool
     created_at: datetime
-    instructor: Optional[UserResponse] = None
+    instructor: UserResponse | None = None
 
     class Config:
         from_attributes = True

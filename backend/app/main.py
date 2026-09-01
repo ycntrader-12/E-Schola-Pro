@@ -1,23 +1,33 @@
-from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
-from fastapi.middleware.cors import CORSMiddleware
 import os
-from app.api.main import api_router
-from app.core.config import settings
 
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from sqladmin import Admin
 from sqladmin.authentication import AuthenticationBackend
 from starlette.requests import Request
-from starlette.responses import RedirectResponse
-from app.db.database import engine
-from app.db.base import Base
-from app.core.security import verify_password
+
 from app.admin import (
-    UserAdmin, CourseAdmin, CourseVideoAdmin, EnrollmentAdmin, 
-    ClassroomAdmin, MessageAdmin, EventAdmin, EventDeliverableAdmin,
-    QuizAdmin, QuizQuestionAdmin, QuizAttemptAdmin, AttendanceAdmin,
-    GroupAdmin, GroupMemberAdmin
+    AttendanceAdmin,
+    ClassroomAdmin,
+    CourseAdmin,
+    CourseVideoAdmin,
+    EnrollmentAdmin,
+    EventAdmin,
+    EventDeliverableAdmin,
+    GroupAdmin,
+    GroupMemberAdmin,
+    MessageAdmin,
+    QuizAdmin,
+    QuizAttemptAdmin,
+    QuizQuestionAdmin,
+    UserAdmin,
 )
+from app.api.main import api_router
+from app.core.config import settings
+from app.core.security import verify_password
+from app.db.base import Base
+from app.db.database import engine
 
 # Ensure all tables exist in SQLite
 Base.metadata.create_all(bind=engine)
@@ -25,13 +35,13 @@ Base.metadata.create_all(bind=engine)
 # Seed default admin and demo accounts
 try:
     from create_admin import seed_users
+
     seed_users()
 except Exception as e:
     print(f"Failed to seed default users: {e}")
 
 app = FastAPI(
-    title=settings.PROJECT_NAME,
-    openapi_url=f"{settings.API_V1_STR}/openapi.json"
+    title=settings.PROJECT_NAME, openapi_url=f"{settings.API_V1_STR}/openapi.json"
 )
 
 # Set all CORS enabled origins
@@ -62,16 +72,23 @@ class AdminAuth(AuthenticationBackend):
         form = await request.form()
         username = form.get("username")
         password = form.get("password")
-        
+
         from app.db.database import SessionLocal
         from app.models.user import User as UserModel
+
         db = SessionLocal()
         try:
             uname = str(username).strip() if username else ""
-            user = db.query(UserModel).filter(
-                (UserModel.email == uname) | (UserModel.email == uname.lower())
-            ).first()
-            if user and user.role == "admin" and verify_password(str(password), user.hashed_password):
+            user = (
+                db.query(UserModel)
+                .filter((UserModel.email == uname) | (UserModel.email == uname.lower()))
+                .first()
+            )
+            if (
+                user
+                and user.role == "admin"
+                and verify_password(str(password), user.hashed_password)
+            ):
                 request.session.update({"admin_token": settings.SECRET_KEY})
                 return True
         finally:
@@ -91,11 +108,11 @@ TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), "templates")
 
 authentication_backend = AdminAuth(secret_key=settings.SECRET_KEY)
 admin = Admin(
-    app, 
-    engine, 
-    title="E-Schola Pro Admin", 
-    templates_dir=TEMPLATES_DIR, 
-    authentication_backend=authentication_backend
+    app,
+    engine,
+    title="E-Schola Pro Admin",
+    templates_dir=TEMPLATES_DIR,
+    authentication_backend=authentication_backend,
 )
 admin.add_view(UserAdmin)
 admin.add_view(CourseAdmin)
@@ -115,25 +132,25 @@ admin.add_view(GroupMemberAdmin)
 
 @app.get("/api/v1/debug-users")
 def debug_users():
+    from app.core.config import settings
     from app.db.database import SessionLocal
     from app.models.user import User
-    from app.core.config import settings
+
     db = SessionLocal()
     try:
         users = db.query(User).all()
         user_list = [{"email": u.email, "role": u.role} for u in users]
-        return {
-            "database_url": settings.DATABASE_URL,
-            "users": user_list
-        }
+        return {"database_url": settings.DATABASE_URL, "users": user_list}
     except Exception as e:
         return {"error": str(e)}
     finally:
         db.close()
 
+
 @app.get("/")
 def read_root():
     return {"message": "Welcome to E-Schola Pro API"}
+
 
 # Mount uploads directory
 os.makedirs("uploads", exist_ok=True)

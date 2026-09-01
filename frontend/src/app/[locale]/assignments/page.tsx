@@ -116,7 +116,14 @@ export default function AssignmentsPage() {
 
   const isManager = currentUser?.role === 'admin' || currentUser?.role === 'formateur';
 
-  // Handle Learner Submission
+  // ---------------------------------------------------------------------------
+  // GESTION DE LA SOUMISSION DU LIVRABLE (Apprenant)
+  // ---------------------------------------------------------------------------
+  // Cette fonction est appelée lorsqu'un étudiant valide l'envoi de son devoir.
+  // Elle gère deux choses en une seule requête (si nécessaire) :
+  // 1. L'upload du fichier physique vers le serveur (s'il y en a un).
+  // 2. L'envoi du lien/texte et/ou du fichier uploadé vers la route /tasks/{id}/submit.
+  // En arrière-plan, le backend va également déclencher une messagerie automatique.
   const handleSubmitDeliverable = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedTaskToSubmit) return;
@@ -126,7 +133,7 @@ export default function AssignmentsPage() {
     try {
       let finalContentLink = submissionContent.trim();
       
-      // Upload file if selected
+      // Étape 1 : Si un fichier a été sélectionné, on l'uploade d'abord sur /upload/file
       if (submissionFile) {
         const formData = new FormData();
         formData.append('file', submissionFile);
@@ -137,7 +144,10 @@ export default function AssignmentsPage() {
           }
         });
         
+        // On récupère l'URL du fichier retournée par le serveur
         const fileUrl = uploadRes.data.url;
+        
+        // Étape 2 : On combine le texte/lien existant avec l'URL du fichier
         if (finalContentLink) {
           finalContentLink += `\n\nFichier joint : ${fileUrl}`;
         } else {
@@ -145,11 +155,12 @@ export default function AssignmentsPage() {
         }
       }
 
+      // Étape 3 : On soumet le tout au devoir
       const res = await apiClient.post(`/tasks/${selectedTaskToSubmit.id}/submit`, {
         content_link: finalContentLink
       });
 
-      // Update task in state
+      // Étape 4 : Mise à jour de l'interface en temps réel
       setTasks(prev => prev.map(t => {
         if (t.id === selectedTaskToSubmit.id) {
           return { ...t, my_submission: res.data };
@@ -157,6 +168,7 @@ export default function AssignmentsPage() {
         return t;
       }));
 
+      // Réinitialisation de la modale
       setSelectedTaskToSubmit(null);
       setSubmissionContent('');
       setSubmissionFile(null);

@@ -1,43 +1,54 @@
 import json
-from typing import Any, List
+from typing import Any
+
 from fastapi import APIRouter, HTTPException
-from app.api.deps import SessionDep, CurrentUser
-from app.models.quiz import Quiz, QuizQuestion, QuizAttempt
-from app.models.user import User
+
+from app.api.deps import CurrentUser, SessionDep
+from app.models.quiz import Quiz, QuizAttempt, QuizQuestion
 from app.schemas.quiz import (
-    QuizCreate, 
-    QuizResponse, 
-    QuizDetailResponse, 
-    QuizQuestionResponse, 
-    QuizSubmit, 
-    QuizAttemptResponse
+    QuizAttemptResponse,
+    QuizCreate,
+    QuizDetailResponse,
+    QuizQuestionResponse,
+    QuizResponse,
+    QuizSubmit,
 )
 
 router = APIRouter()
 
-@router.get("/", response_model=List[QuizResponse])
+
+@router.get("/", response_model=list[QuizResponse])
 def get_quizzes(
-    session: SessionDep,
-    current_user: CurrentUser,
-    skip: int = 0,
-    limit: int = 100
+    session: SessionDep, current_user: CurrentUser, skip: int = 0, limit: int = 100
 ) -> Any:
     """
     List all quizzes available for the current user.
     """
-    quizzes = session.query(Quiz).order_by(Quiz.created_at.desc()).offset(skip).limit(limit).all()
-    
+    quizzes = (
+        session.query(Quiz)
+        .order_by(Quiz.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+
     # Filter by user role if student/intern/employee
     if current_user.role not in ["admin", "formateur"]:
         filtered = []
         for q in quizzes:
             target_list = [r.strip().lower() for r in (q.target_roles or "").split(",")]
-            if current_user.role.lower() in target_list or "all" in target_list or not q.target_roles:
+            if (
+                current_user.role.lower() in target_list
+                or "all" in target_list
+                or not q.target_roles
+            ):
                 filtered.append(q)
         quizzes = filtered
 
     # Fetch attempts for current user to indicate completion status
-    user_attempts = session.query(QuizAttempt).filter(QuizAttempt.user_id == current_user.id).all()
+    user_attempts = (
+        session.query(QuizAttempt).filter(QuizAttempt.user_id == current_user.id).all()
+    )
     attempts_map = {}
     for a in user_attempts:
         if a.quiz_id not in attempts_map or a.percentage > attempts_map[a.quiz_id]:
@@ -47,7 +58,7 @@ def get_quizzes(
     for q in quizzes:
         total_pts = sum(question.points for question in q.questions)
         creator_email = q.creator.email if q.creator else None
-        
+
         is_completed = q.id in attempts_map
         best_pct = attempts_map.get(q.id)
 
@@ -65,10 +76,11 @@ def get_quizzes(
                 question_count=len(q.questions),
                 total_points=total_pts,
                 is_completed=is_completed,
-                best_percentage=best_pct
+                best_percentage=best_pct,
             )
         )
     return results
+
 
 @router.get("/{quiz_id}", response_model=QuizDetailResponse)
 def get_quiz_detail(
@@ -85,7 +97,7 @@ def get_quiz_detail(
         raise HTTPException(status_code=404, detail="Quiz introuvable.")
 
     is_manager = current_user.role in ["formateur", "admin"]
-    
+
     questions_data = []
     for q in quiz.questions:
         try:
@@ -99,17 +111,19 @@ def get_quiz_detail(
                 question_text=q.question_text,
                 options=options_list,
                 points=q.points,
-                correct_option_index=q.correct_option_index if is_manager else None
+                correct_option_index=q.correct_option_index if is_manager else None,
             )
         )
 
     total_pts = sum(q.points for q in quiz.questions)
-    
+
     # Check attempt
-    best_attempt = session.query(QuizAttempt).filter(
-        QuizAttempt.quiz_id == quiz.id, 
-        QuizAttempt.user_id == current_user.id
-    ).order_by(QuizAttempt.percentage.desc()).first()
+    best_attempt = (
+        session.query(QuizAttempt)
+        .filter(QuizAttempt.quiz_id == quiz.id, QuizAttempt.user_id == current_user.id)
+        .order_by(QuizAttempt.percentage.desc())
+        .first()
+    )
 
     return QuizDetailResponse(
         id=quiz.id,
@@ -125,8 +139,9 @@ def get_quiz_detail(
         total_points=total_pts,
         is_completed=best_attempt is not None,
         best_percentage=best_attempt.percentage if best_attempt else None,
-        questions=questions_data
+        questions=questions_data,
     )
+
 
 @router.post("/", response_model=QuizResponse)
 def create_quiz(
@@ -141,11 +156,13 @@ def create_quiz(
     if current_user.role not in ["formateur", "admin"]:
         raise HTTPException(
             status_code=403,
-            detail="Seuls les formateurs et les administrateurs ont le droit de créer ou générer des quiz."
+            detail="Seuls les formateurs et les administrateurs ont le droit de créer ou générer des quiz.",
         )
 
     if not quiz_in.questions or len(quiz_in.questions) == 0:
-        raise HTTPException(status_code=400, detail="Un quiz doit comporter au moins une question.")
+        raise HTTPException(
+            status_code=400, detail="Un quiz doit comporter au moins une question."
+        )
 
     quiz = Quiz(
         title=quiz_in.title.strip(),
@@ -153,7 +170,7 @@ def create_quiz(
         course_id=quiz_in.course_id,
         created_by_id=current_user.id,
         target_roles=quiz_in.target_roles or "étudiant,stagiaire,employer",
-        time_limit_minutes=quiz_in.time_limit_minutes
+        time_limit_minutes=quiz_in.time_limit_minutes,
     )
     session.add(quiz)
     session.commit()
@@ -166,7 +183,7 @@ def create_quiz(
             question_text=q_in.question_text.strip(),
             options=json.dumps(q_in.options, ensure_ascii=False),
             correct_option_index=q_in.correct_option_index,
-            points=q_in.points or 1
+            points=q_in.points or 1,
         )
         total_pts += q_obj.points
         session.add(q_obj)
@@ -187,8 +204,9 @@ def create_quiz(
         question_count=len(quiz.questions),
         total_points=total_pts,
         is_completed=False,
-        best_percentage=None
+        best_percentage=None,
     )
+
 
 @router.delete("/{quiz_id}")
 def delete_quiz(
@@ -202,7 +220,7 @@ def delete_quiz(
     if current_user.role not in ["formateur", "admin"]:
         raise HTTPException(
             status_code=403,
-            detail="Seuls les formateurs et les administrateurs peuvent supprimer un quiz."
+            detail="Seuls les formateurs et les administrateurs peuvent supprimer un quiz.",
         )
 
     quiz = session.query(Quiz).filter(Quiz.id == quiz_id).first()
@@ -212,6 +230,7 @@ def delete_quiz(
     session.delete(quiz)
     session.commit()
     return {"message": "Quiz supprimé avec succès.", "id": quiz_id}
+
 
 @router.post("/{quiz_id}/submit")
 def submit_quiz(
@@ -234,7 +253,7 @@ def submit_quiz(
     for q in quiz.questions:
         max_score += q.points
         user_choice = submission.answers.get(q.id)
-        is_correct = (user_choice is not None and user_choice == q.correct_option_index)
+        is_correct = user_choice is not None and user_choice == q.correct_option_index
         if is_correct:
             score += q.points
 
@@ -243,16 +262,18 @@ def submit_quiz(
         except Exception:
             options_list = [q.options]
 
-        detailed_review.append({
-            "question_id": q.id,
-            "question_text": q.question_text,
-            "options": options_list,
-            "selected_index": user_choice,
-            "correct_index": q.correct_option_index,
-            "is_correct": is_correct,
-            "points": q.points if is_correct else 0,
-            "max_points": q.points
-        })
+        detailed_review.append(
+            {
+                "question_id": q.id,
+                "question_text": q.question_text,
+                "options": options_list,
+                "selected_index": user_choice,
+                "correct_index": q.correct_option_index,
+                "is_correct": is_correct,
+                "points": q.points if is_correct else 0,
+                "max_points": q.points,
+            }
+        )
 
     percentage = round((score / max_score * 100), 1) if max_score > 0 else 0.0
 
@@ -262,7 +283,7 @@ def submit_quiz(
         score=score,
         max_score=max_score,
         percentage=percentage,
-        answers=json.dumps(submission.answers)
+        answers=json.dumps(submission.answers),
     )
     session.add(attempt)
     session.commit()
@@ -276,10 +297,11 @@ def submit_quiz(
         "max_score": max_score,
         "percentage": percentage,
         "passed": percentage >= 60.0,
-        "review": detailed_review
+        "review": detailed_review,
     }
 
-@router.get("/{quiz_id}/results", response_model=List[QuizAttemptResponse])
+
+@router.get("/{quiz_id}/results", response_model=list[QuizAttemptResponse])
 def get_quiz_results(
     quiz_id: int,
     session: SessionDep,
@@ -292,10 +314,15 @@ def get_quiz_results(
     if current_user.role not in ["formateur", "admin"]:
         raise HTTPException(
             status_code=403,
-            detail="Seuls les formateurs et les administrateurs peuvent consulter la liste des résultats des apprenants."
+            detail="Seuls les formateurs et les administrateurs peuvent consulter la liste des résultats des apprenants.",
         )
 
-    attempts = session.query(QuizAttempt).filter(QuizAttempt.quiz_id == quiz_id).order_by(QuizAttempt.completed_at.desc()).all()
+    attempts = (
+        session.query(QuizAttempt)
+        .filter(QuizAttempt.quiz_id == quiz_id)
+        .order_by(QuizAttempt.completed_at.desc())
+        .all()
+    )
     results = []
     for a in attempts:
         results.append(
@@ -309,12 +336,13 @@ def get_quiz_results(
                 score=a.score,
                 max_score=a.max_score,
                 percentage=a.percentage,
-                completed_at=a.completed_at
+                completed_at=a.completed_at,
             )
         )
     return results
 
-@router.get("/attempts/my", response_model=List[QuizAttemptResponse])
+
+@router.get("/attempts/my", response_model=list[QuizAttemptResponse])
 def get_my_attempts(
     session: SessionDep,
     current_user: CurrentUser,
@@ -322,7 +350,12 @@ def get_my_attempts(
     """
     Get past quiz attempts for the current user.
     """
-    attempts = session.query(QuizAttempt).filter(QuizAttempt.user_id == current_user.id).order_by(QuizAttempt.completed_at.desc()).all()
+    attempts = (
+        session.query(QuizAttempt)
+        .filter(QuizAttempt.user_id == current_user.id)
+        .order_by(QuizAttempt.completed_at.desc())
+        .all()
+    )
     results = []
     for a in attempts:
         results.append(
@@ -336,7 +369,7 @@ def get_my_attempts(
                 score=a.score,
                 max_score=a.max_score,
                 percentage=a.percentage,
-                completed_at=a.completed_at
+                completed_at=a.completed_at,
             )
         )
     return results

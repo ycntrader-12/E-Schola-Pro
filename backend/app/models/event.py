@@ -1,6 +1,8 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, func
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import relationship
+
 from app.db.base import Base
+
 
 class Event(Base):
     __tablename__ = "events"
@@ -11,12 +13,14 @@ class Event(Base):
     end_time = Column(DateTime, nullable=False)
     target_roles = Column(String, default="étudiant,stagiaire,employer", nullable=False)
 
-    deliverables = relationship("EventDeliverable", back_populates="event", cascade="all, delete-orphan")
+    deliverables = relationship(
+        "EventDeliverable", back_populates="event", cascade="all, delete-orphan"
+    )
 
 
 class EventDeliverable(Base):
     __tablename__ = "event_deliverables"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     event_id = Column(Integer, ForeignKey("events.id"), nullable=False)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)

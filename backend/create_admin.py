@@ -1,7 +1,7 @@
-import app.models
 from app.core.security import get_password_hash
 from app.db.database import SessionLocal
 from app.models.user import User
+
 
 def seed_users():
     db = SessionLocal()
@@ -24,13 +24,14 @@ def seed_users():
             new_user = User(
                 email=u_info["email"],
                 hashed_password=get_password_hash(u_info["password"]),
-                role=u_info["role"]
+                role=u_info["role"],
             )
             db.add(new_user)
             db.commit()
             print(f"Created user '{u_info['email']}' ({u_info['role']}).")
-            
+
     db.close()
+
 
 if __name__ == "__main__":
     seed_users()

@@ -1,6 +1,7 @@
-from pydantic import BaseModel
-from typing import Optional, List
 from datetime import date, datetime
+
+from pydantic import BaseModel
+
 
 class AttendanceBase(BaseModel):
     user_id: int
@@ -8,52 +9,59 @@ class AttendanceBase(BaseModel):
     status: str  # "present", "late", "absent", "excused"
     minutes_late: int = 0
     session_name: str = "Session Principale"
-    remarks: Optional[str] = None
+    remarks: str | None = None
+
 
 class AttendanceCreate(AttendanceBase):
     pass
 
+
 class AttendanceUpdate(BaseModel):
-    status: Optional[str] = None
-    minutes_late: Optional[int] = None
-    session_name: Optional[str] = None
-    remarks: Optional[str] = None
+    status: str | None = None
+    minutes_late: int | None = None
+    session_name: str | None = None
+    remarks: str | None = None
+
 
 class AttendanceBatchItem(BaseModel):
     user_id: int
     status: str = "present"
     minutes_late: int = 0
-    remarks: Optional[str] = None
+    remarks: str | None = None
+
 
 class AttendanceBatchCreate(BaseModel):
     date: date
     session_name: str = "Session Principale"
-    records: List[AttendanceBatchItem]
+    records: list[AttendanceBatchItem]
+
 
 class UserSimpleOut(BaseModel):
     id: int
     email: str
     role: str
-    group_name: Optional[str] = "Groupe A - Informatique & IA"
+    group_name: str | None = "Groupe A - Informatique & IA"
 
     class Config:
         from_attributes = True
+
 
 class AttendanceOut(BaseModel):
     id: int
     user_id: int
-    marked_by_id: Optional[int] = None
+    marked_by_id: int | None = None
     date: date
     status: str
     minutes_late: int
     session_name: str
-    remarks: Optional[str] = None
+    remarks: str | None = None
     created_at: datetime
-    user: Optional[UserSimpleOut] = None
-    marked_by: Optional[UserSimpleOut] = None
+    user: UserSimpleOut | None = None
+    marked_by: UserSimpleOut | None = None
 
     class Config:
         from_attributes = True
+
 
 class PeriodStats(BaseModel):
     period_name: str
@@ -68,6 +76,7 @@ class PeriodStats(BaseModel):
     quizzes_taken: int
     quiz_success_rate: float  # Percentage of quizzes passed
 
+
 class DashboardPerformanceOut(BaseModel):
     user_id: int
     user_email: str
@@ -76,7 +85,8 @@ class DashboardPerformanceOut(BaseModel):
     monthly: PeriodStats
     semester: PeriodStats
     overall: PeriodStats
-    recent_attendances: List[AttendanceOut]
+    recent_attendances: list[AttendanceOut]
+
 
 class GlobalAttendanceOverview(BaseModel):
     total_records: int

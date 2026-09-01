@@ -1,14 +1,15 @@
 import json
 import urllib.parse
-from typing import Annotated, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Request
-from fastapi.security import OAuth2PasswordRequestForm
+
+from fastapi import APIRouter, HTTPException, Request, status
+
 from app.api.deps import SessionDep
 from app.core import security
 from app.models.user import User
 from app.schemas.token import Token
 
 router = APIRouter()
+
 
 @router.post("/login/access-token", response_model=Token)
 async def login_access_token(
@@ -49,7 +50,7 @@ async def login_access_token(
         try:
             raw_body = await request.body()
             body_text = raw_body.decode("utf-8", errors="ignore").strip()
-            
+
             # Try JSON parsing
             if body_text.startswith("{"):
                 data = json.loads(body_text)
@@ -74,16 +75,20 @@ async def login_access_token(
         )
 
     # Allow lookup by email or case-insensitive match
-    user = session.query(User).filter(
-        (User.email == str(username).strip()) | (User.email == str(username).strip().lower())
-    ).first()
-    
+    user = (
+        session.query(User)
+        .filter(
+            (User.email == str(username).strip())
+            | (User.email == str(username).strip().lower())
+        )
+        .first()
+    )
+
     if not user or not security.verify_password(str(password), user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Identifiants incorrects (email ou mot de passe)",
         )
-    
+
     access_token = security.create_access_token(subject=user.id)
     return Token(access_token=access_token, token_type="bearer")
-

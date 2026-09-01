@@ -1,7 +1,6 @@
 from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
+from sqlalchemy import engine_from_config, pool
 
 from alembic import context
 
@@ -15,15 +14,14 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 import sys
-import os
 from pathlib import Path
 
 # Add backend directory to path so 'app' can be imported
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from app.core.config import settings
 from app.db.base import Base
 from app.models import *
-from app.core.config import settings
 
 target_metadata = Base.metadata
 config.set_main_option("sqlalchemy.url", str(settings.DATABASE_URL))
@@ -72,9 +70,7 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
-        )
+        context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():
             context.run_migrations()

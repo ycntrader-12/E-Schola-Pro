@@ -1,39 +1,38 @@
+from datetime import date, datetime, timedelta
+
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy.orm import Session
-from sqlalchemy import func
-from datetime import date, datetime, timedelta
-from typing import List, Optional
 
-from app.api.deps import SessionDep, CurrentUser
-from app.models.user import User
+from app.api.deps import CurrentUser, SessionDep
 from app.models.attendance import Attendance
 from app.models.quiz import QuizAttempt
+from app.models.user import User
 from app.schemas.attendance import (
-    AttendanceCreate,
-    AttendanceUpdate,
     AttendanceBatchCreate,
+    AttendanceCreate,
     AttendanceOut,
     DashboardPerformanceOut,
-    PeriodStats,
     GlobalAttendanceOverview,
-    UserSimpleOut
+    PeriodStats,
+    UserSimpleOut,
 )
 
 router = APIRouter()
 
+
 def calculate_period_stats(
-    period_name: str,
-    start_date: date,
-    end_date: date,
-    user_id: int,
-    session: Session
+    period_name: str, start_date: date, end_date: date, user_id: int, session: Session
 ) -> PeriodStats:
     # 1. Attendance queries
-    records = session.query(Attendance).filter(
-        Attendance.user_id == user_id,
-        Attendance.date >= start_date,
-        Attendance.date <= end_date
-    ).all()
+    records = (
+        session.query(Attendance)
+        .filter(
+            Attendance.user_id == user_id,
+            Attendance.date >= start_date,
+            Attendance.date <= end_date,
+        )
+        .all()
+    )
 
     total = len(records)
     present = sum(1 for r in records if r.status == "present")
@@ -51,16 +50,24 @@ def calculate_period_stats(
     start_dt = datetime.combine(start_date, datetime.min.time())
     end_dt = datetime.combine(end_date, datetime.max.time())
 
-    quiz_attempts = session.query(QuizAttempt).filter(
-        QuizAttempt.user_id == user_id,
-        QuizAttempt.completed_at >= start_dt,
-        QuizAttempt.completed_at <= end_dt
-    ).all()
+    quiz_attempts = (
+        session.query(QuizAttempt)
+        .filter(
+            QuizAttempt.user_id == user_id,
+            QuizAttempt.completed_at >= start_dt,
+            QuizAttempt.completed_at <= end_dt,
+        )
+        .all()
+    )
 
     quizzes_taken = len(quiz_attempts)
     quiz_points = sum(a.score for a in quiz_attempts)
     if quizzes_taken > 0:
-        average_note = round(sum((a.score / a.max_score * 20) for a in quiz_attempts if a.max_score > 0) / quizzes_taken, 1)
+        average_note = round(
+            sum((a.score / a.max_score * 20) for a in quiz_attempts if a.max_score > 0)
+            / quizzes_taken,
+            1,
+        )
         passed_count = sum(1 for a in quiz_attempts if a.percentage >= 60)
         success_rate = round((passed_count / quizzes_taken) * 100, 1)
     else:
@@ -78,7 +85,7 @@ def calculate_period_stats(
         quiz_points=quiz_points,
         quiz_average_note=average_note,
         quizzes_taken=quizzes_taken,
-        quiz_success_rate=success_rate
+        quiz_success_rate=success_rate,
     )
 
 
@@ -86,23 +93,32 @@ def calculate_period_stats(
 # 1. LEARNER DASHBOARD STATS (Journalier, Mensuel, Semestriel, Overall)
 # --------------------------------------------------------------------------
 @router.get("/my-stats", response_model=DashboardPerformanceOut)
-def get_my_dashboard_performance(
-    session: SessionDep,
-    current_user: CurrentUser
-):
+def get_my_dashboard_performance(session: SessionDep, current_user: CurrentUser):
     today = date.today()
     month_start = today.replace(day=1)
     semester_start = today - timedelta(days=180)
     all_time_start = date(2020, 1, 1)
 
-    daily_stats = calculate_period_stats("Journalier", today, today, current_user.id, session)
-    monthly_stats = calculate_period_stats("Mensuel", month_start, today, current_user.id, session)
-    semester_stats = calculate_period_stats("Semestriel", semester_start, today, current_user.id, session)
-    overall_stats = calculate_period_stats("Global", all_time_start, today, current_user.id, session)
+    daily_stats = calculate_period_stats(
+        "Journalier", today, today, current_user.id, session
+    )
+    monthly_stats = calculate_period_stats(
+        "Mensuel", month_start, today, current_user.id, session
+    )
+    semester_stats = calculate_period_stats(
+        "Semestriel", semester_start, today, current_user.id, session
+    )
+    overall_stats = calculate_period_stats(
+        "Global", all_time_start, today, current_user.id, session
+    )
 
-    recent_attendances = session.query(Attendance).filter(
-        Attendance.user_id == current_user.id
-    ).order_by(Attendance.date.desc()).limit(50).all()
+    recent_attendances = (
+        session.query(Attendance)
+        .filter(Attendance.user_id == current_user.id)
+        .order_by(Attendance.date.desc())
+        .limit(50)
+        .all()
+    )
 
     return DashboardPerformanceOut(
         user_id=current_user.id,
@@ -112,16 +128,16 @@ def get_my_dashboard_performance(
         monthly=monthly_stats,
         semester=semester_stats,
         overall=overall_stats,
-        recent_attendances=recent_attendances
+        recent_attendances=recent_attendances,
     )
 
 
-@router.get("/my-records", response_model=List[AttendanceOut])
+@router.get("/my-records", response_model=list[AttendanceOut])
 def get_my_attendance_records(
     session: SessionDep,
     current_user: CurrentUser,
-    target_date: Optional[date] = Query(None),
-    status_filter: Optional[str] = Query(None)
+    target_date: date | None = Query(None),
+    status_filter: str | None = Query(None),
 ):
     query = session.query(Attendance).filter(Attendance.user_id == current_user.id)
     if target_date:
@@ -131,35 +147,36 @@ def get_my_attendance_records(
     return query.order_by(Attendance.date.desc(), Attendance.id.desc()).all()
 
 
-
 # --------------------------------------------------------------------------
 # 2. LIST LEARNERS & GROUPS (Strictly Formateur & Admin)
 # --------------------------------------------------------------------------
-@router.get("/groups", response_model=List[str])
-def get_attendance_groups(
-    session: SessionDep,
-    current_user: CurrentUser
-):
+@router.get("/groups", response_model=list[str])
+def get_attendance_groups(session: SessionDep, current_user: CurrentUser):
     if current_user.role not in ["formateur", "admin"]:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé.")
-    
-    results = session.query(User.group_name).filter(
-        User.role.in_(["étudiant", "stagiaire", "employer"]),
-        User.group_name.isnot(None)
-    ).distinct().all()
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé."
+        )
+
+    results = (
+        session.query(User.group_name)
+        .filter(
+            User.role.in_(["étudiant", "stagiaire", "employer"]),
+            User.group_name.isnot(None),
+        )
+        .distinct()
+        .all()
+    )
     return sorted(list({r[0] for r in results if r[0]}))
 
 
-@router.get("/learners", response_model=List[UserSimpleOut])
+@router.get("/learners", response_model=list[UserSimpleOut])
 def get_learners_for_attendance(
-    session: SessionDep,
-    current_user: CurrentUser,
-    group_name: Optional[str] = Query(None)
+    session: SessionDep, current_user: CurrentUser, group_name: str | None = Query(None)
 ):
     if current_user.role not in ["formateur", "admin"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Seuls les formateurs et administrateurs peuvent accéder à la liste des apprenants."
+            detail="Seuls les formateurs et administrateurs peuvent accéder à la liste des apprenants.",
         )
 
     query = session.query(User).filter(
@@ -173,14 +190,12 @@ def get_learners_for_attendance(
 
 
 @router.post("/learners", response_model=UserSimpleOut)
-def add_learner_to_group(
-    payload: dict,
-    session: SessionDep,
-    current_user: CurrentUser
-):
+def add_learner_to_group(payload: dict, session: SessionDep, current_user: CurrentUser):
     if current_user.role not in ["formateur", "admin"]:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé.")
-    
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé."
+        )
+
     email = payload.get("email", "").strip().lower()
     role = payload.get("role", "étudiant")
     group_name = payload.get("group_name", "Groupe A - Informatique & IA").strip()
@@ -197,11 +212,12 @@ def add_learner_to_group(
         return existing
 
     from app.core.security import get_password_hash
+
     new_user = User(
         email=email,
         hashed_password=get_password_hash("password123"),
         role=role,
-        group_name=group_name
+        group_name=group_name,
     )
     session.add(new_user)
     session.commit()
@@ -212,18 +228,18 @@ def add_learner_to_group(
 # --------------------------------------------------------------------------
 # 3. GET ALL ATTENDANCE RECORDS (Strictly Formateur & Admin)
 # --------------------------------------------------------------------------
-@router.get("/", response_model=List[AttendanceOut])
+@router.get("/", response_model=list[AttendanceOut])
 def get_attendance_records(
     session: SessionDep,
     current_user: CurrentUser,
-    target_date: Optional[date] = Query(None),
-    user_id: Optional[int] = Query(None),
-    status_filter: Optional[str] = Query(None)
+    target_date: date | None = Query(None),
+    user_id: int | None = Query(None),
+    status_filter: str | None = Query(None),
 ):
     if current_user.role not in ["formateur", "admin"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Accès interdit : seuls les formateurs et administrateurs peuvent consulter la feuille d'émargement globale."
+            detail="Accès interdit : seuls les formateurs et administrateurs peuvent consulter la feuille d'émargement globale.",
         )
 
     query = session.query(Attendance)
@@ -241,25 +257,27 @@ def get_attendance_records(
 # --------------------------------------------------------------------------
 # 4. BATCH RECORD ATTENDANCE (Strictly Formateur & Admin)
 # --------------------------------------------------------------------------
-@router.post("/batch", response_model=List[AttendanceOut])
+@router.post("/batch", response_model=list[AttendanceOut])
 def batch_record_attendance(
-    payload: AttendanceBatchCreate,
-    session: SessionDep,
-    current_user: CurrentUser
+    payload: AttendanceBatchCreate, session: SessionDep, current_user: CurrentUser
 ):
     if current_user.role not in ["formateur", "admin"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Accès refusé : Seuls les formateurs et administrateurs peuvent pointer les présences."
+            detail="Accès refusé : Seuls les formateurs et administrateurs peuvent pointer les présences.",
         )
 
     saved_records = []
     for item in payload.records:
-        existing = session.query(Attendance).filter(
-            Attendance.user_id == item.user_id,
-            Attendance.date == payload.date,
-            Attendance.session_name == payload.session_name
-        ).first()
+        existing = (
+            session.query(Attendance)
+            .filter(
+                Attendance.user_id == item.user_id,
+                Attendance.date == payload.date,
+                Attendance.session_name == payload.session_name,
+            )
+            .first()
+        )
 
         if existing:
             existing.status = item.status
@@ -275,7 +293,7 @@ def batch_record_attendance(
                 status=item.status,
                 minutes_late=item.minutes_late if item.status == "late" else 0,
                 session_name=payload.session_name,
-                remarks=item.remarks
+                remarks=item.remarks,
             )
             session.add(new_record)
             saved_records.append(new_record)
@@ -292,14 +310,11 @@ def batch_record_attendance(
 # --------------------------------------------------------------------------
 @router.post("/", response_model=AttendanceOut)
 def record_single_attendance(
-    payload: AttendanceCreate,
-    session: SessionDep,
-    current_user: CurrentUser
+    payload: AttendanceCreate, session: SessionDep, current_user: CurrentUser
 ):
     if current_user.role not in ["formateur", "admin"]:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Accès refusé."
+            status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé."
         )
 
     new_record = Attendance(
@@ -309,7 +324,7 @@ def record_single_attendance(
         status=payload.status,
         minutes_late=payload.minutes_late if payload.status == "late" else 0,
         session_name=payload.session_name,
-        remarks=payload.remarks
+        remarks=payload.remarks,
     )
     session.add(new_record)
     session.commit()
@@ -322,14 +337,11 @@ def record_single_attendance(
 # --------------------------------------------------------------------------
 @router.delete("/{attendance_id}")
 def delete_attendance(
-    attendance_id: int,
-    session: SessionDep,
-    current_user: CurrentUser
+    attendance_id: int, session: SessionDep, current_user: CurrentUser
 ):
     if current_user.role not in ["formateur", "admin"]:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Accès refusé."
+            status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé."
         )
 
     record = session.query(Attendance).filter(Attendance.id == attendance_id).first()
@@ -345,19 +357,19 @@ def delete_attendance(
 # 7. GLOBAL OVERVIEW (Strictly Formateur & Admin)
 # --------------------------------------------------------------------------
 @router.get("/overview", response_model=GlobalAttendanceOverview)
-def get_attendance_global_overview(
-    session: SessionDep,
-    current_user: CurrentUser
-):
+def get_attendance_global_overview(session: SessionDep, current_user: CurrentUser):
     if current_user.role not in ["formateur", "admin"]:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Accès refusé."
+            status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé."
         )
 
     today = date.today()
     total_records = session.query(Attendance).count()
-    total_students = session.query(User).filter(User.role.in_(["étudiant", "stagiaire", "employer"])).count()
+    total_students = (
+        session.query(User)
+        .filter(User.role.in_(["étudiant", "stagiaire", "employer"]))
+        .count()
+    )
 
     today_records = session.query(Attendance).filter(Attendance.date == today).all()
     today_present = sum(1 for r in today_records if r.status == "present")
@@ -365,13 +377,21 @@ def get_attendance_global_overview(
     today_absent = sum(1 for r in today_records if r.status == "absent")
 
     today_total = len(today_records)
-    today_rate = round(((today_present + today_late) / today_total) * 100, 1) if today_total > 0 else 100.0
+    today_rate = (
+        round(((today_present + today_late) / today_total) * 100, 1)
+        if today_total > 0
+        else 100.0
+    )
 
     month_start = today.replace(day=1)
-    month_records = session.query(Attendance).filter(Attendance.date >= month_start).all()
+    month_records = (
+        session.query(Attendance).filter(Attendance.date >= month_start).all()
+    )
     month_present = sum(1 for r in month_records if r.status in ["present", "late"])
     month_total = len(month_records)
-    month_rate = round((month_present / month_total) * 100, 1) if month_total > 0 else 100.0
+    month_rate = (
+        round((month_present / month_total) * 100, 1) if month_total > 0 else 100.0
+    )
 
     return GlobalAttendanceOverview(
         total_records=total_records,
@@ -380,5 +400,5 @@ def get_attendance_global_overview(
         today_late=today_late,
         today_absent=today_absent,
         today_attendance_rate=today_rate,
-        monthly_attendance_rate=month_rate
+        monthly_attendance_rate=month_rate,
     )

@@ -38,9 +38,6 @@ export default function Home() {
                 <span className="text-base font-black tracking-tight text-slate-900">
                   E-Schola <span className="text-[#1877f2]">Pro</span>
                 </span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-50 text-[#1877f2] border border-blue-200">
-                  Connect LMS
-                </span>
               </div>
               <p className="text-[11px] text-slate-500 font-medium hidden sm:block">
                 {t('tagline')}

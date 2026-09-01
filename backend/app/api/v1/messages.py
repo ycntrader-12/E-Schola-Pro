@@ -1,16 +1,17 @@
-from typing import Any, List, Optional
-from fastapi import APIRouter, HTTPException, Depends
-from sqlalchemy.orm import Session
-from sqlalchemy import desc, or_, and_
+from typing import Any
 
-from app.api.deps import SessionDep, CurrentUser
+from fastapi import APIRouter, HTTPException
+from sqlalchemy import desc, or_
+
+from app.api.deps import CurrentUser, SessionDep
 from app.models.message import Message
 from app.models.user import User
-from app.schemas.message import MessageCreate, MessageResponse, MessageReport
+from app.schemas.message import MessageCreate, MessageReport, MessageResponse
 
 router = APIRouter()
 
-@router.get("/inbox", response_model=List[MessageResponse])
+
+@router.get("/inbox", response_model=list[MessageResponse])
 def get_inbox_messages(
     session: SessionDep,
     current_user: CurrentUser,
@@ -23,14 +24,15 @@ def get_inbox_messages(
         .filter(
             Message.recipient_id == current_user.id,
             Message.is_trash == False,
-            Message.is_draft == False
+            Message.is_draft == False,
         )
         .order_by(desc(Message.created_at))
         .all()
     )
     return messages
 
-@router.get("/sent", response_model=List[MessageResponse])
+
+@router.get("/sent", response_model=list[MessageResponse])
 def get_sent_messages(
     session: SessionDep,
     current_user: CurrentUser,
@@ -43,14 +45,15 @@ def get_sent_messages(
         .filter(
             Message.sender_id == current_user.id,
             Message.is_trash == False,
-            Message.is_draft == False
+            Message.is_draft == False,
         )
         .order_by(desc(Message.created_at))
         .all()
     )
     return messages
 
-@router.get("/drafts", response_model=List[MessageResponse])
+
+@router.get("/drafts", response_model=list[MessageResponse])
 def get_draft_messages(
     session: SessionDep,
     current_user: CurrentUser,
@@ -63,14 +66,15 @@ def get_draft_messages(
         .filter(
             Message.sender_id == current_user.id,
             Message.is_draft == True,
-            Message.is_trash == False
+            Message.is_trash == False,
         )
         .order_by(desc(Message.created_at))
         .all()
     )
     return messages
 
-@router.get("/trash", response_model=List[MessageResponse])
+
+@router.get("/trash", response_model=list[MessageResponse])
 def get_trash_messages(
     session: SessionDep,
     current_user: CurrentUser,
@@ -83,14 +87,15 @@ def get_trash_messages(
         .filter(
             or_(
                 Message.recipient_id == current_user.id,
-                Message.sender_id == current_user.id
+                Message.sender_id == current_user.id,
             ),
-            Message.is_trash == True
+            Message.is_trash == True,
         )
         .order_by(desc(Message.created_at))
         .all()
     )
     return messages
+
 
 @router.get("/unread-count")
 def get_unread_count(
@@ -106,11 +111,12 @@ def get_unread_count(
             Message.recipient_id == current_user.id,
             Message.is_read == False,
             Message.is_trash == False,
-            Message.is_draft == False
+            Message.is_draft == False,
         )
         .count()
     )
     return {"unread_count": count}
+
 
 @router.post("/", response_model=MessageResponse)
 def send_or_save_message(
@@ -126,7 +132,11 @@ def send_or_save_message(
     if msg_in.recipient_id:
         recipient = session.query(User).filter(User.id == msg_in.recipient_id).first()
     elif msg_in.recipient_email:
-        recipient = session.query(User).filter(User.email == msg_in.recipient_email.strip()).first()
+        recipient = (
+            session.query(User)
+            .filter(User.email == msg_in.recipient_email.strip())
+            .first()
+        )
 
     # If it's not a draft, recipient is mandatory
     if not msg_in.is_draft and not recipient:
@@ -142,12 +152,13 @@ def send_or_save_message(
         attachment_type=msg_in.attachment_type,
         is_read=False,
         is_draft=msg_in.is_draft,
-        is_trash=False
+        is_trash=False,
     )
     session.add(new_msg)
     session.commit()
     session.refresh(new_msg)
     return new_msg
+
 
 @router.get("/{message_id}", response_model=MessageResponse)
 def get_message_detail(
@@ -162,7 +173,11 @@ def get_message_detail(
     if not msg:
         raise HTTPException(status_code=404, detail="Message introuvable.")
 
-    if msg.sender_id != current_user.id and msg.recipient_id != current_user.id and current_user.role != "admin":
+    if (
+        msg.sender_id != current_user.id
+        and msg.recipient_id != current_user.id
+        and current_user.role != "admin"
+    ):
         raise HTTPException(status_code=403, detail="Accès non autorisé à ce message.")
 
     # Mark as read if opened by recipient
@@ -172,6 +187,7 @@ def get_message_detail(
         session.refresh(msg)
 
     return msg
+
 
 @router.put("/{message_id}/restore")
 def restore_message_from_trash(
@@ -186,12 +202,17 @@ def restore_message_from_trash(
     if not msg:
         raise HTTPException(status_code=404, detail="Message introuvable.")
 
-    if msg.sender_id != current_user.id and msg.recipient_id != current_user.id and current_user.role != "admin":
+    if (
+        msg.sender_id != current_user.id
+        and msg.recipient_id != current_user.id
+        and current_user.role != "admin"
+    ):
         raise HTTPException(status_code=403, detail="Accès non autorisé.")
 
     msg.is_trash = False
     session.commit()
     return {"message": "Message restauré avec succès.", "id": message_id}
+
 
 @router.delete("/{message_id}")
 def delete_message(
@@ -206,19 +227,34 @@ def delete_message(
     if not msg:
         raise HTTPException(status_code=404, detail="Message introuvable.")
 
-    if msg.sender_id != current_user.id and msg.recipient_id != current_user.id and current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Accès non autorisé pour supprimer ce message.")
+    if (
+        msg.sender_id != current_user.id
+        and msg.recipient_id != current_user.id
+        and current_user.role != "admin"
+    ):
+        raise HTTPException(
+            status_code=403, detail="Accès non autorisé pour supprimer ce message."
+        )
 
     if not msg.is_trash:
         # Move to trash
         msg.is_trash = True
         session.commit()
-        return {"message": "Message déplacé vers la corbeille.", "action": "trash", "id": message_id}
+        return {
+            "message": "Message déplacé vers la corbeille.",
+            "action": "trash",
+            "id": message_id,
+        }
     else:
         # Permanent delete
         session.delete(msg)
         session.commit()
-        return {"message": "Message définitivement supprimé.", "action": "permanent_delete", "id": message_id}
+        return {
+            "message": "Message définitivement supprimé.",
+            "action": "permanent_delete",
+            "id": message_id,
+        }
+
 
 @router.post("/{message_id}/report")
 def report_message(
@@ -241,11 +277,15 @@ def report_message(
     sender_email = msg.sender.email if msg.sender else f"ID #{msg.sender_id}"
 
     # Find all instructors and administrators to receive direct transmitted report
-    staff_users = session.query(User).filter(
-        User.role.in_(["admin", "formateur", "pedagogique"])
-    ).all()
+    staff_users = (
+        session.query(User)
+        .filter(User.role.in_(["admin", "formateur", "pedagogique"]))
+        .all()
+    )
 
-    alert_subject = f"🚨 [SIGNALEMENT DIRECT] Message suspect signalé par {current_user.email}"
+    alert_subject = (
+        f"🚨 [SIGNALEMENT DIRECT] Message suspect signalé par {current_user.email}"
+    )
     alert_body = (
         f"=============================================================\n"
         f"⚠️ RAPPORT DE SIGNALEMENT AUTOMATIQUE DE MESSAGE\n"
@@ -273,12 +313,12 @@ def report_message(
                 attachment_type=msg.attachment_type,
                 is_read=False,
                 is_draft=False,
-                is_trash=False
+                is_trash=False,
             )
             session.add(alert_msg)
 
     session.commit()
     return {
         "message": f"Signalement transmis directement aux formateurs et administrateurs ({len(staff_users)} destinataires notifiés).",
-        "reported_message_id": message_id
+        "reported_message_id": message_id,
     }
