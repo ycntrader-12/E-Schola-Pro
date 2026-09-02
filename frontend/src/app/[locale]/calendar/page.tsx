@@ -322,17 +322,13 @@ export default function CalendarPage() {
         <div className="absolute -left-10 -bottom-10 w-60 h-60 bg-secondary/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          {/* Left Title & System Sync Badge */}
+          {/* Left Title */}
           <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 shadow-sm">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-              <span>SYNCHRONISÉ AVEC LE SYSTÈME &amp; CALENDRIER DU MAROC 🇲🇦</span>
-            </div>
             <h1 className="text-3xl sm:text-4xl font-black tracking-tight">
               Calendrier & <span className="text-brand-gradient">Emploi du Temps</span>
             </h1>
             <p className="text-text-secondary text-xs sm:text-sm max-w-lg">
-              Date et heure système synchronisées en temps réel. Les <strong>jours fériés officiels au Royaume du Maroc</strong> sont automatiquement intégrés et mis en évidence.
+              Date et heure système synchronisées en temps réel. Planifiez et consultez l&apos;ensemble de vos cours, examens et événements.
             </p>
           </div>
 
