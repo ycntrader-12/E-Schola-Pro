@@ -15,7 +15,8 @@ import {
   ArrowRight,
   Loader2,
   FileText,
-  Users
+  Users,
+  Download
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 
@@ -206,13 +207,24 @@ export default function AttendancePerformanceWidget() {
         <div className="flex flex-col items-end gap-3">
           {/* Formateur & Admin link to manage attendance */}
           {isManager && (
-            <Link
-              href="/attendance"
-              className="btn-primary whitespace-nowrap px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-primary/20 shrink-0"
-            >
-              <ShieldCheck size={14} />
-              <span>Feuille d'émargement globale</span>
-            </Link>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => window.print()}
+                className="btn-primary whitespace-nowrap px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-primary/20 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border-indigo-200 shrink-0"
+                style={{ backgroundColor: '#eef2ff', color: '#4338ca', borderColor: '#e0e7ff' }}
+                title="Exporter au format PDF"
+              >
+                <Download size={14} />
+                <span>Exporter en PDF</span>
+              </button>
+              <Link
+                href="/attendance"
+                className="btn-primary whitespace-nowrap px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-primary/20 shrink-0"
+              >
+                <ShieldCheck size={14} />
+                <span>Feuille d'émargement globale</span>
+              </Link>
+            </div>
           )}
 
           {/* Period selector tabs */}
