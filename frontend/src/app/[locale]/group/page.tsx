@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { Link } from '@/i18n/routing';
 import { Users, Plus, Pencil, Trash2, Loader2, ShieldCheck, GraduationCap } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import GroupMembersModal from '@/components/group/GroupMembersModal';
@@ -36,7 +37,14 @@ export default function GroupPage() {
     if (token) {
       try {
         const payload = JSON.parse(atob(token.split('.')[1]));
-        setCurrentUser({ id: payload.sub, email: payload.email, role: payload.role });
+        const userRole = String(payload.role || '').toLowerCase();
+        setCurrentUser({ id: payload.sub, email: payload.email, role: userRole });
+
+        // If learner, do not fetch groups
+        if (['etudiant', 'étudiant', 'stagiaire', 'employer'].includes(userRole)) {
+          setIsLoading(false);
+          return;
+        }
       } catch (e) { }
     }
     fetchGroups();
@@ -111,6 +119,25 @@ export default function GroupPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 size={32} className="animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const isLearner = currentUser && ['etudiant', 'étudiant', 'stagiaire', 'employer'].includes(currentUser.role.toLowerCase());
+
+  if (!isLoading && isLearner) {
+    return (
+      <div className="min-h-[70vh] flex flex-col items-center justify-center text-center px-4 space-y-4 animate-fade-in">
+        <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-500 flex items-center justify-center shadow-lg">
+          <ShieldCheck size={32} />
+        </div>
+        <h2 className="text-2xl font-bold">Accès Non Autorisé</h2>
+        <p className="text-text-secondary text-sm max-w-md">
+          Ce module est strictement réservé aux formateurs et à l&apos;administration. Les apprenants ne sont pas autorisés à consulter ou gérer les groupes.
+        </p>
+        <Link href="/dashboard" className="btn-primary px-6 py-2.5 rounded-xl text-sm font-semibold">
+          Retour au tableau de bord
+        </Link>
       </div>
     );
   }

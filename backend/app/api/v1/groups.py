@@ -27,8 +27,13 @@ def read_groups(
     limit: int = 200,
 ) -> Any:
     """
-    Retrieve all groups.
+    Retrieve all groups. Formateur and Admin only.
     """
+    if current_user.role.lower() in ["etudiant", "étudiant", "stagiaire", "employer"]:
+        raise HTTPException(
+            status_code=403,
+            detail="Accès interdit : les étudiants, stagiaires et employés ne sont pas autorisés à consulter les groupes.",
+        )
     groups = (
         session.query(Group)
         .order_by(Group.created_at.desc())
@@ -158,8 +163,13 @@ def get_group_members(
     current_user: CurrentUser,
 ) -> Any:
     """
-    Get members of a group.
+    Get members of a group. Formateur and Admin only.
     """
+    if current_user.role.lower() in ["etudiant", "étudiant", "stagiaire", "employer"]:
+        raise HTTPException(
+            status_code=403,
+            detail="Accès interdit : les étudiants, stagiaires et employés ne sont pas autorisés à consulter les membres d'un groupe.",
+        )
     group = session.query(Group).filter(Group.id == group_id).first()
     if not group:
         raise HTTPException(status_code=404, detail="Groupe introuvable.")

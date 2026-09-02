@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { Link } from '@/i18n/routing';
-import { LayoutDashboard, Inbox, BookOpen, CheckSquare, Settings, Video, Award, UserCheck, Calendar, X, GraduationCap } from 'lucide-react';
+import { LayoutDashboard, Inbox, BookOpen, CheckSquare, Settings, Video, Award, UserCheck, Calendar, X, GraduationCap, Users } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { apiClient } from '@/lib/api';
 
@@ -16,24 +16,35 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
   const pathname = usePathname();
   const t = useTranslations('Navigation');
   const [unreadCount, setUnreadCount] = useState(0);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchUnread = async () => {
+    const fetchUserData = async () => {
       try {
         const token = localStorage.getItem('access_token');
         if (token) {
+          try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            if (payload.role) {
+              setUserRole(String(payload.role).toLowerCase());
+            }
+          } catch {}
+
           const res = await apiClient.get('/messages/unread-count');
           setUnreadCount(res.data.unread_count || 0);
         }
       } catch {}
     };
-    fetchUnread();
+    fetchUserData();
   }, [pathname]);
+
+  const canViewGroups = userRole && !['etudiant', 'étudiant', 'stagiaire', 'employer'].includes(userRole);
 
   const navItems = [
     { name: t('dashboard'), href: '/dashboard', icon: LayoutDashboard },
     { name: t('calendar'), href: '/calendar', icon: Calendar },
     { name: t('virtual_classroom'), href: '/classroom', icon: Video },
+    ...(canViewGroups ? [{ name: t('group'), href: '/group', icon: Users }] : []),
     { name: t('inbox'), href: '/inbox', icon: Inbox },
     { name: t('lesson'), href: '/courses', icon: BookOpen },
     { name: t('quizzes'), href: '/quizzes', icon: Award },

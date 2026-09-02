@@ -1102,11 +1102,11 @@ E-Schola Pro/
     <table>
       <thead><tr><th>Méthode</th><th>Endpoint</th><th>Description</th><th>Accès</th></tr></thead>
       <tbody class="endpoint-row">
-        <tr><td><span class="badge badge-get">GET</span></td><td><code>/groups/</code></td><td>Lister tous les groupes</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/groups/</code></td><td>Lister tous les groupes</td><td>Admin, Formateur</td></tr>
         <tr><td><span class="badge badge-post">POST</span></td><td><code>/groups/</code></td><td>Créer un groupe</td><td>Admin, Formateur</td></tr>
         <tr><td><span class="badge badge-put">PUT</span></td><td><code>/groups/{id}</code></td><td>Modifier un groupe</td><td>Admin, Formateur</td></tr>
         <tr><td><span class="badge badge-delete">DELETE</span></td><td><code>/groups/{id}</code></td><td>Supprimer un groupe</td><td>Admin, Formateur</td></tr>
-        <tr><td><span class="badge badge-get">GET</span></td><td><code>/groups/{id}/members</code></td><td>Lister les membres</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/groups/{id}/members</code></td><td>Lister les membres</td><td>Admin, Formateur</td></tr>
         <tr><td><span class="badge badge-post">POST</span></td><td><code>/groups/{id}/members</code></td><td>Ajouter un membre</td><td>Admin, Formateur</td></tr>
         <tr><td><span class="badge badge-delete">DELETE</span></td><td><code>/groups/{id}/members/{uid}</code></td><td>Retirer un membre</td><td>Admin, Formateur</td></tr>
       </tbody>
@@ -1378,6 +1378,7 @@ E-Schola Pro/
     <h3>Module 8 — Groupes & Classes</h3>
     <div class="card">
       <p><strong>Route Frontend :</strong> <code>/group</code></p>
+      <p><strong>Contrôle d'accès & Sécurité :</strong> Strictement réservé aux rôles <strong>Formateur</strong> et <strong>Administrateur</strong>. Le bouton de navigation est automatiquement masqué pour les étudiants, stagiaires et employés dans la barre latérale, et tout accès direct est bloqué par un écran de refus d'accès et une erreur HTTP 403 côté API.</p>
       <p><strong>Options et propriétés :</strong></p>
       <ul>
         <li><strong>Création :</strong> Nom du groupe, niveau (optionnel), description</li>
