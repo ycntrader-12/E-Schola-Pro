@@ -32,8 +32,16 @@ export default function LoginPage() {
       localStorage.setItem('access_token', response.data.access_token);
       document.cookie = `access_token=${response.data.access_token}; path=/; max-age=86400; SameSite=Lax`;
       router.push('/dashboard');
-    } catch {
-      setError(t('error') || 'Identifiants incorrects');
+    } catch (err: any) {
+      if (err?.response?.status === 400 || err?.response?.status === 401) {
+        setError(err?.response?.data?.detail || t('error') || 'Identifiants incorrects (email ou mot de passe)');
+      } else if (err?.response?.status >= 500) {
+        setError('Le serveur backend est temporairement indisponible (Erreur 500/502).');
+      } else if (err?.message === 'Network Error' || !err?.response) {
+        setError('Impossible de contacter le serveur backend. Vérifiez votre connexion.');
+      } else {
+        setError(err?.response?.data?.detail || t('error') || 'Une erreur est survenue lors de la connexion');
+      }
     } finally {
       setLoading(false);
     }

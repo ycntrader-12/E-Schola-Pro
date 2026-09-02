@@ -7,10 +7,10 @@ def seed_users():
     db = SessionLocal()
     default_users = [
         {"email": "admin", "password": "password", "role": "admin"},
-        {"email": "admin", "password": "Abc1234", "role": "admin"},
-        {"email": "admin@eschola.pro", "password": "Abc1234", "role": "admin"},
-        {"email": "formateur@eschola.pro", "password": "Abc1234", "role": "formateur"},
-        {"email": "etudiant@eschola.pro", "password": "Abc1234", "role": "étudiant"},
+        {"email": "admin@eschola.pro", "password": "password", "role": "admin"},
+        {"email": "admin_manager@eschola.pro", "password": "password", "role": "admin_manager"},
+        {"email": "formateur@eschola.pro", "password": "password", "role": "formateur"},
+        {"email": "etudiant@eschola.pro", "password": "password", "role": "étudiant"},
     ]
 
     for u_info in default_users:

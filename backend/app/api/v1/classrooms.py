@@ -314,8 +314,6 @@ def get_room_messages(room_id: str, current_user: CurrentUser):
         ):
             visible.append(m)
     return visible
-            visible.append(m)
-    return visible
 
 
 @router.post("/{room_id}/messages")
