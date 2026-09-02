@@ -35,7 +35,8 @@ import {
   Save,
   Layers,
   Calendar as CalendarIcon,
-  ChevronDown
+  ChevronDown,
+  Video
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 
@@ -1157,6 +1158,26 @@ export default function InboxMessagesPage() {
               <div className="p-4 rounded-xl bg-surface/30 border border-border text-sm leading-relaxed whitespace-pre-wrap text-text-primary min-h-[140px]">
                 {selectedMessage.body}
               </div>
+
+              {/* Classroom Invite Action Button */}
+              {selectedMessage.subject.includes('Invitation à une classe virtuelle') && (
+                <div className="pt-4 border-t border-border mt-4">
+                  <button
+                    onClick={() => {
+                      const match = selectedMessage.body.match(/Code de la salle\s*:\s*`?([a-zA-Z0-9-]+)`?/);
+                      const code = match ? match[1] : '';
+                      if (code) {
+                        router.push(`/classroom/${code}`);
+                      } else {
+                        router.push('/classroom');
+                      }
+                    }}
+                    className="w-full sm:w-auto btn-primary px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-primary/25"
+                  >
+                    <Video size={18} /> Rejoindre la classe virtuelle
+                  </button>
+                </div>
+              )}
 
               {/* Attachment Section */}
               {selectedMessage.attachment_url && (

@@ -54,6 +54,7 @@ interface TaskItem {
   priority: string; // 'haute', 'moyenne', 'basse'
   created_at: string;
   assigned_by_email?: string;
+  attachment_url?: string;
   my_submission?: TaskSubmission;
   total_submissions?: number;
 }
@@ -86,6 +87,7 @@ export default function AssignmentsPage() {
   const [newDueDate, setNewDueDate] = useState('2026-09-30');
   const [newPoints, setNewPoints] = useState(20);
   const [newPriority, setNewPriority] = useState('moyenne');
+  const [newAttachment, setNewAttachment] = useState<File | null>(null);
 
   // Grade Submissions modal for Trainers/Admins
   const [selectedTaskToGrade, setSelectedTaskToGrade] = useState<TaskItem | null>(null);
@@ -187,6 +189,16 @@ export default function AssignmentsPage() {
 
     setIsCreating(true);
     try {
+      let attachmentUrl = null;
+      if (newAttachment) {
+        const formData = new FormData();
+        formData.append('file', newAttachment);
+        const uploadRes = await apiClient.post('/upload/file', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        attachmentUrl = uploadRes.data.url;
+      }
+
       const res = await apiClient.post('/tasks/', {
         title: newTitle,
         description: newDescription,
@@ -195,13 +207,15 @@ export default function AssignmentsPage() {
         target_group: 'all',
         due_date: newDueDate,
         points: newPoints,
-        priority: newPriority
+        priority: newPriority,
+        attachment_url: attachmentUrl
       });
 
       setTasks(prev => [res.data, ...prev]);
       setShowCreateModal(false);
       setNewTitle('');
       setNewDescription('');
+      setNewAttachment(null);
       alert("Devoir créé et distribué aux apprenants ciblés !");
     } catch (err: any) {
       alert(err?.response?.data?.detail || "Erreur lors de la création de la tâche.");
@@ -475,6 +489,21 @@ export default function AssignmentsPage() {
                     <p className="text-xs text-slate-600 line-clamp-3 mt-2 leading-relaxed">
                       {task.description}
                     </p>
+                  )}
+
+                  {/* Fichier joint */}
+                  {task.attachment_url && (
+                    <div className="mt-3">
+                      <a 
+                        href={task.attachment_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50/50 hover:bg-blue-50 text-[#1877f2] border border-blue-100 text-[11px] font-extrabold transition-colors"
+                      >
+                        <FileText size={13} />
+                        <span>Télécharger la pièce jointe</span>
+                      </a>
+                    </div>
                   )}
 
                   {/* Details */}
@@ -767,6 +796,18 @@ export default function AssignmentsPage() {
                     <option value="haute">Haute (Urgent)</option>
                   </select>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Fichier joint (Optionnel : PDF, Word, Excel...)
+                </label>
+                <input
+                  type="file"
+                  onChange={(e) => setNewAttachment(e.target.files?.[0] || null)}
+                  className="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-[#1877f2] hover:file:bg-blue-100 cursor-pointer"
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar"
+                />
               </div>
 
               <div>

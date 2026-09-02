@@ -128,6 +128,7 @@ def get_tasks(
                 due_date=t.due_date,
                 points=t.points,
                 priority=t.priority,
+                attachment_url=t.attachment_url,
                 created_at=t.created_at,
                 assigned_by_email=creator.email if creator else "Équipe Pédagogique",
                 my_submission=my_sub,
@@ -160,6 +161,7 @@ def create_task(
         due_date=task_in.due_date,
         points=task_in.points,
         priority=task_in.priority,
+        attachment_url=task_in.attachment_url,
     )
     db.add(task)
     db.commit()
@@ -176,6 +178,7 @@ def create_task(
         due_date=task.due_date,
         points=task.points,
         priority=task.priority,
+        attachment_url=task.attachment_url,
         created_at=task.created_at,
         assigned_by_email=current_user.email,
         my_submission=None,

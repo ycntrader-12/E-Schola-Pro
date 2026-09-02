@@ -21,6 +21,7 @@ class Task(Base):
     priority = Column(
         String, default="moyenne", nullable=False
     )  # 'haute', 'moyenne', 'basse'
+    attachment_url = Column(String, nullable=True)
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
 
     assigned_by = relationship("User")

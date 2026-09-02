@@ -8,6 +8,7 @@ from app.schemas.user import UserResponse
 class ClassroomBase(BaseModel):
     title: str
     description: str | None = None
+    target_roles: str | None = None
 
 
 class ClassroomCreate(ClassroomBase):

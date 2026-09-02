@@ -12,6 +12,7 @@ class TaskBase(BaseModel):
     due_date: str
     points: int = 20
     priority: str = "moyenne"
+    attachment_url: str | None = None
 
 
 class TaskCreate(TaskBase):

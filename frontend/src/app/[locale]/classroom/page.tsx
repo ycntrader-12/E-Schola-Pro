@@ -47,6 +47,7 @@ export default function ClassroomHubPage() {
   const [newTitle, setNewTitle] = useState('');
   const [newDescription, setNewDescription] = useState('');
   const [customRoomId, setCustomRoomId] = useState('');
+  const [targetRoles, setTargetRoles] = useState<string[]>([]);
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState('');
   const [isPurging, setIsPurging] = useState(false);
@@ -95,7 +96,8 @@ export default function ClassroomHubPage() {
       const res = await apiClient.post('/classrooms/', {
         title: newTitle.trim(),
         description: newDescription.trim() || undefined,
-        room_id: customRoomId.trim() || undefined
+        room_id: customRoomId.trim() || undefined,
+        target_roles: targetRoles.length > 0 ? targetRoles.join(',') : undefined
       });
       setIsModalOpen(false);
       router.push(`/classroom/${res.data.room_id}`);
@@ -345,6 +347,28 @@ export default function ClassroomHubPage() {
                   placeholder="Laisser vide pour génération automatique"
                   className="w-full px-4 py-3 rounded-xl bg-surface border border-border focus:border-primary outline-none text-sm font-mono"
                 />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase text-text-secondary mb-2">
+                  Public ciblé (Invitations & Notifications)
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {['etudiant', 'stagiaire', 'employer'].map((role) => (
+                    <label key={role} className="flex items-center gap-2 text-sm cursor-pointer border border-border px-3 py-1.5 rounded-lg hover:border-primary transition-colors bg-surface">
+                      <input 
+                        type="checkbox"
+                        checked={targetRoles.includes(role)}
+                        onChange={(e) => {
+                          if (e.target.checked) setTargetRoles(prev => [...prev, role]);
+                          else setTargetRoles(prev => prev.filter(r => r !== role));
+                        }}
+                        className="accent-primary"
+                      />
+                      <span className="capitalize">{role === 'etudiant' ? 'Étudiants' : role === 'stagiaire' ? 'Stagiaires' : 'Employés'}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
 
               <div className="pt-2 flex gap-3">

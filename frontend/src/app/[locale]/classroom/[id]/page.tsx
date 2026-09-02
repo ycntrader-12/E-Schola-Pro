@@ -178,7 +178,8 @@ export default function VirtualClassroomLivePage() {
           apiClient.get(`/classrooms/${roomId}`),
           apiClient.get(`/classrooms/${roomId}/subgroups`).catch(() => ({ data: { is_active: false, timer_minutes: 15, subgroups: [] } })),
           apiClient.get(`/classrooms/${roomId}/messages`).catch(() => ({ data: [] })),
-          apiClient.get('/attendance/learners').catch(() => ({ data: [] }))
+          apiClient.get('/attendance/learners').catch(() => ({ data: [] })),
+          apiClient.post(`/classrooms/${roomId}/join`).catch(() => ({}))
         ]);
 
         setCurrentUser(userRes.data);

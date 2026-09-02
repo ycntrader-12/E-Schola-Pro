@@ -921,6 +921,7 @@ E-Schola Pro/
         <tr><td><code>room_id</code></td><td>String</td><td>Unique, Indexé</td><td>Identifiant de salle</td></tr>
         <tr><td><code>title</code></td><td>String</td><td>Not Null</td><td>Titre de la session</td></tr>
         <tr><td><code>description</code></td><td>Text</td><td>Nullable</td><td>Description</td></tr>
+        <tr><td><code>target_roles</code></td><td>String</td><td>Nullable</td><td>Public ciblé pour invitations automatiques</td></tr>
         <tr><td><code>instructor_id</code></td><td>Integer</td><td>FK → users.id</td><td>Formateur hôte</td></tr>
         <tr><td><code>is_active</code></td><td>Boolean</td><td>Default: True</td><td>Session active ?</td></tr>
       </tbody>
@@ -966,6 +967,7 @@ E-Schola Pro/
         <tr><td><code>due_date</code></td><td>String</td><td>Not Null</td><td>Date limite de remise (YYYY-MM-DD)</td></tr>
         <tr><td><code>points</code></td><td>Integer</td><td>Default: 20</td><td>Barème / Total points</td></tr>
         <tr><td><code>priority</code></td><td>String</td><td>Default: "moyenne"</td><td>Niveau de priorité (haute, moyenne, basse)</td></tr>
+        <tr><td><code>attachment_url</code></td><td>String</td><td>Nullable</td><td>URL de la pièce jointe</td></tr>
         <tr><td><code>created_at</code></td><td>DateTime</td><td>Auto</td><td>Date de création</td></tr>
       </tbody>
     </table>
@@ -1089,7 +1091,8 @@ E-Schola Pro/
       <thead><tr><th>Méthode</th><th>Endpoint</th><th>Description</th><th>Accès</th></tr></thead>
       <tbody class="endpoint-row">
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/classrooms/</code></td><td>Lister les salles virtuelles</td><td>Authentifié</td></tr>
-        <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/</code></td><td>Créer une salle</td><td>Admin, Formateur</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/</code></td><td>Créer une salle (avec invitations ciblées)</td><td>Admin, Formateur</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/{room_id}/join</code></td><td>Rejoindre et tracker l'assiduité (retards et présences)</td><td>Authentifié</td></tr>
         <tr><td><span class="badge badge-delete">DELETE</span></td><td><code>/classrooms/{id}</code></td><td>Supprimer une salle</td><td>Admin, Formateur</td></tr>
       </tbody>
     </table>

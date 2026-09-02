@@ -5,7 +5,11 @@ from fastapi import APIRouter, HTTPException
 
 from app.api.deps import CurrentUser, SessionDep
 from app.models.classroom import Classroom
+from app.models.user import User
+from app.models.attendance import Attendance
+from app.models.message import Message
 from app.schemas.classroom import ClassroomCreate, ClassroomResponse
+from datetime import datetime, date
 
 router = APIRouter()
 
@@ -80,12 +84,45 @@ def create_classroom(
         room_id=room_code,
         title=classroom_in.title,
         description=classroom_in.description,
+        target_roles=classroom_in.target_roles,
         instructor_id=current_user.id,
         is_active=True,
     )
     session.add(classroom)
     session.commit()
     session.refresh(classroom)
+
+    # Handle invitations and attendance if target_roles is specified
+    if classroom_in.target_roles:
+        roles_list = [r.strip().lower() for r in classroom_in.target_roles.split(",") if r.strip()]
+        if roles_list:
+            # Find users matching these roles
+            targeted_users = session.query(User).filter(User.role.in_(roles_list)).all()
+            for t_user in targeted_users:
+                # 1. Register in Attendance as absent
+                att = Attendance(
+                    user_id=t_user.id,
+                    date=date.today(),
+                    status="absent",
+                    session_name=classroom.title
+                )
+                session.add(att)
+
+                # 2. Send invitation Message
+                invitation_body = (
+                    f"Bonjour,\n\nVous êtes invité(e) à rejoindre la classe virtuelle : **{classroom.title}**.\n\n"
+                    f"Code de la salle : `{classroom.room_id}`\n\n"
+                    f"Vous pouvez rejoindre cette session depuis la page des classes virtuelles."
+                )
+                msg = Message(
+                    sender_id=current_user.id,
+                    recipient_id=t_user.id,
+                    subject="Invitation à une classe virtuelle",
+                    body=invitation_body
+                )
+                session.add(msg)
+            session.commit()
+
     return classroom
 
 
@@ -103,6 +140,43 @@ def get_classroom_by_code(
     if not classroom:
         raise HTTPException(status_code=404, detail="Classe virtuelle introuvable.")
     return classroom
+
+
+@router.post("/{room_id}/join")
+def join_classroom(
+    room_id: str,
+    session: SessionDep,
+    current_user: CurrentUser,
+) -> Any:
+    """
+    Record user joining the classroom for attendance tracking.
+    """
+    cleaned_id = room_id.strip().lower()
+    classroom = session.query(Classroom).filter(Classroom.room_id == cleaned_id).first()
+    if not classroom:
+        raise HTTPException(status_code=404, detail="Classe virtuelle introuvable.")
+
+    # We only track attendance for non-instructors
+    if current_user.id != classroom.instructor_id and current_user.role not in ["admin", "formateur", "pedagogique"]:
+        # Find today's attendance record for this session
+        att = session.query(Attendance).filter(
+            Attendance.user_id == current_user.id,
+            Attendance.date == date.today(),
+            Attendance.session_name == classroom.title
+        ).first()
+
+        if att:
+            # Check for lateness (30 minutes)
+            time_diff = (datetime.utcnow() - classroom.created_at).total_seconds() / 60.0
+            if time_diff >= 30:
+                att.status = "late"
+                att.minutes_late = int(time_diff)
+            else:
+                att.status = "present"
+                att.minutes_late = 0
+            session.commit()
+
+    return {"message": "Rejoint avec succès", "room_id": classroom.room_id}
 
 
 @router.delete("/{room_id}")

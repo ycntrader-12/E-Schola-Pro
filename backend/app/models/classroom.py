@@ -13,6 +13,7 @@ class Classroom(Base):
     room_id = Column(String, unique=True, index=True, nullable=False)
     title = Column(String, nullable=False)
     description = Column(Text, nullable=True)
+    target_roles = Column(String, nullable=True)  # "etudiant,stagiaire,employer"
     instructor_id = Column(
         Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
