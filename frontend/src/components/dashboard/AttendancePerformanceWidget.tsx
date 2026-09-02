@@ -71,7 +71,7 @@ export default function AttendancePerformanceWidget() {
         const res = await apiClient.get('/attendance/my-stats');
         const myData = res.data;
         
-        const isMgr = myData.user_role === 'formateur' || myData.user_role === 'admin';
+        const isMgr = ['formateur', 'admin', 'admin_manager', 'admin_limited'].includes(myData.user_role);
         setIsManager(isMgr);
         
         if (isMgr) {

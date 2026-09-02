@@ -28,7 +28,7 @@ export default function DeliverablesModal({ event, currentUser, onClose }: Deliv
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const canManage = currentUser?.role === 'formateur' || currentUser?.role === 'admin';
+  const canManage = ['formateur', 'admin', 'admin_manager', 'admin_limited'].includes(currentUser?.role || '');
 
   const fetchDeliverables = async () => {
     try {

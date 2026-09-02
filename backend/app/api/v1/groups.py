@@ -16,6 +16,9 @@ from app.schemas.group import (
 router = APIRouter()
 
 
+ADMIN_ROLES = ["admin", "admin_manager", "admin_limited"]
+
+
 @router.get("/", response_model=list[GroupResponse])
 def read_groups(
     session: SessionDep,
@@ -61,7 +64,7 @@ def create_group(
     """
     Create a new group. Admin and formateur only.
     """
-    if current_user.role not in ["admin", "formateur"]:
+    if current_user.role not in ["formateur"] + ADMIN_ROLES:
         raise HTTPException(status_code=403, detail="Non autorisé.")
 
     group = Group(
@@ -94,7 +97,7 @@ def update_group(
     """
     Update a group. Admin and formateur only.
     """
-    if current_user.role not in ["admin", "formateur"]:
+    if current_user.role not in ["formateur"] + ADMIN_ROLES:
         raise HTTPException(status_code=403, detail="Non autorisé.")
 
     group = session.query(Group).filter(Group.id == group_id).first()
@@ -133,7 +136,7 @@ def delete_group(
     """
     Delete a group. Admin and formateur only.
     """
-    if current_user.role not in ["admin", "formateur"]:
+    if current_user.role not in ["formateur"] + ADMIN_ROLES:
         raise HTTPException(status_code=403, detail="Non autorisé.")
 
     group = session.query(Group).filter(Group.id == group_id).first()
@@ -190,7 +193,7 @@ def add_group_member(
     """
     Add a member to a group. Admin and formateur only.
     """
-    if current_user.role not in ["admin", "formateur"]:
+    if current_user.role not in ["formateur"] + ADMIN_ROLES:
         raise HTTPException(status_code=403, detail="Non autorisé.")
 
     group = session.query(Group).filter(Group.id == group_id).first()
@@ -240,7 +243,7 @@ def remove_group_member(
     """
     Remove a member from a group. Admin and formateur only.
     """
-    if current_user.role not in ["admin", "formateur"]:
+    if current_user.role not in ["formateur"] + ADMIN_ROLES:
         raise HTTPException(status_code=403, detail="Non autorisé.")
 
     member = (
@@ -266,7 +269,7 @@ def get_available_users(
     """
     Get users that can be added to a group.
     """
-    if current_user.role not in ["admin", "formateur"]:
+    if current_user.role not in ["formateur"] + ADMIN_ROLES:
         raise HTTPException(status_code=403, detail="Non autorisé.")
 
     query = session.query(User).order_by(User.email.asc())

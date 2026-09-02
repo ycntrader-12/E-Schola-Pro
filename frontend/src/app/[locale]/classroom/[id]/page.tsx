@@ -154,7 +154,7 @@ export default function VirtualClassroomLivePage() {
   const localStreamRef = useRef<MediaStream | null>(null);
   const screenStreamRef = useRef<MediaStream | null>(null);
 
-  const isManager = currentUser?.role === 'formateur' || currentUser?.role === 'admin' || currentUser?.role === 'pedagogique';
+  const isManager = ['formateur', 'admin', 'admin_manager', 'admin_limited', 'pedagogique'].includes(currentUser?.role || '');
 
   // Detect mobile screen & browser
   useEffect(() => {

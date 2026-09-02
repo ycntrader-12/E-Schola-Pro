@@ -133,7 +133,7 @@ export default function AttendancePage() {
   const [newGroup, setNewGroup] = useState('Groupe A - Informatique & IA');
   const [isAddingLearner, setIsAddingLearner] = useState(false);
 
-  const isManager = currentUser?.role === 'formateur' || currentUser?.role === 'admin';
+  const isManager = ['formateur', 'admin', 'admin_manager', 'admin_limited'].includes(currentUser?.role || '');
 
   // 1. Fetch current user, learners, groups & history
   const fetchData = async () => {
@@ -141,7 +141,7 @@ export default function AttendancePage() {
       const userRes = await apiClient.get('/users/me');
       setCurrentUser(userRes.data);
 
-      if (userRes.data.role === 'formateur' || userRes.data.role === 'admin') {
+      if (['formateur', 'admin', 'admin_manager', 'admin_limited'].includes(userRes.data.role)) {
         const [learnersRes, groupsRes, historyRes, overviewRes] = await Promise.all([
           apiClient.get('/attendance/learners'),
           apiClient.get('/attendance/groups').catch(() => ({ data: [] })),
@@ -382,7 +382,7 @@ export default function AttendancePage() {
           </div>
 
           <div className="flex items-center gap-3">
-            {(currentUser?.role === 'admin' || currentUser?.role === 'formateur' || currentUser?.role === 'pedagogique') && (
+            {['admin', 'admin_manager', 'admin_limited', 'formateur', 'pedagogique'].includes(currentUser?.role || '') && (
               <button
                 onClick={() => window.print()}
                 className="px-4 py-2.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 text-xs font-bold flex items-center gap-2 shadow-xs transition-all cursor-pointer"

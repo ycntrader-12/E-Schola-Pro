@@ -86,7 +86,7 @@ class AdminAuth(AuthenticationBackend):
             )
             if (
                 user
-                and user.role == "admin"
+                and user.role in ["admin", "admin_limited"]
                 and verify_password(str(password), user.hashed_password)
             ):
                 request.session.update({"admin_token": settings.SECRET_KEY})

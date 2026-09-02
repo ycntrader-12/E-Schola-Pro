@@ -39,7 +39,8 @@ def create_course(
     Create new course.
     """
     # Verify if current_user.role is authorized
-    if current_user.role not in ["formateur", "admin", "pedagogique"]:
+    admin_roles = ["admin", "admin_manager", "admin_limited"]
+    if current_user.role not in ["formateur", "pedagogique"] + admin_roles:
         raise HTTPException(
             status_code=403, detail="Not enough permissions to upload courses"
         )
@@ -78,13 +79,14 @@ def delete_course(
     current_user: CurrentUser,
 ) -> Any:
     """
-    Delete a course. (Admin or course instructor)
+    Delete a course. (Admin, Admin Manager or course instructor)
     """
     course = session.query(Course).filter(Course.id == course_id).first()
     if not course:
         raise HTTPException(status_code=404, detail="Course not found")
 
-    if current_user.role != "admin" and course.instructor_id != current_user.id:
+    admin_roles = ["admin", "admin_manager", "admin_limited"]
+    if current_user.role not in admin_roles and course.instructor_id != current_user.id:
         raise HTTPException(
             status_code=403, detail="Not enough permissions to delete this course"
         )
@@ -102,13 +104,14 @@ def add_course_video(
     current_user: CurrentUser,
 ) -> Any:
     """
-    Add a video to a course playlist. (Admin or course instructor)
+    Add a video to a course playlist. (Admin, Admin Manager or course instructor)
     """
     course = session.query(Course).filter(Course.id == course_id).first()
     if not course:
         raise HTTPException(status_code=404, detail="Course not found")
 
-    if current_user.role != "admin" and course.instructor_id != current_user.id:
+    admin_roles = ["admin", "admin_manager", "admin_limited"]
+    if current_user.role not in admin_roles and course.instructor_id != current_user.id:
         raise HTTPException(
             status_code=403,
             detail="Not enough permissions to add videos to this course",
@@ -135,13 +138,14 @@ def delete_course_video(
     current_user: CurrentUser,
 ) -> Any:
     """
-    Delete a video from a course playlist. (Admin or course instructor)
+    Delete a video from a course playlist. (Admin, Admin Manager or course instructor)
     """
     course = session.query(Course).filter(Course.id == course_id).first()
     if not course:
         raise HTTPException(status_code=404, detail="Course not found")
 
-    if current_user.role != "admin" and course.instructor_id != current_user.id:
+    admin_roles = ["admin", "admin_manager", "admin_limited"]
+    if current_user.role not in admin_roles and course.instructor_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not enough permissions")
 
     video = (

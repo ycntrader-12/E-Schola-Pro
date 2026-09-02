@@ -11,7 +11,7 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     role = Column(
         String, default="étudiant"
-    )  # "admin", "formateur", "employer", "stagiaire", "étudiant"
+    )  # "admin", "admin_manager", "admin_limited", "formateur", "pedagogique", "employer", "stagiaire", "étudiant"
     avatar_url = Column(String, nullable=True)
     group_name = Column(String, default="Groupe A - Informatique & IA", nullable=True)
 

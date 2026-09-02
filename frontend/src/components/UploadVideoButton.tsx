@@ -67,7 +67,7 @@ export default function UploadVideoButton({ courses }: UploadVideoButtonProps) {
           const res = await apiClient.get('/users/me');
           if (res.status === 200) {
             setCurrentUser(res.data);
-            if (['formateur', 'admin', 'pedagogique'].includes(res.data.role)) {
+            if (['formateur', 'admin', 'admin_manager', 'admin_limited', 'pedagogique'].includes(res.data.role)) {
               setCanUpload(true);
             }
           }
@@ -82,7 +82,7 @@ export default function UploadVideoButton({ courses }: UploadVideoButtonProps) {
   if (!canUpload || !currentUser) return null;
 
   // Filter courses: Admins see all, trainers see only their own courses
-  const myCourses = currentUser.role === 'admin' 
+  const myCourses = ['admin', 'admin_manager', 'admin_limited'].includes(currentUser.role) 
     ? courses 
     : courses.filter(c => c.instructor_id === currentUser.id);
 

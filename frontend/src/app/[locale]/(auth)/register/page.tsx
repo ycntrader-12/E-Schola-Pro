@@ -31,8 +31,8 @@ export default function RegisterPage() {
       return;
     }
 
-    if (role === 'formateur' || role === 'admin') {
-      setError("Le rôle de formateur ne peut pas être choisi publiquement.");
+    if (['formateur', 'admin', 'admin_manager', 'admin_limited', 'pedagogique'].includes(role)) {
+      setError("Ce rôle privilégié ne peut pas être choisi lors de l'inscription publique.");
       return;
     }
 

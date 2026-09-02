@@ -132,9 +132,12 @@ def get_my_dashboard_performance(session: SessionDep, current_user: CurrentUser)
     )
 
 
+ADMIN_ROLES = ["admin", "admin_manager", "admin_limited"]
+
+
 @router.get("/user-stats/{user_id}", response_model=DashboardPerformanceOut)
 def get_user_dashboard_performance(user_id: int, session: SessionDep, current_user: CurrentUser):
-    if current_user.role not in ["formateur", "admin"]:
+    if current_user.role not in ["formateur"] + ADMIN_ROLES:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé."
         )
@@ -201,7 +204,7 @@ def get_my_attendance_records(
 # --------------------------------------------------------------------------
 @router.get("/groups", response_model=list[str])
 def get_attendance_groups(session: SessionDep, current_user: CurrentUser):
-    if current_user.role not in ["formateur", "admin"]:
+    if current_user.role not in ["formateur"] + ADMIN_ROLES:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé."
         )
@@ -222,7 +225,7 @@ def get_attendance_groups(session: SessionDep, current_user: CurrentUser):
 def get_learners_for_attendance(
     session: SessionDep, current_user: CurrentUser, group_name: str | None = Query(None)
 ):
-    if current_user.role not in ["formateur", "admin"]:
+    if current_user.role not in ["formateur"] + ADMIN_ROLES:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Seuls les formateurs et administrateurs peuvent accéder à la liste des apprenants.",
@@ -240,7 +243,7 @@ def get_learners_for_attendance(
 
 @router.post("/learners", response_model=UserSimpleOut)
 def add_learner_to_group(payload: dict, session: SessionDep, current_user: CurrentUser):
-    if current_user.role not in ["formateur", "admin"]:
+    if current_user.role not in ["formateur"] + ADMIN_ROLES:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé."
         )
@@ -285,7 +288,7 @@ def get_attendance_records(
     user_id: int | None = Query(None),
     status_filter: str | None = Query(None),
 ):
-    if current_user.role not in ["formateur", "admin"]:
+    if current_user.role not in ["formateur"] + ADMIN_ROLES:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Accès interdit : seuls les formateurs et administrateurs peuvent consulter la feuille d'émargement globale.",
@@ -310,7 +313,7 @@ def get_attendance_records(
 def batch_record_attendance(
     payload: AttendanceBatchCreate, session: SessionDep, current_user: CurrentUser
 ):
-    if current_user.role not in ["formateur", "admin"]:
+    if current_user.role not in ["formateur"] + ADMIN_ROLES:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Accès refusé : Seuls les formateurs et administrateurs peuvent pointer les présences.",
@@ -361,7 +364,7 @@ def batch_record_attendance(
 def record_single_attendance(
     payload: AttendanceCreate, session: SessionDep, current_user: CurrentUser
 ):
-    if current_user.role not in ["formateur", "admin"]:
+    if current_user.role not in ["formateur"] + ADMIN_ROLES:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé."
         )
@@ -388,7 +391,7 @@ def record_single_attendance(
 def delete_attendance(
     attendance_id: int, session: SessionDep, current_user: CurrentUser
 ):
-    if current_user.role not in ["formateur", "admin"]:
+    if current_user.role not in ["formateur"] + ADMIN_ROLES:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé."
         )
@@ -407,7 +410,7 @@ def delete_attendance(
 # --------------------------------------------------------------------------
 @router.get("/overview", response_model=GlobalAttendanceOverview)
 def get_attendance_global_overview(session: SessionDep, current_user: CurrentUser):
-    if current_user.role not in ["formateur", "admin"]:
+    if current_user.role not in ["formateur"] + ADMIN_ROLES:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé."
         )

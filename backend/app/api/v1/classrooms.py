@@ -41,6 +41,9 @@ def get_classrooms(
     return classrooms
 
 
+ADMIN_ROLES = ["admin", "admin_manager", "admin_limited"]
+
+
 @router.post("/", response_model=ClassroomResponse)
 def create_classroom(
     *,
@@ -51,7 +54,7 @@ def create_classroom(
     """
     Create a new virtual classroom. Restricted to formateurs, pedagogique, and admins.
     """
-    if current_user.role not in ["formateur", "admin", "pedagogique"]:
+    if current_user.role not in ["formateur", "pedagogique"] + ADMIN_ROLES:
         raise HTTPException(
             status_code=403,
             detail="Seuls les formateurs et administrateurs peuvent créer une classe virtuelle.",
@@ -157,7 +160,7 @@ def join_classroom(
         raise HTTPException(status_code=404, detail="Classe virtuelle introuvable.")
 
     # We only track attendance for non-instructors
-    if current_user.id != classroom.instructor_id and current_user.role not in ["admin", "formateur", "pedagogique"]:
+    if current_user.id != classroom.instructor_id and current_user.role not in ["formateur", "pedagogique"] + ADMIN_ROLES:
         # Find today's attendance record for this session
         att = session.query(Attendance).filter(
             Attendance.user_id == current_user.id,
@@ -193,7 +196,7 @@ def delete_classroom(
     if not classroom:
         raise HTTPException(status_code=404, detail="Classe virtuelle introuvable.")
 
-    if current_user.role != "admin" and classroom.instructor_id != current_user.id:
+    if current_user.role not in ADMIN_ROLES and classroom.instructor_id != current_user.id:
         raise HTTPException(
             status_code=403, detail="Non autorisé à supprimer cette classe virtuelle."
         )
@@ -211,7 +214,7 @@ def purge_classroom_history(
     """
     Permanently delete all closed (inactive) virtual classrooms from history. Admin only.
     """
-    if current_user.role != "admin":
+    if current_user.role not in ADMIN_ROLES:
         raise HTTPException(
             status_code=403,
             detail="Seul un administrateur peut supprimer l'historique.",
@@ -250,7 +253,7 @@ def create_or_update_subgroups(room_id: str, payload: dict, current_user: Curren
     """
     Create and launch breakout rooms. Strictly Formateurs and Admins.
     """
-    if current_user.role not in ["formateur", "admin", "pedagogique"]:
+    if current_user.role not in ["formateur", "pedagogique"] + ADMIN_ROLES:
         raise HTTPException(
             status_code=403,
             detail="Seuls les formateurs et administrateurs peuvent créer et lancer des sous-groupes.",
@@ -271,7 +274,7 @@ def close_room_subgroups(room_id: str, current_user: CurrentUser):
     """
     Close all breakout rooms and recall all participants to main room. Strictly Formateurs and Admins.
     """
-    if current_user.role not in ["formateur", "admin", "pedagogique"]:
+    if current_user.role not in ["formateur", "pedagogique"] + ADMIN_ROLES:
         raise HTTPException(
             status_code=403,
             detail="Seuls les formateurs et administrateurs peuvent clôturer les sous-groupes.",
@@ -306,9 +309,11 @@ def get_room_messages(room_id: str, current_user: CurrentUser):
             rec == "everyone"
             or rec == user_email
             or snd == user_email
-            or current_user.role == "admin"
+            or current_user.role in ADMIN_ROLES
             or rec.startswith("subgroup:")
         ):
+            visible.append(m)
+    return visible
             visible.append(m)
     return visible
 

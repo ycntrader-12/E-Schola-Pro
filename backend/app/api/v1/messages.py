@@ -173,10 +173,11 @@ def get_message_detail(
     if not msg:
         raise HTTPException(status_code=404, detail="Message introuvable.")
 
+    admin_roles = ["admin", "admin_manager", "admin_limited"]
     if (
         msg.sender_id != current_user.id
         and msg.recipient_id != current_user.id
-        and current_user.role != "admin"
+        and current_user.role not in admin_roles
     ):
         raise HTTPException(status_code=403, detail="Accès non autorisé à ce message.")
 
@@ -202,10 +203,11 @@ def restore_message_from_trash(
     if not msg:
         raise HTTPException(status_code=404, detail="Message introuvable.")
 
+    admin_roles = ["admin", "admin_manager", "admin_limited"]
     if (
         msg.sender_id != current_user.id
         and msg.recipient_id != current_user.id
-        and current_user.role != "admin"
+        and current_user.role not in admin_roles
     ):
         raise HTTPException(status_code=403, detail="Accès non autorisé.")
 
@@ -227,10 +229,11 @@ def delete_message(
     if not msg:
         raise HTTPException(status_code=404, detail="Message introuvable.")
 
+    admin_roles = ["admin", "admin_manager", "admin_limited"]
     if (
         msg.sender_id != current_user.id
         and msg.recipient_id != current_user.id
-        and current_user.role != "admin"
+        and current_user.role not in admin_roles
     ):
         raise HTTPException(
             status_code=403, detail="Accès non autorisé pour supprimer ce message."
@@ -279,7 +282,7 @@ def report_message(
     # Find all instructors and administrators to receive direct transmitted report
     staff_users = (
         session.query(User)
-        .filter(User.role.in_(["admin", "formateur", "pedagogique"]))
+        .filter(User.role.in_(["admin", "admin_manager", "admin_limited", "formateur", "pedagogique"]))
         .all()
     )
 

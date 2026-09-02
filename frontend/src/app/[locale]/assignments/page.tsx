@@ -116,7 +116,7 @@ export default function AssignmentsPage() {
     }
   };
 
-  const isManager = currentUser?.role === 'admin' || currentUser?.role === 'formateur';
+  const isManager = ['admin', 'admin_manager', 'admin_limited', 'formateur'].includes(currentUser?.role || '');
 
   // ---------------------------------------------------------------------------
   // GESTION DE LA SOUMISSION DU LIVRABLE (Apprenant)

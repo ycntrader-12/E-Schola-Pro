@@ -541,7 +541,7 @@
         <div class="stat-label">Tables DB</div>
       </div>
       <div class="stat-card">
-        <div class="stat-value">5</div>
+        <div class="stat-value">7</div>
         <div class="stat-label">Rôles Utilisateur</div>
       </div>
     </div>
@@ -757,7 +757,7 @@ E-Schola Pro/
         <tr><td><code>id</code></td><td>Integer</td><td>PK, Auto-increment</td><td>Identifiant unique</td></tr>
         <tr><td><code>email</code></td><td>String</td><td>Unique, Not Null, Indexé</td><td>Adresse e-mail (login)</td></tr>
         <tr><td><code>hashed_password</code></td><td>String</td><td>Not Null</td><td>Mot de passe haché (bcrypt)</td></tr>
-        <tr><td><code>role</code></td><td>String</td><td>Default: "étudiant"</td><td>admin | formateur | employer | stagiaire | étudiant</td></tr>
+        <tr><td><code>role</code></td><td>String</td><td>Default: "étudiant"</td><td>admin | admin_manager | admin_limited | formateur | pedagogique | étudiant | stagiaire | employer</td></tr>
         <tr><td><code>avatar_url</code></td><td>String</td><td>Nullable</td><td>URL de la photo de profil</td></tr>
         <tr><td><code>group_name</code></td><td>String</td><td>Nullable</td><td>Nom du groupe (hérité)</td></tr>
       </tbody>
@@ -1141,30 +1141,47 @@ E-Schola Pro/
   <div class="page-break"></div>
   <section id="roles">
     <h2><span class="section-number">06</span> Rôles & Permissions</h2>
-    <p>Matrice d'accès et description de chaque rôle utilisateur.</p>
+    <p>Matrice d'accès et description détaillée de chaque rôle utilisateur (Modèle RBAC renforcé).</p>
 
     <h3>Rôles Disponibles</h3>
     <div class="card-grid">
       <div class="card">
         <p><span class="role-badge role-admin">ADMIN</span></p>
-        <p style="margin-top:8px"><strong>Administrateur</strong> — Accès total au système. Peut gérer les utilisateurs, les cours, les quiz, les présences, les groupes, les classes virtuelles et la messagerie.</p>
+        <p style="margin-top:8px"><strong>Super-Administrateur</strong> — Accès absolu au système, à l'interface SQLAdmin (/admin), au portail Backend/BDD, et à l'attribution de tous les rôles administratifs.</p>
+      </div>
+      <div class="card">
+        <p><span class="role-badge role-admin" style="background: rgba(59,130,246,0.15); color: #2563eb; border-color: rgba(59,130,246,0.3);">ADMIN_MANAGER</span></p>
+        <p style="margin-top:8px"><strong>Admin Manager</strong> — Gestion intégrale de la plateforme (cours, quiz, devoirs, présences, calendrier, groupes, messages, gestion des apprenants et formateurs). <em>Strictement interdit d'accès à la BDD/SQLAdmin et interdit d'attribuer ou modifier des rôles administrateurs.</em></p>
+      </div>
+      <div class="card">
+        <p><span class="role-badge role-admin" style="background: rgba(147,51,234,0.15); color: #9333ea; border-color: rgba(147,51,234,0.3);">ADMIN_LIMITED</span></p>
+        <p style="margin-top:8px"><strong>Admin Délégué</strong> — Co-administrateur disposant des permissions sensibles d'administration et de délégation sécurisée des privilèges.</p>
       </div>
       <div class="card">
         <p><span class="role-badge role-formateur">FORMATEUR</span></p>
-        <p style="margin-top:8px"><strong>Formateur</strong> — Peut créer et gérer ses propres cours, quiz, événements, groupes et marquer les présences. Accès à la messagerie et aux classes virtuelles.</p>
+        <p style="margin-top:8px"><strong>Formateur & Corps Pédagogique</strong> — Création et gestion de cours, quiz, devoirs, émargements, plannings, classes virtuelles et messagerie interne.</p>
       </div>
       <div class="card">
         <p><span class="role-badge role-etudiant">ÉTUDIANT</span></p>
-        <p style="margin-top:8px"><strong>Étudiant</strong> — Peut consulter les cours, passer les quiz, soumettre des livrables, accéder à la messagerie et rejoindre les classes virtuelles.</p>
+        <p style="margin-top:8px"><strong>Étudiant</strong> — Consultation des cours, passage des quiz chronométrés, soumission de livrables et devoirs, émargement et messagerie.</p>
       </div>
       <div class="card">
         <p><span class="role-badge role-stagiaire">STAGIAIRE</span></p>
-        <p style="margin-top:8px"><strong>Stagiaire</strong> — Mêmes droits que l'étudiant. Peut être ciblé spécifiquement par des événements ou quiz dédiés.</p>
+        <p style="margin-top:8px"><strong>Stagiaire</strong> — Mêmes droits que l'étudiant avec parcours d'apprentissage adapté et suivi d'assiduité dédié.</p>
       </div>
       <div class="card">
         <p><span class="role-badge role-employer">EMPLOYER</span></p>
-        <p style="margin-top:8px"><strong>Employé</strong> — Mêmes droits que l'étudiant. Accès aux formations en entreprise et aux livrables professionnels.</p>
+        <p style="margin-top:8px"><strong>Employé</strong> — Mêmes droits que l'étudiant, accès aux formations en entreprise et dépôts de projets professionnels.</p>
       </div>
+    </div>
+
+    <h3>Règles de Sécurité RBAC & Délégation</h3>
+    <div class="card" style="border-left: 4px solid var(--primary);">
+      <ul style="margin: 0; padding-left: 20px; line-height: 1.8;">
+        <li><strong>Rôle ADMIN_MANAGER :</strong> Bénéficie de toutes les fonctionnalités applicatives (cours, quiz, présences, groupes, devoirs, calendrier, messages) mais ne peut <strong>jamais</strong> accéder à SQLAdmin (/admin) ni à l'onglet "Base de Données &amp; Backend".</li>
+        <li><strong>Protection de la hiérarchie des rôles :</strong> Un <code>ADMIN_MANAGER</code> ne peut <strong>pas</strong> créer, promouvoir, rétrograder ou supprimer un compte ayant un rôle administrateur (<code>admin</code>, <code>admin_manager</code>, <code>admin_limited</code>).</li>
+        <li><strong>Gestion des rôles sensibles :</strong> Seuls les rôles <code>ADMIN</code> et <code>ADMIN_LIMITED</code> sont autorisés à attribuer ou manipuler des privilèges administrateurs.</li>
+      </ul>
     </div>
 
     <h3>Matrice de Permissions</h3>
@@ -1172,30 +1189,30 @@ E-Schola Pro/
       <thead>
         <tr>
           <th>Fonctionnalité</th>
-          <th><span class="role-badge role-admin">Admin</span></th>
+          <th><span class="role-badge role-admin">Admin / Admin Limited</span></th>
+          <th><span class="role-badge role-admin" style="background: rgba(59,130,246,0.15); color: #2563eb;">Admin Manager</span></th>
           <th><span class="role-badge role-formateur">Formateur</span></th>
-          <th><span class="role-badge role-etudiant">Étudiant</span></th>
-          <th><span class="role-badge role-stagiaire">Stagiaire</span></th>
-          <th><span class="role-badge role-employer">Employer</span></th>
+          <th><span class="role-badge role-etudiant">Étudiant / Stagiaire / Employé</span></th>
         </tr>
       </thead>
       <tbody>
-        <tr><td><strong>Créer/Modifier/Supprimer des cours</strong></td><td>✅</td><td>✅</td><td>❌</td><td>❌</td><td>❌</td></tr>
-        <tr><td><strong>Consulter les cours</strong></td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
-        <tr><td><strong>Créer/Gérer les quiz</strong></td><td>✅</td><td>✅</td><td>❌</td><td>❌</td><td>❌</td></tr>
-        <tr><td><strong>Passer un quiz</strong></td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
-        <tr><td><strong>Créer & Attribuer des devoirs / tâches</strong></td><td>✅</td><td>✅</td><td>❌</td><td>❌</td><td>❌</td></tr>
-        <tr><td><strong>Consulter & Soumettre des livrables de devoirs</strong></td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
-        <tr><td><strong>Évaluer & Noter les devoirs / travaux</strong></td><td>✅</td><td>✅</td><td>❌</td><td>❌</td><td>❌</td></tr>
-        <tr><td><strong>Marquer les présences</strong></td><td>✅</td><td>✅</td><td>❌</td><td>❌</td><td>❌</td></tr>
-        <tr><td><strong>Créer des événements</strong></td><td>✅</td><td>✅</td><td>❌</td><td>❌</td><td>❌</td></tr>
-        <tr><td><strong>Soumettre des livrables</strong></td><td>❌</td><td>❌</td><td>✅</td><td>✅</td><td>✅</td></tr>
-        <tr><td><strong>Gérer les groupes</strong></td><td>✅</td><td>✅</td><td>❌</td><td>❌</td><td>❌</td></tr>
-        <tr><td><strong>Créer des classes virtuelles</strong></td><td>✅</td><td>✅</td><td>❌</td><td>❌</td><td>❌</td></tr>
-        <tr><td><strong>Envoyer/Recevoir messages</strong></td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
-        <tr><td><strong>Gérer les utilisateurs</strong></td><td>✅</td><td>❌</td><td>❌</td><td>❌</td><td>❌</td></tr>
-        <tr><td><strong>Panel Admin (/admin)</strong></td><td>✅</td><td>❌</td><td>❌</td><td>❌</td><td>❌</td></tr>
-        <tr><td><strong>Portail Backend & BDD (Paramètres)</strong></td><td>✅</td><td>❌</td><td>❌</td><td>❌</td><td>❌</td></tr>
+        <tr><td><strong>Créer/Modifier/Supprimer des cours &amp; vidéos</strong></td><td>✅</td><td>✅</td><td>✅</td><td>❌</td></tr>
+        <tr><td><strong>Consulter les cours &amp; supports</strong></td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+        <tr><td><strong>Créer, générer &amp; lancer des quiz</strong></td><td>✅</td><td>✅</td><td>✅</td><td>❌</td></tr>
+        <tr><td><strong>Passer un quiz &amp; consulter son bilan</strong></td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+        <tr><td><strong>Créer &amp; attribuer des devoirs / tâches</strong></td><td>✅</td><td>✅</td><td>✅</td><td>❌</td></tr>
+        <tr><td><strong>Consulter &amp; soumettre des livrables de devoirs</strong></td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+        <tr><td><strong>Évaluer &amp; noter les devoirs / travaux</strong></td><td>✅</td><td>✅</td><td>✅</td><td>❌</td></tr>
+        <tr><td><strong>Pointer &amp; valider les feuilles d'émargement</strong></td><td>✅</td><td>✅</td><td>✅</td><td>❌</td></tr>
+        <tr><td><strong>Créer des plannings &amp; événements calendrier</strong></td><td>✅</td><td>✅</td><td>✅</td><td>❌</td></tr>
+        <tr><td><strong>Gérer les groupes &amp; affecter les apprenants</strong></td><td>✅</td><td>✅</td><td>✅</td><td>❌</td></tr>
+        <tr><td><strong>Créer des classes virtuelles &amp; sous-groupes</strong></td><td>✅</td><td>✅</td><td>✅</td><td>❌</td></tr>
+        <tr><td><strong>Messagerie interne complète</strong></td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+        <tr><td><strong>Gérer les apprenants &amp; formateurs (Création/Rôle)</strong></td><td>✅</td><td>✅</td><td>❌</td><td>❌</td></tr>
+        <tr><td><strong>Attribuer les rôles Admin / Admin Manager</strong></td><td>✅</td><td>❌ <em>(Interdit)</em></td><td>❌</td><td>❌</td></tr>
+        <tr><td><strong>Modifier/Supprimer un compte Admin existant</strong></td><td>✅</td><td>❌ <em>(Interdit)</em></td><td>❌</td><td>❌</td></tr>
+        <tr><td><strong>Accès Panel SQLAdmin (/admin)</strong></td><td>✅</td><td>❌ <em>(Interdit)</em></td><td>❌</td><td>❌</td></tr>
+        <tr><td><strong>Portail Backend &amp; BDD (Paramètres / Système)</strong></td><td>✅</td><td>❌ <em>(Interdit)</em></td><td>❌</td><td>❌</td></tr>
       </tbody>
     </table>
   </section>

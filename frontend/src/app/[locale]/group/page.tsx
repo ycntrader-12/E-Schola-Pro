@@ -53,7 +53,7 @@ export default function GroupPage() {
     }
   };
 
-  const canManage = currentUser?.role === 'admin' || currentUser?.role === 'formateur';
+  const canManage = ['admin', 'admin_manager', 'admin_limited', 'formateur'].includes(currentUser?.role || '');
 
   const handleOpenAdd = () => {
     setEditingGroupId(null);

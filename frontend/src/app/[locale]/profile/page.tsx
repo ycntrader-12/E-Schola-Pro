@@ -88,14 +88,27 @@ interface QuizAttemptItem {
   completed_at: string;
 }
 
-const AVAILABLE_ROLES = [
+const ALL_ROLES = [
   'étudiant',
   'formateur',
   'stagiaire',
   'employer',
   'pedagogique',
+  'admin_manager',
+  'admin_limited',
   'admin'
 ];
+
+const NON_ADMIN_ROLES = [
+  'étudiant',
+  'formateur',
+  'stagiaire',
+  'employer',
+  'pedagogique'
+];
+
+const ADMIN_ROLES = ['admin', 'admin_manager', 'admin_limited'];
+const SUPER_ADMIN_ROLES = ['admin', 'admin_limited'];
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -241,7 +254,7 @@ export default function ProfilePage() {
       try {
         const res = await apiClient.get('/users/me');
         setUser(res.data);
-        if (res.data.role === 'admin' || res.data.role === 'formateur') {
+        if (ADMIN_ROLES.includes(res.data.role) || res.data.role === 'formateur') {
           fetchAdminData(res.data.role);
         }
       } catch (error) {
@@ -258,7 +271,7 @@ export default function ProfilePage() {
     setAdminLoading(true);
     try {
       const currentRole = role || user?.role;
-      const isAdm = currentRole === 'admin';
+      const isAdm = ADMIN_ROLES.includes(currentRole || '');
       
       const promises: Promise<any>[] = [
         apiClient.get('/courses/').catch(() => ({ data: [] })),
@@ -399,7 +412,10 @@ export default function ProfilePage() {
 
   if (!user) return null;
 
-  const isAdmin = user.role === 'admin';
+  const isSuperAdmin = SUPER_ADMIN_ROLES.includes(user.role);
+  const isAdminManager = user.role === 'admin_manager';
+  const isAdminUser = ADMIN_ROLES.includes(user.role);
+  const isStaffUser = isAdminUser || user.role === 'formateur';
 
   return (
     <div className="min-h-screen bg-white text-slate-900 p-6 md:p-12 space-y-8 max-w-5xl mx-auto">
@@ -411,9 +427,9 @@ export default function ProfilePage() {
           <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">Paramètres & Profil</h1>
           <p className="text-slate-500 mt-1">Gérez vos informations personnelles et vos préférences.</p>
         </div>
-        {isAdmin && (
+        {isAdminUser && (
           <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 text-[#1877f2] border border-blue-200 text-xs font-bold w-fit">
-            <Shield size={16} /> Mode Administrateur Actif
+            <Shield size={16} /> {isSuperAdmin ? 'Mode Super-Administrateur Actif' : isAdminManager ? 'Mode Admin Manager Actif' : 'Mode Administrateur Actif'}
           </span>
         )}
       </div>
@@ -521,7 +537,7 @@ export default function ProfilePage() {
       {/* ========================================================================= */}
       {/* SECTION OUTILS ADMINISTRATEUR & FORMATEUR (GESTION PLATEFORME)             */}
       {/* ========================================================================= */}
-      {(user?.role === 'admin' || user?.role === 'formateur') && (
+      {isStaffUser && (
         <div className="bg-white p-8 space-y-8 border border-slate-200 shadow-sm rounded-3xl">
           
           {/* Header Outils Admin / Formateur */}
@@ -533,11 +549,11 @@ export default function ProfilePage() {
                 </div>
                 <div>
                   <h2 className="text-2xl font-bold">
-                    {user?.role === 'admin' ? 'Outils Administrateur' : 'Espace Formateur & Évaluations'}
+                    {isAdminUser ? 'Outils Administrateur' : 'Espace Formateur & Évaluations'}
                   </h2>
                   <p className="text-sm text-text-secondary">
-                    {user?.role === 'admin'
-                      ? "Espace exclusif réservé à l'administrateur pour piloter les utilisateurs, cours et quiz."
+                    {isAdminUser
+                      ? "Espace réservé à l'administration pour piloter les utilisateurs, cours et évaluations."
                       : "Espace exclusif réservé aux formateurs pour gérer les cours et les quiz."}
                   </p>
                 </div>
@@ -546,7 +562,7 @@ export default function ProfilePage() {
 
             {/* Onglets de navigation */}
             <div className="flex items-center bg-surface p-1 rounded-xl border border-border flex-wrap gap-1">
-              {user?.role === 'admin' && (
+              {isAdminUser && (
                 <button
                   onClick={() => setAdminTab('users')}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
@@ -572,7 +588,7 @@ export default function ProfilePage() {
               >
                 <Award size={16} /> Quiz ({allQuizzes.length})
               </button>
-              {user?.role === 'admin' && (
+              {isSuperAdmin && (
                 <button
                   onClick={() => setAdminTab('system')}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
@@ -598,7 +614,7 @@ export default function ProfilePage() {
           )}
 
           {/* TAB 1 : GESTION DES UTILISATEURS ET DES RÔLES */}
-          {adminTab === 'users' && (
+          {isAdminUser && adminTab === 'users' && (
             <div className="space-y-6">
               
               {/* Stat counters */}
@@ -608,7 +624,7 @@ export default function ProfilePage() {
                   <p className="text-2xl font-black mt-1 text-primary">{allUsers.length}</p>
                 </div>
                 <div className="p-4 rounded-xl bg-surface/50 border border-border">
-                  <p className="text-xs text-text-secondary font-semibold uppercase">Étudiants</p>
+                  <p className="text-xs text-text-secondary font-semibold uppercase">Étudiants & Stagiaires</p>
                   <p className="text-2xl font-black mt-1 text-text-primary">
                     {allUsers.filter(u => ['étudiant', 'stagiaire', 'employer'].includes(u.role)).length}
                   </p>
@@ -622,7 +638,7 @@ export default function ProfilePage() {
                 <div className="p-4 rounded-xl bg-surface/50 border border-border">
                   <p className="text-xs text-text-secondary font-semibold uppercase">Administrateurs</p>
                   <p className="text-2xl font-black mt-1 text-purple-400">
-                    {allUsers.filter(u => u.role === 'admin').length}
+                    {allUsers.filter(u => ADMIN_ROLES.includes(u.role)).length}
                   </p>
                 </div>
               </div>
@@ -680,6 +696,15 @@ export default function ProfilePage() {
                       })
                       .map((u) => {
                         const isCurrentUser = u.id === user.id;
+                        const isTargetAdmin = ADMIN_ROLES.includes(u.role);
+                        const canModifyTargetRole = isSuperAdmin ? !isCurrentUser : (!isCurrentUser && !isTargetAdmin);
+                        const canDeleteTarget = isSuperAdmin ? !isCurrentUser : (!isCurrentUser && !isTargetAdmin);
+                        const canResetTargetPassword = isSuperAdmin ? true : !isTargetAdmin;
+
+                        const selectableRoles = isSuperAdmin
+                          ? ALL_ROLES
+                          : (isTargetAdmin ? [u.role] : NON_ADMIN_ROLES);
+
                         return (
                           <tr key={u.id} className="hover:bg-surface/60 transition-colors">
                             <td className="px-6 py-4 flex items-center gap-3">
@@ -694,9 +719,9 @@ export default function ProfilePage() {
 
                             <td className="px-6 py-4">
                               <span className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
-                                u.role === 'admin' 
+                                ADMIN_ROLES.includes(u.role)
                                   ? 'bg-primary/20 text-primary border border-primary/30' 
-                                  : u.role === 'formateur'
+                                  : u.role === 'formateur' || u.role === 'pedagogique'
                                   ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
                                   : 'bg-surface text-text-secondary border border-border'
                               }`}>
@@ -707,11 +732,11 @@ export default function ProfilePage() {
                             <td className="px-6 py-4">
                               <select
                                 value={u.role}
-                                disabled={isCurrentUser}
+                                disabled={!canModifyTargetRole}
                                 onChange={(e) => handleRoleChange(u.id, e.target.value)}
                                 className="px-3 py-1.5 rounded-lg bg-surface border border-border text-xs text-text-primary focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                               >
-                                {AVAILABLE_ROLES.map((roleOpt) => (
+                                {selectableRoles.map((roleOpt) => (
                                   <option key={roleOpt} value={roleOpt} className="bg-background">
                                     {roleOpt.charAt(0).toUpperCase() + roleOpt.slice(1)}
                                   </option>
@@ -721,18 +746,20 @@ export default function ProfilePage() {
 
                             <td className="px-6 py-4 text-right">
                               <div className="flex items-center justify-end gap-2">
-                                <button
-                                  onClick={() => {
-                                    setResetPasswordUser(u);
-                                    setNewResetPassword('');
-                                    setResetPasswordError('');
-                                  }}
-                                  className="p-2 rounded-lg text-text-secondary hover:text-primary hover:bg-primary/10 transition-colors"
-                                  title="Modifier le mot de passe"
-                                >
-                                  <Key size={16} />
-                                </button>
-                                {!isCurrentUser && (
+                                {canResetTargetPassword && (
+                                  <button
+                                    onClick={() => {
+                                      setResetPasswordUser(u);
+                                      setNewResetPassword('');
+                                      setResetPasswordError('');
+                                    }}
+                                    className="p-2 rounded-lg text-text-secondary hover:text-primary hover:bg-primary/10 transition-colors"
+                                    title="Modifier le mot de passe"
+                                  >
+                                    <Key size={16} />
+                                  </button>
+                                )}
+                                {canDeleteTarget && (
                                   <button
                                     onClick={() => handleDeleteUser(u.id, u.email)}
                                     className="p-2 rounded-lg text-text-secondary hover:text-red-400 hover:bg-red-500/10 transition-colors"
@@ -942,8 +969,8 @@ export default function ProfilePage() {
             </div>
           )}
 
-          {/* TAB 4 : OUTILS SYSTÈME, LIENS BACKEND & BASE DE DONNÉES (ADMIN SEULEMENT) */}
-          {adminTab === 'system' && (
+          {/* TAB 4 : OUTILS SYSTÈME, LIENS BACKEND & BASE DE DONNÉES (ADMIN SUPER SEULEMENT) */}
+          {isSuperAdmin && adminTab === 'system' && (
             <div className="space-y-8 animate-fade-in-up">
               
               {/* Security Banner */}
@@ -1362,7 +1389,7 @@ export default function ProfilePage() {
                       onChange={(e) => setNewAccountRole(e.target.value)}
                       className="w-full px-4 py-3 rounded-xl bg-surface border border-border focus:border-primary outline-none text-sm"
                     >
-                      {AVAILABLE_ROLES.map((roleOpt) => (
+                      {(isSuperAdmin ? ALL_ROLES : NON_ADMIN_ROLES).map((roleOpt) => (
                         <option key={roleOpt} value={roleOpt} className="bg-background">
                           {roleOpt.charAt(0).toUpperCase() + roleOpt.slice(1)}
                         </option>

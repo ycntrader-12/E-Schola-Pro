@@ -259,7 +259,7 @@ export default function CourseDetailPage() {
     ? course.instructor.email.split('@')[0] 
     : `Formateur #${course.instructor_id}`;
 
-  const isCourseManager = currentUser?.role === 'admin' || currentUser?.id === course.instructor_id;
+  const isCourseManager = ['admin', 'admin_manager', 'admin_limited'].includes(currentUser?.role || '') || currentUser?.id === course.instructor_id;
 
   return (
     <div className="min-h-screen pb-24">

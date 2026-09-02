@@ -1,6 +1,10 @@
+import os
+import shutil
+import uuid
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, File, HTTPException, Request, UploadFile
+from pydantic import BaseModel
 
 from app.api.deps import CurrentUser, SessionDep
 from app.core.security import get_password_hash, verify_password
@@ -8,6 +12,19 @@ from app.models.user import User
 from app.schemas.user import UserCreate, UserResponse, UserUpdatePassword
 
 router = APIRouter()
+
+ADMIN_ROLES = ["admin", "admin_manager", "admin_limited"]
+SUPER_ADMIN_ROLES = ["admin", "admin_limited"]
+VALID_ROLES = [
+    "admin",
+    "admin_manager",
+    "admin_limited",
+    "formateur",
+    "pedagogique",
+    "étudiant",
+    "stagiaire",
+    "employer",
+]
 
 
 @router.post("/", response_model=UserResponse)
@@ -17,7 +34,7 @@ def create_user(
     user_in: UserCreate,
 ) -> Any:
     """
-    Create new user.
+    Create new user via public registration.
     """
     user = session.query(User).filter(User.email == user_in.email).first()
     if user:
@@ -26,7 +43,8 @@ def create_user(
             detail="The user with this email already exists in the system.",
         )
 
-    if user_in.role in ["admin", "formateur", "pedagogique"]:
+    requested_role = user_in.role.lower()
+    if requested_role in ADMIN_ROLES or requested_role in ["formateur", "pedagogique"]:
         raise HTTPException(
             status_code=403,
             detail="Le rôle de formateur ou d'administrateur ne peut pas être choisi publiquement. Il doit être attribué par un administrateur.",
@@ -41,13 +59,6 @@ def create_user(
     session.commit()
     session.refresh(user_create)
     return user_create
-
-
-import os
-import shutil
-import uuid
-
-from fastapi import File, Request, UploadFile
 
 
 @router.get("/me", response_model=UserResponse)
@@ -126,17 +137,14 @@ def read_users(
     limit: int = 100,
 ) -> Any:
     """
-    Retrieve all users. (Admin only)
+    Retrieve all users. (Admin and Admin Managers)
     """
-    if current_user.role != "admin":
+    if current_user.role.lower() not in ADMIN_ROLES:
         raise HTTPException(
             status_code=403, detail="Not enough permissions. Admin only."
         )
     users = session.query(User).offset(skip).limit(limit).all()
     return users
-
-
-from pydantic import BaseModel
 
 
 class RoleUpdate(BaseModel):
@@ -151,29 +159,37 @@ def update_user_role(
     current_user: CurrentUser,
 ) -> Any:
     """
-    Update user role. (Admin only)
+    Update user role. (Admin and Admin Manager with strict restrictions)
     """
-    if current_user.role != "admin":
+    if current_user.role.lower() not in ADMIN_ROLES:
         raise HTTPException(
             status_code=403, detail="Not enough permissions. Admin only."
         )
 
-    valid_roles = [
-        "admin",
-        "formateur",
-        "pedagogique",
-        "étudiant",
-        "stagiaire",
-        "employer",
-    ]
-    if role_in.role not in valid_roles:
+    new_role = role_in.role.lower()
+    if new_role not in [r.lower() for r in VALID_ROLES]:
         raise HTTPException(
-            status_code=400, detail=f"Invalid role. Must be one of: {valid_roles}"
+            status_code=400, detail=f"Invalid role. Must be one of: {VALID_ROLES}"
         )
 
     user = session.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+
+    # Restrictions for ADMIN_MANAGER
+    if current_user.role.lower() == "admin_manager":
+        # Cannot assign ADMIN or ADMIN_MANAGER or ADMIN_LIMITED
+        if new_role in ADMIN_ROLES:
+            raise HTTPException(
+                status_code=403,
+                detail="Un ADMIN_MANAGER ne peut pas donner ou attribuer de rôles administratifs (ADMIN, ADMIN_MANAGER, ADMIN_LIMITED).",
+            )
+        # Cannot modify a user that is already an ADMIN, ADMIN_MANAGER or ADMIN_LIMITED
+        if user.role.lower() in ADMIN_ROLES:
+            raise HTTPException(
+                status_code=403,
+                detail="Un ADMIN_MANAGER ne peut pas modifier les permissions ou le rôle d'un compte administrateur.",
+            )
 
     user.role = role_in.role
     session.add(user)
@@ -189,9 +205,9 @@ def delete_user(
     current_user: CurrentUser,
 ) -> Any:
     """
-    Delete a user. (Admin only)
+    Delete a user. (Admin and Admin Manager with restrictions)
     """
-    if current_user.role != "admin":
+    if current_user.role.lower() not in ADMIN_ROLES:
         raise HTTPException(
             status_code=403, detail="Not enough permissions. Admin only."
         )
@@ -204,6 +220,12 @@ def delete_user(
     user = session.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+
+    if current_user.role.lower() == "admin_manager" and user.role.lower() in ADMIN_ROLES:
+        raise HTTPException(
+            status_code=403,
+            detail="Un ADMIN_MANAGER ne peut pas supprimer un compte administrateur.",
+        )
 
     session.delete(user)
     session.commit()
@@ -218,12 +240,19 @@ def admin_create_user(
     current_user: CurrentUser,
 ) -> Any:
     """
-    Create a new user directly from Admin Panel (can assign any role including admin).
+    Create a new user directly from Admin Panel (Admin and Admin Manager with restrictions).
     """
-    if current_user.role != "admin":
+    if current_user.role.lower() not in ADMIN_ROLES:
         raise HTTPException(
             status_code=403,
             detail="Seul un administrateur peut créer des comptes depuis ce panneau.",
+        )
+
+    target_role = user_in.role.lower()
+    if current_user.role.lower() == "admin_manager" and target_role in ADMIN_ROLES:
+        raise HTTPException(
+            status_code=403,
+            detail="Un ADMIN_MANAGER ne peut pas créer de compte avec un rôle administrateur (ADMIN, ADMIN_MANAGER ou ADMIN_LIMITED).",
         )
 
     existing = session.query(User).filter(User.email == user_in.email).first()
@@ -256,13 +285,20 @@ def admin_reset_password(
     current_user: CurrentUser,
 ) -> Any:
     """
-    Reset password for a user. (Admin only)
+    Reset password for a user. (Admin only, or Admin Manager for non-superadmin users)
     """
-    if current_user.role != "admin":
+    if current_user.role.lower() not in ADMIN_ROLES:
         raise HTTPException(status_code=403, detail="Admin only.")
     user = session.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Utilisateur introuvable.")
+
+    if current_user.role.lower() == "admin_manager" and user.role.lower() in SUPER_ADMIN_ROLES and current_user.id != user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="Un ADMIN_MANAGER ne peut pas réinitialiser le mot de passe d'un administrateur principal.",
+        )
+
     user.hashed_password = get_password_hash(pass_in.new_password)
     session.commit()
     return {"message": "Mot de passe mis à jour avec succès.", "id": user_id}

@@ -33,7 +33,7 @@ def get_quizzes(
     )
 
     # Filter by user role if student/intern/employee
-    if current_user.role not in ["admin", "formateur"]:
+    if current_user.role not in ["admin", "admin_manager", "admin_limited", "formateur"]:
         filtered = []
         for q in quizzes:
             target_list = [r.strip().lower() for r in (q.target_roles or "").split(",")]
@@ -96,7 +96,7 @@ def get_quiz_detail(
     if not quiz:
         raise HTTPException(status_code=404, detail="Quiz introuvable.")
 
-    is_manager = current_user.role in ["formateur", "admin"]
+    is_manager = current_user.role in ["formateur", "admin", "admin_manager", "admin_limited"]
 
     questions_data = []
     for q in quiz.questions:
@@ -153,7 +153,8 @@ def create_quiz(
     """
     Create a new quiz with questions. Strictly restricted to Formateurs and Admins.
     """
-    if current_user.role not in ["formateur", "admin"]:
+    admin_roles = ["admin", "admin_manager", "admin_limited"]
+    if current_user.role not in ["formateur"] + admin_roles:
         raise HTTPException(
             status_code=403,
             detail="Seuls les formateurs et les administrateurs ont le droit de créer ou générer des quiz.",
@@ -178,15 +179,15 @@ def create_quiz(
 
     total_pts = 0
     for q_in in quiz_in.questions:
-        q_obj = QuizQuestion(
+        q_model = QuizQuestion(
             quiz_id=quiz.id,
             question_text=q_in.question_text.strip(),
             options=json.dumps(q_in.options, ensure_ascii=False),
             correct_option_index=q_in.correct_option_index,
             points=q_in.points or 1,
         )
-        total_pts += q_obj.points
-        session.add(q_obj)
+        total_pts += q_model.points
+        session.add(q_model)
 
     session.commit()
     session.refresh(quiz)
@@ -217,7 +218,8 @@ def delete_quiz(
     """
     Delete a quiz. Strictly restricted to Formateurs and Admins.
     """
-    if current_user.role not in ["formateur", "admin"]:
+    admin_roles = ["admin", "admin_manager", "admin_limited"]
+    if current_user.role not in ["formateur"] + admin_roles:
         raise HTTPException(
             status_code=403,
             detail="Seuls les formateurs et les administrateurs peuvent supprimer un quiz.",
@@ -252,7 +254,7 @@ def submit_quiz(
 
     for q in quiz.questions:
         max_score += q.points
-        user_choice = submission.answers.get(q.id)
+        user_choice = submission.answers.get(str(q.id))
         is_correct = user_choice is not None and user_choice == q.correct_option_index
         if is_correct:
             score += q.points
@@ -311,7 +313,8 @@ def get_quiz_results(
     View all student results/attempts for a specific quiz.
     Strictly restricted to Formateurs and Admins.
     """
-    if current_user.role not in ["formateur", "admin"]:
+    admin_roles = ["admin", "admin_manager", "admin_limited"]
+    if current_user.role not in ["formateur"] + admin_roles:
         raise HTTPException(
             status_code=403,
             detail="Seuls les formateurs et les administrateurs peuvent consulter la liste des résultats des apprenants.",

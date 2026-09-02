@@ -82,7 +82,7 @@ export default function CalendarPage() {
   const [showGlobalDeliverables, setShowGlobalDeliverables] = useState(false);
 
   // Check if user is Formateur or Administrator
-  const canManageCalendar = currentUser?.role === 'formateur' || currentUser?.role === 'admin';
+  const canManageCalendar = ['formateur', 'admin', 'admin_manager', 'admin_limited'].includes(currentUser?.role || '');
 
   // 1. Live System Clock Synchronization
   useEffect(() => {
