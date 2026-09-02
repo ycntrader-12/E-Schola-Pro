@@ -749,6 +749,16 @@ E-Schola Pro/
     <h2><span class="section-number">04</span> Modèles de Base de Données</h2>
     <p>Schéma complet de toutes les tables et leurs relations.</p>
 
+    <div class="card" style="margin-bottom: 24px;">
+      <h4 style="margin-bottom: 8px; color: var(--text-primary);">🛡️ Persistance Permanente & Haute Disponibilité (Local & Railway)</h4>
+      <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">
+        La base SQLite <code>eschola.db</code> est configurée avec le mode <strong>WAL (Write-Ahead Logging)</strong> (<code>PRAGMA journal_mode=WAL</code>), assurant des écritures concurrentes immédiates, sans verrouillage (timeout 30s) et une persistance disque garantie après actualisation, redémarrage ou déconnexion.
+      </p>
+      <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 0;">
+        <strong>Idempotence & Intégrité :</strong> L'initialisation automatique (seeder <code>create_admin.py</code>) est strictement non-destructive : les comptes existants ne voient jamais leur mot de passe ni leur rôle réinitialisés au redémarrage. Sur Railway, le backend auto-détecte les volumes persistants montés sur <code>/app/backend/data</code> ou via <code>RAILWAY_VOLUME_MOUNT_PATH</code>.
+      </p>
+    </div>
+
     <!-- USER -->
     <h3>User (Utilisateur)</h3>
     <table>
@@ -1010,11 +1020,15 @@ E-Schola Pro/
     <table>
       <thead><tr><th>Méthode</th><th>Endpoint</th><th>Description</th><th>Accès</th></tr></thead>
       <tbody class="endpoint-row">
-        <tr><td><span class="badge badge-get">GET</span></td><td><code>/users/</code></td><td>Lister tous les utilisateurs</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/users/</code></td><td>Lister tous les utilisateurs</td><td>Admin, Admin Manager</td></tr>
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/users/me</code></td><td>Profil de l'utilisateur connecté</td><td>Authentifié</td></tr>
-        <tr><td><span class="badge badge-post">POST</span></td><td><code>/users/</code></td><td>Créer un utilisateur (inscription)</td><td>Public</td></tr>
-        <tr><td><span class="badge badge-put">PUT</span></td><td><code>/users/me</code></td><td>Modifier son profil</td><td>Authentifié</td></tr>
-        <tr><td><span class="badge badge-delete">DELETE</span></td><td><code>/users/{id}</code></td><td>Supprimer un utilisateur</td><td>Admin</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/users/</code></td><td>Créer un utilisateur (inscription publique)</td><td>Public</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/users/admin-create</code></td><td>Créer un compte avec rôle spécifique</td><td>Admin, Admin Manager</td></tr>
+        <tr><td><span class="badge badge-put">PUT</span></td><td><code>/users/me/password</code></td><td>Modifier son propre mot de passe (persistant)</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-put">PUT</span></td><td><code>/users/{id}/password</code></td><td>Réinitialiser le mot de passe d'un utilisateur</td><td>Admin, Admin Manager</td></tr>
+        <tr><td><span class="badge badge-put">PUT</span></td><td><code>/users/{id}/role</code></td><td>Changer le rôle d'un utilisateur (persistant)</td><td>Admin, Admin Manager</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/users/me/avatar</code></td><td>Téléverser une photo de profil</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-delete">DELETE</span></td><td><code>/users/{id}</code></td><td>Supprimer définitivement un utilisateur</td><td>Admin, Admin Manager</td></tr>
       </tbody>
     </table>
 
@@ -1207,6 +1221,7 @@ E-Schola Pro/
         <tr><td><strong>Pointer &amp; valider les feuilles d'émargement</strong></td><td>✅</td><td>✅</td><td>✅</td><td>❌</td></tr>
         <tr><td><strong>Créer des plannings &amp; événements calendrier</strong></td><td>✅</td><td>✅</td><td>✅</td><td>❌</td></tr>
         <tr><td><strong>Gérer les groupes &amp; affecter les apprenants</strong></td><td>✅</td><td>✅</td><td>✅</td><td>❌</td></tr>
+        <tr><td><strong>Afficher &amp; accéder au bouton "Groupes" (/group)</strong></td><td>✅</td><td>✅</td><td>✅</td><td>❌ <em>(Masqué &amp; Interdit)</em></td></tr>
         <tr><td><strong>Créer des classes virtuelles &amp; sous-groupes</strong></td><td>✅</td><td>✅</td><td>✅</td><td>❌</td></tr>
         <tr><td><strong>Messagerie interne complète</strong></td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
         <tr><td><strong>Gérer les apprenants &amp; formateurs (Création/Rôle)</strong></td><td>✅</td><td>✅</td><td>❌</td><td>❌</td></tr>
@@ -1634,7 +1649,7 @@ http://localhost:8000/admin
       <thead><tr><th>Variable</th><th>Valeur par défaut</th><th>Description</th></tr></thead>
       <tbody>
         <tr><td><code>SECRET_KEY</code></td><td>supersecretkey_please_change</td><td>Clé secrète pour signer les tokens JWT. <strong>⚠️ À changer en production.</strong></td></tr>
-        <tr><td><code>DATABASE_URL</code></td><td>sqlite:///./sql_app.db</td><td>URL de connexion à la base de données (SQLite, PostgreSQL…)</td></tr>
+        <tr><td><code>DATABASE_URL</code></td><td>sqlite:///./eschola.db</td><td>URL SQLite (WAL) ou PostgreSQL. Auto-détecte le volume persistant Railway (<code>RAILWAY_VOLUME_MOUNT_PATH</code> ou <code>/app/backend/data</code>) pour une persistance permanente.</td></tr>
         <tr><td><code>ACCESS_TOKEN_EXPIRE_MINUTES</code></td><td>10080 (7 jours)</td><td>Durée de validité des tokens JWT en minutes</td></tr>
         <tr><td><code>CLOUDINARY_CLOUD_NAME</code></td><td>—</td><td>Nom du cloud Cloudinary pour l'upload de médias</td></tr>
         <tr><td><code>CLOUDINARY_API_KEY</code></td><td>—</td><td>Clé API Cloudinary</td></tr>

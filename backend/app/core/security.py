@@ -22,7 +22,10 @@ def get_password_hash(password: str) -> str:
 
 
 def create_access_token(
-    subject: str | int, expires_delta: timedelta | None = None
+    subject: str | int,
+    expires_delta: timedelta | None = None,
+    role: str | None = None,
+    email: str | None = None,
 ) -> str:
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
@@ -32,5 +35,9 @@ def create_access_token(
         )
 
     to_encode = {"exp": expire, "sub": str(subject)}
+    if role:
+        to_encode["role"] = role
+    if email:
+        to_encode["email"] = email
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm="HS256")
     return encoded_jwt

@@ -90,5 +90,7 @@ async def login_access_token(
             detail="Identifiants incorrects (email ou mot de passe)",
         )
 
-    access_token = security.create_access_token(subject=user.id)
+    access_token = security.create_access_token(
+        subject=user.id, role=user.role, email=user.email
+    )
     return Token(access_token=access_token, token_type="bearer")

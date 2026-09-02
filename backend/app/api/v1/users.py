@@ -58,6 +58,23 @@ def create_user(
     session.add(user_create)
     session.commit()
     session.refresh(user_create)
+
+    # Attach learner to default group if exists
+    if user_create.role.lower() in ["étudiant", "stagiaire", "employer"]:
+        try:
+            from app.models.group import Group, GroupMember
+
+            default_grp = session.query(Group).first()
+            if default_grp:
+                session.add(
+                    GroupMember(group_id=default_grp.id, user_id=user_create.id)
+                )
+                user_create.group_name = default_grp.name
+                session.commit()
+                session.refresh(user_create)
+        except Exception:
+            pass
+
     return user_create
 
 
@@ -87,6 +104,7 @@ def update_password(
     current_user.hashed_password = get_password_hash(body.new_password)
     session.add(current_user)
     session.commit()
+    session.refresh(current_user)
     return {"message": "Mot de passe mis à jour avec succès."}
 
 
@@ -270,6 +288,20 @@ def admin_create_user(
     session.add(user)
     session.commit()
     session.refresh(user)
+
+    if user.role.lower() in ["étudiant", "stagiaire", "employer"]:
+        try:
+            from app.models.group import Group, GroupMember
+
+            default_grp = session.query(Group).first()
+            if default_grp:
+                session.add(GroupMember(group_id=default_grp.id, user_id=user.id))
+                user.group_name = default_grp.name
+                session.commit()
+                session.refresh(user)
+        except Exception:
+            pass
+
     return user
 
 
@@ -300,5 +332,7 @@ def admin_reset_password(
         )
 
     user.hashed_password = get_password_hash(pass_in.new_password)
+    session.add(user)
     session.commit()
+    session.refresh(user)
     return {"message": "Mot de passe mis à jour avec succès.", "id": user_id}

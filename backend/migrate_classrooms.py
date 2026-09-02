@@ -3,6 +3,15 @@ import sqlite3
 
 def run_migration():
     db_paths = ['backend/eschola.db', 'eschola.db', 'backend/sql_app.db', 'sql_app.db']
+    try:
+        from app.core.config import settings
+        if settings.DATABASE_URL.startswith("sqlite"):
+            configured_path = settings.DATABASE_URL.replace("sqlite:///", "").split("?")[0]
+            if configured_path not in db_paths:
+                db_paths.insert(0, configured_path)
+    except Exception:
+        pass
+
     for db_path in db_paths:
         if not os.path.exists(db_path):
             continue

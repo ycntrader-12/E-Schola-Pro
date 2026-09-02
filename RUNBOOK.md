@@ -192,13 +192,17 @@ Si vous ajoutez une clé de traduction dans un fichier JSON, **veillez à l'ajou
 ### Étape 2 : Configurer les Variables d'Environnement
 1. Une fois le service créé sur Railway, cliquez sur le bloc du service (`E-Schola-Pro`) et allez dans l'onglet **Variables**.
 2. Ajoutez les variables d'environnement suivantes :
-   * `DATABASE_URL` = `sqlite:///./eschola.db`
+   * `DATABASE_URL` = `sqlite:///./eschola.db` (ou URL PostgreSQL, ex: `postgresql://...`)
    * `SECRET_KEY` = *[Votre clé secrète JWT]* (ex: générée avec `openssl rand -hex 32`)
    * `ACCESS_TOKEN_EXPIRE_MINUTES` = `10080` (7 jours)
-   * `CLOUDINARY_CLOUD_NAME` = *[Votre Cloud Name]* (Requis si vous souhaitez utiliser Cloudinary pour les images/vidéos de cours en production)
+   * `CLOUDINARY_CLOUD_NAME` = *[Votre Cloud Name]* (Requis pour médias Cloudinary)
    * `CLOUDINARY_API_KEY` = *[Votre API Key]*
    * `CLOUDINARY_API_SECRET` = *[Votre API Secret]*
-3. *(Optionnel pour la persistance)* Par défaut, le fichier de base de données SQLite `eschola.db` est stocké sur le système de fichiers éphémère du conteneur. Pour conserver vos données lors des redémarrages de service, vous pouvez ajouter un **Volume Persistant** sur Railway (ex: monté sur `/app/backend/db`) et configurer `DATABASE_URL=sqlite:////app/backend/db/eschola.db` dans vos variables d'environnement.
+3. **Persistance Permanente des Données sur Railway :**
+   * **Méthode Recommandée (Volume Railway) :** Dans Railway, ajoutez un **Volume** à votre service avec le point de montage `/app/backend/data` (ou `/data`). Le backend détecte automatiquement `RAILWAY_VOLUME_MOUNT_PATH` et y stocke `eschola.db`.
+   * **Alternative explicite :** Définissez `DATABASE_URL=sqlite:////app/backend/data/eschola.db`.
+   * **Mode SQLite WAL :** Le backend active automatiquement le mode `PRAGMA journal_mode=WAL` pour une haute concurrence et une persistance disque immédiate sans verrouillage.
+   * **Non-destructivité des comptes :** Le script d'initialisation (`create_admin.py`) est strictement non-destructif : il ne réécrit jamais les mots de passe modifiés ni les changements de rôle lors des redémarrages.
 
 ### Étape 3 : Générer le Domaine Public
 1. Allez dans l'onglet **Settings** du service sur Railway.

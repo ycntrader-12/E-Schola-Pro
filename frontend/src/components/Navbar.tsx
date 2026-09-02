@@ -38,7 +38,11 @@ export default function Navbar() {
     checkAuth();
     
     window.addEventListener('storage', checkAuth);
-    return () => window.removeEventListener('storage', checkAuth);
+    window.addEventListener('auth_user_updated', checkAuth);
+    return () => {
+      window.removeEventListener('storage', checkAuth);
+      window.removeEventListener('auth_user_updated', checkAuth);
+    };
   }, [pathname]);
 
   const handleLogout = () => {

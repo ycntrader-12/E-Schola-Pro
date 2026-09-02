@@ -15,6 +15,9 @@ frontend/.env.production.local
 # Databases
 *.db
 *.sqlite3
+*.db-wal
+*.db-shm
+*.db-journal
 
 # Node / Next.js
 node_modules/

@@ -5,6 +5,7 @@ class UserBase(BaseModel):
     email: str
     role: str = "étudiant"
     avatar_url: str | None = None
+    group_name: str | None = None
 
 
 class UserCreate(UserBase):

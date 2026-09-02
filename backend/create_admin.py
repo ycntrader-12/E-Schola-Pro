@@ -16,12 +16,7 @@ def seed_users():
 
     for u_info in default_users:
         user = db.query(User).filter(User.email == u_info["email"]).first()
-        if user:
-            user.hashed_password = get_password_hash(u_info["password"])
-            user.role = u_info["role"]
-            db.commit()
-            print(f"Updated user '{u_info['email']}' ({u_info['role']}).")
-        else:
+        if not user:
             new_user = User(
                 email=u_info["email"],
                 hashed_password=get_password_hash(u_info["password"]),
@@ -29,7 +24,9 @@ def seed_users():
             )
             db.add(new_user)
             db.commit()
-            print(f"Created user '{u_info['email']}' ({u_info['role']}).")
+            print(f"Created default user '{u_info['email']}' ({u_info['role']}).")
+        else:
+            print(f"User '{u_info['email']}' already exists. Preserving password and role.")
 
     db.close()
 

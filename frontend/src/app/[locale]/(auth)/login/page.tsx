@@ -31,6 +31,14 @@ export default function LoginPage() {
       
       localStorage.setItem('access_token', response.data.access_token);
       document.cookie = `access_token=${response.data.access_token}; path=/; max-age=86400; SameSite=Lax`;
+      try {
+        const parts = response.data.access_token.split('.');
+        const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+        const payload = JSON.parse(decodeURIComponent(escape(atob(base64))));
+        if (payload.role) {
+          localStorage.setItem('user_role', String(payload.role).trim().toLowerCase());
+        }
+      } catch {}
       router.push('/dashboard');
     } catch (err: any) {
       if (err?.response?.status === 400 || err?.response?.status === 401) {

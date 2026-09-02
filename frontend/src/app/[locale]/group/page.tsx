@@ -32,22 +32,38 @@ export default function GroupPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    // Get current user role
-    const token = localStorage.getItem('access_token');
-    if (token) {
+    const initPage = async () => {
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        setIsLoading(false);
+        return;
+      }
+
+      let userRole = '';
       try {
         const payload = JSON.parse(atob(token.split('.')[1]));
-        const userRole = String(payload.role || '').toLowerCase();
+        userRole = String(payload.role || '').toLowerCase();
         setCurrentUser({ id: payload.sub, email: payload.email, role: userRole });
+      } catch (e) {}
 
-        // If learner, do not fetch groups
-        if (['etudiant', 'étudiant', 'stagiaire', 'employer'].includes(userRole)) {
-          setIsLoading(false);
-          return;
+      try {
+        const userRes = await apiClient.get('/users/me');
+        if (userRes.data) {
+          userRole = String(userRes.data.role || '').toLowerCase();
+          setCurrentUser(userRes.data);
         }
-      } catch (e) { }
-    }
-    fetchGroups();
+      } catch (err) {}
+
+      // If learner, do not fetch groups
+      if (['etudiant', 'étudiant', 'stagiaire', 'employer'].includes(userRole)) {
+        setIsLoading(false);
+        return;
+      }
+
+      fetchGroups();
+    };
+
+    initPage();
   }, []);
 
   const fetchGroups = async () => {
@@ -61,7 +77,9 @@ export default function GroupPage() {
     }
   };
 
-  const canManage = ['admin', 'admin_manager', 'admin_limited', 'formateur'].includes(currentUser?.role || '');
+  const canManage = ['admin', 'admin_manager', 'admin_limited', 'formateur', 'pedagogique'].includes(
+    (currentUser?.role || '').trim().toLowerCase()
+  );
 
   const handleOpenAdd = () => {
     setEditingGroupId(null);
@@ -123,7 +141,8 @@ export default function GroupPage() {
     );
   }
 
-  const isLearner = currentUser && ['etudiant', 'étudiant', 'stagiaire', 'employer'].includes(currentUser.role.toLowerCase());
+  const userRole = (currentUser?.role || '').trim().toLowerCase();
+  const isLearner = ['etudiant', 'étudiant', 'stagiaire', 'employer'].includes(userRole);
 
   if (!isLoading && isLearner) {
     return (
@@ -131,9 +150,9 @@ export default function GroupPage() {
         <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-500 flex items-center justify-center shadow-lg">
           <ShieldCheck size={32} />
         </div>
-        <h2 className="text-2xl font-bold">Accès Non Autorisé</h2>
+        <h2 className="text-2xl font-bold text-white">Accès Non Autorisé</h2>
         <p className="text-text-secondary text-sm max-w-md">
-          Ce module est strictement réservé aux formateurs et à l&apos;administration. Les apprenants ne sont pas autorisés à consulter ou gérer les groupes.
+          Ce module est strictement réservé aux formateurs et à l&apos;administration. Les rôles apprenants (étudiants, stagiaires, employés) ne sont pas autorisés à accéder aux groupes ni à les afficher.
         </p>
         <Link href="/dashboard" className="btn-primary px-6 py-2.5 rounded-xl text-sm font-semibold">
           Retour au tableau de bord

@@ -367,6 +367,13 @@ export default function ProfilePage() {
     try {
       await apiClient.put(`/users/${targetUserId}/role`, { role: newRole });
       setAllUsers(prev => prev.map(u => u.id === targetUserId ? { ...u, role: newRole } : u));
+      if (user && user.id === targetUserId) {
+        setUser(prev => prev ? { ...prev, role: newRole } : null);
+      }
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('auth_user_updated'));
+        window.dispatchEvent(new Event('storage'));
+      }
       setActionMessage({ type: 'success', text: `Rôle mis à jour avec succès en "${newRole}".` });
     } catch (err) {
       const e = err as { response?: { data?: { detail?: string } } };

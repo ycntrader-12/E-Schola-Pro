@@ -16,35 +16,109 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
   const pathname = usePathname();
   const t = useTranslations('Navigation');
   const [unreadCount, setUnreadCount] = useState(0);
-  const [userRole, setUserRole] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('user_role');
+      if (stored) return stored.trim().toLowerCase();
+      const token = localStorage.getItem('access_token');
+      if (token) {
+        try {
+          const parts = token.split('.');
+          if (parts.length === 3) {
+            const base64Url = parts[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(
+              atob(base64)
+                .split('')
+                .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+                .join('')
+            );
+            const payload = JSON.parse(jsonPayload);
+            if (payload.role) {
+              const r = String(payload.role).trim().toLowerCase();
+              localStorage.setItem('user_role', r);
+              return r;
+            }
+          }
+        } catch {}
+      }
+    }
+    return null;
+  });
 
   useEffect(() => {
     const fetchUserData = async () => {
       try {
         const token = localStorage.getItem('access_token');
         if (token) {
+          // Instant claim fallback
           try {
-            const payload = JSON.parse(atob(token.split('.')[1]));
-            if (payload.role) {
-              setUserRole(String(payload.role).toLowerCase());
+            const parts = token.split('.');
+            if (parts.length === 3) {
+              const base64Url = parts[1];
+              const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+              const jsonPayload = decodeURIComponent(
+                atob(base64)
+                  .split('')
+                  .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+                  .join('')
+              );
+              const payload = JSON.parse(jsonPayload);
+              if (payload.role) {
+                const r = String(payload.role).trim().toLowerCase();
+                setUserRole(r);
+                localStorage.setItem('user_role', r);
+              }
             }
           } catch {}
 
-          const res = await apiClient.get('/messages/unread-count');
-          setUnreadCount(res.data.unread_count || 0);
+          // Dynamic fetch from database for 100% up-to-date role
+          try {
+            const userRes = await apiClient.get('/users/me');
+            if (userRes.data?.role) {
+              const freshRole = String(userRes.data.role).trim().toLowerCase();
+              setUserRole(freshRole);
+              localStorage.setItem('user_role', freshRole);
+            }
+          } catch {}
+
+          const res = await apiClient.get('/messages/unread-count').catch(() => ({ data: { unread_count: 0 } }));
+          setUnreadCount(res.data?.unread_count || 0);
+        } else {
+          setUserRole(null);
+          localStorage.removeItem('user_role');
         }
       } catch {}
     };
+
     fetchUserData();
+
+    const handleAuthUpdate = () => {
+      fetchUserData();
+    };
+
+    window.addEventListener('auth_user_updated', handleAuthUpdate);
+    window.addEventListener('storage', handleAuthUpdate);
+
+    return () => {
+      window.removeEventListener('auth_user_updated', handleAuthUpdate);
+      window.removeEventListener('storage', handleAuthUpdate);
+    };
   }, [pathname]);
 
-  const canViewGroups = userRole && !['etudiant', 'étudiant', 'stagiaire', 'employer'].includes(userRole);
+  // Permissions:
+  // Strictly forbidden for learners: étudiant, etudiant, stagiaire, employer
+  // Authorized for staff: admin, admin_manager, admin_limited, formateur, pedagogique
+  const normalizedRole = (userRole || '').trim().toLowerCase();
+  const isLearner = ['etudiant', 'étudiant', 'stagiaire', 'employer'].includes(normalizedRole);
+  const isStaff = ['admin', 'admin_manager', 'admin_limited', 'formateur', 'pedagogique'].includes(normalizedRole);
+  const canViewGroups = isStaff && !isLearner;
 
   const navItems = [
     { name: t('dashboard'), href: '/dashboard', icon: LayoutDashboard },
+    ...(canViewGroups ? [{ name: t('group'), href: '/group', icon: Users }] : []),
     { name: t('calendar'), href: '/calendar', icon: Calendar },
     { name: t('virtual_classroom'), href: '/classroom', icon: Video },
-    ...(canViewGroups ? [{ name: t('group'), href: '/group', icon: Users }] : []),
     { name: t('inbox'), href: '/inbox', icon: Inbox },
     { name: t('lesson'), href: '/courses', icon: BookOpen },
     { name: t('quizzes'), href: '/quizzes', icon: Award },
