@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException
 from app.api.deps import CurrentUser, SessionDep
 from app.models.classroom import Classroom
 from app.models.user import User
+from app.models.group import Group, GroupMember
 from app.models.attendance import Attendance
 from app.models.message import Message
 from app.schemas.classroom import ClassroomCreate, ClassroomResponse
@@ -77,54 +78,101 @@ def create_classroom(
             # Reactivate
             existing.title = classroom_in.title
             existing.description = classroom_in.description
+            existing.target_roles = classroom_in.target_roles
+            existing.target_groups = classroom_in.target_groups
             existing.instructor_id = current_user.id
             existing.is_active = True
             session.commit()
             session.refresh(existing)
-            return existing
+            classroom = existing
+    else:
+        classroom = Classroom(
+            room_id=room_code,
+            title=classroom_in.title,
+            description=classroom_in.description,
+            target_roles=classroom_in.target_roles,
+            target_groups=classroom_in.target_groups,
+            instructor_id=current_user.id,
+            is_active=True,
+        )
+        session.add(classroom)
+        session.commit()
+        session.refresh(classroom)
 
-    classroom = Classroom(
-        room_id=room_code,
-        title=classroom_in.title,
-        description=classroom_in.description,
-        target_roles=classroom_in.target_roles,
-        instructor_id=current_user.id,
-        is_active=True,
-    )
-    session.add(classroom)
-    session.commit()
-    session.refresh(classroom)
+    # Collect targeted users for invitations and attendance registration
+    targeted_user_ids = set()
+    group_labels_list = []
 
-    # Handle invitations and attendance if target_roles is specified
+    # 1. Target by selected Groups (Priority)
+    if classroom_in.target_groups:
+        group_ids = [
+            int(g.strip())
+            for g in classroom_in.target_groups.split(",")
+            if g.strip().isdigit()
+        ]
+        if group_ids:
+            selected_groups = session.query(Group).filter(Group.id.in_(group_ids)).all()
+            group_labels_list = [g.name for g in selected_groups]
+
+            # Collect user IDs from GroupMember
+            members = session.query(GroupMember).filter(GroupMember.group_id.in_(group_ids)).all()
+            for m in members:
+                targeted_user_ids.add(m.user_id)
+
+            # Also collect users associated via User.group_name
+            if group_labels_list:
+                named_users = (
+                    session.query(User)
+                    .filter(User.group_name.in_(group_labels_list))
+                    .all()
+                )
+                for u in named_users:
+                    targeted_user_ids.add(u.id)
+
+    # 2. Target by Roles (Fallback if specified)
     if classroom_in.target_roles:
         roles_list = [r.strip().lower() for r in classroom_in.target_roles.split(",") if r.strip()]
         if roles_list:
-            # Find users matching these roles
-            targeted_users = session.query(User).filter(User.role.in_(roles_list)).all()
-            for t_user in targeted_users:
-                # 1. Register in Attendance as absent
-                att = Attendance(
-                    user_id=t_user.id,
-                    date=date.today(),
-                    status="absent",
-                    session_name=classroom.title
-                )
-                session.add(att)
+            role_users = session.query(User).filter(User.role.in_(roles_list)).all()
+            for u in role_users:
+                targeted_user_ids.add(u.id)
 
-                # 2. Send invitation Message
-                invitation_body = (
-                    f"Bonjour,\n\nVous êtes invité(e) à rejoindre la classe virtuelle : **{classroom.title}**.\n\n"
-                    f"Code de la salle : `{classroom.room_id}`\n\n"
-                    f"Vous pouvez rejoindre cette session depuis la page des classes virtuelles."
-                )
-                msg = Message(
-                    sender_id=current_user.id,
-                    recipient_id=t_user.id,
-                    subject="Invitation à une classe virtuelle",
-                    body=invitation_body
-                )
-                session.add(msg)
-            session.commit()
+    # Exclude instructor from attendance & invitation
+    targeted_user_ids.discard(current_user.id)
+
+    if targeted_user_ids:
+        targeted_users = session.query(User).filter(User.id.in_(targeted_user_ids)).all()
+        group_info = f"👥 **Groupe(s) invité(s) :** {', '.join(group_labels_list)}\n" if group_labels_list else ""
+
+        for t_user in targeted_users:
+            # 1. Register in Attendance as absent
+            att = Attendance(
+                user_id=t_user.id,
+                date=date.today(),
+                status="absent",
+                session_name=classroom.title,
+                remarks=f"Invitation classe virtuelle : {classroom.title}"
+            )
+            session.add(att)
+
+            # 2. Send invitation Message
+            invitation_body = (
+                f"Bonjour {t_user.email.split('@')[0]},\n\n"
+                f"Vous êtes convié(e) à la classe virtuelle en direct : **{classroom.title}**.\n\n"
+                f"📌 **Code de la salle :** `{classroom.room_id}`\n"
+                f"{group_info}"
+                f"👨‍🏫 **Formateur :** {current_user.email}\n\n"
+                f"👉 Connectez-vous dès maintenant depuis la page des **Classes Virtuelles** pour rejoindre la session en direct."
+            )
+            msg = Message(
+                sender_id=current_user.id,
+                recipient_id=t_user.id,
+                subject=f"🎓 Invitation classe virtuelle : {classroom.title}",
+                body=invitation_body,
+            )
+            session.add(msg)
+
+        session.commit()
 
     return classroom
 

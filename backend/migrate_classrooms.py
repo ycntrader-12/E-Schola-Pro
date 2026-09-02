@@ -1,18 +1,23 @@
+import os
 import sqlite3
 
 def run_migration():
-    conn = sqlite3.connect('backend/eschola.db')
-    cursor = conn.cursor()
-    try:
-        cursor.execute("ALTER TABLE classrooms ADD COLUMN target_roles VARCHAR")
-        conn.commit()
-        print("Migration successful: added 'target_roles' to 'classrooms'.")
-    except sqlite3.OperationalError as e:
-        if "duplicate column name" in str(e).lower():
-            print("Column 'target_roles' already exists in 'classrooms'.")
-        else:
-            print(f"Error during migration: {e}")
-    finally:
+    db_paths = ['backend/eschola.db', 'eschola.db', 'backend/sql_app.db', 'sql_app.db']
+    for db_path in db_paths:
+        if not os.path.exists(db_path):
+            continue
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        for col in ["target_roles", "target_groups"]:
+            try:
+                cursor.execute(f"ALTER TABLE classrooms ADD COLUMN {col} VARCHAR")
+                conn.commit()
+                print(f"[{db_path}] Migration successful: added '{col}' to 'classrooms'.")
+            except sqlite3.OperationalError as e:
+                if "duplicate column name" in str(e).lower():
+                    print(f"[{db_path}] Column '{col}' already exists in 'classrooms'.")
+                else:
+                    print(f"[{db_path}] Note for '{col}': {e}")
         conn.close()
 
 if __name__ == "__main__":

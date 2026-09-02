@@ -9,6 +9,7 @@ class ClassroomBase(BaseModel):
     title: str
     description: str | None = None
     target_roles: str | None = None
+    target_groups: str | None = None
 
 
 class ClassroomCreate(ClassroomBase):

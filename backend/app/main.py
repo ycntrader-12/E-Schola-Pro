@@ -32,13 +32,16 @@ from app.db.database import engine
 # Ensure all tables exist in SQLite
 Base.metadata.create_all(bind=engine)
 
-# Seed default admin and demo accounts
+# Seed default admin, demo accounts and initial groups
 try:
-    from create_admin import seed_users
+    from create_admin import seed_groups, seed_users
+    from migrate_classrooms import run_migration
 
+    run_migration()
     seed_users()
+    seed_groups()
 except Exception as e:
-    print(f"Failed to seed default users: {e}")
+    print(f"Failed to seed or migrate database: {e}")
 
 app = FastAPI(
     title=settings.PROJECT_NAME, openapi_url=f"{settings.API_V1_STR}/openapi.json"

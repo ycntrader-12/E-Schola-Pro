@@ -921,7 +921,8 @@ E-Schola Pro/
         <tr><td><code>room_id</code></td><td>String</td><td>Unique, Indexé</td><td>Identifiant de salle</td></tr>
         <tr><td><code>title</code></td><td>String</td><td>Not Null</td><td>Titre de la session</td></tr>
         <tr><td><code>description</code></td><td>Text</td><td>Nullable</td><td>Description</td></tr>
-        <tr><td><code>target_roles</code></td><td>String</td><td>Nullable</td><td>Public ciblé pour invitations automatiques</td></tr>
+        <tr><td><code>target_roles</code></td><td>String</td><td>Nullable</td><td>Rôles ciblés (rétrocompatibilité)</td></tr>
+        <tr><td><code>target_groups</code></td><td>String</td><td>Nullable</td><td>Groupes destinataires invités (IDs séparés par des virgules)</td></tr>
         <tr><td><code>instructor_id</code></td><td>Integer</td><td>FK → users.id</td><td>Formateur hôte</td></tr>
         <tr><td><code>is_active</code></td><td>Boolean</td><td>Default: True</td><td>Session active ?</td></tr>
       </tbody>
@@ -1090,8 +1091,8 @@ E-Schola Pro/
     <table>
       <thead><tr><th>Méthode</th><th>Endpoint</th><th>Description</th><th>Accès</th></tr></thead>
       <tbody class="endpoint-row">
-        <tr><td><span class="badge badge-get">GET</span></td><td><code>/classrooms/</code></td><td>Lister les salles virtuelles</td><td>Authentifié</td></tr>
-        <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/</code></td><td>Créer une salle (avec invitations ciblées)</td><td>Admin, Formateur</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/classrooms/</code></td><td>Lister les salles virtuelles actives</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/</code></td><td>Créer une salle avec sélection de groupes destinataires (invitations par messagerie interne et émargement automatique)</td><td>Admin, Formateur</td></tr>
         <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/{room_id}/join</code></td><td>Rejoindre et tracker l'assiduité (retards et présences)</td><td>Authentifié</td></tr>
         <tr><td><span class="badge badge-delete">DELETE</span></td><td><code>/classrooms/{id}</code></td><td>Supprimer une salle</td><td>Admin, Formateur</td></tr>
       </tbody>
@@ -1358,10 +1359,12 @@ E-Schola Pro/
       <p><strong>Route Frontend :</strong> <code>/classroom</code> · <code>/classroom/{id}</code></p>
       <p><strong>Options et propriétés :</strong></p>
       <ul>
-        <li><strong>Création :</strong> Titre, description, identifiant de salle unique</li>
-        <li><strong>Accès :</strong> Tous les utilisateurs authentifiés peuvent rejoindre une session</li>
-        <li><strong>Visioconférence :</strong> Interface de conférence intégrée</li>
-        <li><strong>Gestion :</strong> Le formateur peut fermer/supprimer la session</li>
+        <li><strong>Création de Session :</strong> Titre, description, identifiant de salle unique (généré automatiquement ou personnalisé).</li>
+        <li><strong>Invitations aux Classes (Multi-Groupes) :</strong> Sélection d'un ou plusieurs groupes/promotions destinataires lors de la création de la classe.</li>
+        <li><strong>Notification Automatique :</strong> Envoi instantané d'une notification et d'un message d'invitation avec code d'accès dans la boîte de messagerie interne (<code>/inbox</code>) de chaque apprenant des groupes ciblés.</li>
+        <li><strong>Émargement & Assiduité Intégrés :</strong> Enregistrement automatique de chaque membre des groupes sur la feuille d'assiduité de la session (statut initial absent converti lors de l'accès).</li>
+        <li><strong>Accès & Visioconférence :</strong> Connexion directe ou via code de salle, caméra, microphone, partage d'écran et gestion des sous-groupes (breakout rooms).</li>
+        <li><strong>Gestion & Clôture :</strong> Le formateur ou l'administrateur peut fermer la session et purger l'historique des classes inactives.</li>
       </ul>
       <div class="screenshot-container">
         <div class="screenshot-header">
@@ -1623,8 +1626,9 @@ http://localhost:8000/admin
   <!-- ═══════════════════════════════════════════════════════════════ -->
   <section id="env">
     <h2><span class="section-number">10</span> Variables d'Environnement</h2>
-    <p>Configuration requise dans le fichier <code>.env</code> du backend.</p>
+    <p>Configuration requise dans les fichiers <code>backend/.env</code> et <code>frontend/.env.local</code>.</p>
 
+    <h3>Variables Backend (backend/.env)</h3>
     <table>
       <thead><tr><th>Variable</th><th>Valeur par défaut</th><th>Description</th></tr></thead>
       <tbody>
@@ -1637,8 +1641,18 @@ http://localhost:8000/admin
       </tbody>
     </table>
 
+    <h3>Variables Frontend (frontend/.env.local)</h3>
+    <table>
+      <thead><tr><th>Variable</th><th>Valeur recommandée</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>NEXT_PUBLIC_API_URL</code></td><td><code>http://127.0.0.1:8000/api/v1</code></td><td>Point d'accès API pour le client web. En local : <code>http://127.0.0.1:8000/api/v1</code>. En production : URL de l'instance cloud (ex: Railway).</td></tr>
+        <tr><td><code>NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME</code></td><td>—</td><td>Identifiant Cloudinary pour l'affichage direct côté client</td></tr>
+        <tr><td><code>NEXT_PUBLIC_CLOUDINARY_API_KEY</code></td><td>—</td><td>Clé publique Cloudinary</td></tr>
+      </tbody>
+    </table>
+
     <div class="warning-box">
-      <strong>⚠️ Sécurité :</strong> Ne jamais committer le fichier <code>.env</code> dans un dépôt Git. Assurez-vous qu'il figure bien dans le <code>.gitignore</code>. En production, utilisez des variables d'environnement système ou un gestionnaire de secrets.
+      <strong>⚠️ Sécurité & Environnement Local :</strong> Ne jamais committer les fichiers <code>.env</code> ou <code>.env.local</code> dans un dépôt Git. En développement local via <code>start_all.bat</code>, veillez à ce que <code>NEXT_PUBLIC_API_URL</code> pointe bien sur <code>http://127.0.0.1:8000/api/v1</code> pour éviter les erreurs réseau (<code>Network Error</code>) causées par des serveurs distants en veille.
     </div>
   </section>
 

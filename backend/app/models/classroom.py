@@ -14,6 +14,7 @@ class Classroom(Base):
     title = Column(String, nullable=False)
     description = Column(Text, nullable=True)
     target_roles = Column(String, nullable=True)  # "etudiant,stagiaire,employer"
+    target_groups = Column(String, nullable=True)  # e.g. "1,2" (group IDs)
     instructor_id = Column(
         Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )

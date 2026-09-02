@@ -172,6 +172,11 @@ export default function VirtualClassroomLivePage() {
   // 1. Fetch Room Info & Current User & Subgroups
   useEffect(() => {
     const init = async () => {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+      if (!token) {
+        router.push('/login');
+        return;
+      }
       try {
         const [userRes, roomRes, subgroupsRes, messagesRes, learnersRes] = await Promise.all([
           apiClient.get('/users/me'),
@@ -208,8 +213,16 @@ export default function VirtualClassroomLivePage() {
           });
         }
       } catch (err: any) {
-        console.error(err);
-        setRoomError(err?.response?.data?.detail || "Impossible d'accéder à la classe virtuelle.");
+        if (err?.response?.status === 401) {
+          router.push('/login');
+          return;
+        }
+        setRoomError(
+          err?.response?.data?.detail || 
+          (err?.message === 'Network Error' || !err?.response
+            ? "Impossible de contacter le serveur backend. Vérifiez que le serveur FastAPI est bien démarré sur http://127.0.0.1:8000."
+            : "Impossible d'accéder à la classe virtuelle.")
+        );
       } finally {
         setIsLoadingRoom(false);
       }
