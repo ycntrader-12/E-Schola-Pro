@@ -38,9 +38,23 @@
       background-color: #f8fafc;
       color: #0f172a;
     }
-    .navbar {
+    .navbar.navbar-expand-md {
       border-bottom: 1px solid #e2e8f0;
       background: #ffffff !important;
+    }
+    /* Fix sidebar text color when using Tabler in light/custom mode */
+    .navbar-vertical {
+      background: #ffffff !important;
+      border-right: 1px solid #e2e8f0;
+    }
+    .navbar-vertical .nav-link,
+    .navbar-vertical .nav-link-title,
+    .navbar-vertical .nav-link-icon {
+      color: #475569 !important;
+    }
+    .navbar-vertical .nav-link:hover {
+      color: #0f172a !important;
+      background-color: #f8fafc !important;
     }
     .card {
       border: 1px solid #e2e8f0;
