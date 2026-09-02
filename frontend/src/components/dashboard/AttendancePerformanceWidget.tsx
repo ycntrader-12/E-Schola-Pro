@@ -14,7 +14,8 @@ import {
   ShieldCheck, 
   ArrowRight,
   Loader2,
-  FileText
+  FileText,
+  Users
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 
@@ -55,19 +56,89 @@ export default function AttendancePerformanceWidget() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState<'daily' | 'monthly' | 'semester'>('monthly');
 
+  // Manager states
+  const [isManager, setIsManager] = useState(false);
+  const [groups, setGroups] = useState<string[]>([]);
+  const [selectedGroup, setSelectedGroup] = useState<string>('');
+  const [learners, setLearners] = useState<{ id: number; email: string }[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+
   useEffect(() => {
-    const fetchPerformance = async () => {
+    const fetchInitial = async () => {
       try {
+        setIsLoading(true);
         const res = await apiClient.get('/attendance/my-stats');
-        setData(res.data);
+        const myData = res.data;
+        
+        const isMgr = myData.user_role === 'formateur' || myData.user_role === 'admin';
+        setIsManager(isMgr);
+        
+        if (isMgr) {
+          const groupsRes = await apiClient.get('/attendance/groups');
+          setGroups(groupsRes.data);
+          
+          if (groupsRes.data.length > 0) {
+            const initialGroup = groupsRes.data[0];
+            setSelectedGroup(initialGroup);
+            const learnersRes = await apiClient.get(`/attendance/learners?group_name=${encodeURIComponent(initialGroup)}`);
+            setLearners(learnersRes.data);
+            
+            if (learnersRes.data.length > 0) {
+              const firstUser = learnersRes.data[0];
+              setSelectedUserId(firstUser.id);
+              const userStatsRes = await apiClient.get(`/attendance/user-stats/${firstUser.id}`);
+              setData(userStatsRes.data);
+            } else {
+              setData(myData);
+            }
+          } else {
+            setData(myData);
+          }
+        } else {
+          setData(myData);
+        }
       } catch (err) {
         console.error('Error fetching attendance performance:', err);
       } finally {
         setIsLoading(false);
       }
     };
-    fetchPerformance();
+    fetchInitial();
   }, []);
+
+  const handleGroupChange = async (group: string) => {
+    setSelectedGroup(group);
+    try {
+      setIsLoading(true);
+      const learnersRes = await apiClient.get(`/attendance/learners?group_name=${encodeURIComponent(group)}`);
+      setLearners(learnersRes.data);
+      if (learnersRes.data.length > 0) {
+        const firstUser = learnersRes.data[0];
+        setSelectedUserId(firstUser.id);
+        const userStatsRes = await apiClient.get(`/attendance/user-stats/${firstUser.id}`);
+        setData(userStatsRes.data);
+      } else {
+        setData(null);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleUserChange = async (userId: number) => {
+    setSelectedUserId(userId);
+    try {
+      setIsLoading(true);
+      const userStatsRes = await apiClient.get(`/attendance/user-stats/${userId}`);
+      setData(userStatsRes.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -80,20 +151,12 @@ export default function AttendancePerformanceWidget() {
   if (!data) return null;
 
   const currentStats = data[selectedPeriod];
-  const isManager = data.user_role === 'formateur' || data.user_role === 'admin';
-
-  // Determine attendance rate color
-  const getRateColor = (rate: number) => {
-    if (rate >= 90) return 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20';
-    if (rate >= 75) return 'text-amber-500 bg-amber-500/10 border-amber-500/20';
-    return 'text-rose-500 bg-rose-500/10 border-rose-500/20';
-  };
 
   return (
     <div className="bg-surface rounded-2xl p-6 border border-border shadow-sm space-y-6 mb-8">
       
       {/* Header & Period Switcher */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 pb-4 border-b border-border">
         <div>
           <div className="flex items-center gap-2">
             <span className="p-1.5 rounded-lg bg-primary/10 text-primary">
@@ -105,12 +168,53 @@ export default function AttendancePerformanceWidget() {
           </div>
           <p className="text-xs text-text-secondary mt-0.5">
             {isManager 
-              ? "Vue de votre compte et accès à la feuille d'émargement globale."
+              ? "Vue analytique. Sélectionnez un groupe et un apprenant pour auditer ses performances."
               : "Vos taux de présence, retards, absences et points de quiz en temps réel."}
           </p>
+
+          {/* Manager Filters */}
+          {isManager && (
+            <div className="mt-4 flex flex-col sm:flex-row items-center gap-3 bg-slate-50/50 p-2.5 rounded-xl border border-border">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <Users size={14} className="text-text-secondary shrink-0" />
+                <select 
+                  value={selectedGroup}
+                  onChange={(e) => handleGroupChange(e.target.value)}
+                  className="w-full sm:w-48 text-xs bg-white border border-border rounded-lg px-2 py-1.5 text-text-primary outline-none focus:border-primary"
+                >
+                  {groups.map(g => (
+                    <option key={g} value={g}>{g}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <UserCheck size={14} className="text-text-secondary shrink-0" />
+                <select 
+                  value={selectedUserId || ''}
+                  onChange={(e) => handleUserChange(Number(e.target.value))}
+                  className="w-full sm:w-48 text-xs bg-white border border-border rounded-lg px-2 py-1.5 text-text-primary outline-none focus:border-primary"
+                >
+                  {learners.map(l => (
+                    <option key={l.id} value={l.id}>{l.email}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-col items-end gap-3">
+          {/* Formateur & Admin link to manage attendance */}
+          {isManager && (
+            <Link
+              href="/attendance"
+              className="btn-primary whitespace-nowrap px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-primary/20 shrink-0"
+            >
+              <ShieldCheck size={14} />
+              <span>Feuille d'émargement globale</span>
+            </Link>
+          )}
+
           {/* Period selector tabs */}
           <div className="flex items-center bg-background p-1 rounded-xl border border-border text-xs font-bold overflow-x-auto">
             <button
@@ -144,17 +248,6 @@ export default function AttendancePerformanceWidget() {
               Ce Semestre
             </button>
           </div>
-
-          {/* Formateur & Admin link to manage attendance */}
-          {isManager && (
-            <Link
-              href="/attendance"
-              className="btn-primary whitespace-nowrap px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-primary/20 shrink-0"
-            >
-              <ShieldCheck size={14} />
-              <span>Gérer les Présences</span>
-            </Link>
-          )}
         </div>
       </div>
 
@@ -276,7 +369,7 @@ export default function AttendancePerformanceWidget() {
         <div className="pt-2">
           <h4 className="text-xs font-bold uppercase text-text-secondary tracking-wider mb-2.5 flex items-center gap-1.5">
             <Calendar size={13} />
-            <span>Historique Récent de vos Pointages</span>
+            <span>Historique Récent des Pointages</span>
           </h4>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">

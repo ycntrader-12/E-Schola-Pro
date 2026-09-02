@@ -34,7 +34,8 @@ import {
   AlertTriangle,
   Save,
   Layers,
-  Calendar as CalendarIcon
+  Calendar as CalendarIcon,
+  ChevronDown
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 
@@ -87,6 +88,8 @@ export default function InboxMessagesPage() {
 
   // Compose Form state
   const [recipientId, setRecipientId] = useState<string>('');
+  const [recipientSearchText, setRecipientSearchText] = useState('');
+  const [isRecipientDropdownOpen, setIsRecipientDropdownOpen] = useState(false);
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
@@ -149,6 +152,18 @@ export default function InboxMessagesPage() {
 
     init();
   }, [router]);
+
+  // Sync recipient search text when recipientId changes externally (e.g. reply, forward)
+  useEffect(() => {
+    if (recipientId && allUsers.length > 0) {
+      const user = allUsers.find(u => u.id.toString() === recipientId);
+      if (user) {
+        setRecipientSearchText(`${user.email} (${user.role.toUpperCase()})`);
+      }
+    } else if (!recipientId) {
+      setRecipientSearchText('');
+    }
+  }, [recipientId, allUsers]);
 
   // 2. Select & Read Message
   const handleSelectMessage = async (msg: MessageItem) => {
@@ -308,6 +323,7 @@ export default function InboxMessagesPage() {
       setSubject('');
       setBody('');
       setRecipientId('');
+      setRecipientSearchText('');
       setAttachedFile(null);
       setExistingAttachment(null);
       setActiveFolder('drafts');
@@ -369,6 +385,7 @@ export default function InboxMessagesPage() {
       setSubject('');
       setBody('');
       setRecipientId('');
+      setRecipientSearchText('');
       setAttachedFile(null);
       setExistingAttachment(null);
       setActiveFolder('sent');
@@ -478,6 +495,7 @@ export default function InboxMessagesPage() {
             setSubject('');
             setBody('');
             setRecipientId('');
+            setRecipientSearchText('');
             setAttachedFile(null);
             setExistingAttachment(null);
           }}
@@ -828,25 +846,57 @@ export default function InboxMessagesPage() {
 
               <form onSubmit={handleSendMessage} className="space-y-4">
                 {/* Destinataire */}
-                <div>
+                <div className="relative">
                   <label className="block text-xs uppercase font-bold text-text-secondary mb-1.5">
                     Destinataire *
                   </label>
                   {allUsers.length > 0 ? (
-                    <select
-                      value={recipientId}
-                      onChange={(e) => setRecipientId(e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl bg-surface border border-border focus:border-primary text-xs outline-none cursor-pointer"
-                    >
-                      <option value="">-- Sélectionnez un destinataire --</option>
-                      {allUsers
-                        .filter(u => u.id !== currentUser?.id)
-                        .map(u => (
-                          <option key={u.id} value={u.id} className="bg-background">
-                            {u.email} ({u.role.toUpperCase()})
-                          </option>
-                        ))}
-                    </select>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="-- Sélectionnez ou tapez un destinataire --"
+                        value={recipientSearchText}
+                        onChange={(e) => {
+                          setRecipientSearchText(e.target.value);
+                          setIsRecipientDropdownOpen(true);
+                          setRecipientId('');
+                        }}
+                        onFocus={() => setIsRecipientDropdownOpen(true)}
+                        onBlur={() => {
+                           setTimeout(() => setIsRecipientDropdownOpen(false), 200);
+                        }}
+                        className="w-full px-4 py-2.5 pr-10 rounded-xl bg-surface border border-border focus:border-primary text-xs outline-none"
+                      />
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-text-secondary">
+                        <ChevronDown size={16} />
+                      </div>
+                      {isRecipientDropdownOpen && (
+                        <div className="absolute z-10 w-full mt-1 bg-surface border border-border rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                          {allUsers
+                            .filter(u => u.id !== currentUser?.id)
+                            .filter(u => {
+                               const search = recipientSearchText.toLowerCase();
+                               return u.email.toLowerCase().includes(search) || u.role.toLowerCase().includes(search);
+                            })
+                            .map(u => (
+                              <div
+                                key={u.id}
+                                onClick={() => {
+                                  setRecipientId(u.id.toString());
+                                  setRecipientSearchText(`${u.email} (${u.role.toUpperCase()})`);
+                                  setIsRecipientDropdownOpen(false);
+                                }}
+                                className="px-4 py-2.5 cursor-pointer hover:bg-primary/10 text-xs text-text-primary border-b border-border/50 last:border-0 transition-colors"
+                              >
+                                {u.email} <span className="text-text-secondary font-medium">({u.role.toUpperCase()})</span>
+                              </div>
+                            ))}
+                            {allUsers.filter(u => u.id !== currentUser?.id && (u.email.toLowerCase().includes(recipientSearchText.toLowerCase()) || u.role.toLowerCase().includes(recipientSearchText.toLowerCase()))).length === 0 && (
+                              <div className="px-4 py-3 text-xs text-text-secondary text-center">Aucun destinataire trouvé</div>
+                            )}
+                        </div>
+                      )}
+                    </div>
                   ) : (
                     <input
                       type="number"

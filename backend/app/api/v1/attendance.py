@@ -132,6 +132,55 @@ def get_my_dashboard_performance(session: SessionDep, current_user: CurrentUser)
     )
 
 
+@router.get("/user-stats/{user_id}", response_model=DashboardPerformanceOut)
+def get_user_dashboard_performance(user_id: int, session: SessionDep, current_user: CurrentUser):
+    if current_user.role not in ["formateur", "admin"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé."
+        )
+
+    target_user = session.query(User).filter(User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="Utilisateur introuvable.")
+
+    today = date.today()
+    month_start = today.replace(day=1)
+    semester_start = today - timedelta(days=180)
+    all_time_start = date(2020, 1, 1)
+
+    daily_stats = calculate_period_stats(
+        "Journalier", today, today, target_user.id, session
+    )
+    monthly_stats = calculate_period_stats(
+        "Mensuel", month_start, today, target_user.id, session
+    )
+    semester_stats = calculate_period_stats(
+        "Semestriel", semester_start, today, target_user.id, session
+    )
+    overall_stats = calculate_period_stats(
+        "Global", all_time_start, today, target_user.id, session
+    )
+
+    recent_attendances = (
+        session.query(Attendance)
+        .filter(Attendance.user_id == target_user.id)
+        .order_by(Attendance.date.desc())
+        .limit(50)
+        .all()
+    )
+
+    return DashboardPerformanceOut(
+        user_id=target_user.id,
+        user_email=target_user.email,
+        user_role=target_user.role,
+        daily=daily_stats,
+        monthly=monthly_stats,
+        semester=semester_stats,
+        overall=overall_stats,
+        recent_attendances=recent_attendances,
+    )
+
+
 @router.get("/my-records", response_model=list[AttendanceOut])
 def get_my_attendance_records(
     session: SessionDep,

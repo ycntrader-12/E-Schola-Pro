@@ -1061,6 +1061,7 @@ E-Schola Pro/
       <tbody class="endpoint-row">
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/attendance/my-stats</code></td><td>Bilan d'engagement et assiduité personnelle de l'apprenant (Journalier, Mensuel, Semestriel, Global)</td><td>Authentifié (Étudiant, Stagiaire, Employé)</td></tr>
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/attendance/my-records</code></td><td>Historique complet des émargements personnels certifiés</td><td>Authentifié (Étudiant, Stagiaire, Employé)</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/attendance/user-stats/{user_id}</code></td><td>Bilan d'engagement et assiduité pour un utilisateur spécifique</td><td>Admin, Formateur</td></tr>
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/attendance/groups</code></td><td>Lister les groupes / promotions d'apprenants</td><td>Admin, Formateur</td></tr>
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/attendance/learners</code></td><td>Lister les apprenants par groupe pour l'émargement</td><td>Admin, Formateur</td></tr>
         <tr><td><span class="badge badge-post">POST</span></td><td><code>/attendance/learners</code></td><td>Inscrire un apprenant réel à un groupe</td><td>Admin, Formateur</td></tr>
@@ -1213,7 +1214,12 @@ E-Schola Pro/
         <li>Barre de recherche interactive intelligente : filtrage instantané des cours locaux et intégration d'un accès direct au moteur de recherche Google (<code>google.com/search</code>)</li>
         <li>Bouton de notification intelligent synchronisé en temps réel avec la boîte de réception des messages (<code>/inbox</code>) et compteur de non-lus</li>
         <li>Capsule de profil personnalisée avec avatar réel téléversé ou initiales générées dynamiquement (sans modèle fictif) et nom du compte connecté</li>
-        <li>Widget exclusif de Suivi d'Assiduité &amp; Performances Académiques (4 KPI cards d'assiduité, retards/absences, points et moyennes quiz avec sélecteur Aujourd'hui/Mois/Semestre)</li>
+        <li>Widget exclusif de Suivi d'Assiduité &amp; Performances Académiques (4 KPI cards d'assiduité, retards/absences, points et moyennes quiz avec sélecteur Aujourd'hui/Mois/Semestre) :
+          <ul>
+            <li><strong>Vue Apprenant :</strong> Affichage personnalisé de ses propres performances.</li>
+            <li><strong>Vue Équipe Pédagogique :</strong> Barre de filtrage avancée permettant la sélection d'un groupe puis d'un étudiant spécifique pour consulter ses métriques individuellement.</li>
+          </ul>
+        </li>
         <li>Tableau synthétique « Votre Mentor » avec liste des formateurs et raccourcis d'accès aux modules</li>
       </ul>
       <div class="screenshot-container">
