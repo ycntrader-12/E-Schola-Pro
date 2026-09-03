@@ -70,18 +70,22 @@ kill -9 $(lsof -t -i:3000)
 
 ---
 
-## 2. Gestion de la Base de Données (SQLite & Alembic)
+## 2. Gestion de la Base de Données (PostgreSQL, SQLite & Alembic)
 
-E-Schola Pro utilise **SQLite** en local avec le fichier [`eschola.db`](file:///d:/my%20projet/E-Schola%20Pro/backend/eschola.db) situé dans le dossier `backend`.
+E-Schola Pro supporte nativement **PostgreSQL** et **SQLite** :
+- **En Production / Railway :** Utilisation recommandée de **PostgreSQL** (provisionné via un plugin Railway ou un service externe comme Supabase/Neon).
+- **En Développement Local :** Vous pouvez connecter une instance **PostgreSQL** locale (ex: `postgresql+psycopg2://postgres:postgres@localhost:5432/eschola_pro`) ou utiliser la base **SQLite** persistante [`backend/eschola.db`](file:///d:/my%20projet/E-Schola%20Pro/backend/eschola.db).
 
 > [!NOTE]
-> Au démarrage du backend, FastAPI exécute automatiquement `Base.metadata.create_all(bind=engine)` (dans `app/main.py`), ce qui crée le fichier SQLite et toutes les tables s'ils n'existent pas. Cependant, pour un suivi propre du schéma de base de données, l'utilisation d'Alembic est fortement recommandée.
+> Au démarrage du backend, FastAPI exécute automatiquement les vérifications de schéma et `Base.metadata.create_all(bind=engine)`. Pour le versionnement propre et la reproductibilité en équipe ou en production, l'utilisation de la chaîne de migration Alembic est activée et recommandée.
 
 ### A. Appliquer les migrations de base de données
-Lorsque vous téléchargez des modifications de code contenant des mises à jour de modèles, appliquez les dernières migrations :
+Lorsque vous téléchargez des modifications de code ou basculez vers une nouvelle base de données :
 ```bash
 cd backend
-venv\Scripts\activate
+# Sur Windows :
+venv\Scripts\python.exe -m alembic.config upgrade head
+# Ou avec alembic directement :
 alembic upgrade head
 ```
 
@@ -90,18 +94,18 @@ Si vous modifiez ou ajoutez un modèle SQLAlchemy dans `backend/app/models/` :
 1. Assurez-vous d'importer le nouveau modèle dans `backend/app/db/base.py` pour qu'Alembic le détecte.
 2. Générez la migration automatique :
    ```bash
-   alembic revision --autogenerate -m "description_de_la_modification"
+   venv\Scripts\python.exe -m alembic.config revision --autogenerate -m "description_de_la_modification"
    ```
 3. Vérifiez le fichier généré dans `backend/alembic/versions/`.
 4. Appliquez-le :
    ```bash
-   alembic upgrade head
+   venv\Scripts\python.exe -m alembic.config upgrade head
    ```
 
-### C. Gestion des Verrous de Base de Données SQLite
-Par défaut, SQLite peut lever une erreur `sqlite3.OperationalError: database is locked` si plusieurs transactions d'écriture simultanées ont lieu.
-- **Bonne pratique :** Toujours fermer les sessions de base de données dans le code (géré automatiquement par FastAPI via le pattern de dépendance dans `deps.py` qui produit et ferme la session `db`).
-- **En cas de blocage persistant :** Redémarrez le serveur FastAPI pour tuer les connexions persistantes sur le fichier `eschola.db`.
+### C. Persistance et Résilience des Connexions
+- **PostgreSQL :** Le pool de connexions SQLAlchemy est doté de `pool_pre_ping=True` et d'un recyclage toutes les 5 minutes (`pool_recycle=300`), évitant toute rupture brutale de socket TCP sur le cloud ou lors d'inactivité prolongée.
+- **SQLite :** Activé en mode `PRAGMA journal_mode=WAL` avec un timeout de 30 secondes pour une haute concurrence sans verrouillage intempestif.
+- **Mots de Passe & Comptes :** Les modifications de mot de passe utilisateur et de rôles sont **100% persistantes** et ne sont jamais écrasées lors des redémarrages. Le script de peuplement `create_admin.py` vérifie l'existence de façon insensible à la casse (`func.lower(User.email)`) et n'ajoute que les comptes manquants.
 
 ### D. Accès Direct & Administration (SQLAdmin)
 Le panel d'administration Web SQLAdmin offre une interface complète pour manipuler les données.

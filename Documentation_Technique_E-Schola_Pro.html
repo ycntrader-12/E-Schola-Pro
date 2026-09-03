@@ -40,11 +40,13 @@
         background: linear-gradient(180deg, rgba(15, 15, 20, 0.72) 0%, rgba(10, 10, 15, 0.88) 100%),
                     url('docs_screenshots/hd_tech_ai_server.jpg') no-repeat center center / cover !important;
         -webkit-print-color-adjust: exact;
+        color-adjust: exact;
         print-color-adjust: exact;
       }
       .cover .cover-content {
         background: rgba(22, 22, 34, 0.85) !important;
         -webkit-print-color-adjust: exact;
+        color-adjust: exact;
         print-color-adjust: exact;
       }
       section { padding: 20px 0 !important; }
@@ -93,8 +95,8 @@
       padding: 56px 48px;
       border-radius: 28px;
       background: rgba(17, 28, 56, 0.75);
-      backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
+      backdrop-filter: blur(20px);
       border: 1px solid rgba(37, 99, 235, 0.35);
       box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), 0 0 50px rgba(37, 99, 235, 0.2);
     }
@@ -117,7 +119,9 @@
       font-weight: 800;
       background: linear-gradient(135deg, #fff, #ccc);
       -webkit-background-clip: text;
+      background-clip: text;
       -webkit-text-fill-color: transparent;
+      color: transparent;
       margin-bottom: 16px;
     }
     .cover .doc-version {
@@ -750,12 +754,15 @@ E-Schola Pro/
     <p>Schéma complet de toutes les tables et leurs relations.</p>
 
     <div class="card" style="margin-bottom: 24px;">
-      <h4 style="margin-bottom: 8px; color: var(--text-primary);">🛡️ Persistance Permanente & Haute Disponibilité (Local & Railway)</h4>
+      <h4 style="margin-bottom: 8px; color: var(--text-primary);">🛡️ Persistance Permanente & Haute Disponibilité (PostgreSQL & SQLite)</h4>
       <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">
-        La base SQLite <code>eschola.db</code> est configurée avec le mode <strong>WAL (Write-Ahead Logging)</strong> (<code>PRAGMA journal_mode=WAL</code>), assurant des écritures concurrentes immédiates, sans verrouillage (timeout 30s) et une persistance disque garantie après actualisation, redémarrage ou déconnexion.
+        <strong>Support Natif PostgreSQL & SQLite :</strong> E-Schola Pro supporte nativement <strong>PostgreSQL</strong> (en local ou sur cloud via Railway, Supabase, Neon) avec le driver performant <code>psycopg2-binary</code>. Le backend gère automatiquement la normalisation des chaînes de connexion (conversion <code>postgres://</code> en <code>postgresql+psycopg2://</code>), l'auto-détection des variables Railway (<code>DATABASE_URL</code>, <code>POSTGRES_URL</code>, <code>DATABASE_PUBLIC_URL</code>, ou <code>PGHOST/PGUSER</code>) et dispose d'un pool de connexions résilient (<code>pool_pre_ping=True</code>, <code>pool_recycle=300s</code>, <code>pool_size=10</code>, <code>max_overflow=20</code>) empêchant toute déconnexion intempestive de sockets TCP inactifs.
+      </p>
+      <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">
+        <strong>Chaîne de Migrations Alembic Automatisée :</strong> Le schéma complet des 16 tables relationnelles, contraintes CASCADE, colonnes étendues et index est versionné et synchronisé via Alembic (révisions <code>23940a40bfca</code> &rarr; <code>b863afb6a5e3</code> &rarr; <code>c1a2b3d4e5f6</code>). Lors du déploiement ou du redémarrage, <code>alembic upgrade head</code> s'exécute automatiquement avant le lancement des serveurs.
       </p>
       <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 0;">
-        <strong>Idempotence & Intégrité :</strong> L'initialisation automatique (seeder <code>create_admin.py</code>) est strictement non-destructive : les comptes existants ne voient jamais leur mot de passe ni leur rôle réinitialisés au redémarrage. Sur Railway, le backend auto-détecte les volumes persistants montés sur <code>/app/backend/data</code> ou via <code>RAILWAY_VOLUME_MOUNT_PATH</code>.
+        <strong>Idempotence & Intégrité des Mots de Passe :</strong> L'initialisation automatique (seeder <code>create_admin.py</code>) est strictement non-destructive : la vérification d'existence est insensible à la casse (<code>func.lower(User.email)</code>) et ne réécrit jamais les mots de passe modifiés ni les rôles des comptes existants. En environnement SQLite de secours, le mode <strong>WAL (Write-Ahead Logging)</strong> garantit des écritures concurrentes immédiates sans verrouillage, avec redirection automatique sur les volumes Railway (<code>RAILWAY_VOLUME_MOUNT_PATH</code> ou <code>/app/backend/data</code>).
       </p>
     </div>
 

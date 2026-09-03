@@ -7,9 +7,10 @@ from app.core.config import settings
 
 db_url = settings.DATABASE_URL
 if db_url.startswith("postgres://"):
-    db_url = db_url.replace("postgres://", "postgresql://", 1)
+    db_url = db_url.replace("postgres://", "postgresql+psycopg2://", 1)
+elif db_url.startswith("postgresql://"):
+    db_url = db_url.replace("postgresql://", "postgresql+psycopg2://", 1)
 
-connect_args = {}
 if db_url.startswith("sqlite"):
     connect_args = {"check_same_thread": False, "timeout": 30}
     # Ensure parent directory of SQLite db file exists
@@ -22,10 +23,9 @@ if db_url.startswith("sqlite"):
         except Exception:
             pass
 
-engine = create_engine(db_url, connect_args=connect_args)
+    engine = create_engine(db_url, connect_args=connect_args)
 
-# SQLite durability and concurrency configuration (WAL Mode)
-if db_url.startswith("sqlite"):
+    # SQLite durability and concurrency configuration (WAL Mode)
     @event.listens_for(engine, "connect")
     def set_sqlite_pragma(dbapi_connection, connection_record):
         try:
@@ -36,6 +36,15 @@ if db_url.startswith("sqlite"):
             cursor.close()
         except Exception:
             pass
+else:
+    # PostgreSQL Configuration with resilient pool settings for Railway / Supabase / Cloud
+    engine = create_engine(
+        db_url,
+        pool_pre_ping=True,      # Automatically reconnects dropped or idle connections
+        pool_recycle=300,        # Recycle connections every 5 minutes to prevent stale TCP sockets
+        pool_size=10,
+        max_overflow=20,
+    )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

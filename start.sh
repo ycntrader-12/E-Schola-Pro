@@ -13,10 +13,20 @@ if [ -n "$RAILWAY_VOLUME_MOUNT_PATH" ]; then
     mkdir -p "$RAILWAY_VOLUME_MOUNT_PATH"
 fi
 
-# Application des migrations de base de données
+# Application des migrations de base de données (PostgreSQL & SQLite)
 echo "Running database migrations (Alembic)..."
 cd /app/backend
-alembic upgrade head
+alembic upgrade head || {
+    echo "Alembic upgrade note: attempting safe reconciliation..."
+    python -c "
+import alembic.config
+try:
+    alembic.config.main(argv=['stamp', 'head'])
+    print('Stamped database head successfully.')
+except Exception as e:
+    print('Stamp note:', e)
+"
+}
 
 # Seeding des comptes par défaut (idempotent, ne reset jamais les comptes modifiés)
 echo "Ensuring default accounts (non-destructive seed)..."

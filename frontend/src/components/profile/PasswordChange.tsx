@@ -35,8 +35,8 @@ export default function PasswordChange() {
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-    } catch (err: any) {
-      const errorDetail = err.response?.data?.detail || 'Erreur lors de la mise à jour du mot de passe.';
+    } catch (err: unknown) {
+      const errorDetail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || 'Erreur lors de la mise à jour du mot de passe.';
       setMessage({ type: 'error', text: errorDetail });
     } finally {
       setIsLoading(false);

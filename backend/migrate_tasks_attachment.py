@@ -1,28 +1,22 @@
-import sqlite3
-import os
+from sqlalchemy import inspect, text
+from app.db.database import engine
 
-db_path = os.path.join(os.path.dirname(__file__), "eschola.db")
 
-if not os.path.exists(db_path):
-    print("Database eschola.db not found. Creating it or it uses a different name.")
-    db_path = os.path.join(os.path.dirname(__file__), "sql_app.db")
-
-if os.path.exists(db_path):
-    print(f"Connecting to {db_path}...")
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-    
+def run_migration():
+    """Database-agnostic schema sync for tasks attachment_url (PostgreSQL & SQLite)."""
     try:
-        cursor.execute("ALTER TABLE tasks ADD COLUMN attachment_url TEXT;")
-        print("Successfully added attachment_url column to tasks table.")
-    except sqlite3.OperationalError as e:
-        if "duplicate column name" in str(e):
-            print("Column attachment_url already exists.")
-        else:
-            print(f"Error: {e}")
-            
-    conn.commit()
-    conn.close()
-else:
-    print("No database found to migrate.")
+        inspector = inspect(engine)
+        tables = inspector.get_table_names()
+        if "tasks" in tables:
+            existing_cols = [c["name"] for c in inspector.get_columns("tasks")]
+            if "attachment_url" not in existing_cols:
+                with engine.begin() as conn:
+                    conn.execute(text("ALTER TABLE tasks ADD COLUMN attachment_url TEXT"))
+                    print("Migration: added column 'attachment_url' to 'tasks'.")
+    except Exception as e:
+        print(f"Tasks migration check note: {e}")
+
+
+if __name__ == "__main__":
+    run_migration()
 

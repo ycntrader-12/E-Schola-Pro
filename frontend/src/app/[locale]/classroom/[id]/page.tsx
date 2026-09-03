@@ -328,15 +328,6 @@ export default function VirtualClassroomLivePage() {
     }
   };
 
-  useEffect(() => {
-    if (!isLoadingRoom && classroom) {
-      startCameraAndMic();
-    }
-    return () => {
-      stopAllMedia();
-    };
-  }, [isLoadingRoom, classroom]);
-
   const stopAllMedia = () => {
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach(track => track.stop());
@@ -347,6 +338,15 @@ export default function VirtualClassroomLivePage() {
       screenStreamRef.current = null;
     }
   };
+
+  useEffect(() => {
+    if (!isLoadingRoom && classroom) {
+      startCameraAndMic();
+    }
+    return () => {
+      stopAllMedia();
+    };
+  }, [isLoadingRoom, classroom]);
 
   // 3. Toggle Microphone
   const toggleMicrophone = () => {
@@ -452,10 +452,11 @@ export default function VirtualClassroomLivePage() {
       stream.getVideoTracks()[0].onended = () => {
         stopScreenShare();
       };
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.warn("Screen share status:", err);
       setIsScreenSharing(false);
-      if (err.name !== 'NotAllowedError') {
+      const errorObj = err as { name?: string };
+      if (errorObj?.name !== 'NotAllowedError') {
         alert("Impossible de démarrer le partage d'écran sur ce terminal mobile. Vérifiez les autorisations de capture d'écran de votre système.");
       }
     }
@@ -613,8 +614,9 @@ export default function VirtualClassroomLivePage() {
       setSubgroupsState(res.data);
       setShowSubgroupModal(false);
       alert("Sous-groupes lancés ! Les apprenants ont été notifiés sur leur mobile et ordinateur.");
-    } catch (err: any) {
-      alert(err?.response?.data?.detail || "Erreur lors du lancement des sous-groupes.");
+    } catch (err: unknown) {
+      const errorMsg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || "Erreur lors du lancement des sous-groupes.";
+      alert(errorMsg);
     }
   };
 
@@ -625,8 +627,9 @@ export default function VirtualClassroomLivePage() {
       setSubgroupsState({ is_active: false, timer_minutes: 15, subgroups: [] });
       setCurrentActiveSubgroupId(null);
       alert("Tous les sous-groupes ont été clôturés. Retour à la salle principale.");
-    } catch (err: any) {
-      alert(err?.response?.data?.detail || "Erreur lors de la clôture des sous-groupes.");
+    } catch (err: unknown) {
+      const errorMsg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || "Erreur lors de la clôture des sous-groupes.";
+      alert(errorMsg);
     }
   };
 
@@ -800,7 +803,7 @@ export default function VirtualClassroomLivePage() {
                   className="w-full h-full object-contain"
                 />
                 <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur border border-white/20 text-[10px] sm:text-xs font-bold text-cyan-400 flex items-center gap-1.5">
-                  <MonitorUp size={12} className="animate-pulse" /> Partage d'écran actif
+                  <MonitorUp size={12} className="animate-pulse" /> Partage d&apos;écran actif
                 </div>
               </div>
             ) : null}
@@ -1387,7 +1390,7 @@ export default function VirtualClassroomLivePage() {
 
                 <div>
                   <label className="block uppercase font-bold text-gray-300 mb-1 text-[10px]">
-                    Durée de l'atelier (Minutes)
+                    Durée de l&apos;atelier (Minutes)
                   </label>
                   <input
                     type="number"

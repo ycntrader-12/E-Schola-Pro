@@ -29,15 +29,17 @@ from app.core.security import verify_password
 from app.db.base import Base
 from app.db.database import engine
 
-# Ensure all tables exist in SQLite
+# Ensure all tables exist in database (PostgreSQL & SQLite)
 Base.metadata.create_all(bind=engine)
 
 # Seed default admin, demo accounts and initial groups
 try:
     from create_admin import seed_groups, seed_users
-    from migrate_classrooms import run_migration
+    from migrate_classrooms import run_migration as run_classrooms_migration
+    from migrate_tasks_attachment import run_migration as run_tasks_migration
 
-    run_migration()
+    run_classrooms_migration()
+    run_tasks_migration()
     seed_users()
     seed_groups()
 except Exception as e:

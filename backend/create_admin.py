@@ -1,3 +1,4 @@
+from sqlalchemy import func
 from app.core.security import get_password_hash
 from app.db.database import SessionLocal
 from app.models.user import User
@@ -15,7 +16,12 @@ def seed_users():
     ]
 
     for u_info in default_users:
-        user = db.query(User).filter(User.email == u_info["email"]).first()
+        target_email = u_info["email"].strip().lower()
+        user = (
+            db.query(User)
+            .filter((func.lower(User.email) == target_email) | (User.email == u_info["email"]))
+            .first()
+        )
         if not user:
             new_user = User(
                 email=u_info["email"],
