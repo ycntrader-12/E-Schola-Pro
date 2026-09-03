@@ -1490,6 +1490,7 @@ E-Schola Pro/
       <p><strong>Routes Frontend :</strong> <code>/register</code> (Inscription publique) · <code>/profile</code> (Modal « Créer un Compte Utilisateur » par l'administrateur)</p>
       <p><strong>Spécifications et règles métier appliquées :</strong></p>
       <ul>
+        <li><strong>Sélecteur de Rôle Unifié :</strong> L'interface d'inscription publique (<code>/register</code>) et le modal d'administration (<code>/profile</code>) partagent le même composant de sélection de rôle via une liste déroulante (<code>select</code>) accompagnée d'un badge explicatif bleu (<code>Profil Standard : Formulaire détaillé...</code>).</li>
         <li><strong>Règle d'Exception Globale (Admin Exemption) :</strong> Les comptes administrateurs (<code>admin</code>, <code>admin_manager</code>, <code>admin_limited</code>) bénéficient d'un <em>profil allégé minimal</em> ne requérant que l'identifiant (username/email) et le mot de passe, avec basculement d'interface dynamique dans le modal d'administration.</li>
         <li><strong>Profil Standard Complet (Étudiant, Stagiaire, Employé, Formateur) :</strong>
           <ul>

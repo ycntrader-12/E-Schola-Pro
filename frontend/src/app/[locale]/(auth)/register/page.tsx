@@ -16,6 +16,7 @@ import {
   Briefcase, 
   GraduationCap, 
   User as UserIcon, 
+  Users,
   Phone, 
   Mail, 
   CreditCard 
@@ -37,7 +38,7 @@ export default function RegisterPage() {
   const tCommon = useTranslations('Common');
 
   // Core Form State
-  const [role, setRole] = useState<'étudiant' | 'stagiaire' | 'employer'>('étudiant');
+  const [role, setRole] = useState<'étudiant' | 'stagiaire' | 'employer' | 'formateur'>('étudiant');
   const [nom, setNom] = useState('');
   const [prenom, setPrenom] = useState('');
   const [username, setUsername] = useState('');
@@ -230,31 +231,26 @@ export default function RegisterPage() {
         {/* Form */}
         <form onSubmit={handleRegister} className="space-y-6 text-xs">
           
-          {/* SECTION 1: Choix du Rôle */}
-          <div className="bg-slate-50/80 p-4 rounded-2xl border border-slate-200/80 space-y-2">
+          {/* SECTION 1: Choix du Rôle (Aligné sur l'interface Administrateur) */}
+          <div className="bg-slate-50/80 p-4 rounded-2xl border border-slate-200/80 space-y-2.5">
             <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
-              {t('role')} *
+              Rôle assigné au compte *
             </label>
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                { val: 'étudiant', label: tRoles('etudiant'), icon: GraduationCap },
-                { val: 'stagiaire', label: tRoles('stagiaire'), icon: Briefcase },
-                { val: 'employer', label: tRoles('employer'), icon: UserIcon },
-              ].map(({ val, label, icon: Icon }) => (
-                <button
-                  key={val}
-                  type="button"
-                  onClick={() => setRole(val as any)}
-                  className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all cursor-pointer ${
-                    role === val
-                      ? 'bg-blue-600 text-white border-blue-600 shadow-sm shadow-blue-500/30 font-bold scale-[1.02]'
-                      : 'bg-white text-slate-700 border-slate-200 hover:border-blue-300 font-medium'
-                  }`}
-                >
-                  <Icon size={18} className="mb-1" />
-                  <span className="text-xs">{label}</span>
-                </button>
-              ))}
+            <select
+              value={role}
+              onChange={(e) => setRole(e.target.value as any)}
+              className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 text-slate-900 text-xs font-semibold outline-none cursor-pointer shadow-xs"
+            >
+              <option value="étudiant">{tRoles('etudiant') || 'Étudiant'}</option>
+              <option value="stagiaire">{tRoles('stagiaire') || 'Stagiaire'}</option>
+              <option value="employer">{tRoles('employer') || 'Employé'}</option>
+              <option value="formateur">{tRoles('formateur') || 'Formateur'}</option>
+            </select>
+
+            {/* Badge indicatif sur la portée du formulaire (Identique au modal Admin) */}
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 text-[11px]">
+              <Users size={15} className="shrink-0 text-blue-600" />
+              <span><strong>Profil Standard :</strong> Formulaire détaillé avec identité, localisation et affectation.</span>
             </div>
           </div>
 
