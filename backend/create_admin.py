@@ -7,9 +7,9 @@ from app.models.user import User
 def seed_users():
     db = SessionLocal()
     default_users = [
-        {"email": "admin", "password": "password", "role": "admin"},
-        {"email": "admin@eschola.pro", "password": "password", "role": "admin"},
-        {"email": "admin_manager@eschola.pro", "password": "password", "role": "admin_manager"},
+        {"email": "admin", "password": "Abc1234", "role": "admin"},
+        {"email": "admin@eschola.pro", "password": "Abc1234", "role": "admin"},
+        {"email": "admin_manager@eschola.pro", "password": "Abc1234", "role": "admin_manager"},
         {"email": "formateur@eschola.pro", "password": "password", "role": "formateur"},
         {"email": "imane.prof@eshola.com", "password": "password", "role": "formateur"},
         {"email": "etudiant@eschola.pro", "password": "password", "role": "étudiant"},

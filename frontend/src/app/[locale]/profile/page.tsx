@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -43,17 +43,36 @@ import {
   Calendar,
   ClipboardCheck,
   MessageSquare,
-  Folder
+  Folder,
+  MapPin,
+  Briefcase,
+  GraduationCap,
+  Unlock,
+  CreditCard,
+  Phone
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import BackButton from '@/components/BackButton';
 import RoleSettings from '@/components/profile/RoleSettings';
 import PasswordChange from '@/components/profile/PasswordChange';
+import {
+  COUNTRIES_AND_CITIES,
+  SPECIALIZATIONS,
+  DEPARTMENTS,
+  calculateAge,
+  generateUsername
+} from '@/lib/profileData';
+
 interface UserProfile {
   id: number;
   email: string;
   role: string;
   avatar_url?: string;
+  username?: string;
+  nom?: string;
+  prenom?: string;
+  departement?: string;
+  specialisation?: string;
 }
 
 interface CourseItem {
@@ -155,6 +174,18 @@ export default function ProfilePage() {
   const [newAccountEmail, setNewAccountEmail] = useState('');
   const [newAccountPassword, setNewAccountPassword] = useState('');
   const [newAccountRole, setNewAccountRole] = useState('étudiant');
+  const [newAccountNom, setNewAccountNom] = useState('');
+  const [newAccountPrenom, setNewAccountPrenom] = useState('');
+  const [newAccountUsername, setNewAccountUsername] = useState('');
+  const [isManualAdminUsername, setIsManualAdminUsername] = useState(false);
+  const [newAccountDateNaissance, setNewAccountDateNaissance] = useState('');
+  const [newAccountCin, setNewAccountCin] = useState('');
+  const [newAccountTelephone, setNewAccountTelephone] = useState('');
+  const [newAccountAdresse, setNewAccountAdresse] = useState('');
+  const [newAccountPays, setNewAccountPays] = useState('Maroc');
+  const [newAccountVille, setNewAccountVille] = useState('Casablanca');
+  const [newAccountDepartement, setNewAccountDepartement] = useState(DEPARTMENTS[0]);
+  const [newAccountSpecialisation, setNewAccountSpecialisation] = useState(SPECIALIZATIONS[0]);
   const [isCreatingAccount, setIsCreatingAccount] = useState(false);
   const [createAccountError, setCreateAccountError] = useState('');
 
@@ -163,27 +194,140 @@ export default function ProfilePage() {
   const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [resetPasswordError, setResetPasswordError] = useState('');
 
+  const handleAdminNomChange = (val: string) => {
+    setNewAccountNom(val);
+    if (!isManualAdminUsername) {
+      setNewAccountUsername(generateUsername(val, newAccountPrenom));
+    }
+  };
+
+  const handleAdminPrenomChange = (val: string) => {
+    setNewAccountPrenom(val);
+    if (!isManualAdminUsername) {
+      setNewAccountUsername(generateUsername(newAccountNom, val));
+    }
+  };
+
+  const handleAdminCountryChange = (selectedCountry: string) => {
+    setNewAccountPays(selectedCountry);
+    const cities = COUNTRIES_AND_CITIES[selectedCountry] || ['Autre ville'];
+    setNewAccountVille(cities[0] || '');
+  };
+
+  const adminAvailableCities = useMemo(() => {
+    return COUNTRIES_AND_CITIES[newAccountPays] || ['Autre ville'];
+  }, [newAccountPays]);
+
+  const adminCalculatedAge = useMemo(() => {
+    return calculateAge(newAccountDateNaissance);
+  }, [newAccountDateNaissance]);
+
   const handleCreateAccount = async (e: React.FormEvent) => {
     e.preventDefault();
     setCreateAccountError('');
-    if (!newAccountEmail.trim() || !newAccountPassword.trim()) {
-      setCreateAccountError('Veuillez renseigner un email et un mot de passe.');
+
+    const isAdminTarget = ADMIN_ROLES.includes(newAccountRole);
+
+    if (isAdminTarget) {
+      // Admin Exemption: Lightweight Profile
+      const adminLogin = (newAccountUsername.trim() || newAccountEmail.trim()).toLowerCase();
+      if (!adminLogin || !newAccountPassword.trim()) {
+        setCreateAccountError("Veuillez renseigner un nom d'utilisateur (ou email) et un mot de passe.");
+        return;
+      }
+      setIsCreatingAccount(true);
+      try {
+        const res = await apiClient.post('/users/admin-create', {
+          username: adminLogin,
+          email: newAccountEmail.trim() || undefined,
+          password: newAccountPassword.trim(),
+          role: newAccountRole
+        });
+        setAllUsers(prev => [res.data, ...prev]);
+        setIsCreateUserModalOpen(false);
+        // Reset states
+        setNewAccountEmail('');
+        setNewAccountPassword('');
+        setNewAccountUsername('');
+        setNewAccountRole('étudiant');
+        setActionMessage({ type: 'success', text: `Compte administrateur "${res.data.username || res.data.email}" créé avec succès en tant que ${res.data.role}.` });
+      } catch (err: any) {
+        setCreateAccountError(err?.response?.data?.detail || "Erreur lors de la création de l'administrateur.");
+      } finally {
+        setIsCreatingAccount(false);
+      }
+      return;
+    }
+
+    // Standard Profile (Étudiant, Stagiaire, Employé, Formateur)
+    if (!newAccountNom.trim() || !newAccountPrenom.trim()) {
+      setCreateAccountError('Le nom et le prénom sont obligatoires pour un profil standard.');
+      return;
+    }
+
+    const finalUsername = (newAccountUsername.trim() || generateUsername(newAccountNom, newAccountPrenom)).toLowerCase();
+    if (!finalUsername) {
+      setCreateAccountError("Le nom d'utilisateur est obligatoire.");
+      return;
+    }
+
+    if (!newAccountDateNaissance) {
+      setCreateAccountError('La date de naissance est obligatoire.');
+      return;
+    }
+
+    if (!newAccountPays || !newAccountVille) {
+      setCreateAccountError('Le pays et la ville sont obligatoires.');
+      return;
+    }
+
+    if ((newAccountRole === 'employer' || newAccountRole === 'stagiaire') && !newAccountDepartement) {
+      setCreateAccountError('Veuillez sélectionner un département professionnel.');
+      return;
+    }
+
+    if ((newAccountRole === 'étudiant' || newAccountRole === 'stagiaire') && !newAccountSpecialisation) {
+      setCreateAccountError('Veuillez sélectionner une spécialisation académique.');
+      return;
+    }
+
+    if (!newAccountPassword.trim()) {
+      setCreateAccountError('Le mot de passe est obligatoire.');
       return;
     }
 
     setIsCreatingAccount(true);
     try {
       const res = await apiClient.post('/users/admin-create', {
-        email: newAccountEmail.trim(),
+        username: finalUsername,
+        nom: newAccountNom.trim(),
+        prenom: newAccountPrenom.trim(),
+        date_naissance: newAccountDateNaissance,
+        email: newAccountEmail.trim() || undefined,
+        telephone: newAccountTelephone.trim() || undefined,
+        cin: newAccountCin.trim() || undefined,
+        adresse: newAccountAdresse.trim() || undefined,
+        pays: newAccountPays,
+        ville: newAccountVille,
+        departement: (newAccountRole === 'employer' || newAccountRole === 'stagiaire') ? newAccountDepartement : undefined,
+        specialisation: (newAccountRole === 'étudiant' || newAccountRole === 'stagiaire') ? newAccountSpecialisation : undefined,
         password: newAccountPassword.trim(),
         role: newAccountRole
       });
       setAllUsers(prev => [res.data, ...prev]);
       setIsCreateUserModalOpen(false);
+      // Reset form
       setNewAccountEmail('');
       setNewAccountPassword('');
+      setNewAccountNom('');
+      setNewAccountPrenom('');
+      setNewAccountUsername('');
+      setNewAccountDateNaissance('');
+      setNewAccountCin('');
+      setNewAccountTelephone('');
+      setNewAccountAdresse('');
       setNewAccountRole('étudiant');
-      setActionMessage({ type: 'success', text: `Compte utilisateur "${res.data.email}" créé avec succès en tant que ${res.data.role}.` });
+      setActionMessage({ type: 'success', text: `Compte utilisateur "${res.data.username || res.data.email}" créé avec succès en tant que ${res.data.role}.` });
     } catch (err: any) {
       setCreateAccountError(err?.response?.data?.detail || "Erreur lors de la création de l'utilisateur.");
     } finally {
@@ -1338,15 +1482,18 @@ export default function ProfilePage() {
           {/* MODAL CRÉER UN COMPTE UTILISATEUR */}
           {isCreateUserModalOpen && (
             <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-              <div className="glass-card max-w-md w-full p-8 rounded-2xl border border-border space-y-6 animate-fade-in-up">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-primary font-bold text-lg">
-                    <UserPlus size={20} />
+              <div className="glass-card max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 sm:p-8 rounded-2xl border border-border space-y-5 animate-fade-in-up">
+                
+                {/* Modal Header */}
+                <div className="flex items-center justify-between pb-3 border-b border-border">
+                  <div className="flex items-center gap-2.5 text-primary font-bold text-lg">
+                    <UserPlus size={22} />
                     <h3>Créer un Compte Utilisateur</h3>
                   </div>
                   <button 
                     onClick={() => setIsCreateUserModalOpen(false)}
-                    className="text-text-secondary hover:text-text-primary font-bold"
+                    className="p-1.5 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface transition-colors font-bold text-sm"
+                    title="Fermer"
                   >
                     ✕
                   </button>
@@ -1358,43 +1505,17 @@ export default function ProfilePage() {
                   </div>
                 )}
 
-                <form onSubmit={handleCreateAccount} className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-semibold uppercase text-text-secondary mb-1">
-                      Adresse Email *
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      value={newAccountEmail}
-                      onChange={(e) => setNewAccountEmail(e.target.value)}
-                      placeholder="utilisateur@exemple.com"
-                      className="w-full px-4 py-3 rounded-xl bg-surface border border-border focus:border-primary outline-none text-sm"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold uppercase text-text-secondary mb-1">
-                      Mot de passe *
-                    </label>
-                    <input
-                      type="password"
-                      required
-                      value={newAccountPassword}
-                      onChange={(e) => setNewAccountPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full px-4 py-3 rounded-xl bg-surface border border-border focus:border-primary outline-none text-sm"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold uppercase text-text-secondary mb-1">
-                      Rôle assigné
+                <form onSubmit={handleCreateAccount} className="space-y-5 text-xs">
+                  
+                  {/* SÉLECTEUR DE RÔLE (Pilote de formulaire) */}
+                  <div className="p-3.5 rounded-xl bg-surface border border-border space-y-2">
+                    <label className="block text-[11px] font-bold uppercase text-text-secondary">
+                      Rôle assigné au compte *
                     </label>
                     <select
                       value={newAccountRole}
                       onChange={(e) => setNewAccountRole(e.target.value)}
-                      className="w-full px-4 py-3 rounded-xl bg-surface border border-border focus:border-primary outline-none text-sm"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border focus:border-primary outline-none text-xs font-semibold text-text-primary"
                     >
                       {(isSuperAdmin ? ALL_ROLES : NON_ADMIN_ROLES).map((roleOpt) => (
                         <option key={roleOpt} value={roleOpt} className="bg-background">
@@ -1402,24 +1523,349 @@ export default function ProfilePage() {
                         </option>
                       ))}
                     </select>
+
+                    {/* Badge indicatif sur la portée du formulaire */}
+                    {ADMIN_ROLES.includes(newAccountRole) ? (
+                      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[11px]">
+                        <ShieldCheck size={15} className="shrink-0" />
+                        <span><strong>Exemption Administrateur :</strong> Profil allégé (identifiant et mot de passe uniquement).</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-500/10 border border-blue-500/30 text-blue-300 text-[11px]">
+                        <Users size={15} className="shrink-0" />
+                        <span><strong>Profil Standard :</strong> Formulaire détaillé avec identité, localisation et affectation.</span>
+                      </div>
+                    )}
                   </div>
 
-                  <div className="pt-2 flex gap-3">
+                  {/* CAS 1 : EXEMPTION ADMIN (PROFIL ALLÉGÉ) */}
+                  {ADMIN_ROLES.includes(newAccountRole) ? (
+                    <div className="space-y-3 p-4 rounded-xl bg-surface/50 border border-border">
+                      <div>
+                        <label className="block text-[11px] font-semibold text-text-secondary mb-1">
+                          Nom d'utilisateur / Identifiant Admin *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={newAccountUsername}
+                          onChange={(e) => setNewAccountUsername(e.target.value)}
+                          placeholder="admin.manager ou admin"
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border focus:border-primary outline-none text-xs text-text-primary font-mono"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-semibold text-text-secondary mb-1">
+                          Mot de passe *
+                        </label>
+                        <input
+                          type="password"
+                          required
+                          value={newAccountPassword}
+                          onChange={(e) => setNewAccountPassword(e.target.value)}
+                          placeholder="••••••••"
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border focus:border-primary outline-none text-xs text-text-primary"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-semibold text-text-secondary mb-1">
+                          Adresse Email <span className="text-text-secondary/60 font-normal">(Optionnel pour admin)</span>
+                        </label>
+                        <input
+                          type="email"
+                          value={newAccountEmail}
+                          onChange={(e) => setNewAccountEmail(e.target.value)}
+                          placeholder="admin@eschola.pro"
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border focus:border-primary outline-none text-xs text-text-primary"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    /* CAS 2 : PROFIL STANDARD COMPLET */
+                    <div className="space-y-4">
+                      
+                      {/* 1. Identité */}
+                      <div className="space-y-3">
+                        <div className="text-[10.5px] font-bold text-primary uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b border-border/50">
+                          <UserIcon size={13} />
+                          <span>1. Identité & État Civil</span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-[11px] font-semibold text-text-secondary mb-1">
+                              Nom *
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              value={newAccountNom}
+                              onChange={(e) => handleAdminNomChange(e.target.value)}
+                              placeholder="Ex: Dupont"
+                              className="w-full px-3 py-2 rounded-xl bg-surface border border-border focus:border-primary outline-none text-xs text-text-primary"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] font-semibold text-text-secondary mb-1">
+                              Prénom *
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              value={newAccountPrenom}
+                              onChange={(e) => handleAdminPrenomChange(e.target.value)}
+                              placeholder="Ex: Jean"
+                              className="w-full px-3 py-2 rounded-xl bg-surface border border-border focus:border-primary outline-none text-xs text-text-primary"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Username avec toggle */}
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="text-[11px] font-semibold text-text-secondary">
+                              Nom d'utilisateur *
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => setIsManualAdminUsername(!isManualAdminUsername)}
+                              className="text-[10px] text-primary hover:underline font-semibold inline-flex items-center gap-1"
+                            >
+                              <Unlock size={10} />
+                              <span>{isManualAdminUsername ? 'Mode auto' : 'Personnaliser'}</span>
+                            </button>
+                          </div>
+                          <div className="relative">
+                            <input
+                              type="text"
+                              required
+                              value={newAccountUsername}
+                              onChange={(e) => {
+                                setIsManualAdminUsername(true);
+                                setNewAccountUsername(e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ''));
+                              }}
+                              placeholder="jean.dupont"
+                              className="w-full px-3 py-2 rounded-xl bg-surface border border-border focus:border-primary outline-none text-xs text-text-primary font-mono"
+                            />
+                            {!isManualAdminUsername && newAccountUsername && (
+                              <span className="absolute right-2.5 top-2 px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 text-[9.5px] font-bold">
+                                Auto
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Date de naissance */}
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="text-[11px] font-semibold text-text-secondary flex items-center gap-1">
+                              <Calendar size={12} className="text-text-secondary" />
+                              <span>Date de naissance *</span>
+                            </label>
+                            {adminCalculatedAge !== null && (
+                              <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold">
+                                🎂 {adminCalculatedAge} ans
+                              </span>
+                            )}
+                          </div>
+                          <input
+                            type="date"
+                            required
+                            max={new Date().toISOString().split('T')[0]}
+                            value={newAccountDateNaissance}
+                            onChange={(e) => setNewAccountDateNaissance(e.target.value)}
+                            className="w-full px-3 py-2 rounded-xl bg-surface border border-border focus:border-primary outline-none text-xs text-text-primary cursor-pointer"
+                          />
+                        </div>
+                      </div>
+
+                      {/* 2. Localisation & Contact */}
+                      <div className="space-y-3 pt-1">
+                        <div className="text-[10.5px] font-bold text-primary uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b border-border/50">
+                          <MapPin size={13} />
+                          <span>2. Localisation & Coordonnées</span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-[11px] font-semibold text-text-secondary mb-1">
+                              Pays *
+                            </label>
+                            <select
+                              value={newAccountPays}
+                              onChange={(e) => handleAdminCountryChange(e.target.value)}
+                              className="w-full px-3 py-2 rounded-xl bg-surface border border-border focus:border-primary outline-none text-xs text-text-primary cursor-pointer"
+                            >
+                              {Object.keys(COUNTRIES_AND_CITIES).map((c) => (
+                                <option key={c} value={c} className="bg-background">
+                                  {c}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] font-semibold text-text-secondary mb-1">
+                              Ville *
+                            </label>
+                            <select
+                              value={newAccountVille}
+                              onChange={(e) => setNewAccountVille(e.target.value)}
+                              className="w-full px-3 py-2 rounded-xl bg-surface border border-border focus:border-primary outline-none text-xs text-text-primary cursor-pointer"
+                            >
+                              {adminAvailableCities.map((v) => (
+                                <option key={v} value={v} className="bg-background">
+                                  {v}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-[11px] font-semibold text-text-secondary mb-1">
+                              Email <span className="text-text-secondary/60 font-normal">(Optionnel)</span>
+                            </label>
+                            <input
+                              type="email"
+                              value={newAccountEmail}
+                              onChange={(e) => setNewAccountEmail(e.target.value)}
+                              placeholder="jean.dupont@exemple.com"
+                              className="w-full px-3 py-2 rounded-xl bg-surface border border-border focus:border-primary outline-none text-xs text-text-primary"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] font-semibold text-text-secondary mb-1">
+                              Téléphone <span className="text-text-secondary/60 font-normal">(Optionnel)</span>
+                            </label>
+                            <input
+                              type="tel"
+                              value={newAccountTelephone}
+                              onChange={(e) => setNewAccountTelephone(e.target.value)}
+                              placeholder="+212 6 00 00 00 00"
+                              className="w-full px-3 py-2 rounded-xl bg-surface border border-border focus:border-primary outline-none text-xs text-text-primary"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-[11px] font-semibold text-text-secondary mb-1">
+                              CIN <span className="text-text-secondary/60 font-normal">(Optionnel)</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={newAccountCin}
+                              onChange={(e) => setNewAccountCin(e.target.value.toUpperCase())}
+                              placeholder="AB123456"
+                              className="w-full px-3 py-2 rounded-xl bg-surface border border-border focus:border-primary outline-none text-xs text-text-primary font-mono"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] font-semibold text-text-secondary mb-1">
+                              Adresse <span className="text-text-secondary/60 font-normal">(Optionnel)</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={newAccountAdresse}
+                              onChange={(e) => setNewAccountAdresse(e.target.value)}
+                              placeholder="Quartier, Rue..."
+                              className="w-full px-3 py-2 rounded-xl bg-surface border border-border focus:border-primary outline-none text-xs text-text-primary"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 3. Affectation Métier & Académique (Conditionnelle) */}
+                      <div className="space-y-3 pt-1">
+                        <div className="text-[10.5px] font-bold text-primary uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b border-border/50">
+                          <Briefcase size={13} />
+                          <span>3. Affectation Pédagogique & Professionnelle</span>
+                        </div>
+
+                        {/* Spécialisation pour Étudiant et Stagiaire */}
+                        {(newAccountRole === 'étudiant' || newAccountRole === 'stagiaire') && (
+                          <div>
+                            <label className="block text-[11px] font-semibold text-text-secondary mb-1">
+                              Spécialisation / Filière *
+                            </label>
+                            <select
+                              value={newAccountSpecialisation}
+                              onChange={(e) => setNewAccountSpecialisation(e.target.value)}
+                              className="w-full px-3 py-2 rounded-xl bg-surface border border-border focus:border-primary outline-none text-xs text-text-primary cursor-pointer"
+                            >
+                              {SPECIALIZATIONS.map((s) => (
+                                <option key={s} value={s} className="bg-background">
+                                  {s}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+
+                        {/* Département pour Employé et Stagiaire */}
+                        {(newAccountRole === 'employer' || newAccountRole === 'stagiaire') && (
+                          <div>
+                            <label className="block text-[11px] font-semibold text-text-secondary mb-1">
+                              Département Professionnel *
+                            </label>
+                            <select
+                              value={newAccountDepartement}
+                              onChange={(e) => setNewAccountDepartement(e.target.value)}
+                              className="w-full px-3 py-2 rounded-xl bg-surface border border-border focus:border-primary outline-none text-xs text-text-primary cursor-pointer"
+                            >
+                              {DEPARTMENTS.map((d) => (
+                                <option key={d} value={d} className="bg-background">
+                                  {d}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* 4. Mot de passe */}
+                      <div className="pt-1">
+                        <label className="block text-[11px] font-semibold text-text-secondary mb-1">
+                          Mot de passe initial *
+                        </label>
+                        <input
+                          type="password"
+                          required
+                          value={newAccountPassword}
+                          onChange={(e) => setNewAccountPassword(e.target.value)}
+                          placeholder="••••••••"
+                          className="w-full px-3 py-2 rounded-xl bg-surface border border-border focus:border-primary outline-none text-xs text-text-primary"
+                        />
+                      </div>
+
+                    </div>
+                  )}
+
+                  {/* Actions Buttons */}
+                  <div className="pt-3 flex gap-3 border-t border-border">
                     <button
                       type="button"
                       onClick={() => setIsCreateUserModalOpen(false)}
-                      className="w-1/2 py-3 bg-surface hover:bg-surface-hover rounded-xl text-sm font-semibold border border-border"
+                      className="w-1/2 py-2.5 bg-surface hover:bg-surface-hover rounded-xl text-xs font-semibold border border-border text-text-primary transition-colors cursor-pointer"
                     >
                       Annuler
                     </button>
                     <button
                       type="submit"
                       disabled={isCreatingAccount}
-                      className="w-1/2 btn-primary py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2"
+                      className="w-1/2 btn-primary py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                     >
-                      {isCreatingAccount ? <Loader2 size={16} className="animate-spin" /> : 'Créer le compte'}
+                      {isCreatingAccount ? <Loader2 size={15} className="animate-spin" /> : 'Créer le compte'}
                     </button>
                   </div>
+
                 </form>
               </div>
             </div>

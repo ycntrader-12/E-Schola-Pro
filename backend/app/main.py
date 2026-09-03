@@ -37,7 +37,9 @@ try:
     from create_admin import seed_groups, seed_users
     from migrate_classrooms import run_migration as run_classrooms_migration
     from migrate_tasks_attachment import run_migration as run_tasks_migration
+    from migrate_user_profiles import run_migration as run_user_profiles_migration
 
+    run_user_profiles_migration()
     run_classrooms_migration()
     run_tasks_migration()
     seed_users()

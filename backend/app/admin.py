@@ -13,9 +13,9 @@ from app.models.user import User
 
 
 class UserAdmin(ModelView, model=User):
-    column_list = [User.id, User.email, User.role, User.group_name]
-    column_searchable_list = [User.email]
-    column_sortable_list = [User.id, User.email]
+    column_list = [User.id, User.username, User.nom, User.prenom, User.email, User.role, User.departement, User.specialisation]
+    column_searchable_list = [User.username, User.email, User.nom, User.prenom]
+    column_sortable_list = [User.id, User.username, User.email, User.nom]
     name = "Utilisateur"
     name_plural = "Utilisateurs"
     icon = "fa-solid fa-user"

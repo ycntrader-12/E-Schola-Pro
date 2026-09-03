@@ -74,12 +74,16 @@ async def login_access_token(
             detail="Identifiants requis : 'username' (ou 'email') et 'password'.",
         )
 
-    # Allow lookup by email or case-insensitive match
+    # Allow lookup by username or email (case-insensitive)
+    uname = str(username).strip()
+    uname_lower = uname.lower()
     user = (
         session.query(User)
         .filter(
-            (User.email == str(username).strip())
-            | (User.email == str(username).strip().lower())
+            (User.username == uname)
+            | (User.username == uname_lower)
+            | (User.email == uname)
+            | (User.email == uname_lower)
         )
         .first()
     )

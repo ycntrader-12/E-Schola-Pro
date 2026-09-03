@@ -129,15 +129,16 @@ python create_admin.py
   - **Rôle :** `admin`
 
 ### B. Réinitialiser le mot de passe de l'administrateur
-Si le compte administrateur standard (`admin@eschola.com`) doit être réinitialisé :
+Pour réinitialiser les comptes administrateurs (`admin`, `admin@eschola.pro`) :
 ```bash
 cd backend
 venv\Scripts\activate
-python reset_admin.py
+python reset_admin.py Abc1234
 ```
-* **Nouveaux identifiants :**
-  - **Email :** `admin@eschola.com`
-  - **Mot de passe :** `admin123`
+* **Identifiants par défaut :**
+  - **Identifiant / Email :** `admin` ou `admin@eschola.pro`
+  - **Mot de passe :** `Abc1234`
+  - **Rôle :** `admin`
 
 ---
 

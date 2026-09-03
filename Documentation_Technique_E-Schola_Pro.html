@@ -40,13 +40,11 @@
         background: linear-gradient(180deg, rgba(15, 15, 20, 0.72) 0%, rgba(10, 10, 15, 0.88) 100%),
                     url('docs_screenshots/hd_tech_ai_server.jpg') no-repeat center center / cover !important;
         -webkit-print-color-adjust: exact;
-        color-adjust: exact;
         print-color-adjust: exact;
       }
       .cover .cover-content {
         background: rgba(22, 22, 34, 0.85) !important;
         -webkit-print-color-adjust: exact;
-        color-adjust: exact;
         print-color-adjust: exact;
       }
       section { padding: 20px 0 !important; }
@@ -772,9 +770,20 @@ E-Schola Pro/
       <thead><tr><th>Colonne</th><th>Type</th><th>Contraintes</th><th>Description</th></tr></thead>
       <tbody>
         <tr><td><code>id</code></td><td>Integer</td><td>PK, Auto-increment</td><td>Identifiant unique</td></tr>
-        <tr><td><code>email</code></td><td>String</td><td>Unique, Not Null, Indexé</td><td>Adresse e-mail (login)</td></tr>
+        <tr><td><code>username</code></td><td>String</td><td>Unique, Indexé, Nullable</td><td>Pseudonyme / identifiant de connexion unique (login)</td></tr>
+        <tr><td><code>email</code></td><td>String</td><td>Unique, Indexé, Nullable</td><td>Adresse e-mail (login / contact)</td></tr>
         <tr><td><code>hashed_password</code></td><td>String</td><td>Not Null</td><td>Mot de passe haché (bcrypt)</td></tr>
         <tr><td><code>role</code></td><td>String</td><td>Default: "étudiant"</td><td>admin | admin_manager | admin_limited | formateur | pedagogique | étudiant | stagiaire | employer</td></tr>
+        <tr><td><code>nom</code></td><td>String</td><td>Nullable</td><td>Nom de famille de l'utilisateur</td></tr>
+        <tr><td><code>prenom</code></td><td>String</td><td>Nullable</td><td>Prénom de l'utilisateur</td></tr>
+        <tr><td><code>date_naissance</code></td><td>String</td><td>Nullable</td><td>Date de naissance ISO (calcul dynamique d'âge)</td></tr>
+        <tr><td><code>cin</code></td><td>String</td><td>Nullable</td><td>Numéro de CIN ou pièce d'identité nationale</td></tr>
+        <tr><td><code>telephone</code></td><td>String</td><td>Nullable</td><td>Numéro de téléphone format international</td></tr>
+        <tr><td><code>adresse</code></td><td>Text</td><td>Nullable</td><td>Adresse physique de résidence</td></tr>
+        <tr><td><code>ville</code></td><td>String</td><td>Nullable</td><td>Ville de résidence</td></tr>
+        <tr><td><code>pays</code></td><td>String</td><td>Nullable</td><td>Pays de résidence</td></tr>
+        <tr><td><code>departement</code></td><td>String</td><td>Nullable</td><td>Département professionnel (Employé &amp; Stagiaire)</td></tr>
+        <tr><td><code>specialisation</code></td><td>String</td><td>Nullable</td><td>Filière / Spécialisation académique (Étudiant &amp; Stagiaire)</td></tr>
         <tr><td><code>avatar_url</code></td><td>String</td><td>Nullable</td><td>URL de la photo de profil</td></tr>
         <tr><td><code>group_name</code></td><td>String</td><td>Nullable</td><td>Nom du groupe (hérité)</td></tr>
       </tbody>
@@ -1029,8 +1038,9 @@ E-Schola Pro/
       <tbody class="endpoint-row">
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/users/</code></td><td>Lister tous les utilisateurs</td><td>Admin, Admin Manager</td></tr>
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/users/me</code></td><td>Profil de l'utilisateur connecté</td><td>Authentifié</td></tr>
-        <tr><td><span class="badge badge-post">POST</span></td><td><code>/users/</code></td><td>Créer un utilisateur (inscription publique)</td><td>Public</td></tr>
-        <tr><td><span class="badge badge-post">POST</span></td><td><code>/users/admin-create</code></td><td>Créer un compte avec rôle spécifique</td><td>Admin, Admin Manager</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/users/check-username</code></td><td>Vérifier la disponibilité d'un nom d'utilisateur en temps réel</td><td>Public</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/users/</code></td><td>Créer un utilisateur (inscription publique avec profil complet)</td><td>Public</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/users/admin-create</code></td><td>Créer un compte depuis le panneau d'administration (profil standard ou allégé admin)</td><td>Admin, Admin Manager</td></tr>
         <tr><td><span class="badge badge-put">PUT</span></td><td><code>/users/me/password</code></td><td>Modifier son propre mot de passe (persistant)</td><td>Authentifié</td></tr>
         <tr><td><span class="badge badge-put">PUT</span></td><td><code>/users/{id}/password</code></td><td>Réinitialiser le mot de passe d'un utilisateur</td><td>Admin, Admin Manager</td></tr>
         <tr><td><span class="badge badge-put">PUT</span></td><td><code>/users/{id}/role</code></td><td>Changer le rôle d'un utilisateur (persistant)</td><td>Admin, Admin Manager</td></tr>
@@ -1470,6 +1480,34 @@ E-Schola Pro/
         <img src="docs_screenshots/assignments.png" alt="Interface Tâches et Devoirs E-Schola Pro" class="screenshot-img" />
       </div>
     </div>
+
+    <h3>Module 11 — Gestion des Profils &amp; Inscription Enrichie</h3>
+    <div class="card">
+      <p><strong>Routes Frontend :</strong> <code>/register</code> (Inscription publique) · <code>/profile</code> (Modal « Créer un Compte Utilisateur » par l'administrateur)</p>
+      <p><strong>Spécifications et règles métier appliquées :</strong></p>
+      <ul>
+        <li><strong>Règle d'Exception Globale (Admin Exemption) :</strong> Les comptes administrateurs (<code>admin</code>, <code>admin_manager</code>, <code>admin_limited</code>) bénéficient d'un <em>profil allégé minimal</em> ne requérant que l'identifiant (username/email) et le mot de passe, avec basculement d'interface dynamique dans le modal d'administration.</li>
+        <li><strong>Profil Standard Complet (Étudiant, Stagiaire, Employé, Formateur) :</strong>
+          <ul>
+            <li><code>id</code> : Généré automatiquement par le système (clé primaire, lecture seule).</li>
+            <li><code>nom</code> &amp; <code>prenom</code> : Obligatoires (texte alphabétique 2 à 100 caractères).</li>
+            <li><code>username</code> : Obligatoire. Génération automatique en temps réel à partir de <code>prenom.nom</code> (normalisé sans accents ni caractères spéciaux), avec bouton de bascule vers le mode manuel pour saisie personnalisée.</li>
+            <li><code>date_naissance</code> : Obligatoire avec sélecteur calendrier intégré (DatePicker) et calcul d'âge instantané affiché sous forme de badge visuel (<code>🎂 XX ans</code>). Âge minimum : 14 ans.</li>
+            <li><code>pays</code> &amp; <code>ville</code> : Obligatoires avec listes déroulantes synchronisées en cascade (sélection du pays filtrant dynamiquement les villes correspondantes).</li>
+            <li><code>password</code> : Obligatoire, masqué avec reveal visuel (icône œil) et hachage sécurisé bcrypt côté backend.</li>
+            <li><code>cin</code>, <code>email</code>, <code>telephone</code>, <code>adresse</code> : Optionnels pour le profil standard.</li>
+          </ul>
+        </li>
+        <li><strong>Champs Conditionnels selon le Rôle :</strong>
+          <ul>
+            <li><code>specialisation</code> : Visible et obligatoire uniquement si le rôle sélectionné est <strong>Étudiant</strong> ou <strong>Stagiaire</strong>.</li>
+            <li><code>departement</code> : Visible et obligatoire uniquement si le rôle sélectionné est <strong>Employé</strong> ou <strong>Stagiaire</strong>.</li>
+            <li>Nettoyage automatique d'état : Lors d'un changement de rôle à la volée, les champs masqués sont réinitialisés pour éviter toute persistance parasite en base de données.</li>
+          </ul>
+        </li>
+        <li><strong>Authentification Hybride :</strong> Le point d'entrée <code>POST /login/access-token</code> accepte indifféremment le <code>username</code> ou l'<code>email</code> avec mot de passe.</li>
+      </ul>
+    </div>
   </section>
 
   <!-- ═══════════════════════════════════════════════════════════════ -->
@@ -1648,6 +1686,19 @@ http://localhost:8000/admin
 # Ce panel est également accessible en 1 clic depuis l'onglet :
 # "Paramètres" -> "Base de Données & Backend (Admin)"
     </pre>
+
+    <h3>Comptes Administrateurs &amp; Accès Système</h3>
+    <table>
+      <thead><tr><th>Identifiant / Login</th><th>Mot de Passe Initial</th><th>Rôle</th><th>Portée</th></tr></thead>
+      <tbody>
+        <tr><td><code>admin</code></td><td><code>Abc1234</code></td><td><code>admin</code></td><td>Super-Administrateur (Plateforme &amp; SQLAdmin)</td></tr>
+        <tr><td><code>admin@eschola.pro</code></td><td><code>Abc1234</code></td><td><code>admin</code></td><td>Super-Administrateur (Format Email)</td></tr>
+        <tr><td><code>admin_manager@eschola.pro</code></td><td><code>Abc1234</code></td><td><code>admin_manager</code></td><td>Administrateur Gestionnaire Métier</td></tr>
+      </tbody>
+    </table>
+    <div class="info-box" style="margin-top: 12px;">
+      <strong>🔑 Réinitialisation rapide :</strong> En cas de mot de passe oublié ou d'erreur d'identifiant, exécutez simplement <code>python reset_admin.py Abc1234</code> depuis le dossier <code>backend/</code>.
+    </div>
   </section>
 
   <!-- ═══════════════════════════════════════════════════════════════ -->

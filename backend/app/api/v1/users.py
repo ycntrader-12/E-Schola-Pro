@@ -27,6 +27,32 @@ VALID_ROLES = [
 ]
 
 
+import re
+import unicodedata
+
+
+def slugify_username(nom: str, prenom: str) -> str:
+    combined = f"{prenom.strip()} {nom.strip()}".lower()
+    nfkd = unicodedata.normalize("NFKD", combined)
+    without_accents = "".join([c for c in nfkd if not unicodedata.combining(c)])
+    slug = re.sub(r"[^a-z0-9]+", ".", without_accents).strip(".")
+    return slug or "user"
+
+
+@router.get("/check-username")
+def check_username(
+    val: str,
+    session: SessionDep,
+) -> Any:
+    val = val.strip().lower()
+    existing = (
+        session.query(User)
+        .filter((User.username == val) | (User.email == val))
+        .first()
+    )
+    return {"available": existing is None, "username": val}
+
+
 @router.post("/", response_model=UserResponse)
 def create_user(
     *,
@@ -36,13 +62,6 @@ def create_user(
     """
     Create new user via public registration.
     """
-    user = session.query(User).filter(User.email == user_in.email).first()
-    if user:
-        raise HTTPException(
-            status_code=400,
-            detail="The user with this email already exists in the system.",
-        )
-
     requested_role = user_in.role.lower()
     if requested_role in ADMIN_ROLES or requested_role in ["formateur", "pedagogique"]:
         raise HTTPException(
@@ -50,10 +69,85 @@ def create_user(
             detail="Le rôle de formateur ou d'administrateur ne peut pas être choisi publiquement. Il doit être attribué par un administrateur.",
         )
 
+    # 1. Resolve username
+    resolved_username = (user_in.username or "").strip().lower()
+    if not resolved_username:
+        if user_in.prenom and user_in.nom:
+            resolved_username = slugify_username(user_in.nom, user_in.prenom)
+        elif user_in.email:
+            resolved_username = user_in.email.split("@")[0].strip().lower()
+        else:
+            resolved_username = f"user.{uuid.uuid4().hex[:8]}"
+
+    # Check username uniqueness
+    existing_username = (
+        session.query(User)
+        .filter((User.username == resolved_username) | (User.email == resolved_username))
+        .first()
+    )
+    if existing_username:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Le nom d'utilisateur '{resolved_username}' est déjà utilisé.",
+        )
+
+    # 2. Resolve email
+    resolved_email = (user_in.email or "").strip().lower()
+    if resolved_email:
+        existing_email = (
+            session.query(User)
+            .filter((User.email == resolved_email) | (User.username == resolved_email))
+            .first()
+        )
+        if existing_email:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Un utilisateur avec l'adresse email '{resolved_email}' existe déjà.",
+            )
+    else:
+        resolved_email = f"{resolved_username}@eschola.pro"
+
+    # 3. Validation of standard required fields
+    if not user_in.nom or not user_in.nom.strip():
+        raise HTTPException(status_code=422, detail="Le champ 'nom' est obligatoire.")
+    if not user_in.prenom or not user_in.prenom.strip():
+        raise HTTPException(status_code=422, detail="Le champ 'prénom' est obligatoire.")
+    if not user_in.date_naissance or not user_in.date_naissance.strip():
+        raise HTTPException(status_code=422, detail="La date de naissance est obligatoire.")
+    if not user_in.pays or not user_in.pays.strip():
+        raise HTTPException(status_code=422, detail="Le pays est obligatoire.")
+    if not user_in.ville or not user_in.ville.strip():
+        raise HTTPException(status_code=422, detail="La ville est obligatoire.")
+
+    # 4. Conditional validation according to role
+    departement_val = user_in.departement.strip() if user_in.departement else None
+    specialisation_val = user_in.specialisation.strip() if user_in.specialisation else None
+
+    if requested_role in ["employer", "stagiaire"] and not departement_val:
+        raise HTTPException(status_code=422, detail="Le département est obligatoire pour ce rôle.")
+    if requested_role in ["étudiant", "stagiaire"] and not specialisation_val:
+        raise HTTPException(status_code=422, detail="La spécialisation est obligatoire pour ce rôle.")
+
+    if requested_role not in ["employer", "stagiaire"]:
+        departement_val = None
+    if requested_role not in ["étudiant", "stagiaire"]:
+        specialisation_val = None
+
     user_create = User(
-        email=user_in.email,
+        username=resolved_username,
+        email=resolved_email,
         hashed_password=get_password_hash(user_in.password),
         role=user_in.role,
+        nom=user_in.nom.strip(),
+        prenom=user_in.prenom.strip(),
+        date_naissance=user_in.date_naissance.strip(),
+        cin=user_in.cin.strip() if user_in.cin else None,
+        telephone=user_in.telephone.strip() if user_in.telephone else None,
+        adresse=user_in.adresse.strip() if user_in.adresse else None,
+        ville=user_in.ville.strip(),
+        pays=user_in.pays.strip(),
+        departement=departement_val,
+        specialisation=specialisation_val,
     )
     session.add(user_create)
     session.commit()
@@ -273,18 +367,75 @@ def admin_create_user(
             detail="Un ADMIN_MANAGER ne peut pas créer de compte avec un rôle administrateur (ADMIN, ADMIN_MANAGER ou ADMIN_LIMITED).",
         )
 
-    existing = session.query(User).filter(User.email == user_in.email).first()
+    # 1. Resolve username & email
+    resolved_username = (user_in.username or "").strip().lower()
+    if not resolved_username:
+        if user_in.prenom and user_in.nom:
+            resolved_username = slugify_username(user_in.nom, user_in.prenom)
+        elif user_in.email:
+            resolved_username = user_in.email.split("@")[0].strip().lower()
+        else:
+            resolved_username = f"user.{uuid.uuid4().hex[:8]}"
+
+    resolved_email = (user_in.email or "").strip().lower()
+    if not resolved_email:
+        resolved_email = f"{resolved_username}@eschola.pro"
+
+    # Check uniqueness
+    existing = session.query(User).filter(
+        (User.username == resolved_username)
+        | (User.email == resolved_username)
+        | (User.email == resolved_email)
+        | (User.username == resolved_email)
+    ).first()
     if existing:
         raise HTTPException(
             status_code=400,
-            detail="Un utilisateur avec cet email existe déjà.",
+            detail=f"Un compte avec ce nom d'utilisateur ou cette adresse email existe déjà.",
         )
 
-    user = User(
-        email=user_in.email,
-        hashed_password=get_password_hash(user_in.password),
-        role=user_in.role,
-    )
+    # 2. Check if admin exemption applies
+    is_admin_role = target_role in ADMIN_ROLES
+    if is_admin_role:
+        # Lightweight admin profile
+        user = User(
+            username=resolved_username,
+            email=resolved_email,
+            hashed_password=get_password_hash(user_in.password),
+            role=user_in.role,
+        )
+    else:
+        # Full profile for standard roles
+        departement_val = user_in.departement.strip() if user_in.departement else None
+        specialisation_val = user_in.specialisation.strip() if user_in.specialisation else None
+
+        if target_role in ["employer", "stagiaire"] and not departement_val:
+            raise HTTPException(status_code=422, detail="Le département est obligatoire pour ce rôle.")
+        if target_role in ["étudiant", "stagiaire"] and not specialisation_val:
+            raise HTTPException(status_code=422, detail="La spécialisation est obligatoire pour ce rôle.")
+
+        if target_role not in ["employer", "stagiaire"]:
+            departement_val = None
+        if target_role not in ["étudiant", "stagiaire"]:
+            specialisation_val = None
+
+        user = User(
+            username=resolved_username,
+            email=resolved_email,
+            hashed_password=get_password_hash(user_in.password),
+            role=user_in.role,
+            nom=user_in.nom.strip() if user_in.nom else None,
+            prenom=user_in.prenom.strip() if user_in.prenom else None,
+            date_naissance=user_in.date_naissance.strip() if user_in.date_naissance else None,
+            cin=user_in.cin.strip() if user_in.cin else None,
+            telephone=user_in.telephone.strip() if user_in.telephone else None,
+            adresse=user_in.adresse.strip() if user_in.adresse else None,
+            ville=user_in.ville.strip() if user_in.ville else None,
+            pays=user_in.pays.strip() if user_in.pays else None,
+            departement=departement_val,
+            specialisation=specialisation_val,
+        )
+
     session.add(user)
     session.commit()
     session.refresh(user)
