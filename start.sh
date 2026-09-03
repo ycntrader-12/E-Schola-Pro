@@ -14,8 +14,12 @@ if [ -n "$RAILWAY_VOLUME_MOUNT_PATH" ]; then
 fi
 
 # Application des migrations de base de données (PostgreSQL & SQLite)
-echo "Running database migrations (Alembic)..."
+echo "Running database migrations (Alembic & custom)..."
 cd /app/backend
+python migrate_user_profiles.py || true
+python migrate_classrooms.py || true
+python migrate_tasks_attachment.py || true
+
 alembic upgrade head || {
     echo "Alembic upgrade note: attempting safe reconciliation..."
     python -c "
@@ -30,7 +34,7 @@ except Exception as e:
 
 # Seeding des comptes par défaut (idempotent, ne reset jamais les comptes modifiés)
 echo "Ensuring default accounts (non-destructive seed)..."
-python create_admin.py
+python create_admin.py || echo "create_admin notice: continuing startup..."
 
 # Retour au dossier de base
 cd /app

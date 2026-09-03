@@ -268,7 +268,7 @@ export default function RegisterPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                  {t('last_name') || 'Nom'} *
+                  {t('nom')} *
                 </label>
                 <input 
                   type="text" 
@@ -282,7 +282,7 @@ export default function RegisterPage() {
 
               <div>
                 <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                  {t('first_name') || 'Prénom'} *
+                  {t('prenom')} *
                 </label>
                 <input 
                   type="text" 
@@ -343,7 +343,7 @@ export default function RegisterPage() {
               <div className="flex items-center justify-between mb-1">
                 <label className="text-[11px] font-semibold text-slate-700 flex items-center gap-1">
                   <Calendar size={13} className="text-slate-400" />
-                  <span>{t('birth_date') || 'Date de naissance'} *</span>
+                  <span>{t('date_naissance')} *</span>
                 </label>
                 {calculatedAge !== null && (
                   <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold animate-fade-in">

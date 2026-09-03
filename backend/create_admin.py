@@ -89,5 +89,10 @@ def seed_groups():
 
 
 if __name__ == "__main__":
+    try:
+        from migrate_user_profiles import run_migration as run_user_profiles_migration
+        run_user_profiles_migration()
+    except Exception as e:
+        print(f"Migration note in create_admin: {e}")
     seed_users()
     seed_groups()
