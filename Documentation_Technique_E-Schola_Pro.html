@@ -935,6 +935,10 @@ E-Schola Pro/
         <tr><td><code>is_draft</code></td><td>Boolean</td><td>Default: False</td><td>Brouillon</td></tr>
         <tr><td><code>is_trash</code></td><td>Boolean</td><td>Default: False</td><td>Corbeille</td></tr>
         <tr><td><code>is_reported</code></td><td>Boolean</td><td>Default: False</td><td>Signalé</td></tr>
+        <tr><td><code>is_broadcast</code></td><td>Boolean</td><td>Default: False</td><td>Envoi Général (Broadcast / All)</td></tr>
+        <tr><td><code>is_welcome_msg</code></td><td>Boolean</td><td>Default: False</td><td>Message d'accueil automatique</td></tr>
+        <tr><td><code>is_relay</code></td><td>Boolean</td><td>Default: False</td><td>Mode Relais (copie/email externe)</td></tr>
+        <tr><td><code>cc_emails</code></td><td>String(500)</td><td>Nullable</td><td>Liste des adresses en copie (CC)</td></tr>
       </tbody>
     </table>
 
@@ -1116,12 +1120,12 @@ E-Schola Pro/
     <table>
       <thead><tr><th>Méthode</th><th>Endpoint</th><th>Description</th><th>Accès</th></tr></thead>
       <tbody class="endpoint-row">
-        <tr><td><span class="badge badge-get">GET</span></td><td><code>/messages/inbox</code></td><td>Boîte de réception</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/messages/inbox</code></td><td>Boîte de réception des messages</td><td>Authentifié</td></tr>
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/messages/sent</code></td><td>Messages envoyés</td><td>Authentifié</td></tr>
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/messages/drafts</code></td><td>Brouillons</td><td>Authentifié</td></tr>
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/messages/trash</code></td><td>Corbeille</td><td>Authentifié</td></tr>
-        <tr><td><span class="badge badge-post">POST</span></td><td><code>/messages/</code></td><td>Envoyer un message</td><td>Authentifié</td></tr>
-        <tr><td><span class="badge badge-get">GET</span></td><td><code>/messages/unread-count</code></td><td>Nombre de non-lus</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/messages/</code></td><td>Envoyer un message personnel, un envoi général (Broadcast / "All", restreint par rôle) ou un message avec Copie (CC) local et relais</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/messages/unread-count</code></td><td>Nombre de messages non lus</td><td>Authentifié</td></tr>
       </tbody>
     </table>
 
@@ -1253,7 +1257,9 @@ E-Schola Pro/
         <tr><td><strong>Gérer les groupes &amp; affecter les apprenants</strong></td><td>✅</td><td>✅</td><td>✅</td><td>❌</td></tr>
         <tr><td><strong>Afficher &amp; accéder au bouton "Groupes" (/group)</strong></td><td>✅</td><td>✅</td><td>✅</td><td>❌ <em>(Masqué &amp; Interdit)</em></td></tr>
         <tr><td><strong>Créer des classes virtuelles &amp; sous-groupes</strong></td><td>✅</td><td>✅</td><td>✅</td><td>❌</td></tr>
-        <tr><td><strong>Messagerie interne complète</strong></td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+        <tr><td><strong>Messagerie interne (Messages personnels &amp; Copie CC local/relais)</strong></td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+        <tr><td><strong>Envoi Général / Broadcast ("All")</strong></td><td>✅</td><td>✅</td><td>✅</td><td>❌ <em>(Interdit &amp; HTTP 403 pour Étudiant, Stagiaire, Employé)</em></td></tr>
+        <tr><td><strong>Réception du Message d'Accueil Automatique</strong></td><td>✅</td><td>✅</td><td>✅</td><td>✅ <em>(Déclenché à la création du compte)</em></td></tr>
         <tr><td><strong>Gérer les apprenants &amp; formateurs (Création/Rôle)</strong></td><td>✅</td><td>✅</td><td>❌</td><td>❌</td></tr>
         <tr><td><strong>Attribuer les rôles Admin / Admin Manager</strong></td><td>✅</td><td>❌ <em>(Interdit)</em></td><td>❌</td><td>❌</td></tr>
         <tr><td><strong>Modifier/Supprimer un compte Admin existant</strong></td><td>✅</td><td>❌ <em>(Interdit)</em></td><td>❌</td><td>❌</td></tr>
@@ -1386,13 +1392,13 @@ E-Schola Pro/
       <p><strong>Route Frontend :</strong> <code>/inbox</code></p>
       <p><strong>Options et propriétés :</strong></p>
       <ul>
-        <li><strong>Boîte de réception :</strong> Messages reçus avec statut lu/non-lu</li>
-        <li><strong>Messages envoyés :</strong> Historique des messages expédiés</li>
-        <li><strong>Brouillons :</strong> Sauvegarde automatique des messages non envoyés</li>
-        <li><strong>Corbeille :</strong> Récupération des messages supprimés</li>
-        <li><strong>Pièces jointes :</strong> Support d'upload de fichiers dans les messages</li>
-        <li><strong>Signalement :</strong> Possibilité de signaler un message abusif</li>
-        <li><strong>Compteur :</strong> Badge de non-lus dans la sidebar</li>
+        <li><strong>Boîte de réception :</strong> Messages reçus avec statut lu/non-lu, badges d'envoi général et de copie</li>
+        <li><strong>Envoi Général (Broadcast / "All") :</strong> Restreint pour les rôles employés, étudiants et stagiaires (masqué en UI et bloqué HTTP 403 en API). Autorisé pour les administrateurs et formateurs.</li>
+        <li><strong>Fonctionnalités standards &amp; Copie (CC) :</strong> Envoi de messages personnels direct 1-à-1 et possibilité d'ajouter des destinataires en copie (CC) aussi bien en mode local (BDD <code>eschola.db</code>) qu'en mode relais (emails/transmissions externes).</li>
+        <li><strong>Processus d'accueil automatique :</strong> Envoi automatique d'un message de bienvenue officiel à chaque nouvel utilisateur dès la création de son compte (auto-inscription ou création par admin).</li>
+        <li><strong>Brouillons &amp; Corbeille :</strong> Sauvegarde dynamique des brouillons et restauration/suppression définitive dans la corbeille.</li>
+        <li><strong>Pièces jointes &amp; Signalement :</strong> Support d'upload de fichiers (PDF, Word, Excel, Images, Audio, Vidéo) et transmission directe d'alerte en cas de signalement de message suspect aux formateurs et administrateurs.</li>
+        <li><strong>Compteur &amp; Polling :</strong> Badge lumineux de non-lus dans la sidebar et clignotement dynamique des notifications.</li>
       </ul>
       <div class="screenshot-container">
         <div class="screenshot-header">

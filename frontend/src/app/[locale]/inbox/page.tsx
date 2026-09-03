@@ -61,6 +61,10 @@ interface MessageItem {
   is_trash?: boolean;
   is_reported?: boolean;
   report_reason?: string;
+  is_broadcast?: boolean;
+  is_welcome_msg?: boolean;
+  is_relay?: boolean;
+  cc_emails?: string;
   created_at: string;
   sender?: UserShort;
   recipient?: UserShort;
@@ -95,8 +99,13 @@ export default function InboxMessagesPage() {
   const [body, setBody] = useState('');
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
   const [existingAttachment, setExistingAttachment] = useState<{ url: string; name: string; type: string } | null>(null);
+  const [ccEmailsInput, setCcEmailsInput] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
+
+  const userRole = (currentUser?.role || '').toLowerCase().trim();
+  const isRestrictedRole = ['employer', 'employé', 'étudiant', 'etudiant', 'stagiaire'].includes(userRole);
+  const canUseBroadcast = currentUser ? !isRestrictedRole : false;
 
   // Reporting Modal state
   const [reportingMessage, setReportingMessage] = useState<MessageItem | null>(null);
@@ -154,9 +163,11 @@ export default function InboxMessagesPage() {
     init();
   }, [router]);
 
-  // Sync recipient search text when recipientId changes externally (e.g. reply, forward)
+  // Sync recipient search text when recipientId changes externally (e.g. reply, forward, broadcast)
   useEffect(() => {
-    if (recipientId && allUsers.length > 0) {
+    if (recipientId === '-1') {
+      setRecipientSearchText('📢 Tous les utilisateurs (Envoi Général - Broadcast)');
+    } else if (recipientId && allUsers.length > 0) {
       const user = allUsers.find(u => u.id.toString() === recipientId);
       if (user) {
         setRecipientSearchText(`${user.email} (${user.role.toUpperCase()})`);
@@ -309,14 +320,17 @@ export default function InboxMessagesPage() {
     }
 
     try {
+      const ccList = ccEmailsInput ? ccEmailsInput.split(',').map(s => s.trim()).filter(Boolean) : [];
       const res = await apiClient.post('/messages/', {
-        recipient_id: recipientId ? parseInt(recipientId) : undefined,
+        recipient_id: recipientId && recipientId !== '-1' ? parseInt(recipientId) : undefined,
         subject: subject.trim() || '(Brouillon sans titre)',
         body: body.trim(),
         attachment_url,
         attachment_name,
         attachment_type,
-        is_draft: true
+        is_draft: true,
+        is_broadcast: recipientId === '-1',
+        cc_emails: ccList,
       });
 
       setDraftMessages(prev => [res.data, ...prev]);
@@ -325,6 +339,7 @@ export default function InboxMessagesPage() {
       setBody('');
       setRecipientId('');
       setRecipientSearchText('');
+      setCcEmailsInput('');
       setAttachedFile(null);
       setExistingAttachment(null);
       setActiveFolder('drafts');
@@ -339,7 +354,8 @@ export default function InboxMessagesPage() {
   // 8. Send Message
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!recipientId || !subject.trim() || !body.trim()) {
+    const isBroadcastSend = recipientId === '-1';
+    if ((!recipientId && !isBroadcastSend) || !subject.trim() || !body.trim()) {
       setActionMessage({ type: 'error', text: 'Veuillez renseigner le destinataire, l’objet et le message.' });
       return;
     }
@@ -371,14 +387,17 @@ export default function InboxMessagesPage() {
     }
 
     try {
+      const ccList = ccEmailsInput ? ccEmailsInput.split(',').map(s => s.trim()).filter(Boolean) : [];
       const res = await apiClient.post('/messages/', {
-        recipient_id: parseInt(recipientId),
+        recipient_id: isBroadcastSend ? -1 : parseInt(recipientId),
         subject: subject.trim(),
         body: body.trim(),
         attachment_url,
         attachment_name,
         attachment_type,
-        is_draft: false
+        is_draft: false,
+        is_broadcast: isBroadcastSend,
+        cc_emails: ccList,
       });
 
       setSentMessages(prev => [res.data, ...prev]);
@@ -387,11 +406,17 @@ export default function InboxMessagesPage() {
       setBody('');
       setRecipientId('');
       setRecipientSearchText('');
+      setCcEmailsInput('');
       setAttachedFile(null);
       setExistingAttachment(null);
       setActiveFolder('sent');
       setSelectedMessage(res.data);
-      setActionMessage({ type: 'success', text: `Message envoyé avec succès à ${res.data.recipient?.email || 'votre correspondant'}.` });
+      setActionMessage({
+        type: 'success',
+        text: isBroadcastSend
+          ? '📢 Envoi général (Broadcast) transmis avec succès à l’ensemble des utilisateurs !'
+          : `Message envoyé avec succès à ${res.data.recipient?.email || 'votre correspondant'}.`
+      });
     } catch (err: any) {
       setActionMessage({ type: 'error', text: err?.response?.data?.detail || "Erreur lors de l'envoi du message." });
     } finally {
@@ -848,10 +873,15 @@ export default function InboxMessagesPage() {
               <form onSubmit={handleSendMessage} className="space-y-4">
                 {/* Destinataire */}
                 <div className="relative">
-                  <label className="block text-xs uppercase font-bold text-text-secondary mb-1.5">
-                    Destinataire *
+                  <label className="block text-xs uppercase font-bold text-text-secondary mb-1.5 flex items-center justify-between">
+                    <span>Destinataire *</span>
+                    {!canUseBroadcast && (
+                      <span className="text-[10px] text-amber-400 font-normal lowercase">
+                        (Envoi général "Tous" restreint pour votre rôle)
+                      </span>
+                    )}
                   </label>
-                  {allUsers.length > 0 ? (
+                  {allUsers.length > 0 || canUseBroadcast ? (
                     <div className="relative">
                       <input
                         type="text"
@@ -873,6 +903,19 @@ export default function InboxMessagesPage() {
                       </div>
                       {isRecipientDropdownOpen && (
                         <div className="absolute z-10 w-full mt-1 bg-surface border border-border rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                          {/* Option Envoi Général (Broadcast) si rôle autorisé */}
+                          {canUseBroadcast && (
+                            <div
+                              onClick={() => {
+                                setRecipientId('-1');
+                                setRecipientSearchText('📢 Tous les utilisateurs (Envoi Général - Broadcast)');
+                                setIsRecipientDropdownOpen(false);
+                              }}
+                              className="px-4 py-2.5 cursor-pointer bg-amber-500/10 hover:bg-amber-500/20 text-xs font-bold text-amber-400 border-b border-border flex items-center gap-2 transition-colors"
+                            >
+                              <span>📢 Tous les utilisateurs (Envoi Général - Broadcast)</span>
+                            </div>
+                          )}
                           {allUsers
                             .filter(u => u.id !== currentUser?.id)
                             .filter(u => {
@@ -892,7 +935,7 @@ export default function InboxMessagesPage() {
                                 {u.email} <span className="text-text-secondary font-medium">({u.role.toUpperCase()})</span>
                               </div>
                             ))}
-                            {allUsers.filter(u => u.id !== currentUser?.id && (u.email.toLowerCase().includes(recipientSearchText.toLowerCase()) || u.role.toLowerCase().includes(recipientSearchText.toLowerCase()))).length === 0 && (
+                            {allUsers.filter(u => u.id !== currentUser?.id && (u.email.toLowerCase().includes(recipientSearchText.toLowerCase()) || u.role.toLowerCase().includes(recipientSearchText.toLowerCase()))).length === 0 && !canUseBroadcast && (
                               <div className="px-4 py-3 text-xs text-text-secondary text-center">Aucun destinataire trouvé</div>
                             )}
                         </div>
@@ -907,6 +950,20 @@ export default function InboxMessagesPage() {
                       className="w-full px-4 py-2.5 rounded-xl bg-surface border border-border focus:border-primary text-xs outline-none"
                     />
                   )}
+                </div>
+
+                {/* Copie (CC) */}
+                <div>
+                  <label className="block text-xs uppercase font-bold text-text-secondary mb-1.5">
+                    Copie (CC) — Adresses email / destinataires secondaires (séparés par des virgules)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="ex: direction@eschola.pro, formateur@eschola.pro"
+                    value={ccEmailsInput}
+                    onChange={(e) => setCcEmailsInput(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl bg-surface border border-border focus:border-primary text-xs outline-none"
+                  />
                 </div>
 
                 {/* Objet */}
@@ -1133,6 +1190,30 @@ export default function InboxMessagesPage() {
                 </div>
               </div>
 
+              {/* Badges Spéciaux (Broadcast, Welcome, CC, Relais) */}
+              <div className="flex flex-wrap gap-2 pt-1">
+                {selectedMessage.is_broadcast && (
+                  <span className="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-400 font-bold border border-amber-500/30 text-xs flex items-center gap-1.5">
+                    📢 Envoi Général (Broadcast)
+                  </span>
+                )}
+                {selectedMessage.is_welcome_msg && (
+                  <span className="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30 text-xs flex items-center gap-1.5">
+                    🎉 Message d'accueil automatique
+                  </span>
+                )}
+                {(selectedMessage.cc_emails || selectedMessage.subject.includes('[Copie]')) && (
+                  <span className="px-2.5 py-1 rounded-lg bg-cyan-500/20 text-cyan-400 font-bold border border-cyan-500/30 text-xs flex items-center gap-1.5">
+                    👥 Copie (CC) {selectedMessage.cc_emails ? `: ${selectedMessage.cc_emails}` : ''}
+                  </span>
+                )}
+                {selectedMessage.is_relay && (
+                  <span className="px-2.5 py-1 rounded-lg bg-purple-500/20 text-purple-400 font-bold border border-purple-500/30 text-xs flex items-center gap-1.5">
+                    🔄 Mode Relais
+                  </span>
+                )}
+              </div>
+
               {/* Sender & Recipient Box */}
               <div className="p-4 rounded-xl bg-surface/50 border border-border flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
@@ -1144,7 +1225,7 @@ export default function InboxMessagesPage() {
                       De : {selectedMessage.sender?.email || 'Utilisateur'}
                     </p>
                     <p className="text-[11px] text-text-secondary">
-                      À : {selectedMessage.recipient?.email || 'Vous'}
+                      À : {selectedMessage.recipient?.email || (selectedMessage.is_broadcast ? 'Tous les utilisateurs' : 'Vous')}
                     </p>
                   </div>
                 </div>

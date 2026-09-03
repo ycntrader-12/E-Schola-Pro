@@ -10,6 +10,7 @@ from app.api.deps import CurrentUser, SessionDep
 from app.core.security import get_password_hash, verify_password
 from app.models.user import User
 from app.schemas.user import UserCreate, UserResponse, UserUpdate, UserUpdatePassword
+from app.services.welcome import send_welcome_message
 
 router = APIRouter()
 
@@ -169,6 +170,9 @@ def create_user(
                 session.refresh(user_create)
         except Exception:
             pass
+
+    # Send automatic welcome message
+    send_welcome_message(session, user_create)
 
     return user_create
 
@@ -453,6 +457,9 @@ def admin_create_user(
                 session.refresh(user)
         except Exception:
             pass
+
+    # Send automatic welcome message
+    send_welcome_message(session, user)
 
     return user
 

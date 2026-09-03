@@ -26,6 +26,10 @@ class Message(Base):
     is_trash = Column(Boolean, default=False)
     is_reported = Column(Boolean, default=False)
     report_reason = Column(String(500), nullable=True)
+    is_broadcast = Column(Boolean, default=False)
+    is_welcome_msg = Column(Boolean, default=False)
+    is_relay = Column(Boolean, default=False)
+    cc_emails = Column(String(500), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     sender = relationship("User", foreign_keys=[sender_id])

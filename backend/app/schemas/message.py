@@ -22,6 +22,9 @@ class MessageCreate(BaseModel):
     attachment_name: str | None = None
     attachment_type: str | None = None
     is_draft: bool = False
+    is_broadcast: bool = False
+    cc_recipient_ids: list[int] = []
+    cc_emails: list[str] = []
 
 
 class MessageReport(BaseModel):
@@ -42,6 +45,10 @@ class MessageResponse(BaseModel):
     is_trash: bool = False
     is_reported: bool = False
     report_reason: str | None = None
+    is_broadcast: bool = False
+    is_welcome_msg: bool = False
+    is_relay: bool = False
+    cc_emails: str | None = None
     created_at: datetime
     sender: UserShortResponse | None = None
     recipient: UserShortResponse | None = None
