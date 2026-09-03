@@ -48,11 +48,20 @@ export default function Navbar() {
     };
     checkAuth();
     
+    // 10-second active polling for live notifications
+    const pollInterval = setInterval(checkAuth, 10000);
+
     window.addEventListener('storage', checkAuth);
     window.addEventListener('auth_user_updated', checkAuth);
+    window.addEventListener('messages_updated', checkAuth);
+    window.addEventListener('classroom_updated', checkAuth);
+
     return () => {
+      clearInterval(pollInterval);
       window.removeEventListener('storage', checkAuth);
       window.removeEventListener('auth_user_updated', checkAuth);
+      window.removeEventListener('messages_updated', checkAuth);
+      window.removeEventListener('classroom_updated', checkAuth);
     };
   }, [pathname]);
 
@@ -101,37 +110,43 @@ export default function Navbar() {
             <div className="w-20 h-8 bg-slate-100 animate-pulse rounded-full" />
           ) : isAuthenticated ? (
             <div className="flex items-center gap-2 sm:gap-3">
-              {/* Classroom Notification Link */}
+              {/* Classroom Notification Link with Blinking Signal Light */}
               <Link 
                 href="/classroom"
-                className="p-2 rounded-xl text-[#65676b] hover:text-emerald-600 hover:bg-emerald-50/60 transition-colors relative"
-                title="Classes Virtuelles & Sessions en direct"
+                className="p-2 rounded-xl text-[#65676b] hover:text-emerald-600 hover:bg-emerald-50/70 transition-all relative group"
+                title={activeClassroomsCount > 0 ? `${activeClassroomsCount} session(s) de classe virtuelle active(s)` : "Classes Virtuelles & Sessions en direct"}
                 aria-label="Classe Virtuelle"
               >
-                <Video size={18} />
+                <Video size={18} className={`transition-colors ${activeClassroomsCount > 0 ? 'text-emerald-600 animate-pulse' : 'group-hover:text-emerald-600'}`} />
                 {activeClassroomsCount > 0 ? (
-                  <span className="absolute top-1 right-1 min-w-3.5 h-3.5 px-0.5 bg-emerald-500 text-white text-[9px] font-black rounded-full flex items-center justify-center ring-2 ring-white animate-pulse">
-                    {activeClassroomsCount}
-                  </span>
+                  <>
+                    <span className="absolute top-1 right-1 w-3.5 h-3.5 bg-emerald-500 rounded-full animate-ping opacity-75" />
+                    <span className="absolute top-1 right-1 min-w-3.5 h-3.5 px-0.5 bg-emerald-500 text-white text-[9px] font-black rounded-full flex items-center justify-center ring-2 ring-white shadow-xs">
+                      {activeClassroomsCount}
+                    </span>
+                  </>
                 ) : (
-                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-emerald-500 rounded-full ring-2 ring-white" />
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-slate-300 rounded-full ring-2 ring-white" />
                 )}
               </Link>
 
-              {/* Message / Inbox Notification Link */}
+              {/* Message / Inbox Notification Link with Blinking Signal Light */}
               <Link 
                 href="/inbox"
-                className="p-2 rounded-xl text-[#65676b] hover:text-[#1877f2] hover:bg-blue-50/60 transition-colors relative"
-                title="Messagerie & Boîte de réception"
+                className="p-2 rounded-xl text-[#65676b] hover:text-[#1877f2] hover:bg-blue-50/70 transition-all relative group"
+                title={unreadCount > 0 ? `${unreadCount} message(s) non lu(s)` : "Messagerie & Boîte de réception"}
                 aria-label="Boîte de réception"
               >
-                <MessageSquare size={18} />
+                <MessageSquare size={18} className={`transition-colors ${unreadCount > 0 ? 'text-[#1877f2] animate-bounce' : 'group-hover:text-[#1877f2]'}`} />
                 {unreadCount > 0 ? (
-                  <span className="absolute top-1 right-1 min-w-3.5 h-3.5 px-0.5 bg-[#1877f2] text-white text-[9px] font-black rounded-full flex items-center justify-center ring-2 ring-white animate-bounce">
-                    {unreadCount}
-                  </span>
+                  <>
+                    <span className="absolute top-1 right-1 w-3.5 h-3.5 bg-blue-500 rounded-full animate-ping opacity-75" />
+                    <span className="absolute top-1 right-1 min-w-3.5 h-3.5 px-0.5 bg-[#1877f2] text-white text-[9px] font-black rounded-full flex items-center justify-center ring-2 ring-white shadow-xs">
+                      {unreadCount}
+                    </span>
+                  </>
                 ) : (
-                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#1877f2] rounded-full ring-2 ring-white" />
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-slate-300 rounded-full ring-2 ring-white" />
                 )}
               </Link>
 

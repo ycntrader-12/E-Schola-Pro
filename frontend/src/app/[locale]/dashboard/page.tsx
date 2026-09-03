@@ -82,7 +82,39 @@ export default function DashboardPage() {
         setIsLoading(false);
       }
     };
+
+    const pollNotifications = async () => {
+      const token = localStorage.getItem('access_token');
+      if (!token) return;
+      try {
+        const [unreadRes, classroomsRes] = await Promise.all([
+          apiClient.get('/messages/unread-count').catch(() => ({ data: { unread_count: 0 } })),
+          apiClient.get('/classrooms/').catch(() => ({ data: [] }))
+        ]);
+        setUnreadCount(unreadRes.data?.unread_count || 0);
+        const activeRooms = Array.isArray(classroomsRes.data)
+          ? classroomsRes.data.filter((r: any) => r.is_active).length
+          : 0;
+        setActiveClassroomsCount(activeRooms);
+      } catch {
+        // Silent catch for background polling
+      }
+    };
+
     fetchData();
+
+    // 10-second active polling for live notifications
+    const pollInterval = setInterval(pollNotifications, 10000);
+
+    // Event listeners for instant client-side updates
+    window.addEventListener('messages_updated', pollNotifications);
+    window.addEventListener('classroom_updated', pollNotifications);
+
+    return () => {
+      clearInterval(pollInterval);
+      window.removeEventListener('messages_updated', pollNotifications);
+      window.removeEventListener('classroom_updated', pollNotifications);
+    };
   }, [router]);
 
   // Click outside to close search and user dropdowns
@@ -290,37 +322,47 @@ export default function DashboardPage() {
 
           {/* Right Header Controls : Classroom Live Icon + Message/Inbox Icon + Real Profile Capsule */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            {/* 1. Classroom / Room Classe Icon with Active Indicator */}
+            {/* 1. Classroom / Room Classe Icon with Blinking Signal Light */}
             <button 
               onClick={() => router.push('/classroom')} 
-              className="p-2 sm:p-2.5 rounded-xl text-slate-600 hover:text-emerald-600 hover:bg-emerald-50/60 transition-colors relative cursor-pointer group"
-              title="Classes Virtuelles & Sessions en direct"
+              className="p-2 sm:p-2.5 rounded-xl text-slate-600 hover:text-emerald-600 hover:bg-emerald-50/70 transition-all relative cursor-pointer group"
+              title={activeClassroomsCount > 0 ? `${activeClassroomsCount} session(s) de classe virtuelle active(s)` : "Classes Virtuelles & Sessions en direct"}
               aria-label="Classe Virtuelle"
             >
-              <Video size={20} className="text-slate-700 group-hover:text-emerald-600 transition-colors" />
+              <Video size={20} className={`transition-colors ${activeClassroomsCount > 0 ? 'text-emerald-600 animate-pulse' : 'text-slate-700 group-hover:text-emerald-600'}`} />
               {activeClassroomsCount > 0 ? (
-                <span className="absolute top-1 right-1 min-w-4 h-4 px-1 bg-emerald-500 text-white text-[10px] font-black rounded-full flex items-center justify-center ring-2 ring-white animate-pulse">
-                  {activeClassroomsCount}
-                </span>
+                <>
+                  {/* Outer Blinking Signal Halo */}
+                  <span className="absolute top-1 right-1 w-4 h-4 bg-emerald-500 rounded-full animate-ping opacity-75" />
+                  {/* Badge Counter */}
+                  <span className="absolute top-1 right-1 min-w-4 h-4 px-1 bg-emerald-500 text-white text-[10px] font-extrabold rounded-full flex items-center justify-center ring-2 ring-white shadow-xs">
+                    {activeClassroomsCount}
+                  </span>
+                </>
               ) : (
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-emerald-500 rounded-full ring-2 ring-white" />
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-slate-300 rounded-full ring-2 ring-white" />
               )}
             </button>
 
-            {/* 2. Messages / Inbox Icon with Unread Messages Indicator */}
+            {/* 2. Messages / Inbox Icon with Blinking Signal Light */}
             <button 
               onClick={() => router.push('/inbox')} 
-              className="p-2 sm:p-2.5 rounded-xl text-slate-600 hover:text-[#1877f2] hover:bg-blue-50/60 transition-colors relative cursor-pointer group"
-              title="Messagerie & Boîte de Réception"
+              className="p-2 sm:p-2.5 rounded-xl text-slate-600 hover:text-[#1877f2] hover:bg-blue-50/70 transition-all relative cursor-pointer group"
+              title={unreadCount > 0 ? `${unreadCount} message(s) non lu(s)` : "Messagerie & Boîte de Réception"}
               aria-label="Boîte de réception"
             >
-              <MessageSquare size={20} className="text-slate-700 group-hover:text-[#1877f2] transition-colors" />
+              <MessageSquare size={20} className={`transition-colors ${unreadCount > 0 ? 'text-[#1877f2] animate-bounce' : 'text-slate-700 group-hover:text-[#1877f2]'}`} />
               {unreadCount > 0 ? (
-                <span className="absolute top-1 right-1 min-w-4 h-4 px-1 bg-[#1877f2] text-white text-[10px] font-black rounded-full flex items-center justify-center ring-2 ring-white animate-bounce">
-                  {unreadCount}
-                </span>
+                <>
+                  {/* Outer Blinking Signal Halo */}
+                  <span className="absolute top-1 right-1 w-4 h-4 bg-blue-500 rounded-full animate-ping opacity-75" />
+                  {/* Badge Counter */}
+                  <span className="absolute top-1 right-1 min-w-4 h-4 px-1 bg-[#1877f2] text-white text-[10px] font-extrabold rounded-full flex items-center justify-center ring-2 ring-white shadow-xs">
+                    {unreadCount}
+                  </span>
+                </>
               ) : (
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#1877f2] rounded-full ring-2 ring-white" />
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-slate-300 rounded-full ring-2 ring-white" />
               )}
             </button>
 
