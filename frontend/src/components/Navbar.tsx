@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LogOut, User, GraduationCap } from 'lucide-react';
+import { LogOut, User, GraduationCap, MessageSquare, Video } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { apiClient } from '@/lib/api';
 import LanguageSwitcher from './LanguageSwitcher';
@@ -17,6 +17,8 @@ export default function Navbar() {
   const [isMounted, setIsMounted] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [activeClassroomsCount, setActiveClassroomsCount] = useState(0);
 
   useEffect(() => {
     setIsMounted(true);
@@ -25,8 +27,17 @@ export default function Navbar() {
       setIsAuthenticated(!!token);
       if (token) {
         try {
-          const res = await apiClient.get('/users/me');
-          setUserRole(res.data.role);
+          const [userRes, unreadRes, roomsRes] = await Promise.all([
+            apiClient.get('/users/me'),
+            apiClient.get('/messages/unread-count').catch(() => ({ data: { unread_count: 0 } })),
+            apiClient.get('/classrooms/').catch(() => ({ data: [] }))
+          ]);
+          setUserRole(userRes.data.role);
+          setUnreadCount(unreadRes.data?.unread_count || 0);
+          const activeCount = Array.isArray(roomsRes.data)
+            ? roomsRes.data.filter((r: any) => r.is_active).length
+            : 0;
+          setActiveClassroomsCount(activeCount);
         } catch {
           setIsAuthenticated(false);
           setUserRole(null);
@@ -89,7 +100,41 @@ export default function Navbar() {
           {!isMounted ? (
             <div className="w-20 h-8 bg-slate-100 animate-pulse rounded-full" />
           ) : isAuthenticated ? (
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              {/* Classroom Notification Link */}
+              <Link 
+                href="/classroom"
+                className="p-2 rounded-xl text-[#65676b] hover:text-emerald-600 hover:bg-emerald-50/60 transition-colors relative"
+                title="Classes Virtuelles & Sessions en direct"
+                aria-label="Classe Virtuelle"
+              >
+                <Video size={18} />
+                {activeClassroomsCount > 0 ? (
+                  <span className="absolute top-1 right-1 min-w-3.5 h-3.5 px-0.5 bg-emerald-500 text-white text-[9px] font-black rounded-full flex items-center justify-center ring-2 ring-white animate-pulse">
+                    {activeClassroomsCount}
+                  </span>
+                ) : (
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-emerald-500 rounded-full ring-2 ring-white" />
+                )}
+              </Link>
+
+              {/* Message / Inbox Notification Link */}
+              <Link 
+                href="/inbox"
+                className="p-2 rounded-xl text-[#65676b] hover:text-[#1877f2] hover:bg-blue-50/60 transition-colors relative"
+                title="Messagerie & Boîte de réception"
+                aria-label="Boîte de réception"
+              >
+                <MessageSquare size={18} />
+                {unreadCount > 0 ? (
+                  <span className="absolute top-1 right-1 min-w-3.5 h-3.5 px-0.5 bg-[#1877f2] text-white text-[9px] font-black rounded-full flex items-center justify-center ring-2 ring-white animate-bounce">
+                    {unreadCount}
+                  </span>
+                ) : (
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#1877f2] rounded-full ring-2 ring-white" />
+                )}
+              </Link>
+
               <Link 
                 href="/profile"
                 className="flex items-center gap-2 text-sm font-medium text-[#65676b] hover:text-[#050505] transition-colors"

@@ -8,7 +8,9 @@ import {
   Menu, 
   User, 
   Search, 
-  Bell, 
+  Bell,
+  MessageSquare,
+  Video, 
   ChevronDown, 
   BookOpen,
   GraduationCap,
@@ -43,6 +45,7 @@ export default function DashboardPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchDropdownOpen, setIsSearchDropdownOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [activeClassroomsCount, setActiveClassroomsCount] = useState(0);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
@@ -57,15 +60,20 @@ export default function DashboardPage() {
         return;
       }
       try {
-        // Fetch current user, all courses & unread messages
-        const [userRes, coursesRes, unreadRes] = await Promise.all([
+        // Fetch current user, all courses, unread messages & active classrooms
+        const [userRes, coursesRes, unreadRes, classroomsRes] = await Promise.all([
           apiClient.get('/users/me'),
           apiClient.get('/courses/'),
-          apiClient.get('/messages/unread-count').catch(() => ({ data: { unread_count: 0 } }))
+          apiClient.get('/messages/unread-count').catch(() => ({ data: { unread_count: 0 } })),
+          apiClient.get('/classrooms/').catch(() => ({ data: [] }))
         ]);
         setCurrentUser(userRes.data);
         setAllCourses(coursesRes.data);
         setUnreadCount(unreadRes.data?.unread_count || 0);
+        const activeRooms = Array.isArray(classroomsRes.data)
+          ? classroomsRes.data.filter((r: any) => r.is_active).length
+          : 0;
+        setActiveClassroomsCount(activeRooms);
       } catch (err) {
         console.error(err);
         localStorage.removeItem('access_token');
@@ -280,17 +288,35 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* Right Header Controls : Notification Bell (linked to Inbox) + Real Profile Capsule */}
-          <div className="flex items-center gap-4 shrink-0">
-            {/* Notification Bell Connected to Messages / Inbox */}
+          {/* Right Header Controls : Classroom Live Icon + Message/Inbox Icon + Real Profile Capsule */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {/* 1. Classroom / Room Classe Icon with Active Indicator */}
+            <button 
+              onClick={() => router.push('/classroom')} 
+              className="p-2 sm:p-2.5 rounded-xl text-slate-600 hover:text-emerald-600 hover:bg-emerald-50/60 transition-colors relative cursor-pointer group"
+              title="Classes Virtuelles & Sessions en direct"
+              aria-label="Classe Virtuelle"
+            >
+              <Video size={20} className="text-slate-700 group-hover:text-emerald-600 transition-colors" />
+              {activeClassroomsCount > 0 ? (
+                <span className="absolute top-1 right-1 min-w-4 h-4 px-1 bg-emerald-500 text-white text-[10px] font-black rounded-full flex items-center justify-center ring-2 ring-white animate-pulse">
+                  {activeClassroomsCount}
+                </span>
+              ) : (
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-emerald-500 rounded-full ring-2 ring-white" />
+              )}
+            </button>
+
+            {/* 2. Messages / Inbox Icon with Unread Messages Indicator */}
             <button 
               onClick={() => router.push('/inbox')} 
-              className="p-2.5 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors relative cursor-pointer"
-              title="Boîte de Réception & Messages"
+              className="p-2 sm:p-2.5 rounded-xl text-slate-600 hover:text-[#1877f2] hover:bg-blue-50/60 transition-colors relative cursor-pointer group"
+              title="Messagerie & Boîte de Réception"
+              aria-label="Boîte de réception"
             >
-              <Bell size={20} className="text-slate-700" />
+              <MessageSquare size={20} className="text-slate-700 group-hover:text-[#1877f2] transition-colors" />
               {unreadCount > 0 ? (
-                <span className="absolute top-1 right-1 min-w-4 h-4 px-1 bg-[#1877f2] text-white text-[10px] font-black rounded-full flex items-center justify-center ring-2 ring-white">
+                <span className="absolute top-1 right-1 min-w-4 h-4 px-1 bg-[#1877f2] text-white text-[10px] font-black rounded-full flex items-center justify-center ring-2 ring-white animate-bounce">
                   {unreadCount}
                 </span>
               ) : (
