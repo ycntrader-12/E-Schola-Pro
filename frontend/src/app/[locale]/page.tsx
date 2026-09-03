@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { useTranslations } from 'next-intl';
@@ -12,13 +11,13 @@ export default function Home() {
       
       {/* 100% Full Visual Canvas */}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-        <Image 
-          src="/images/landing-bg.jpg" 
-          alt="E-Schola Pro Connect LMS Ecosystem" 
-          fill 
-          priority
-          className="object-cover object-center" 
-          unoptimized 
+        <video 
+          src="/videos/vids_anime.mp4" 
+          autoPlay 
+          loop 
+          muted 
+          playsInline
+          className="w-full h-full object-cover object-center" 
         />
         {/* Subtle bottom shadow to ensure floating controls are crisp */}
         <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-slate-950/40 to-transparent pointer-events-none" />
