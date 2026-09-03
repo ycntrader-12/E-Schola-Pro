@@ -1,21 +1,54 @@
+'use client';
+
+import { useState, useRef, useEffect } from 'react';
 import Link from "next/link";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight, Sparkles, Volume2, VolumeX } from "lucide-react";
 import { useTranslations } from 'next-intl';
 
 export default function Home() {
   const t = useTranslations('Landing');
   const tNav = useTranslations('Navigation');
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isMuted, setIsMuted] = useState(false);
+
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.muted = isMuted;
+      const playPromise = videoRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(() => {
+          // Browser blocked unmuted autoplay, fallback to muted autoplay
+          if (videoRef.current) {
+            videoRef.current.muted = true;
+            setIsMuted(true);
+            videoRef.current.play();
+          }
+        });
+      }
+    }
+  }, []);
+
+  const toggleSound = () => {
+    if (videoRef.current) {
+      const nextMuteState = !isMuted;
+      videoRef.current.muted = nextMuteState;
+      setIsMuted(nextMuteState);
+      if (videoRef.current.paused) {
+        videoRef.current.play();
+      }
+    }
+  };
 
   return (
     <div className="relative w-full h-[calc(100vh-4rem)] min-h-[550px] overflow-hidden flex flex-col justify-end items-center pb-6 sm:pb-8 px-4 select-none bg-slate-900">
       
       {/* 100% Full Visual Canvas */}
-      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+      <div className="absolute inset-0 z-0 overflow-hidden">
         <video 
+          ref={videoRef}
           src="/videos/vids_anime.mp4" 
           autoPlay 
           loop 
-          muted 
           playsInline
           className="w-full h-full object-cover object-center" 
         />
@@ -44,8 +77,22 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Minimized Actions */}
+          {/* Minimized Actions + Sound Toggle */}
           <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 justify-center">
+            <button
+              onClick={toggleSound}
+              type="button"
+              className="p-2 rounded-xl text-slate-700 bg-slate-100/90 hover:bg-slate-200/90 border border-slate-200/80 active:scale-95 transition-all cursor-pointer flex items-center justify-center shrink-0"
+              title={isMuted ? "Activer le son" : "Désactiver le son"}
+              aria-label={isMuted ? "Activer le son" : "Désactiver le son"}
+            >
+              {isMuted ? (
+                <VolumeX size={17} className="text-slate-500" />
+              ) : (
+                <Volume2 size={17} className="text-[#1877f2] animate-pulse" />
+              )}
+            </button>
+
             <Link 
               href="/login" 
               className="flex-1 sm:flex-initial px-4 py-2 rounded-xl font-bold text-xs text-white bg-[#1877f2] hover:bg-[#166fe5] hover:shadow-md hover:shadow-blue-500/25 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 shadow-sm shadow-blue-500/20 cursor-pointer"
