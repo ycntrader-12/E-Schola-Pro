@@ -59,7 +59,21 @@ interface ClassroomInfo {
   description?: string;
   instructor_id: number;
   is_active: boolean;
+  is_private?: boolean;
+  auto_invitations?: boolean;
+  allow_screen_sharing?: boolean;
+  requires_approval?: boolean;
+  allowed_users?: string;
   instructor?: { email: string; role: string };
+}
+
+interface JoinRequestItem {
+  user_id: number;
+  user_email: string;
+  user_name: string;
+  user_role: string;
+  requested_at: string;
+  status: 'pending' | 'approved' | 'rejected';
 }
 
 interface ChatAttachment {
@@ -101,9 +115,19 @@ export default function VirtualClassroomLivePage() {
 
   // Classroom & User state
   const [classroom, setClassroom] = useState<ClassroomInfo | null>(null);
-  const [currentUser, setCurrentUser] = useState<{ email: string; role: string } | null>(null);
+  const [currentUser, setCurrentUser] = useState<{ id?: number; email: string; role: string } | null>(null);
   const [isLoadingRoom, setIsLoadingRoom] = useState(true);
   const [roomError, setRoomError] = useState('');
+
+  // Join approval status & waiting room state
+  const [joinStatus, setJoinStatus] = useState<'checking' | 'approved' | 'pending' | 'rejected'>('checking');
+  const [pendingRequests, setPendingRequests] = useState<JoinRequestItem[]>([]);
+  const [showRequestsModal, setShowRequestsModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+
+  // Emojis state
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const popularEmojis = ['😊', '👍', '❤️', '🎉', '👏', '🔥', '🙋‍♂️', '📚', '💡', '❓', '🖐️', '🎓', '🚀', '💻', '💯', '✋', '🙏', '⚡', '⭐', '✅'];
 
   // Mobile detection & facing mode (Front / Back camera)
   const [isMobile, setIsMobile] = useState(false);
@@ -148,6 +172,7 @@ export default function VirtualClassroomLivePage() {
   // File input ref for chat attachments
   const chatFileInputRef = useRef<HTMLInputElement | null>(null);
 
+
   // Media Stream references
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const screenVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -189,6 +214,28 @@ export default function VirtualClassroomLivePage() {
 
         setCurrentUser(userRes.data);
         setClassroom(roomRes.data);
+
+        // Check join approval status for non-host
+        const isHost = userRes.data.id === roomRes.data.instructor_id || ['formateur', 'admin', 'admin_manager', 'admin_limited', 'pedagogique'].includes(userRes.data.role);
+        
+        if (isHost) {
+          setJoinStatus('approved');
+          const reqsRes = await apiClient.get(`/classrooms/${roomId}/join-requests`).catch(() => ({ data: [] }));
+          if (Array.isArray(reqsRes.data)) {
+            setPendingRequests(reqsRes.data.filter((r: JoinRequestItem) => r.status === 'pending'));
+          }
+        } else {
+          const statusRes = await apiClient.get(`/classrooms/${roomId}/join-status`).catch(() => ({ data: { status: 'approved' } }));
+          if (statusRes.data.status === 'approved') {
+            setJoinStatus('approved');
+          } else if (statusRes.data.status === 'rejected') {
+            setJoinStatus('rejected');
+          } else {
+            const reqRes = await apiClient.post(`/classrooms/${roomId}/join-request`).catch(() => ({ data: { status: 'pending' } }));
+            setJoinStatus(reqRes.data.status || 'pending');
+          }
+        }
+
         if (subgroupsRes.data) {
           setSubgroupsState(subgroupsRes.data);
         }
@@ -230,11 +277,27 @@ export default function VirtualClassroomLivePage() {
     if (roomId) init();
   }, [roomId]);
 
-  // Periodic poll for subgroups and messages
+  // Periodic poll for subgroups, messages, and join status / requests
   useEffect(() => {
-    if (!roomId) return;
+    if (!roomId || !currentUser) return;
     const interval = setInterval(async () => {
       try {
+        const isHost = isManager || currentUser.email.toLowerCase() === classroom?.instructor?.email?.toLowerCase();
+
+        if (isHost) {
+          const reqsRes = await apiClient.get(`/classrooms/${roomId}/join-requests`).catch(() => ({ data: [] }));
+          if (Array.isArray(reqsRes.data)) {
+            setPendingRequests(reqsRes.data.filter((r: JoinRequestItem) => r.status === 'pending'));
+          }
+        } else if (joinStatus === 'pending') {
+          const statusRes = await apiClient.get(`/classrooms/${roomId}/join-status`).catch(() => ({ data: { status: 'pending' } }));
+          if (statusRes.data.status === 'approved') {
+            setJoinStatus('approved');
+          } else if (statusRes.data.status === 'rejected') {
+            setJoinStatus('rejected');
+          }
+        }
+
         const [subRes, msgRes] = await Promise.all([
           apiClient.get(`/classrooms/${roomId}/subgroups`),
           apiClient.get(`/classrooms/${roomId}/messages`)
@@ -267,9 +330,37 @@ export default function VirtualClassroomLivePage() {
           });
         }
       } catch {}
-    }, 4000);
+    }, 3000);
     return () => clearInterval(interval);
-  }, [roomId, currentUser, currentActiveSubgroupId]);
+  }, [roomId, currentUser, currentActiveSubgroupId, isManager, classroom, joinStatus]);
+
+  const handleApproveRequest = async (userId: number) => {
+    try {
+      await apiClient.post(`/classrooms/${roomId}/join-requests/${userId}/approve`);
+      setPendingRequests((prev) => prev.filter((r) => r.user_id !== userId));
+    } catch {
+      alert("Erreur lors de l'approbation.");
+    }
+  };
+
+  const handleRejectRequest = async (userId: number) => {
+    try {
+      await apiClient.post(`/classrooms/${roomId}/join-requests/${userId}/reject`);
+      setPendingRequests((prev) => prev.filter((r) => r.user_id !== userId));
+    } catch {
+      alert("Erreur lors du rejet.");
+    }
+  };
+
+  const handleToggleRoomSetting = async (key: string, value: boolean) => {
+    try {
+      const res = await apiClient.patch(`/classrooms/${roomId}/settings`, { [key]: value });
+      setClassroom(res.data);
+    } catch {
+      alert("Erreur lors de la mise à jour des paramètres.");
+    }
+  };
+
 
   // 2. Request Camera and Microphone with Mobile Cross-Browser Compatibility
   const startCameraAndMic = async (targetFacing: 'user' | 'environment' = facingMode) => {
@@ -427,7 +518,13 @@ export default function VirtualClassroomLivePage() {
       return;
     }
 
+    if (!isManager && classroom && classroom.allow_screen_sharing === false) {
+      alert("Le partage d'écran est désactivé par le formateur dans cette classe virtuelle.");
+      return;
+    }
+
     try {
+
       if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
         alert(
           "Le partage d'écran sur mobile est pris en charge sur Android (Chrome 107+) et iOS 15.1+ (Safari). Si votre navigateur ne l'autorise pas, vous pouvez envoyer vos documents directement dans le chat."
@@ -667,6 +764,55 @@ export default function VirtualClassroomLivePage() {
     );
   }
 
+  if (joinStatus === 'pending') {
+    return (
+      <div className="h-[100dvh] w-screen flex flex-col items-center justify-center px-4 text-center bg-[#0b0f19] text-white">
+        <div className="glass-card p-8 sm:p-10 max-w-md w-full space-y-6 border border-purple-500/40 shadow-2xl relative animate-fade-in-up">
+          <div className="w-16 h-16 mx-auto rounded-2xl bg-purple-500/20 text-purple-400 border border-purple-500/40 flex items-center justify-center animate-pulse">
+            <Clock size={36} />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-xl sm:text-2xl font-extrabold text-white">Salle d'Attente (Lobby)</h2>
+            <p className="text-gray-300 text-xs sm:text-sm leading-relaxed">
+              Votre demande pour rejoindre la classe <span className="font-bold text-primary underline">{classroom.title}</span> a été transmise au formateur.
+            </p>
+          </div>
+          <div className="p-3 bg-purple-950/50 border border-purple-500/30 rounded-xl text-xs text-purple-200 flex items-center justify-center gap-2">
+            <Loader2 size={16} className="animate-spin text-purple-400" />
+            <span>En attente d'approbation par le formateur...</span>
+          </div>
+          <button
+            onClick={() => router.push('/classroom')}
+            className="w-full py-3 rounded-xl bg-white/10 hover:bg-white/20 text-gray-200 font-bold text-xs sm:text-sm border border-white/10 transition-colors"
+          >
+            Annuler et quitter
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (joinStatus === 'rejected') {
+    return (
+      <div className="h-[100dvh] w-screen flex flex-col items-center justify-center px-4 text-center bg-[#0b0f19] text-white">
+        <div className="glass-card p-8 sm:p-10 max-w-md w-full space-y-6 border border-red-500/40 shadow-2xl">
+          <div className="w-16 h-16 mx-auto rounded-2xl bg-red-500/20 text-red-400 border border-red-500/40 flex items-center justify-center">
+            <X size={36} />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-xl sm:text-2xl font-extrabold text-white">Accès Refusé</h2>
+            <p className="text-gray-300 text-xs sm:text-sm leading-relaxed">
+              Le formateur a refusé la demande d'accès à cette session de classe virtuelle.
+            </p>
+          </div>
+          <Link href="/classroom" className="btn-primary py-3 rounded-xl block font-bold text-xs sm:text-sm">
+            Retour aux Classes Virtuelles
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   const myName = currentUser?.email?.split('@')[0] || 'Participant';
   const instructorName = classroom.instructor?.email?.split('@')[0] || `Formateur #${classroom.instructor_id}`;
   const mySubgroup = subgroupsState.subgroups.find(sg => 
@@ -702,6 +848,38 @@ export default function VirtualClassroomLivePage() {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
+          {/* Host Pending Requests Badge */}
+          {isManager && (
+            <button
+              onClick={() => setShowRequestsModal(true)}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-bold border transition-all ${
+                pendingRequests.length > 0
+                  ? 'bg-purple-600/90 text-white border-purple-400 animate-pulse shadow-md shadow-purple-600/30'
+                  : 'bg-white/5 hover:bg-white/10 text-gray-300 border-white/10'
+              }`}
+              title="Demandes d'accès à la salle"
+            >
+              <Shield size={12} className={pendingRequests.length > 0 ? 'text-white' : 'text-purple-400'} />
+              <span className="hidden sm:inline">Demandes d'accès</span>
+              {pendingRequests.length > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full bg-white text-purple-900 text-[10px] font-extrabold">
+                  {pendingRequests.length}
+                </span>
+              )}
+            </button>
+          )}
+
+          {/* Host Settings button */}
+          {isManager && (
+            <button
+              onClick={() => setShowSettingsModal(true)}
+              className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 border border-white/10 transition-all"
+              title="Paramètres de la classe"
+            >
+              <Settings size={14} />
+            </button>
+          )}
+
           {/* Subgroups Banner indicator */}
           {subgroupsState.is_active && (
             <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-purple-900/40 border border-purple-500/40 text-purple-300 text-[11px] font-bold">
@@ -1078,7 +1256,7 @@ export default function VirtualClassroomLivePage() {
                 </div>
 
                 {/* Chat Input Bar */}
-                <form onSubmit={handleSendMessage} className="p-2 sm:p-3 border-t border-white/10 bg-black/40 flex items-center gap-1.5 sm:gap-2">
+                <form onSubmit={handleSendMessage} className="p-2 sm:p-3 border-t border-white/10 bg-black/40 flex items-center gap-1.5 sm:gap-2 relative">
                   <input
                     type="file"
                     ref={chatFileInputRef}
@@ -1086,6 +1264,38 @@ export default function VirtualClassroomLivePage() {
                     className="hidden"
                     accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.png,.jpg,.jpeg,.gif,.mp3,.wav,.mp4,.webm"
                   />
+
+                  {/* Emoji Selector Button & Popover */}
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                      className={`p-2 rounded-xl border border-white/10 transition-colors shrink-0 ${
+                        showEmojiPicker ? 'bg-amber-500/20 text-amber-300 border-amber-500/50' : 'bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white'
+                      }`}
+                      title="Insérer un émoji"
+                    >
+                      😊
+                    </button>
+
+                    {showEmojiPicker && (
+                      <div className="absolute bottom-12 left-0 z-50 p-2.5 bg-[#1f2937] border border-white/20 rounded-2xl shadow-2xl grid grid-cols-5 gap-1.5 w-52 max-h-48 overflow-y-auto animate-fade-in-up">
+                        {popularEmojis.map((emoji) => (
+                          <button
+                            key={emoji}
+                            type="button"
+                            onClick={() => {
+                              setNewMessage((prev) => prev + emoji);
+                              setShowEmojiPicker(false);
+                            }}
+                            className="p-1.5 text-base hover:bg-white/10 rounded-lg text-center transition-colors select-none"
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
 
                   <button
                     type="button"
@@ -1489,6 +1699,136 @@ export default function VirtualClassroomLivePage() {
 
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL GESTION DES DEMANDES D'ACCÈS (Formateur / Hôte)                      */}
+      {/* ========================================================================= */}
+      {showRequestsModal && (
+        <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="glass-card max-w-lg w-full p-5 sm:p-7 rounded-3xl border border-purple-500/40 space-y-4 shadow-2xl my-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+              <div className="flex items-center gap-2 text-purple-400 font-extrabold text-sm sm:text-base">
+                <Shield size={18} />
+                <h3>Demandes d'accès à la classe ({pendingRequests.length})</h3>
+              </div>
+              <button onClick={() => setShowRequestsModal(false)} className="text-gray-400 hover:text-white font-bold text-sm">
+                ✕
+              </button>
+            </div>
+
+            {pendingRequests.length === 0 ? (
+              <div className="py-8 text-center text-xs text-gray-400 space-y-2">
+                <CheckCircle2 size={32} className="mx-auto text-green-400 opacity-60" />
+                <p>Aucune demande d'accès en attente pour le moment.</p>
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                {pendingRequests.map((req) => (
+                  <div key={req.user_id} className="p-3 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between gap-3 text-xs">
+                    <div className="min-w-0 space-y-0.5">
+                      <p className="font-bold text-white truncate">{req.user_name} ({req.user_email.split('@')[0]})</p>
+                      <p className="text-[10px] text-gray-400 uppercase font-mono">Rôle : {req.user_role} · Demande à {req.requested_at}</p>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        onClick={() => handleRejectRequest(req.user_id)}
+                        className="px-2.5 py-1.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-300 font-bold border border-red-500/30 flex items-center gap-1 transition-colors"
+                      >
+                        <X size={13} /> Rejeter
+                      </button>
+                      <button
+                        onClick={() => handleApproveRequest(req.user_id)}
+                        className="px-3 py-1.5 rounded-xl bg-green-600 hover:bg-green-500 text-white font-bold shadow-md shadow-green-600/30 flex items-center gap-1 transition-colors"
+                      >
+                        <Check size={13} /> Approuver
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="pt-2 text-right">
+              <button
+                onClick={() => setShowRequestsModal(false)}
+                className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 font-bold text-xs text-gray-200"
+              >
+                Fermer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL PARAMÈTRES EN DIRECT DE LA SALLE (Formateur / Hôte)                  */}
+      {/* ========================================================================= */}
+      {showSettingsModal && classroom && (
+        <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="glass-card max-w-md w-full p-5 sm:p-7 rounded-3xl border border-border space-y-4 shadow-2xl my-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+              <div className="flex items-center gap-2 text-primary font-extrabold text-sm sm:text-base">
+                <Settings size={18} />
+                <h3>Paramètres de la classe en direct</h3>
+              </div>
+              <button onClick={() => setShowSettingsModal(false)} className="text-gray-400 hover:text-white font-bold text-sm">
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <label className="p-3 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between cursor-pointer">
+                <div>
+                  <p className="font-bold text-white">🖥️ Partage d'écran</p>
+                  <p className="text-[10px] text-gray-400">Autoriser les participants à partager leur écran</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={classroom.allow_screen_sharing ?? false}
+                  onChange={(e) => handleToggleRoomSetting('allow_screen_sharing', e.target.checked)}
+                  className="accent-primary w-4 h-4 cursor-pointer"
+                />
+              </label>
+
+              <label className="p-3 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between cursor-pointer">
+                <div>
+                  <p className="font-bold text-white">🛡️ Salle d'attente (Approbation)</p>
+                  <p className="text-[10px] text-gray-400">Exiger une approbation avant d'entrer dans la salle</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={classroom.requires_approval ?? true}
+                  onChange={(e) => handleToggleRoomSetting('requires_approval', e.target.checked)}
+                  className="accent-primary w-4 h-4 cursor-pointer"
+                />
+              </label>
+
+              <label className="p-3 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between cursor-pointer">
+                <div>
+                  <p className="font-bold text-white">🔒 Salle privée</p>
+                  <p className="text-[10px] text-gray-400">Salle fermée aux utilisateurs anonymes</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={classroom.is_private ?? true}
+                  onChange={(e) => handleToggleRoomSetting('is_private', e.target.checked)}
+                  className="accent-primary w-4 h-4 cursor-pointer"
+                />
+              </label>
+            </div>
+
+            <div className="pt-2 text-right">
+              <button
+                onClick={() => setShowSettingsModal(false)}
+                className="px-4 py-2 rounded-xl bg-primary text-white font-bold text-xs"
+              >
+                Fait
+              </button>
+            </div>
           </div>
         </div>
       )}

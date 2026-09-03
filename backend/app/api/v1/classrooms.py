@@ -80,6 +80,11 @@ def create_classroom(
             existing.description = classroom_in.description
             existing.target_roles = classroom_in.target_roles
             existing.target_groups = classroom_in.target_groups
+            existing.is_private = classroom_in.is_private
+            existing.auto_invitations = classroom_in.auto_invitations
+            existing.allow_screen_sharing = classroom_in.allow_screen_sharing
+            existing.requires_approval = classroom_in.requires_approval
+            existing.allowed_users = classroom_in.allowed_users
             existing.instructor_id = current_user.id
             existing.is_active = True
             session.commit()
@@ -92,6 +97,11 @@ def create_classroom(
             description=classroom_in.description,
             target_roles=classroom_in.target_roles,
             target_groups=classroom_in.target_groups,
+            is_private=classroom_in.is_private,
+            auto_invitations=classroom_in.auto_invitations,
+            allow_screen_sharing=classroom_in.allow_screen_sharing,
+            requires_approval=classroom_in.requires_approval,
+            allowed_users=classroom_in.allowed_users,
             instructor_id=current_user.id,
             is_active=True,
         )
@@ -99,82 +109,84 @@ def create_classroom(
         session.commit()
         session.refresh(classroom)
 
-    # Collect targeted users for invitations and attendance registration
-    targeted_user_ids = set()
-    group_labels_list = []
+    # Collect targeted users ONLY IF auto_invitations is enabled
+    if classroom_in.auto_invitations:
+        targeted_user_ids = set()
+        group_labels_list = []
 
-    # 1. Target by selected Groups (Priority)
-    if classroom_in.target_groups:
-        group_ids = [
-            int(g.strip())
-            for g in classroom_in.target_groups.split(",")
-            if g.strip().isdigit()
-        ]
-        if group_ids:
-            selected_groups = session.query(Group).filter(Group.id.in_(group_ids)).all()
-            group_labels_list = [g.name for g in selected_groups]
+        # 1. Target by selected Groups (Priority)
+        if classroom_in.target_groups:
+            group_ids = [
+                int(g.strip())
+                for g in classroom_in.target_groups.split(",")
+                if g.strip().isdigit()
+            ]
+            if group_ids:
+                selected_groups = session.query(Group).filter(Group.id.in_(group_ids)).all()
+                group_labels_list = [g.name for g in selected_groups]
 
-            # Collect user IDs from GroupMember
-            members = session.query(GroupMember).filter(GroupMember.group_id.in_(group_ids)).all()
-            for m in members:
-                targeted_user_ids.add(m.user_id)
+                # Collect user IDs from GroupMember
+                members = session.query(GroupMember).filter(GroupMember.group_id.in_(group_ids)).all()
+                for m in members:
+                    targeted_user_ids.add(m.user_id)
 
-            # Also collect users associated via User.group_name
-            if group_labels_list:
-                named_users = (
-                    session.query(User)
-                    .filter(User.group_name.in_(group_labels_list))
-                    .all()
-                )
-                for u in named_users:
+                # Also collect users associated via User.group_name
+                if group_labels_list:
+                    named_users = (
+                        session.query(User)
+                        .filter(User.group_name.in_(group_labels_list))
+                        .all()
+                    )
+                    for u in named_users:
+                        targeted_user_ids.add(u.id)
+
+        # 2. Target by Roles (Fallback if specified)
+        if classroom_in.target_roles:
+            roles_list = [r.strip().lower() for r in classroom_in.target_roles.split(",") if r.strip()]
+            if roles_list:
+                role_users = session.query(User).filter(User.role.in_(roles_list)).all()
+                for u in role_users:
                     targeted_user_ids.add(u.id)
 
-    # 2. Target by Roles (Fallback if specified)
-    if classroom_in.target_roles:
-        roles_list = [r.strip().lower() for r in classroom_in.target_roles.split(",") if r.strip()]
-        if roles_list:
-            role_users = session.query(User).filter(User.role.in_(roles_list)).all()
-            for u in role_users:
-                targeted_user_ids.add(u.id)
+        # Exclude instructor from attendance & invitation
+        targeted_user_ids.discard(current_user.id)
 
-    # Exclude instructor from attendance & invitation
-    targeted_user_ids.discard(current_user.id)
+        if targeted_user_ids:
+            targeted_users = session.query(User).filter(User.id.in_(targeted_user_ids)).all()
+            group_info = f"👥 **Groupe(s) invité(s) :** {', '.join(group_labels_list)}\n" if group_labels_list else ""
 
-    if targeted_user_ids:
-        targeted_users = session.query(User).filter(User.id.in_(targeted_user_ids)).all()
-        group_info = f"👥 **Groupe(s) invité(s) :** {', '.join(group_labels_list)}\n" if group_labels_list else ""
+            for t_user in targeted_users:
+                # 1. Register in Attendance as absent
+                att = Attendance(
+                    user_id=t_user.id,
+                    date=date.today(),
+                    status="absent",
+                    session_name=classroom.title,
+                    remarks=f"Invitation classe virtuelle : {classroom.title}"
+                )
+                session.add(att)
 
-        for t_user in targeted_users:
-            # 1. Register in Attendance as absent
-            att = Attendance(
-                user_id=t_user.id,
-                date=date.today(),
-                status="absent",
-                session_name=classroom.title,
-                remarks=f"Invitation classe virtuelle : {classroom.title}"
-            )
-            session.add(att)
+                # 2. Send invitation Message
+                invitation_body = (
+                    f"Bonjour {t_user.email.split('@')[0]},\n\n"
+                    f"Vous êtes convié(e) à la classe virtuelle en direct : **{classroom.title}**.\n\n"
+                    f"📌 **Code de la salle :** `{classroom.room_id}`\n"
+                    f"{group_info}"
+                    f"👨‍🏫 **Formateur :** {current_user.email}\n\n"
+                    f"👉 Connectez-vous dès maintenant depuis la page des **Classes Virtuelles** pour rejoindre la session en direct."
+                )
+                msg = Message(
+                    sender_id=current_user.id,
+                    recipient_id=t_user.id,
+                    subject=f"🎓 Invitation classe virtuelle : {classroom.title}",
+                    body=invitation_body,
+                )
+                session.add(msg)
 
-            # 2. Send invitation Message
-            invitation_body = (
-                f"Bonjour {t_user.email.split('@')[0]},\n\n"
-                f"Vous êtes convié(e) à la classe virtuelle en direct : **{classroom.title}**.\n\n"
-                f"📌 **Code de la salle :** `{classroom.room_id}`\n"
-                f"{group_info}"
-                f"👨‍🏫 **Formateur :** {current_user.email}\n\n"
-                f"👉 Connectez-vous dès maintenant depuis la page des **Classes Virtuelles** pour rejoindre la session en direct."
-            )
-            msg = Message(
-                sender_id=current_user.id,
-                recipient_id=t_user.id,
-                subject=f"🎓 Invitation classe virtuelle : {classroom.title}",
-                body=invitation_body,
-            )
-            session.add(msg)
-
-        session.commit()
+            session.commit()
 
     return classroom
+
 
 
 @router.get("/{room_id}", response_model=ClassroomResponse)
@@ -385,3 +397,166 @@ def post_room_message(room_id: str, message: dict, current_user: CurrentUser):
     }
     ROOM_MESSAGES[cleaned_id].append(msg_record)
     return msg_record
+
+
+# =========================================================================
+# LOBBY / WAITING ROOM & JOIN REQUEST APPROVAL STORE
+# =========================================================================
+ROOM_JOIN_REQUESTS: dict = {}  # room_id -> list of request dicts
+
+
+@router.get("/{room_id}/join-requests")
+def get_join_requests(room_id: str, session: SessionDep, current_user: CurrentUser):
+    """
+    Get all join requests for a virtual classroom (Host / Admin only).
+    """
+    cleaned_id = room_id.strip().lower()
+    classroom = session.query(Classroom).filter(Classroom.room_id == cleaned_id).first()
+    if not classroom:
+        raise HTTPException(status_code=404, detail="Classe virtuelle introuvable.")
+    if current_user.id != classroom.instructor_id and current_user.role not in ADMIN_ROLES:
+        raise HTTPException(status_code=403, detail="Seul le formateur peut consulter les demandes d'accès.")
+    
+    return ROOM_JOIN_REQUESTS.get(cleaned_id, [])
+
+
+@router.post("/{room_id}/join-request")
+def submit_join_request(room_id: str, session: SessionDep, current_user: CurrentUser):
+    """
+    Submit a request to join a private room requiring approval.
+    """
+    cleaned_id = room_id.strip().lower()
+    classroom = session.query(Classroom).filter(Classroom.room_id == cleaned_id).first()
+    if not classroom:
+        raise HTTPException(status_code=404, detail="Classe virtuelle introuvable.")
+
+    # Instructor and admins are automatically approved
+    if current_user.id == classroom.instructor_id or current_user.role in ADMIN_ROLES + ["formateur", "pedagogique"]:
+        return {"status": "approved", "message": "Accès formateur direct."}
+
+    # Check if user is in allowed_users list
+    allowed_list = [u.strip().lower() for u in (classroom.allowed_users or "").split(",") if u.strip()]
+    if str(current_user.id) in allowed_list or current_user.email.lower() in allowed_list:
+        return {"status": "approved", "message": "Participant déjà autorisé."}
+
+    # Check if approval is required
+    if not classroom.requires_approval:
+        return {"status": "approved", "message": "Approbation non requise."}
+
+    if cleaned_id not in ROOM_JOIN_REQUESTS:
+        ROOM_JOIN_REQUESTS[cleaned_id] = []
+
+    # Check existing request
+    existing = next((r for r in ROOM_JOIN_REQUESTS[cleaned_id] if r["user_id"] == current_user.id), None)
+    if existing:
+        return {"status": existing["status"], "message": "Demande déjà soumise."}
+
+    new_req = {
+        "user_id": current_user.id,
+        "user_email": current_user.email,
+        "user_name": current_user.email.split("@")[0],
+        "user_role": current_user.role,
+        "requested_at": datetime.utcnow().strftime("%H:%M:%S"),
+        "status": "pending",
+    }
+    ROOM_JOIN_REQUESTS[cleaned_id].append(new_req)
+    return {"status": "pending", "message": "Demande d'accès envoyée à l'hôte."}
+
+
+@router.post("/{room_id}/join-requests/{user_id}/approve")
+def approve_join_request(room_id: str, user_id: int, session: SessionDep, current_user: CurrentUser):
+    """
+    Approve a user's join request (Host / Admin).
+    """
+    cleaned_id = room_id.strip().lower()
+    classroom = session.query(Classroom).filter(Classroom.room_id == cleaned_id).first()
+    if not classroom:
+        raise HTTPException(status_code=404, detail="Classe virtuelle introuvable.")
+    if current_user.id != classroom.instructor_id and current_user.role not in ADMIN_ROLES:
+        raise HTTPException(status_code=403, detail="Seul le formateur peut approuver les demandes.")
+
+    reqs = ROOM_JOIN_REQUESTS.get(cleaned_id, [])
+    req = next((r for r in reqs if r["user_id"] == user_id), None)
+    if req:
+        req["status"] = "approved"
+
+    # Record user ID in classroom.allowed_users
+    current_allowed = [u.strip() for u in (classroom.allowed_users or "").split(",") if u.strip()]
+    if str(user_id) not in current_allowed:
+        current_allowed.append(str(user_id))
+        classroom.allowed_users = ",".join(current_allowed)
+        session.commit()
+
+    return {"message": "Participant approuvé avec succès.", "user_id": user_id}
+
+
+@router.post("/{room_id}/join-requests/{user_id}/reject")
+def reject_join_request(room_id: str, user_id: int, session: SessionDep, current_user: CurrentUser):
+    """
+    Reject a user's join request (Host / Admin).
+    """
+    cleaned_id = room_id.strip().lower()
+    classroom = session.query(Classroom).filter(Classroom.room_id == cleaned_id).first()
+    if not classroom:
+        raise HTTPException(status_code=404, detail="Classe virtuelle introuvable.")
+    if current_user.id != classroom.instructor_id and current_user.role not in ADMIN_ROLES:
+        raise HTTPException(status_code=403, detail="Seul le formateur peut rejeter les demandes.")
+
+    reqs = ROOM_JOIN_REQUESTS.get(cleaned_id, [])
+    req = next((r for r in reqs if r["user_id"] == user_id), None)
+    if req:
+        req["status"] = "rejected"
+
+    return {"message": "Participant rejeté.", "user_id": user_id}
+
+
+@router.get("/{room_id}/join-status")
+def get_join_status(room_id: str, session: SessionDep, current_user: CurrentUser):
+    """
+    Check current user's join request status.
+    """
+    cleaned_id = room_id.strip().lower()
+    classroom = session.query(Classroom).filter(Classroom.room_id == cleaned_id).first()
+    if not classroom:
+        raise HTTPException(status_code=404, detail="Classe virtuelle introuvable.")
+
+    if current_user.id == classroom.instructor_id or current_user.role in ADMIN_ROLES + ["formateur", "pedagogique"]:
+        return {"status": "approved"}
+
+    allowed_list = [u.strip().lower() for u in (classroom.allowed_users or "").split(",") if u.strip()]
+    if str(current_user.id) in allowed_list or current_user.email.lower() in allowed_list:
+        return {"status": "approved"}
+
+    if not classroom.requires_approval:
+        return {"status": "approved"}
+
+    reqs = ROOM_JOIN_REQUESTS.get(cleaned_id, [])
+    req = next((r for r in reqs if r["user_id"] == current_user.id), None)
+    if not req:
+        return {"status": "not_requested"}
+    return {"status": req["status"]}
+
+
+@router.patch("/{room_id}/settings")
+def update_room_settings(room_id: str, payload: dict, session: SessionDep, current_user: CurrentUser):
+    """
+    Update live room settings (allow_screen_sharing, requires_approval, is_private). Host only.
+    """
+    cleaned_id = room_id.strip().lower()
+    classroom = session.query(Classroom).filter(Classroom.room_id == cleaned_id).first()
+    if not classroom:
+        raise HTTPException(status_code=404, detail="Classe virtuelle introuvable.")
+    if current_user.id != classroom.instructor_id and current_user.role not in ADMIN_ROLES:
+        raise HTTPException(status_code=403, detail="Non autorisé à modifier les paramètres.")
+
+    if "allow_screen_sharing" in payload:
+        classroom.allow_screen_sharing = bool(payload["allow_screen_sharing"])
+    if "requires_approval" in payload:
+        classroom.requires_approval = bool(payload["requires_approval"])
+    if "is_private" in payload:
+        classroom.is_private = bool(payload["is_private"])
+
+    session.commit()
+    session.refresh(classroom)
+    return classroom
+

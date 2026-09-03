@@ -60,6 +60,10 @@ export default function ClassroomHubPage() {
   const [newTitle, setNewTitle] = useState('');
   const [newDescription, setNewDescription] = useState('');
   const [customRoomId, setCustomRoomId] = useState('');
+  const [isPrivate, setIsPrivate] = useState(true);
+  const [autoInvitations, setAutoInvitations] = useState(false);
+  const [allowScreenSharing, setAllowScreenSharing] = useState(false);
+  const [requiresApproval, setRequiresApproval] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState('');
   const [isPurging, setIsPurging] = useState(false);
@@ -128,7 +132,11 @@ export default function ClassroomHubPage() {
         title: newTitle.trim(),
         description: newDescription.trim() || undefined,
         room_id: customRoomId.trim() || undefined,
-        target_groups: selectedGroupIds.length > 0 ? selectedGroupIds.join(',') : undefined
+        target_groups: selectedGroupIds.length > 0 ? selectedGroupIds.join(',') : undefined,
+        is_private: isPrivate,
+        auto_invitations: autoInvitations,
+        allow_screen_sharing: allowScreenSharing,
+        requires_approval: requiresApproval,
       });
       setIsModalOpen(false);
       router.push(`/classroom/${res.data.room_id}`);
@@ -139,6 +147,7 @@ export default function ClassroomHubPage() {
       setIsCreating(false);
     }
   };
+
 
   const handlePurgeHistory = async () => {
     if (!window.confirm("Êtes-vous sûr de vouloir supprimer DÉFINITIVEMENT tout l'historique des classes fermées ?")) return;
@@ -417,6 +426,71 @@ export default function ClassroomHubPage() {
                   />
                 </div>
               </div>
+
+              {/* Options de Configuration de la Classe Virtuelle */}
+              <div className="pt-2 border-t border-border/60 space-y-3">
+                <label className="block text-xs font-bold uppercase tracking-wider text-text-primary">
+                  Configuration de la salle
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  {/* Salle Privée */}
+                  <label className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${isPrivate ? 'bg-primary/10 border-primary/50 text-text-primary' : 'bg-surface border-border text-text-secondary'}`}>
+                    <div className="space-y-0.5">
+                      <span className="font-semibold block text-text-primary">🔒 Salle privée</span>
+                      <span className="text-[10px] text-text-secondary">Accessibilité restreinte par défaut</span>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={isPrivate}
+                      onChange={(e) => setIsPrivate(e.target.checked)}
+                      className="accent-primary w-4 h-4 cursor-pointer"
+                    />
+                  </label>
+
+                  {/* Invitations Automatiques */}
+                  <label className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${autoInvitations ? 'bg-primary/10 border-primary/50 text-text-primary' : 'bg-surface border-border text-text-secondary'}`}>
+                    <div className="space-y-0.5">
+                      <span className="font-semibold block text-text-primary">📩 Invitations automatiques</span>
+                      <span className="text-[10px] text-text-secondary">Notifier les groupes à la création</span>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={autoInvitations}
+                      onChange={(e) => setAutoInvitations(e.target.checked)}
+                      className="accent-primary w-4 h-4 cursor-pointer"
+                    />
+                  </label>
+
+                  {/* Partage d'écran */}
+                  <label className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${allowScreenSharing ? 'bg-cyan-500/10 border-cyan-500/50 text-text-primary' : 'bg-surface border-border text-text-secondary'}`}>
+                    <div className="space-y-0.5">
+                      <span className="font-semibold block text-text-primary">🖥️ Partage d'écran</span>
+                      <span className="text-[10px] text-text-secondary">Autoriser le partage d'écran</span>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={allowScreenSharing}
+                      onChange={(e) => setAllowScreenSharing(e.target.checked)}
+                      className="accent-primary w-4 h-4 cursor-pointer"
+                    />
+                  </label>
+
+                  {/* Approbation pour rejoindre */}
+                  <label className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${requiresApproval ? 'bg-purple-500/10 border-purple-500/50 text-text-primary' : 'bg-surface border-border text-text-secondary'}`}>
+                    <div className="space-y-0.5">
+                      <span className="font-semibold block text-text-primary">🛡️ Salle d'attente (Approbation)</span>
+                      <span className="text-[10px] text-text-secondary">Approuver/Rejeter chaque participant</span>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={requiresApproval}
+                      onChange={(e) => setRequiresApproval(e.target.checked)}
+                      className="accent-primary w-4 h-4 cursor-pointer"
+                    />
+                  </label>
+                </div>
+              </div>
+
 
               <div className="pt-2 border-t border-border/60 space-y-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">

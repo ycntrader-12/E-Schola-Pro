@@ -19,9 +19,15 @@ class Classroom(Base):
         Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
     is_active = Column(Boolean, default=True)
+    is_private = Column(Boolean, default=True)
+    auto_invitations = Column(Boolean, default=False)
+    allow_screen_sharing = Column(Boolean, default=False)
+    requires_approval = Column(Boolean, default=True)
+    allowed_users = Column(Text, nullable=True)  # comma-separated user IDs/emails
     created_at = Column(DateTime, default=datetime.utcnow)
 
     instructor = relationship("User")
 
     def __str__(self):
         return f"{self.title} ({self.room_id})"
+

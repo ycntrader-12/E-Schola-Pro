@@ -951,6 +951,11 @@ E-Schola Pro/
         <tr><td><code>target_groups</code></td><td>String</td><td>Nullable</td><td>Groupes destinataires invités (IDs séparés par des virgules)</td></tr>
         <tr><td><code>instructor_id</code></td><td>Integer</td><td>FK → users.id</td><td>Formateur hôte</td></tr>
         <tr><td><code>is_active</code></td><td>Boolean</td><td>Default: True</td><td>Session active ?</td></tr>
+        <tr><td><code>is_private</code></td><td>Boolean</td><td>Default: True</td><td>Salle privée par défaut ?</td></tr>
+        <tr><td><code>auto_invitations</code></td><td>Boolean</td><td>Default: False</td><td>Invitations automatiques activées ?</td></tr>
+        <tr><td><code>allow_screen_sharing</code></td><td>Boolean</td><td>Default: False</td><td>Partage d'écran autorisé ?</td></tr>
+        <tr><td><code>requires_approval</code></td><td>Boolean</td><td>Default: True</td><td>Demandes d'accès soumises à approbation (Salle d'attente) ?</td></tr>
+        <tr><td><code>allowed_users</code></td><td>Text</td><td>Nullable</td><td>Liste des utilisateurs autorisés manuellement (IDs/emails)</td></tr>
       </tbody>
     </table>
 
@@ -1123,8 +1128,14 @@ E-Schola Pro/
       <thead><tr><th>Méthode</th><th>Endpoint</th><th>Description</th><th>Accès</th></tr></thead>
       <tbody class="endpoint-row">
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/classrooms/</code></td><td>Lister les salles virtuelles actives</td><td>Authentifié</td></tr>
-        <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/</code></td><td>Créer une salle avec sélection de groupes destinataires (invitations par messagerie interne et émargement automatique)</td><td>Admin, Formateur</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/</code></td><td>Créer une salle avec configuration avancée (salle privée, sans invitations auto par défaut, écran désactivé, approbation d'accès)</td><td>Admin, Formateur</td></tr>
         <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/{room_id}/join</code></td><td>Rejoindre et tracker l'assiduité (retards et présences)</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/{room_id}/join-request</code></td><td>Soumettre une demande pour rejoindre la salle d'attente</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/classrooms/{room_id}/join-requests</code></td><td>Consulter les demandes d'accès en attente</td><td>Formateur, Admin</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/{room_id}/join-requests/{uid}/approve</code></td><td>Approuver la demande d'accès d'un participant</td><td>Formateur, Admin</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/{room_id}/join-requests/{uid}/reject</code></td><td>Rejeter la demande d'accès d'un participant</td><td>Formateur, Admin</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/classrooms/{room_id}/join-status</code></td><td>Vérifier le statut d'approbation pour rejoindre la salle</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-patch">PATCH</span></td><td><code>/classrooms/{room_id}/settings</code></td><td>Modifier les paramètres en direct de la salle (écran, salle d'attente, confidentialité)</td><td>Formateur, Admin</td></tr>
         <tr><td><span class="badge badge-delete">DELETE</span></td><td><code>/classrooms/{id}</code></td><td>Supprimer une salle</td><td>Admin, Formateur</td></tr>
       </tbody>
     </table>
@@ -1395,12 +1406,15 @@ E-Schola Pro/
       <p><strong>Route Frontend :</strong> <code>/classroom</code> · <code>/classroom/{id}</code></p>
       <p><strong>Options et propriétés :</strong></p>
       <ul>
-        <li><strong>Création de Session :</strong> Titre, description, identifiant de salle unique (généré automatiquement ou personnalisé).</li>
-        <li><strong>Invitations aux Classes (Multi-Groupes) :</strong> Sélection d'un ou plusieurs groupes/promotions destinataires lors de la création de la classe.</li>
-        <li><strong>Notification Automatique :</strong> Envoi instantané d'une notification et d'un message d'invitation avec code d'accès dans la boîte de messagerie interne (<code>/inbox</code>) de chaque apprenant des groupes ciblés.</li>
-        <li><strong>Émargement & Assiduité Intégrés :</strong> Enregistrement automatique de chaque membre des groupes sur la feuille d'assiduité de la session (statut initial absent converti lors de l'accès).</li>
-        <li><strong>Accès & Visioconférence :</strong> Connexion directe ou via code de salle, caméra, microphone, partage d'écran et gestion des sous-groupes (breakout rooms).</li>
+        <li><strong>Création & Confidentialité (Oscola) :</strong> Titre, description, identifiant unique et salle privée par défaut.</li>
+        <li><strong>Gestion des Invitations :</strong> Désactivation des invitations automatiques par défaut. Ajout manuel de participants ou par groupe sélectionné.</li>
+        <li><strong>Contrôle du Partage d'Écran :</strong> Désactivé par défaut. Activable/désactivable en direct par le formateur depuis le panneau de configuration.</li>
+        <li><strong>Salle d'Attente (Demandes d'accès) :</strong> Toute demande pour rejoindre une salle privée est soumise à validation. L'hôte visualise les demandes et peut les **Approuver** ou les **Rejeter**.</li>
+        <li><strong>Messagerie Instantanée & Émojis :</strong> Rendu immédiat des messages dans le chat avec sélecteur d'émojis expressifs intégré.</li>
+        <li><strong>Émargement & Assiduité Intégrés :</strong> Enregistrement automatique lors du passage de la salle d'attente à la session en direct.</li>
+        <li><strong>Accès & Visioconférence :</strong> Caméra HD, microphone avec suppression du bruit, sous-groupes (breakout rooms).</li>
         <li><strong>Gestion & Clôture :</strong> Le formateur ou l'administrateur peut fermer la session et purger l'historique des classes inactives.</li>
+
       </ul>
       <div class="screenshot-container">
         <div class="screenshot-header">

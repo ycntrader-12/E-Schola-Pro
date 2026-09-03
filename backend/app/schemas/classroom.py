@@ -10,6 +10,11 @@ class ClassroomBase(BaseModel):
     description: str | None = None
     target_roles: str | None = None
     target_groups: str | None = None
+    is_private: bool = True
+    auto_invitations: bool = False
+    allow_screen_sharing: bool = False
+    requires_approval: bool = True
+    allowed_users: str | None = None
 
 
 class ClassroomCreate(ClassroomBase):
@@ -26,3 +31,4 @@ class ClassroomResponse(ClassroomBase):
 
     class Config:
         from_attributes = True
+
