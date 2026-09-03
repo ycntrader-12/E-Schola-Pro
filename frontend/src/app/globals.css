@@ -13,7 +13,7 @@
   --color-navy-dark: var(--navy-sidebar-color);
   --color-navy-btn: var(--navy-btn-color);
   
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-sans: var(--font-inter), "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 @layer base {
@@ -34,6 +34,15 @@
     --border-color: #e2e8f0; /* Crisp Clean Border */
   }
 
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    font-family: var(--font-sans);
+    text-rendering: optimizeLegibility;
+  }
+
   body {
     background-color: var(--color-background);
     background-image: radial-gradient(at 10% 20%, rgba(24, 119, 242, 0.04) 0%, transparent 45%),
@@ -41,19 +50,42 @@
     background-attachment: fixed;
     color: var(--color-text-primary);
     font-family: var(--font-sans);
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
     min-height: 100vh;
   }
 
-  /* Haute lisibilité garantie pour tous les champs de saisie */
+  /* Haute lisibilité garantie pour tous les formulaires & champs de saisie */
+  input, textarea, select, button {
+    font-family: inherit;
+    letter-spacing: normal;
+  }
+
   input, textarea, select {
-    color: var(--color-text-primary);
+    color: var(--color-text-primary) !important;
+    background-color: var(--color-surface);
   }
 
   input::placeholder, textarea::placeholder {
-    color: var(--color-text-secondary);
-    opacity: 0.8;
+    color: var(--color-text-secondary) !important;
+    opacity: 0.75;
+  }
+
+  /* Sécurité anti-texte blanc accidentel sur cartes et panneaux clairs */
+  .glass-card h1.text-white,
+  .glass-card h2.text-white,
+  .glass-card h3.text-white,
+  .glass-card h4.text-white,
+  .glass-card p.text-white,
+  .glass-card span.text-white:not([class*="bg-"]):not([class*="btn"]):not([class*="badge"]),
+  .glass-card div.text-white:not([class*="bg-"]):not([class*="btn"]):not([class*="badge"]),
+  .glass-panel h1.text-white,
+  .glass-panel h2.text-white,
+  .glass-panel h3.text-white,
+  .glass-panel h4.text-white,
+  .glass-panel p.text-white,
+  .glass-panel span.text-white:not([class*="bg-"]):not([class*="btn"]):not([class*="badge"]),
+  .glass-panel div.text-white:not([class*="bg-"]):not([class*="btn"]):not([class*="badge"]) {
+    color: var(--color-text-primary) !important;
   }
 
   /* Scrollbar discrète et douce */

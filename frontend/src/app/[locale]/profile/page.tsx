@@ -988,7 +988,7 @@ export default function ProfilePage() {
                       <ShieldCheck size={26} />
                     </div>
                     <div>
-                      <h3 className="text-xl font-extrabold text-white flex items-center gap-2">
+                      <h3 className="text-xl font-extrabold text-text-primary flex items-center gap-2">
                         Portail Backend & Base de Données
                         <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-primary text-white">
                           Admin Only
@@ -1010,28 +1010,28 @@ export default function ProfilePage() {
                     <Server size={18} className="text-primary" />
                     <div>
                       <div className="text-[10px] uppercase font-bold text-text-secondary">Serveur API</div>
-                      <div className="text-xs font-mono font-bold text-white">Port 8000 (FastAPI)</div>
+                      <div className="text-xs font-mono font-bold text-text-primary">Port 8000 (FastAPI)</div>
                     </div>
                   </div>
                   <div className="p-3 rounded-xl bg-background/60 border border-border flex items-center gap-3">
                     <Database size={18} className="text-accent-blue" />
                     <div>
                       <div className="text-[10px] uppercase font-bold text-text-secondary">Base de Données</div>
-                      <div className="text-xs font-mono font-bold text-white">SQLite (eschola.db)</div>
+                      <div className="text-xs font-mono font-bold text-text-primary">SQLite (eschola.db)</div>
                     </div>
                   </div>
                   <div className="p-3 rounded-xl bg-background/60 border border-border flex items-center gap-3">
                     <Layers size={18} className="text-accent-green" />
                     <div>
                       <div className="text-[10px] uppercase font-bold text-text-secondary">Tables ORM</div>
-                      <div className="text-xs font-mono font-bold text-white">14 Tables Actives</div>
+                      <div className="text-xs font-mono font-bold text-text-primary">14 Tables Actives</div>
                     </div>
                   </div>
                   <div className="p-3 rounded-xl bg-background/60 border border-border flex items-center gap-3">
                     <Key size={18} className="text-accent-amber" />
                     <div>
                       <div className="text-[10px] uppercase font-bold text-text-secondary">Sécurité Auth</div>
-                      <div className="text-xs font-mono font-bold text-white">JWT Bearer (7j)</div>
+                      <div className="text-xs font-mono font-bold text-text-primary">JWT Bearer (7j)</div>
                     </div>
                   </div>
                 </div>
@@ -1041,7 +1041,7 @@ export default function ProfilePage() {
               <div className="space-y-4">
                 <div className="flex items-center gap-2">
                   <Terminal size={18} className="text-primary" />
-                  <h4 className="text-base font-bold text-white">Outils Développeur & Interfaces Backend</h4>
+                  <h4 className="text-base font-bold text-text-primary">Outils Développeur & Interfaces Backend</h4>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1059,7 +1059,7 @@ export default function ProfilePage() {
                         </div>
                         <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-primary/20 text-primary">Tableau BDD</span>
                       </div>
-                      <h5 className="font-bold text-base text-white group-hover:text-primary transition-colors">Panneau SQLAdmin</h5>
+                      <h5 className="font-bold text-base text-text-primary group-hover:text-primary transition-colors">Panneau SQLAdmin</h5>
                       <p className="text-xs text-text-secondary leading-relaxed">
                         Interface d'administration complète pour explorer, insérer, modifier et exporter toutes les tables SQLite.
                       </p>
@@ -1084,7 +1084,7 @@ export default function ProfilePage() {
                         </div>
                         <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-accent-blue/20 text-accent-blue">Swagger UI</span>
                       </div>
-                      <h5 className="font-bold text-base text-white group-hover:text-accent-blue transition-colors">Documentation Swagger</h5>
+                      <h5 className="font-bold text-base text-text-primary group-hover:text-accent-blue transition-colors">Documentation Swagger</h5>
                       <p className="text-xs text-text-secondary leading-relaxed">
                         Console interactive OpenAPI pour tester directement les requêtes HTTP (GET, POST, PUT, DELETE) avec jeton JWT.
                       </p>
@@ -1109,7 +1109,7 @@ export default function ProfilePage() {
                         </div>
                         <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-purple-500/20 text-purple-400">OpenAPI Spec</span>
                       </div>
-                      <h5 className="font-bold text-base text-white group-hover:text-purple-400 transition-colors">Spécification ReDoc</h5>
+                      <h5 className="font-bold text-base text-text-primary group-hover:text-purple-400 transition-colors">Spécification ReDoc</h5>
                       <p className="text-xs text-text-secondary leading-relaxed">
                         Documentation de référence structurée avec schémas de validation Pydantic et modèles de données.
                       </p>
@@ -1134,7 +1134,7 @@ export default function ProfilePage() {
                         </div>
                         <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-amber-500/20 text-amber-400">JSON Schema</span>
                       </div>
-                      <h5 className="font-bold text-base text-white group-hover:text-amber-400 transition-colors">Schéma OpenAPI JSON</h5>
+                      <h5 className="font-bold text-base text-text-primary group-hover:text-amber-400 transition-colors">Schéma OpenAPI JSON</h5>
                       <p className="text-xs text-text-secondary leading-relaxed">
                         Fichier JSON brut décrivant l'ensemble de l'API pour l'import dans Postman, Insomnia ou curl.
                       </p>
@@ -1159,7 +1159,7 @@ export default function ProfilePage() {
                         </div>
                         <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400">Health Check</span>
                       </div>
-                      <h5 className="font-bold text-base text-white group-hover:text-emerald-400 transition-colors">Racine Backend API</h5>
+                      <h5 className="font-bold text-base text-text-primary group-hover:text-emerald-400 transition-colors">Racine Backend API</h5>
                       <p className="text-xs text-text-secondary leading-relaxed">
                         Vérification du statut d'exécution du serveur FastAPI et message d'accueil de l'API.
                       </p>
@@ -1184,7 +1184,7 @@ export default function ProfilePage() {
                         </div>
                         <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-400">Fichiers Statiques</span>
                       </div>
-                      <h5 className="font-bold text-base text-white group-hover:text-cyan-400 transition-colors">Stockage Fichiers (/uploads)</h5>
+                      <h5 className="font-bold text-base text-text-primary group-hover:text-cyan-400 transition-colors">Stockage Fichiers (/uploads)</h5>
                       <p className="text-xs text-text-secondary leading-relaxed">
                         Répertoire public servant les livrables étudiants, documents PDF, avatars et vidéos téléversés.
                       </p>
@@ -1202,7 +1202,7 @@ export default function ProfilePage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <HardDrive size={18} className="text-primary" />
-                    <h4 className="text-base font-bold text-white">Tables de la Base de Données (Accès SQLAdmin Direct)</h4>
+                    <h4 className="text-base font-bold text-text-primary">Tables de la Base de Données (Accès SQLAdmin Direct)</h4>
                   </div>
                   <span className="text-xs font-bold text-text-secondary">14 Tables Enregistrées</span>
                 </div>
@@ -1238,7 +1238,7 @@ export default function ProfilePage() {
                             <IconComp size={16} />
                           </div>
                           <div className="min-w-0">
-                            <div className="text-xs font-bold text-white group-hover:text-primary transition-colors truncate">
+                            <div className="text-xs font-bold text-text-primary group-hover:text-primary transition-colors truncate">
                               {tbl.title}
                             </div>
                             <div className="text-[10px] font-mono text-text-secondary truncate mt-0.5">
@@ -1260,7 +1260,7 @@ export default function ProfilePage() {
               <div className="space-y-4">
                 <div className="flex items-center gap-2">
                   <Code size={18} className="text-primary" />
-                  <h4 className="text-base font-bold text-white">Endpoints REST de l'API (Base : <code>{backendBaseUrl}/api/v1</code>)</h4>
+                  <h4 className="text-base font-bold text-text-primary">Endpoints REST de l'API (Base : <code>{backendBaseUrl}/api/v1</code>)</h4>
                 </div>
 
                 <div className="p-4 rounded-2xl bg-surface/30 border border-border overflow-x-auto">
@@ -1304,7 +1304,7 @@ export default function ProfilePage() {
                               {ep.method}
                             </span>
                           </td>
-                          <td className="py-2.5 pr-4 font-mono font-bold text-white text-xs">
+                          <td className="py-2.5 pr-4 font-mono font-bold text-text-primary text-xs">
                             {ep.route}
                           </td>
                           <td className="py-2.5 pr-4">
@@ -1346,7 +1346,7 @@ export default function ProfilePage() {
                   </div>
                   <button 
                     onClick={() => setIsCreateUserModalOpen(false)}
-                    className="text-text-secondary hover:text-white font-bold"
+                    className="text-text-secondary hover:text-text-primary font-bold"
                   >
                     ✕
                   </button>
@@ -1436,7 +1436,7 @@ export default function ProfilePage() {
                   </div>
                   <button 
                     onClick={() => setResetPasswordUser(null)}
-                    className="text-text-secondary hover:text-white font-bold"
+                    className="text-text-secondary hover:text-text-primary font-bold"
                   >
                     ✕
                   </button>

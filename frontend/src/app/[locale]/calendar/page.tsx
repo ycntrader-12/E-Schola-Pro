@@ -834,7 +834,7 @@ export default function CalendarPage() {
               </div>
               <button 
                 onClick={() => setShowAddModal(false)}
-                className="text-text-secondary hover:text-white font-bold"
+                className="text-text-secondary hover:text-text-primary font-bold"
               >
                 ✕
               </button>

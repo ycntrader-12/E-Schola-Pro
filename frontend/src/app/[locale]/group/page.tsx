@@ -150,7 +150,7 @@ export default function GroupPage() {
         <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-500 flex items-center justify-center shadow-lg">
           <ShieldCheck size={32} />
         </div>
-        <h2 className="text-2xl font-bold text-white">Accès Non Autorisé</h2>
+        <h2 className="text-2xl font-bold text-text-primary">Accès Non Autorisé</h2>
         <p className="text-text-secondary text-sm max-w-md">
           Ce module est strictement réservé aux formateurs et à l&apos;administration. Les rôles apprenants (étudiants, stagiaires, employés) ne sont pas autorisés à accéder aux groupes ni à les afficher.
         </p>
@@ -167,7 +167,7 @@ export default function GroupPage() {
       {/* HEADER */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white flex items-center gap-3">
+          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-text-primary flex items-center gap-3">
             <Users size={36} className="text-primary" />
             Groupes & Classes
           </h1>
@@ -201,7 +201,7 @@ export default function GroupPage() {
               <div className="p-5 flex-1 space-y-4">
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <h3 className="text-xl font-bold text-white group-hover:text-primary transition-colors">
+                    <h3 className="text-xl font-bold text-text-primary group-hover:text-primary transition-colors">
                       {group.name}
                     </h3>
                     {group.level && (
@@ -254,7 +254,7 @@ export default function GroupPage() {
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="glass-card max-w-md w-full p-6 rounded-3xl border border-primary/30 space-y-6 animate-fade-in-up">
             
-            <h3 className="text-xl font-bold text-white flex items-center gap-2">
+            <h3 className="text-xl font-bold text-text-primary flex items-center gap-2">
               {editingGroupId ? "Modifier le groupe" : "Créer un groupe"}
             </h3>
 
@@ -267,7 +267,7 @@ export default function GroupPage() {
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   placeholder="Ex: Groupe A, Classe 1, Dev Web..."
-                  className="w-full px-4 py-2.5 rounded-xl bg-surface border border-border text-sm text-white focus:border-primary outline-none"
+                  className="w-full px-4 py-2.5 rounded-xl bg-surface border border-border text-sm text-text-primary focus:border-primary outline-none"
                 />
               </div>
 
@@ -278,7 +278,7 @@ export default function GroupPage() {
                   value={newLevel}
                   onChange={(e) => setNewLevel(e.target.value)}
                   placeholder="Ex: Master 1, L3, Débutant..."
-                  className="w-full px-4 py-2.5 rounded-xl bg-surface border border-border text-sm text-white focus:border-primary outline-none"
+                  className="w-full px-4 py-2.5 rounded-xl bg-surface border border-border text-sm text-text-primary focus:border-primary outline-none"
                 />
               </div>
 
@@ -288,7 +288,7 @@ export default function GroupPage() {
                   rows={3}
                   value={newDescription}
                   onChange={(e) => setNewDescription(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl bg-surface border border-border text-sm text-white focus:border-primary outline-none resize-none"
+                  className="w-full px-4 py-2.5 rounded-xl bg-surface border border-border text-sm text-text-primary focus:border-primary outline-none resize-none"
                 />
               </div>
 

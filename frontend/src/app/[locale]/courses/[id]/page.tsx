@@ -287,18 +287,18 @@ export default function CourseDetailPage() {
         <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent" />
         
         <div className="absolute z-10 w-full max-w-5xl mx-auto px-4 inset-0 flex flex-col justify-end pb-12">
-          <Link href="/courses" className="flex items-center gap-2 text-text-secondary hover:text-white transition-colors mb-6 w-fit">
+          <Link href="/courses" className="flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors mb-6 w-fit">
             <ArrowLeft size={20} />
             Back to Courses
           </Link>
           <span className="px-3 py-1 text-xs font-semibold bg-primary/20 text-primary border border-primary/30 rounded-full w-fit mb-4">
             Course
           </span>
-          <h1 className="text-4xl md:text-6xl font-bold mb-4 drop-shadow-md">
+          <h1 className="text-4xl md:text-6xl font-bold mb-4 drop-shadow-md text-text-primary">
             {course.title}
           </h1>
           <div className="flex flex-wrap items-center gap-6 text-text-secondary text-sm font-medium">
-            <div className="flex items-center gap-2 text-white">
+            <div className="flex items-center gap-2 text-text-primary">
               <Users size={18} />
               {instructorName}
             </div>

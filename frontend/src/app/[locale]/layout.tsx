@@ -11,6 +11,7 @@ import { notFound } from 'next/navigation';
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -35,7 +36,7 @@ export default async function RootLayout({
 
   return (
     <html lang={locale} dir={locale === 'ar' ? 'rtl' : 'ltr'} suppressHydrationWarning>
-      <body className={`${inter.variable} min-h-screen bg-background text-text-primary overflow-x-hidden transition-colors duration-300`}>
+      <body className={`${inter.className} ${inter.variable} font-sans min-h-screen bg-background text-text-primary overflow-x-hidden transition-colors duration-300`}>
         <NextIntlClientProvider messages={messages}>
           <Providers>
             {/* Decorative background blurs (mostly visible in dark mode, adjust opacity if needed) */}

@@ -98,7 +98,7 @@ export default function DeliverablesGlobalModal({ currentUser, onClose }: Delive
             <Upload size={20} />
             <h3>Soumettre un livrable</h3>
           </div>
-          <button onClick={onClose} className="text-text-secondary hover:text-white p-2">
+          <button onClick={onClose} className="text-text-secondary hover:text-text-primary p-2">
             <X size={20} />
           </button>
         </div>
@@ -118,7 +118,7 @@ export default function DeliverablesGlobalModal({ currentUser, onClose }: Delive
               <select 
                 value={selectedEventId}
                 onChange={(e) => setSelectedEventId(Number(e.target.value))}
-                className="w-full bg-surface border border-border rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-primary transition-colors appearance-none"
+                className="w-full bg-surface border border-border rounded-xl px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:border-primary transition-colors appearance-none"
                 required
               >
                 <option value="" disabled>-- Sélectionner un événement --</option>
@@ -155,7 +155,7 @@ export default function DeliverablesGlobalModal({ currentUser, onClose }: Delive
                 value={linkUrl}
                 onChange={(e) => setLinkUrl(e.target.value)}
                 placeholder="https://..."
-                className="w-full bg-background border border-border rounded-xl pl-10 pr-4 py-2 text-sm text-white focus:outline-none focus:border-primary transition-colors"
+                className="w-full bg-background border border-border rounded-xl pl-10 pr-4 py-2 text-sm text-text-primary focus:outline-none focus:border-primary transition-colors"
               />
             </div>
           </div>

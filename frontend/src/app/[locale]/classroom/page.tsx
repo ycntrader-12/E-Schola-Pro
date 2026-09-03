@@ -363,7 +363,7 @@ export default function ClassroomHubPage() {
               </div>
               <button 
                 onClick={() => setIsModalOpen(false)}
-                className="text-text-secondary hover:text-white w-8 h-8 rounded-lg bg-surface hover:bg-surface-hover flex items-center justify-center text-sm font-bold transition-colors"
+                className="text-text-secondary hover:text-text-primary w-8 h-8 rounded-lg bg-surface hover:bg-surface-hover flex items-center justify-center text-sm font-bold transition-colors"
               >
                 ✕
               </button>

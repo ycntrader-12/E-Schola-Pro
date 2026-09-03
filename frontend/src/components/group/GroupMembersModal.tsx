@@ -82,7 +82,7 @@ export default function GroupMembersModal({ groupId, groupName, onClose }: Group
             <Users size={20} />
             <h3>Membres de {groupName}</h3>
           </div>
-          <button onClick={onClose} className="text-text-secondary hover:text-white p-2">
+          <button onClick={onClose} className="text-text-secondary hover:text-text-primary p-2">
             <X size={20} />
           </button>
         </div>
@@ -94,7 +94,7 @@ export default function GroupMembersModal({ groupId, groupName, onClose }: Group
             <select 
               value={selectedUserId}
               onChange={(e) => setSelectedUserId(Number(e.target.value))}
-              className="flex-1 bg-surface border border-border rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-primary"
+              className="flex-1 bg-surface border border-border rounded-xl px-4 py-2 text-sm text-text-primary focus:outline-none focus:border-primary"
               required
             >
               <option value="" disabled>-- Sélectionner un étudiant --</option>
@@ -129,7 +129,7 @@ export default function GroupMembersModal({ groupId, groupName, onClose }: Group
                 {members.map(member => (
                   <div key={member.id} className="bg-background p-3 rounded-xl border border-border flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-sm font-bold text-white truncate">{member.user_email}</p>
+                      <p className="text-sm font-bold text-text-primary truncate">{member.user_email}</p>
                       <p className="text-[10px] text-text-secondary uppercase mt-0.5">{member.user_role}</p>
                     </div>
                     <button 

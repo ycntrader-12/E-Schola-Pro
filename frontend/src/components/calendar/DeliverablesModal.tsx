@@ -96,7 +96,7 @@ export default function DeliverablesModal({ event, currentUser, onClose }: Deliv
             <h3 className="text-primary font-bold text-lg">Livrables : {event.title}</h3>
             <p className="text-xs text-text-secondary mt-1">Gérez les rendus et soumissions pour ce cours / événement</p>
           </div>
-          <button onClick={onClose} className="text-text-secondary hover:text-white p-2">
+          <button onClick={onClose} className="text-text-secondary hover:text-text-primary p-2">
             <X size={20} />
           </button>
         </div>
@@ -122,7 +122,7 @@ export default function DeliverablesModal({ event, currentUser, onClose }: Deliv
                     value={linkUrl}
                     onChange={(e) => setLinkUrl(e.target.value)}
                     placeholder="https://..."
-                    className="w-full bg-background border border-border rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-primary transition-colors"
+                    className="w-full bg-background border border-border rounded-xl px-4 py-2 text-sm text-text-primary focus:outline-none focus:border-primary transition-colors"
                   />
                 </div>
                 <button 
@@ -154,7 +154,7 @@ export default function DeliverablesModal({ event, currentUser, onClose }: Deliv
                   <div key={del.id} className="bg-background p-3 rounded-xl border border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="min-w-0">
                       {canManage && del.user && (
-                        <p className="text-xs font-bold text-white truncate">{del.user.email}</p>
+                        <p className="text-xs font-bold text-text-primary truncate">{del.user.email}</p>
                       )}
                       <p className="text-[10px] text-text-secondary">Soumis le {new Date(del.submitted_at).toLocaleString()}</p>
                     </div>
@@ -174,7 +174,7 @@ export default function DeliverablesModal({ event, currentUser, onClose }: Deliv
                           href={del.link_url} 
                           target="_blank" 
                           rel="noreferrer"
-                          className="px-3 py-1.5 bg-surface hover:bg-border text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 border border-border"
+                          className="px-3 py-1.5 bg-surface hover:bg-border text-text-primary text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 border border-border"
                         >
                           <ExternalLink size={14} /> Lien
                         </a>

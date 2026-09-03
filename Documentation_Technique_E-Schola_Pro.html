@@ -1524,7 +1524,13 @@ E-Schola Pro/
         <li>Boutons &amp; Actions : <code>#1877f2</code> / <code>#2563eb</code></li>
         <li>Badges de statut : <code>#fef3c7</code> / <code>#d97706</code> (Ambre Doré)</li>
       </ul>
-      <p><strong>Typographie :</strong> Inter / Segoe UI / Helvetica (Polices universelles haute lisibilité)</p>
+      <p><strong>Typographie &amp; Lisibilité Globale :</strong></p>
+      <ul>
+        <li><strong>Police Inter Auto-Hébergée :</strong> Intégration via <code>next/font/google</code> avec <code>display: swap</code> injectée directement sur le <code>&lt;body&gt;</code> (<code>inter.className</code> + <code>--font-inter</code>) pour un rendu parfait et cohérent.</li>
+        <li><strong>Lissage &amp; Netteté Optique :</strong> Configuration <code>text-rendering: optimizeLegibility</code> préservant l'anti-crénelage sous-pixel ClearType sous Windows et évitant le flou ou le crénelage pixelisé sur les textes de petite taille.</li>
+        <li><strong>Contraste Garanti sur Formulaires :</strong> Forçage systématique de <code>color: var(--color-text-primary) !important</code> et <code>font-family: inherit</code> pour tous les éléments <code>&lt;input&gt;</code>, <code>&lt;textarea&gt;</code>, <code>&lt;select&gt;</code> et <code>&lt;button&gt;</code> pour éliminer tout risque de texte blanc sur fond clair.</li>
+        <li><strong>Sécurité Anti-Texte Blanc Accidentel :</strong> Les éléments textuels enfants de <code>.glass-card</code> et <code>.glass-panel</code> sont automatiquement protégés contre les classes <code>text-white</code> résiduelles.</li>
+      </ul>
       <p><strong>Icônes :</strong> Lucide React</p>
     </div>
 

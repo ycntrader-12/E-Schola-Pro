@@ -517,7 +517,7 @@ export default function InboxMessagesPage() {
             {actionMessage.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
             <span>{actionMessage.text}</span>
           </div>
-          <button onClick={() => setActionMessage(null)} className="text-gray-400 hover:text-white">✕</button>
+          <button onClick={() => setActionMessage(null)} className="text-gray-400 hover:text-text-primary">✕</button>
         </div>
       )}
 
@@ -797,7 +797,7 @@ export default function InboxMessagesPage() {
                       <div className="w-6 h-6 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-[10px]">
                         {contactEmail.charAt(0).toUpperCase()}
                       </div>
-                      <span className={`text-xs truncate max-w-[170px] ${!msg.is_read && isReceived ? 'font-bold text-white' : 'font-medium text-text-secondary'}`}>
+                      <span className={`text-xs truncate max-w-[170px] ${!msg.is_read && isReceived ? 'font-extrabold text-text-primary' : 'font-medium text-text-secondary'}`}>
                         {isReceived ? contactEmail : `À : ${contactEmail}`}
                       </span>
                     </div>
@@ -839,7 +839,7 @@ export default function InboxMessagesPage() {
                 </h2>
                 <button
                   onClick={() => setIsComposing(false)}
-                  className="text-text-secondary hover:text-white text-sm"
+                  className="text-text-secondary hover:text-text-primary text-sm"
                 >
                   ✕
                 </button>
@@ -1030,7 +1030,7 @@ export default function InboxMessagesPage() {
                   <button
                     type="button"
                     onClick={() => setIsComposing(false)}
-                    className="w-full sm:w-auto px-4 py-3 text-text-secondary hover:text-white rounded-xl text-xs transition-colors"
+                    className="w-full sm:w-auto px-4 py-3 text-text-secondary hover:text-text-primary rounded-xl text-xs transition-colors"
                   >
                     Annuler
                   </button>
@@ -1280,7 +1280,7 @@ export default function InboxMessagesPage() {
               </div>
               <button 
                 onClick={() => setReportingMessage(null)}
-                className="text-text-secondary hover:text-white font-bold"
+                className="text-text-secondary hover:text-text-primary font-bold"
               >
                 ✕
               </button>

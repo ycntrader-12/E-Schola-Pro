@@ -82,12 +82,12 @@ export default function CreateCoursePage() {
 
   return (
     <div className="min-h-screen px-4 py-24 max-w-3xl mx-auto">
-      <Link href="/courses" className="inline-flex items-center gap-2 text-text-secondary hover:text-white mb-8 transition-colors">
+      <Link href="/courses" className="inline-flex items-center gap-2 text-text-secondary hover:text-text-primary mb-8 transition-colors">
         <ArrowLeft size={16} /> Back to Courses
       </Link>
       
       <div className="glass-card p-8">
-        <h1 className="text-3xl font-bold mb-6">Create a New Course</h1>
+        <h1 className="text-3xl font-bold mb-6 text-text-primary">Create a New Course</h1>
         
         {error && (
           <div className="bg-red-500/10 border border-red-500/50 text-red-500 px-4 py-3 rounded-lg mb-6">
@@ -97,31 +97,31 @@ export default function CreateCoursePage() {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label className="block text-sm font-medium mb-2">Course Title</label>
+            <label className="block text-sm font-medium mb-2 text-text-secondary">Course Title</label>
             <input 
               type="text" 
               required
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-4 py-3 rounded-lg bg-surface/50 border border-white/10 focus:border-primary/50 focus:ring-1 focus:ring-primary/50 outline-none transition-all"
+              className="w-full px-4 py-3 rounded-lg bg-surface/50 border border-border focus:border-primary/50 focus:ring-1 focus:ring-primary/50 outline-none transition-all text-text-primary"
               placeholder="e.g., Advanced React Patterns"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">Description</label>
+            <label className="block text-sm font-medium mb-2 text-text-secondary">Description</label>
             <textarea 
               rows={4}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-4 py-3 rounded-lg bg-surface/50 border border-white/10 focus:border-primary/50 focus:ring-1 focus:ring-primary/50 outline-none transition-all resize-y"
+              className="w-full px-4 py-3 rounded-lg bg-surface/50 border border-border focus:border-primary/50 focus:ring-1 focus:ring-primary/50 outline-none transition-all resize-y text-text-primary"
               placeholder="Describe what students will learn..."
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">Cover Image</label>
-            <div className="border-2 border-dashed border-white/10 rounded-xl p-8 text-center hover:border-primary/50 transition-colors cursor-pointer bg-surface/30 relative">
+            <label className="block text-sm font-medium mb-2 text-text-secondary">Cover Image</label>
+            <div className="border-2 border-dashed border-border rounded-xl p-8 text-center hover:border-primary/50 transition-colors cursor-pointer bg-surface/30 relative">
               <input 
                 type="file" 
                 accept="image/*"
@@ -130,15 +130,15 @@ export default function CreateCoursePage() {
               />
               <div className="flex flex-col items-center gap-3 text-text-secondary pointer-events-none">
                 <Upload size={32} />
-                <span className="font-medium text-white">{coverImage ? coverImage.name : 'Click or drag to upload image'}</span>
+                <span className="font-medium text-text-primary">{coverImage ? coverImage.name : 'Click or drag to upload image'}</span>
                 {!coverImage && <span className="text-xs">JPG, PNG or WEBP (max. 5MB)</span>}
               </div>
             </div>
           </div>
           
           <div>
-            <label className="block text-sm font-medium mb-2">Course Document (Optional)</label>
-            <div className="border-2 border-dashed border-white/10 rounded-xl p-8 text-center hover:border-primary/50 transition-colors cursor-pointer bg-surface/30 relative">
+            <label className="block text-sm font-medium mb-2 text-text-secondary">Course Document (Optional)</label>
+            <div className="border-2 border-dashed border-border rounded-xl p-8 text-center hover:border-primary/50 transition-colors cursor-pointer bg-surface/30 relative">
               <input 
                 type="file" 
                 accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
@@ -155,7 +155,7 @@ export default function CreateCoursePage() {
               />
               <div className="flex flex-col items-center gap-3 text-text-secondary pointer-events-none">
                 <Upload size={32} />
-                <span className="font-medium text-white">{documentFile ? documentFile.name : 'Click or drag to upload document'}</span>
+                <span className="font-medium text-text-primary">{documentFile ? documentFile.name : 'Click or drag to upload document'}</span>
                 {!documentFile && <span className="text-xs">PDF, Word, Excel, PowerPoint (max. 450MB)</span>}
               </div>
             </div>
