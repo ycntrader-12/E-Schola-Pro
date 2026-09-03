@@ -12,20 +12,42 @@ export default function Home() {
   const [isMuted, setIsMuted] = useState(false);
 
   useEffect(() => {
-    if (videoRef.current) {
-      videoRef.current.muted = isMuted;
-      const playPromise = videoRef.current.play();
-      if (playPromise !== undefined) {
-        playPromise.catch(() => {
-          // Browser blocked unmuted autoplay, fallback to muted autoplay
-          if (videoRef.current) {
-            videoRef.current.muted = true;
-            setIsMuted(true);
-            videoRef.current.play();
+    const video = videoRef.current;
+    if (!video) return;
+
+    // Sound ON by default
+    video.muted = false;
+    video.volume = 1.0;
+
+    const attemptPlayWithSound = async () => {
+      try {
+        await video.play();
+        setIsMuted(false);
+      } catch (err) {
+        // If browser policy blocks unmuted autoplay before user interaction,
+        // start playing muted and automatically unmute on first user interaction anywhere
+        video.muted = true;
+        setIsMuted(true);
+        await video.play().catch(() => {});
+
+        const handleUserInteraction = () => {
+          if (video) {
+            video.muted = false;
+            setIsMuted(false);
+            video.play().catch(() => {});
           }
-        });
+          window.removeEventListener('click', handleUserInteraction);
+          window.removeEventListener('keydown', handleUserInteraction);
+          window.removeEventListener('touchstart', handleUserInteraction);
+        };
+
+        window.addEventListener('click', handleUserInteraction, { once: true });
+        window.addEventListener('keydown', handleUserInteraction, { once: true });
+        window.addEventListener('touchstart', handleUserInteraction, { once: true });
       }
-    }
+    };
+
+    attemptPlayWithSound();
   }, []);
 
   const toggleSound = () => {
@@ -34,7 +56,7 @@ export default function Home() {
       videoRef.current.muted = nextMuteState;
       setIsMuted(nextMuteState);
       if (videoRef.current.paused) {
-        videoRef.current.play();
+        videoRef.current.play().catch(() => {});
       }
     }
   };
