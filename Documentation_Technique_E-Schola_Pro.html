@@ -1604,6 +1604,17 @@ E-Schola Pro/
         <li><code>Roles</code> : Dénominations officielles (Administrateur, Formateur, Étudiant, Stagiaire, Employé).</li>
       </ul>
     </div>
+
+    <h3>Contraintes Techniques Strictes &amp; Qualité Industrielle</h3>
+    <div class="card">
+      <p>Les 4 piliers d'ingénierie logicielle garantissant la qualité de production de la plateforme E-Schola Pro :</p>
+      <ul>
+        <li><strong>Performance &amp; Zéro blocage :</strong> Assurer une fluidité absolue à 60 FPS. Utiliser exclusivement l'accélération matérielle GPU (propriétés <code>transform</code> et <code>opacity</code>) pour toutes les animations et transitions. Découper le code avec <em>lazy loading</em> dynamique et virtualisation des listes volumineuses. Éviter tout gel du thread principal via des requêtes asynchrones non bloquantes et des workers dédiés.</li>
+        <li><strong>Stabilité &amp; Robustesse :</strong> Zéro plantage en production. Isolation des composants critiques dans des gestionnaires d'erreurs (<em>React Error Boundaries</em> et blocs <code>try-catch</code> exhaustifs). Nettoyage systématique des écouteurs d'événements et timers (fonctions de nettoyage dans les hooks <code>useEffect</code>) pour éliminer toute fuite de mémoire.</li>
+        <li><strong>Compatibilité universelle :</strong> Rendu et fonctionnement 100 % identiques et fidèles sur tous les navigateurs majeurs (Google Chrome, Apple Safari, Mozilla Firefox, Microsoft Edge) et systèmes d'exploitation (iOS, Android, Windows, macOS, Linux), incluant les versions antérieures via polyfills et préfixes CSS normalisés.</li>
+        <li><strong>Responsive total &amp; Ergonomie tactile :</strong> Affichage adaptatif et ergonomique sur Desktop, Tablette et Mobile sans altérer l'architecture applicative existante. Prise en charge native du tactile avec dimensions des cibles tactiles interactives supérieures ou égales à 44 &times; 44 px, combinée à une accessibilité intégrale au clavier et à la souris.</li>
+      </ul>
+    </div>
   </section>
 
   <!-- ═══════════════════════════════════════════════════════════════ -->

@@ -21,3 +21,10 @@
 - **Frontend :** Next.js 15 (App Router, Tailwind/Vanilla CSS, Lucide React, next-intl).
 - **Backend :** FastAPI, SQLAlchemy, SQLite (`eschola.db`), Pydantic v2.
 - **Sécurité :** Authentification JWT Bearer Token, contrôle strict des rôles (admin, formateur, étudiant, stagiaire, employer).
+
+## 3. Contraintes Techniques Strictes & Qualité Industrielle
+
+- **Performance & Zéro blocage :** Assurer une fluidité absolue à 60 FPS. Utiliser exclusivement l'accélération GPU (`transform`, `opacity`) pour les transitions. Découper le code avec *lazy loading* et virtualisation des longues listes. Éviter tout gel du thread principal (requêtes asynchrones non bloquantes, web workers si nécessaire).
+- **Stabilité & Robustesse :** Zéro plantage. Isoler les composants dans des gestionnaires d'erreurs (*Error Boundaries* / `try-catch`) et nettoyer systématiquement les écouteurs/timers (`useEffect cleanup`) pour éliminer toute fuite de mémoire.
+- **Compatibilité universelle :** Rendu et fonctionnement 100 % identiques sur tous les navigateurs (Chrome, Safari, Firefox, Edge) et OS (iOS, Android, Windows, macOS, Linux), y compris sur versions antérieures (polyfills / préfixes CSS).
+- **Responsive total :** Affichage adaptatif et ergonomique sur Desktop, Tablette et Mobile sans altérer l'architecture actuelle, avec support complet du tactile (cibles tactiles $\ge$ 44 px) et de la souris/clavier.
