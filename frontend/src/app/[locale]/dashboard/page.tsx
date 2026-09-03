@@ -14,7 +14,8 @@ import {
   GraduationCap,
   Globe,
   ExternalLink,
-  X
+  X,
+  LogOut
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import Sidebar from '@/components/dashboard/Sidebar';
@@ -44,7 +45,9 @@ export default function DashboardPage() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(false);
+  const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -74,16 +77,27 @@ export default function DashboardPage() {
     fetchData();
   }, [router]);
 
-  // Click outside to close search dropdown
+  // Click outside to close search and user dropdowns
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
         setIsSearchDropdownOpen(false);
       }
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setIsUserDropdownOpen(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem('access_token');
+    document.cookie = 'access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;';
+    window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new Event('auth_user_updated'));
+    router.push('/login');
+  };
 
   if (isLoading) {
     return (
@@ -284,41 +298,102 @@ export default function DashboardPage() {
               )}
             </button>
 
-            {/* Real Profile Capsule (Real Avatar or Initial Circle) */}
-            <Link 
-              href="/profile" 
-              className="flex items-center gap-3 py-1 px-2 rounded-xl hover:bg-slate-100/80 transition-colors group cursor-pointer"
-            >
-              {/* Circular Avatar Photo or Real Initials */}
-              <div className="w-10 h-10 rounded-full overflow-hidden relative shadow-xs border border-slate-200 shrink-0 flex items-center justify-center">
-                {currentUser?.avatar_url ? (
-                  <Image 
-                    src={currentUser.avatar_url} 
-                    alt={displayName} 
-                    fill 
-                    className="object-cover" 
-                    unoptimized 
-                  />
-                ) : (
-                  <div className="w-full h-full rounded-full bg-gradient-to-tr from-[#1877f2] to-[#38bdf8] flex items-center justify-center text-white font-extrabold text-sm shadow-xs">
-                    {displayName.charAt(0)}
+            {/* Real Profile Capsule & Logout Menu */}
+            <div ref={userMenuRef} className="relative">
+              <div className="flex items-center gap-3 py-1.5 px-3 rounded-2xl bg-white border border-slate-200/80 shadow-xs hover:border-slate-300 transition-all">
+                {/* Circular Avatar Photo or Real Initials */}
+                <Link 
+                  href="/profile"
+                  className="w-10 h-10 rounded-full overflow-hidden relative shadow-xs border border-slate-200 shrink-0 flex items-center justify-center hover:opacity-90 transition-opacity cursor-pointer group"
+                  title="Accéder à mon profil"
+                >
+                  {currentUser?.avatar_url ? (
+                    <Image 
+                      src={currentUser.avatar_url} 
+                      alt={displayName} 
+                      fill 
+                      className="object-cover" 
+                      unoptimized 
+                    />
+                  ) : (
+                    <div className="w-full h-full rounded-full bg-gradient-to-tr from-[#1877f2] to-[#38bdf8] flex items-center justify-center text-white font-extrabold text-sm shadow-xs">
+                      {displayName.charAt(0)}
+                    </div>
+                  )}
+                </Link>
+
+                {/* Real User Name & Mon Compte & Se Déconnecter Button */}
+                <div className="text-left flex flex-col justify-center">
+                  <div className="flex items-center gap-1.5">
+                    <Link
+                      href="/profile"
+                      className="text-sm font-bold text-slate-900 hover:text-[#1877f2] transition-colors leading-tight"
+                    >
+                      {displayName}
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
+                      className="text-slate-400 hover:text-slate-600 transition-colors p-0.5 rounded cursor-pointer"
+                      title="Menu du compte"
+                    >
+                      <ChevronDown size={14} className={`transition-transform duration-200 ${isUserDropdownOpen ? 'rotate-180 text-[#1877f2]' : ''}`} />
+                    </button>
                   </div>
-                )}
+                  
+                  <Link
+                    href="/profile"
+                    className="text-xs text-slate-500 hover:text-[#1877f2] font-medium leading-tight mt-0.5 transition-colors"
+                  >
+                    Mon Compte
+                  </Link>
+
+                  {/* Bouton Se Déconnecter sous Mon Compte */}
+                  <button
+                    onClick={handleLogout}
+                    className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-500 hover:text-rose-700 transition-colors mt-1 cursor-pointer w-fit group/btn"
+                    title="Se déconnecter de votre session"
+                  >
+                    <LogOut size={11} className="group-hover/btn:-translate-x-0.5 transition-transform" />
+                    <span>Se déconnecter</span>
+                  </button>
+                </div>
               </div>
 
-              {/* Real User Name & Mon Compte */}
-              <div className="text-left">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-sm font-bold text-slate-900 group-hover:text-[#1877f2] transition-colors leading-snug">
-                    {displayName}
-                  </span>
-                  <ChevronDown size={14} className="text-slate-400 group-hover:text-slate-600 transition-colors shrink-0" />
+              {/* Dropdown Menu Déroulant sous le logo */}
+              {isUserDropdownOpen && (
+                <div className="absolute right-0 top-full mt-2 w-60 bg-white rounded-2xl border border-slate-200 shadow-xl z-50 p-2 animate-fade-in divide-y divide-slate-100">
+                  <div className="px-3 py-2">
+                    <p className="text-xs font-bold text-slate-900">{displayName}</p>
+                    <p className="text-[11px] text-slate-500 truncate">{currentUser?.email}</p>
+                    <span className="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-blue-50 text-[#1877f2] border border-blue-200">
+                      {currentUser?.role || 'Apprenant'}
+                    </span>
+                  </div>
+
+                  <div className="py-1">
+                    <Link
+                      href="/profile"
+                      onClick={() => setIsUserDropdownOpen(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#1877f2] transition-colors"
+                    >
+                      <User size={14} />
+                      <span>Mon Compte &amp; Profil</span>
+                    </Link>
+                  </div>
+
+                  <div className="pt-1">
+                    <button
+                      onClick={handleLogout}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer text-left"
+                    >
+                      <LogOut size={14} />
+                      <span>Se déconnecter</span>
+                    </button>
+                  </div>
                 </div>
-                <span className="text-xs text-slate-500 font-medium leading-none block mt-0.5">
-                  Mon Compte
-                </span>
-              </div>
-            </Link>
+              )}
+            </div>
           </div>
         </div>
 
