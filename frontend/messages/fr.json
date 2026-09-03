@@ -93,7 +93,8 @@
     "age_badge": "Âge calculé",
     "years_old": "ans",
     "auto_generated": "Auto-généré",
-    "custom_username": "Personnaliser"
+    "custom_username": "Personnaliser",
+    "error": "Identifiants incorrects"
   },
   "Dashboard": {
     "online_course": "COURS EN LIGNE",
@@ -255,24 +256,5 @@
     "etudiant": "Étudiant",
     "stagiaire": "Stagiaire",
     "employer": "Employé"
-  },
-  "Auth": {
-    "login_title": "Connexion à votre espace",
-    "login_subtitle": "Accédez à vos cours, classes virtuelles et outils collaboratifs",
-    "register_title": "Créer un compte",
-    "register_subtitle": "Rejoignez la plateforme E-Schola Pro",
-    "email": "Adresse email",
-    "password": "Mot de passe",
-    "confirm_password": "Confirmer le mot de passe",
-    "role": "Votre rôle",
-    "show_password": "Afficher le mot de passe",
-    "hide_password": "Masquer le mot de passe",
-    "submit_login": "Se connecter",
-    "submit_register": "Créer mon compte",
-    "error": "Identifiants incorrects",
-    "no_account": "Pas encore de compte ?",
-    "sign_up_link": "Inscrivez-vous ici",
-    "already_account": "Déjà inscrit ?",
-    "sign_in_link": "Connectez-vous"
   }
 }

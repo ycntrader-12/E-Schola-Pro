@@ -93,7 +93,8 @@
     "age_badge": "Calculated Age",
     "years_old": "years old",
     "auto_generated": "Auto-generated",
-    "custom_username": "Customize"
+    "custom_username": "Customize",
+    "error": "Invalid credentials"
   },
   "Dashboard": {
     "online_course": "ONLINE COURSE",
@@ -255,24 +256,5 @@
     "etudiant": "Student",
     "stagiaire": "Intern",
     "employer": "Employee"
-  },
-  "Auth": {
-    "login_title": "Sign in to your account",
-    "login_subtitle": "Access your courses, virtual classrooms and collaborative tools",
-    "register_title": "Create an account",
-    "register_subtitle": "Join the E-Schola Pro platform",
-    "email": "Email address",
-    "password": "Password",
-    "confirm_password": "Confirm password",
-    "role": "Your role",
-    "show_password": "Show password",
-    "hide_password": "Hide password",
-    "submit_login": "Sign in",
-    "submit_register": "Create my account",
-    "error": "Invalid credentials",
-    "no_account": "Don't have an account?",
-    "sign_up_link": "Sign up here",
-    "already_account": "Already registered?",
-    "sign_in_link": "Sign in"
   }
 }
