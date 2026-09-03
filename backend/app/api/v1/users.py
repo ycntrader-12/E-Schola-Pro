@@ -9,9 +9,10 @@ from pydantic import BaseModel
 from app.api.deps import CurrentUser, SessionDep
 from app.core.security import get_password_hash, verify_password
 from app.models.user import User
-from app.schemas.user import UserCreate, UserResponse, UserUpdatePassword
+from app.schemas.user import UserCreate, UserResponse, UserUpdate, UserUpdatePassword
 
 router = APIRouter()
+
 
 ADMIN_ROLES = ["admin", "admin_manager", "admin_limited"]
 SUPER_ADMIN_ROLES = ["admin", "admin_limited"]
@@ -487,3 +488,131 @@ def admin_reset_password(
     session.commit()
     session.refresh(user)
     return {"message": "Mot de passe mis à jour avec succès.", "id": user_id}
+
+
+@router.put("/me", response_model=UserResponse)
+def update_user_me(
+    *,
+    session: SessionDep,
+    current_user: CurrentUser,
+    user_in: UserUpdate,
+) -> Any:
+    """
+    Update details for the currently authenticated user.
+    """
+    if user_in.nom is not None:
+        current_user.nom = user_in.nom.strip()
+    if user_in.prenom is not None:
+        current_user.prenom = user_in.prenom.strip()
+    if user_in.email is not None:
+        new_email = user_in.email.strip().lower()
+        if new_email and new_email != current_user.email:
+            existing = session.query(User).filter(User.email == new_email, User.id != current_user.id).first()
+            if existing:
+                raise HTTPException(status_code=400, detail="Cette adresse email est déjà utilisée par un autre compte.")
+            current_user.email = new_email
+    if user_in.telephone is not None:
+        current_user.telephone = user_in.telephone.strip()
+    if user_in.adresse is not None:
+        current_user.adresse = user_in.adresse.strip()
+    if user_in.ville is not None:
+        current_user.ville = user_in.ville.strip()
+    if user_in.pays is not None:
+        current_user.pays = user_in.pays.strip()
+    if user_in.date_naissance is not None:
+        current_user.date_naissance = user_in.date_naissance.strip()
+    if user_in.cin is not None:
+        current_user.cin = user_in.cin.strip()
+    if user_in.departement is not None:
+        current_user.departement = user_in.departement.strip()
+    if user_in.specialisation is not None:
+        current_user.specialisation = user_in.specialisation.strip()
+
+    session.add(current_user)
+    session.commit()
+    session.refresh(current_user)
+    return current_user
+
+
+@router.put("/{user_id}", response_model=UserResponse)
+def admin_update_user(
+    user_id: int,
+    *,
+    session: SessionDep,
+    current_user: CurrentUser,
+    user_in: UserUpdate,
+) -> Any:
+    """
+    Update any user's profile details and role (Admin and Admin Manager with restrictions).
+    """
+    if current_user.role.lower() not in ADMIN_ROLES:
+        raise HTTPException(
+            status_code=403, detail="Seul un administrateur peut modifier des comptes d'utilisateurs."
+        )
+
+    user = session.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Utilisateur introuvable.")
+
+    if current_user.role.lower() == "admin_manager" and user.role.lower() in ADMIN_ROLES and current_user.id != user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="Un ADMIN_MANAGER ne peut pas modifier un compte administrateur.",
+        )
+
+    # Check username uniqueness if changed
+    if user_in.username is not None:
+        new_username = user_in.username.strip().lower()
+        if new_username and new_username != user.username:
+            existing = session.query(User).filter(User.username == new_username, User.id != user_id).first()
+            if existing:
+                raise HTTPException(status_code=400, detail=f"Le nom d'utilisateur '{new_username}' est déjà pris.")
+            user.username = new_username
+
+    # Check email uniqueness if changed
+    if user_in.email is not None:
+        new_email = user_in.email.strip().lower()
+        if new_email and new_email != user.email:
+            existing = session.query(User).filter(User.email == new_email, User.id != user_id).first()
+            if existing:
+                raise HTTPException(status_code=400, detail=f"L'adresse email '{new_email}' est déjà utilisée.")
+            user.email = new_email
+
+    # Role update
+    if user_in.role is not None:
+        new_role = user_in.role.strip()
+        if current_user.role.lower() == "admin_manager" and new_role.lower() in ADMIN_ROLES:
+            raise HTTPException(status_code=403, detail="Un ADMIN_MANAGER ne peut pas accorder de rôle administrateur.")
+        user.role = new_role
+
+    if user_in.nom is not None:
+        user.nom = user_in.nom.strip()
+    if user_in.prenom is not None:
+        user.prenom = user_in.prenom.strip()
+    if user_in.date_naissance is not None:
+        user.date_naissance = user_in.date_naissance.strip()
+    if user_in.cin is not None:
+        user.cin = user_in.cin.strip()
+    if user_in.telephone is not None:
+        user.telephone = user_in.telephone.strip()
+    if user_in.adresse is not None:
+        user.adresse = user_in.adresse.strip()
+    if user_in.ville is not None:
+        user.ville = user_in.ville.strip()
+    if user_in.pays is not None:
+        user.pays = user_in.pays.strip()
+    if user_in.departement is not None:
+        user.departement = user_in.departement.strip()
+    if user_in.specialisation is not None:
+        user.specialisation = user_in.specialisation.strip()
+    if user_in.group_name is not None:
+        user.group_name = user_in.group_name.strip()
+
+    if user_in.password and user_in.password.strip():
+        user.hashed_password = get_password_hash(user_in.password.strip())
+
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    return user
+

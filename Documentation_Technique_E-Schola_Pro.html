@@ -1047,6 +1047,8 @@ E-Schola Pro/
         <tr><td><span class="badge badge-post">POST</span></td><td><code>/users/</code></td><td>Créer un utilisateur (inscription publique avec profil complet)</td><td>Public</td></tr>
         <tr><td><span class="badge badge-post">POST</span></td><td><code>/users/admin-create</code></td><td>Créer un compte depuis le panneau d'administration (profil standard ou allégé admin)</td><td>Admin, Admin Manager</td></tr>
         <tr><td><span class="badge badge-put">PUT</span></td><td><code>/users/me/password</code></td><td>Modifier son propre mot de passe (persistant)</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-put">PUT</span></td><td><code>/users/me</code></td><td>Mettre à jour son propre profil personnel (nom, prénom, email, téléphone, adresse, etc.)</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-put">PUT</span></td><td><code>/users/{id}</code></td><td>Modifier un compte utilisateur (profil complet, rôle, département, spécialisation, mot de passe)</td><td>Admin, Admin Manager</td></tr>
         <tr><td><span class="badge badge-put">PUT</span></td><td><code>/users/{id}/password</code></td><td>Réinitialiser le mot de passe d'un utilisateur</td><td>Admin, Admin Manager</td></tr>
         <tr><td><span class="badge badge-put">PUT</span></td><td><code>/users/{id}/role</code></td><td>Changer le rôle d'un utilisateur (persistant)</td><td>Admin, Admin Manager</td></tr>
         <tr><td><span class="badge badge-post">POST</span></td><td><code>/users/me/avatar</code></td><td>Téléverser une photo de profil</td><td>Authentifié</td></tr>

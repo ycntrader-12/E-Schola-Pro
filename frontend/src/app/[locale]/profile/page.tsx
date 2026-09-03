@@ -14,6 +14,7 @@ import {
   BookOpen, 
   Trash2, 
   Plus, 
+  Pencil,
   Sparkles, 
   ExternalLink, 
   Database, 
@@ -73,6 +74,12 @@ interface UserProfile {
   prenom?: string;
   departement?: string;
   specialisation?: string;
+  date_naissance?: string;
+  cin?: string;
+  telephone?: string;
+  adresse?: string;
+  ville?: string;
+  pays?: string;
 }
 
 interface CourseItem {
@@ -193,6 +200,81 @@ export default function ProfilePage() {
   const [newResetPassword, setNewResetPassword] = useState('');
   const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [resetPasswordError, setResetPasswordError] = useState('');
+
+  // Edit User modal state
+  const [isEditUserModalOpen, setIsEditUserModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
+  const [editUsername, setEditUsername] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editNom, setEditNom] = useState('');
+  const [editPrenom, setEditPrenom] = useState('');
+  const [editRole, setEditRole] = useState('étudiant');
+  const [editTelephone, setEditTelephone] = useState('');
+  const [editCin, setEditCin] = useState('');
+  const [editDateNaissance, setEditDateNaissance] = useState('');
+  const [editAdresse, setEditAdresse] = useState('');
+  const [editVille, setEditVille] = useState('');
+  const [editPays, setEditPays] = useState('');
+  const [editDepartement, setEditDepartement] = useState('');
+  const [editSpecialisation, setEditSpecialisation] = useState('');
+  const [editPassword, setEditPassword] = useState('');
+  const [isUpdatingUser, setIsUpdatingUser] = useState(false);
+  const [editUserError, setEditUserError] = useState('');
+
+  const handleOpenEditUserModal = (u: UserProfile) => {
+    setEditingUser(u);
+    setEditUsername(u.username || '');
+    setEditEmail(u.email || '');
+    setEditNom(u.nom || '');
+    setEditPrenom(u.prenom || '');
+    setEditRole(u.role || 'étudiant');
+    setEditTelephone(u.telephone || '');
+    setEditCin(u.cin || '');
+    setEditDateNaissance(u.date_naissance || '');
+    setEditAdresse(u.adresse || '');
+    setEditVille(u.ville || '');
+    setEditPays(u.pays || 'Tunisie');
+    setEditDepartement(u.departement || '');
+    setEditSpecialisation(u.specialisation || '');
+    setEditPassword('');
+    setEditUserError('');
+    setIsEditUserModalOpen(true);
+  };
+
+  const handleUpdateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser) return;
+
+    setIsUpdatingUser(true);
+    setEditUserError('');
+    try {
+      const res = await apiClient.put(`/users/${editingUser.id}`, {
+        username: editUsername.trim() || undefined,
+        email: editEmail.trim() || undefined,
+        role: editRole,
+        nom: editNom.trim() || undefined,
+        prenom: editPrenom.trim() || undefined,
+        date_naissance: editDateNaissance || undefined,
+        cin: editCin.trim() || undefined,
+        telephone: editTelephone.trim() || undefined,
+        adresse: editAdresse.trim() || undefined,
+        ville: editVille || undefined,
+        pays: editPays || undefined,
+        departement: editDepartement || undefined,
+        specialisation: editSpecialisation || undefined,
+        password: editPassword.trim() || undefined,
+      });
+
+      setAllUsers((prev) => prev.map((u) => (u.id === editingUser.id ? res.data : u)));
+      setIsEditUserModalOpen(false);
+      setEditingUser(null);
+      setActionMessage({ type: 'success', text: `Compte utilisateur "${res.data.username || res.data.email}" modifié avec succès.` });
+    } catch (err: any) {
+      setEditUserError(err?.response?.data?.detail || "Erreur lors de la modification de l'utilisateur.");
+    } finally {
+      setIsUpdatingUser(false);
+    }
+  };
 
   const handleAdminNomChange = (val: string) => {
     setNewAccountNom(val);
@@ -897,6 +979,13 @@ export default function ProfilePage() {
 
                             <td className="px-6 py-4 text-right">
                               <div className="flex items-center justify-end gap-2">
+                                <button
+                                  onClick={() => handleOpenEditUserModal(u)}
+                                  className="p-2 rounded-lg text-text-secondary hover:text-primary hover:bg-primary/10 transition-colors"
+                                  title="Modifier les informations de cet utilisateur"
+                                >
+                                  <Pencil size={16} />
+                                </button>
                                 {canResetTargetPassword && (
                                   <button
                                     onClick={() => {
@@ -2175,6 +2264,195 @@ export default function ProfilePage() {
                 >
                   Fermer
                 </button>
+              </div>
+            </div>
+          )}
+
+          {/* MODAL ÉDITER UN COMPTE UTILISATEUR (Formateurs / Admin) */}
+          {isEditUserModalOpen && editingUser && (
+            <div className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+              <div className="glass-card max-w-2xl w-full p-6 sm:p-8 rounded-3xl border border-primary/40 space-y-5 my-auto max-h-[90vh] overflow-y-auto animate-fade-in-up">
+                <div className="flex items-center justify-between pb-3 border-b border-border">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold">
+                      <Pencil size={18} />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-text-primary">Modifier l'utilisateur</h3>
+                      <p className="text-xs text-text-secondary">Édition des informations du compte #{editingUser.id}</p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => { setIsEditUserModalOpen(false); setEditingUser(null); }}
+                    className="text-text-secondary hover:text-text-primary font-bold text-sm"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {editUserError && (
+                  <div className="p-3.5 bg-red-500/10 border border-red-500/30 text-red-400 rounded-xl text-xs flex items-center gap-2">
+                    <AlertCircle size={16} className="shrink-0" /> {editUserError}
+                  </div>
+                )}
+
+                <form onSubmit={handleUpdateUser} className="space-y-4 text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block uppercase font-bold text-text-secondary mb-1">Rôle *</label>
+                      <select
+                        value={editRole}
+                        onChange={(e) => setEditRole(e.target.value)}
+                        className="w-full px-3 py-2.5 rounded-xl bg-surface border border-border outline-none focus:border-primary font-semibold"
+                      >
+                        {ALL_ROLES.map((r) => (
+                          <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block uppercase font-bold text-text-secondary mb-1">Nom d'utilisateur</label>
+                      <input
+                        type="text"
+                        value={editUsername}
+                        onChange={(e) => setEditUsername(e.target.value)}
+                        className="w-full px-3 py-2.5 rounded-xl bg-surface border border-border outline-none focus:border-primary font-mono"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block uppercase font-bold text-text-secondary mb-1">Nom</label>
+                      <input
+                        type="text"
+                        value={editNom}
+                        onChange={(e) => setEditNom(e.target.value)}
+                        className="w-full px-3 py-2.5 rounded-xl bg-surface border border-border outline-none focus:border-primary"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block uppercase font-bold text-text-secondary mb-1">Prénom</label>
+                      <input
+                        type="text"
+                        value={editPrenom}
+                        onChange={(e) => setEditPrenom(e.target.value)}
+                        className="w-full px-3 py-2.5 rounded-xl bg-surface border border-border outline-none focus:border-primary"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block uppercase font-bold text-text-secondary mb-1">Adresse Email</label>
+                      <input
+                        type="email"
+                        value={editEmail}
+                        onChange={(e) => setEditEmail(e.target.value)}
+                        className="w-full px-3 py-2.5 rounded-xl bg-surface border border-border outline-none focus:border-primary"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block uppercase font-bold text-text-secondary mb-1">Téléphone</label>
+                      <input
+                        type="text"
+                        value={editTelephone}
+                        onChange={(e) => setEditTelephone(e.target.value)}
+                        className="w-full px-3 py-2.5 rounded-xl bg-surface border border-border outline-none focus:border-primary"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block uppercase font-bold text-text-secondary mb-1">CIN / Pièce d'identité</label>
+                      <input
+                        type="text"
+                        value={editCin}
+                        onChange={(e) => setEditCin(e.target.value)}
+                        className="w-full px-3 py-2.5 rounded-xl bg-surface border border-border outline-none focus:border-primary"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block uppercase font-bold text-text-secondary mb-1">Date de naissance</label>
+                      <input
+                        type="date"
+                        value={editDateNaissance}
+                        onChange={(e) => setEditDateNaissance(e.target.value)}
+                        className="w-full px-3 py-2.5 rounded-xl bg-surface border border-border outline-none focus:border-primary"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block uppercase font-bold text-text-secondary mb-1">Pays</label>
+                      <input
+                        type="text"
+                        value={editPays}
+                        onChange={(e) => setEditPays(e.target.value)}
+                        className="w-full px-3 py-2.5 rounded-xl bg-surface border border-border outline-none focus:border-primary"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block uppercase font-bold text-text-secondary mb-1">Ville</label>
+                      <input
+                        type="text"
+                        value={editVille}
+                        onChange={(e) => setEditVille(e.target.value)}
+                        className="w-full px-3 py-2.5 rounded-xl bg-surface border border-border outline-none focus:border-primary"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block uppercase font-bold text-text-secondary mb-1">Département (Employé / Stagiaire)</label>
+                      <input
+                        type="text"
+                        value={editDepartement}
+                        onChange={(e) => setEditDepartement(e.target.value)}
+                        placeholder="Ex: Informatique, RH..."
+                        className="w-full px-3 py-2.5 rounded-xl bg-surface border border-border outline-none focus:border-primary"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block uppercase font-bold text-text-secondary mb-1">Spécialisation (Étudiant / Stagiaire)</label>
+                      <input
+                        type="text"
+                        value={editSpecialisation}
+                        onChange={(e) => setEditSpecialisation(e.target.value)}
+                        placeholder="Ex: Génie Logiciel, Data..."
+                        className="w-full px-3 py-2.5 rounded-xl bg-surface border border-border outline-none focus:border-primary"
+                      />
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <label className="block uppercase font-bold text-text-secondary mb-1">Nouveau mot de passe (optionnel)</label>
+                      <input
+                        type="password"
+                        value={editPassword}
+                        onChange={(e) => setEditPassword(e.target.value)}
+                        placeholder="Laisser vide pour conserver le mot de passe actuel"
+                        className="w-full px-3 py-2.5 rounded-xl bg-surface border border-border outline-none focus:border-primary font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 pt-3 border-t border-border">
+                    <button
+                      type="button"
+                      onClick={() => { setIsEditUserModalOpen(false); setEditingUser(null); }}
+                      className="w-1/2 py-3 bg-surface hover:bg-surface-hover rounded-xl font-semibold border border-border"
+                    >
+                      Annuler
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isUpdatingUser}
+                      className="w-1/2 btn-primary py-3 rounded-xl font-bold flex items-center justify-center gap-2"
+                    >
+                      {isUpdatingUser ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                      <span>Enregistrer les modifications</span>
+                    </button>
+                  </div>
+                </form>
               </div>
             </div>
           )}
