@@ -240,8 +240,8 @@ export default function InboxMessagesPage() {
   };
 
   // Toggle selection checkbox for message
-  const toggleSelectMessage = (msgId: number, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const toggleSelectMessage = (msgId: number, e?: React.SyntheticEvent) => {
+    if (e) e.stopPropagation();
     setSelectedMessageIds((prev) => {
       const next = new Set(prev);
       if (next.has(msgId)) next.delete(msgId);
@@ -621,11 +621,14 @@ export default function InboxMessagesPage() {
                         } ${isSelected ? 'bg-primary/15' : ''}`}
                       >
                         {/* Checkbox & Star */}
-                        <div className="flex items-center gap-3 shrink-0">
+                        <div
+                          className="flex items-center gap-3 shrink-0"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <input
                             type="checkbox"
                             checked={isSelected}
-                            onClick={(e) => toggleSelectMessage(msg.id, e)}
+                            onChange={(e) => toggleSelectMessage(msg.id, e)}
                             className="w-4 h-4 rounded border-border text-primary focus:ring-primary cursor-pointer"
                           />
 
