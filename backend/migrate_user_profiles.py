@@ -22,7 +22,7 @@ def run_migration():
                 ("pays", "VARCHAR"),
                 ("departement", "VARCHAR"),
                 ("specialisation", "VARCHAR"),
-                ("avatar_url", "VARCHAR"),
+                ("avatar_url", "TEXT"),
                 ("group_name", "VARCHAR"),
             ]
             with engine.begin() as conn:
@@ -31,6 +31,13 @@ def run_migration():
                         conn.execute(text(f"ALTER TABLE users ADD COLUMN {col_name} {col_type}"))
                         print(f"Migration: added column '{col_name}' ({col_type}) to 'users'.")
                 
+                # If on PostgreSQL, ensure avatar_url is TEXT for unlimited base64 image storage
+                try:
+                    if engine.dialect.name == "postgresql":
+                        conn.execute(text("ALTER TABLE users ALTER COLUMN avatar_url TYPE TEXT"))
+                except Exception:
+                    pass
+
                 # Backfill username with email prefix if empty for existing accounts
                 try:
                     conn.execute(text("UPDATE users SET username = email WHERE username IS NULL OR username = ''"))

@@ -792,7 +792,7 @@ E-Schola Pro/
         <tr><td><code>pays</code></td><td>String</td><td>Nullable</td><td>Pays de résidence</td></tr>
         <tr><td><code>departement</code></td><td>String</td><td>Nullable</td><td>Département professionnel (Employé &amp; Stagiaire)</td></tr>
         <tr><td><code>specialisation</code></td><td>String</td><td>Nullable</td><td>Filière / Spécialisation académique (Étudiant &amp; Stagiaire)</td></tr>
-        <tr><td><code>avatar_url</code></td><td>String</td><td>Nullable</td><td>URL de la photo de profil</td></tr>
+        <tr><td><code>avatar_url</code></td><td>Text</td><td>Nullable</td><td>Photo de profil auto-optimisée WebP 256×256 stockée de façon permanente en base de données Railway (Base64 Data URI)</td></tr>
         <tr><td><code>group_name</code></td><td>String</td><td>Nullable</td><td>Nom du groupe (hérité)</td></tr>
       </tbody>
     </table>
@@ -1065,7 +1065,9 @@ E-Schola Pro/
         <tr><td><span class="badge badge-put">PUT</span></td><td><code>/users/{id}</code></td><td>Modifier un compte utilisateur (profil complet, normalisation des rôles avec accents, unicité croisée username/email, département, spécialisation, mot de passe)</td><td>Admin, Admin Manager</td></tr>
         <tr><td><span class="badge badge-put">PUT</span></td><td><code>/users/{id}/password</code></td><td>Réinitialiser le mot de passe d'un utilisateur</td><td>Admin, Admin Manager</td></tr>
         <tr><td><span class="badge badge-put">PUT</span></td><td><code>/users/{id}/role</code></td><td>Changer le rôle d'un utilisateur (persistant avec contrôles stricts)</td><td>Admin, Admin Manager</td></tr>
-        <tr><td><span class="badge badge-post">POST</span></td><td><code>/users/me/avatar</code></td><td>Téléverser une photo de profil (stockage local avec URL relative universelle /uploads/avatars/...)</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/users/me/avatar</code></td><td>Téléverser une photo de profil avec auto-optimisation WebP 256×256 (Pillow, qualité 80, réduction &gt;98% d'espace) et persistance intégrale en base de données Railway (Data URI Base64)</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-delete">DELETE</span></td><td><code>/users/me/avatar</code></td><td>Supprimer la photo de profil personnalisée et réinitialiser vers les initiales dynamiques</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/users/{id}/avatar</code></td><td>Servir et streamer directement l'avatar optimisé WebP depuis la base de données avec en-têtes HTTP de mise en cache</td><td>Public</td></tr>
         <tr><td><span class="badge badge-delete">DELETE</span></td><td><code>/users/{id}</code></td><td>Supprimer définitivement un utilisateur (nettoyage en cascade sécurisé)</td><td>Admin, Admin Manager</td></tr>
       </tbody>
     </table>
@@ -1485,7 +1487,7 @@ E-Schola Pro/
       <ul>
         <li><strong>Carte de Profil Haute Qualité (UserProfileCard.tsx) :</strong> Bannière d'en-tête avec verre dépoli (glassmorphism), upload direct de la photo de profil (Avatar), écussons de rôles colorés, 3 cartes thématiques d'informations (<em>Personnelles, Coordonnées &amp; Localisation, Institution &amp; Spécifications</em>) et synchronisation réactive de session via les événements globaux <code>auth_user_updated</code> et <code>storage</code>.</li>
         <li><strong>Formulaire de Modification Standard (ProfileEditForm.tsx) :</strong> Formulaire réactif sous <code>react-hook-form</code> avec resynchronisation automatique des données (<code>reset(user)</code>), génération dynamique du pseudonyme (<code>prenom.nom</code>), calcul d'âge en temps réel (<code>🎂 XX ans</code> avec contrôle $\ge 14$ ans), listes déroulantes en cascade (pays/villes), champs conditionnels par rôle et persistance totale en base de données (PostgreSQL & SQLite) avec prise en charge du vidage de champs (remise à NULL) et modification directe du mot de passe.</li>
-        <li><strong>Photo de profil :</strong> Upload et modification instantanée de l'avatar utilisateur via <code>POST /api/v1/users/me/avatar</code> avec chemin relatif universel (<code>/uploads/avatars/{filename}</code>) pour une compatibilité parfaite avec Nginx et Railway sans exposition d'IP réseau interne.</li>
+        <li><strong>Photo de profil &amp; Auto-optimisation :</strong> Téléversement direct, auto-orientation EXIF et recadrage centré carré 256×256 avec compression WebP ultra-haute efficacité (qualité 80, réduction &gt;98% de volume disque). Persistance intégrale directement dans la base de données Railway (colonne <code>avatar_url</code> en Data URI Base64), garantissant une conservation absolue des photos lors de tous les redéploiements sans perte de fichiers ni dépendance de volume ou S3. L'interface offre un bouton de suppression avec réinitialisation vers les initiales dynamiques et un endpoint public de streaming direct (<code>GET /api/v1/users/{id}/avatar</code>).</li>
         <li><strong>Mot de passe &amp; Sécurité :</strong> Changement sécurisé du mot de passe avec validation de l'ancien mot de passe ou saisie directe sécurisée avec hachage bcrypt (minimum 6 caractères).</li>
         <li><strong>Langue :</strong> Basculement multilingue instantané (Français, Anglais, Arabe).</li>
         <li><strong>Portail Backend & Base de Données (Exclusif Admin) :</strong> Onglet dédié contenant tous les accès techniques directs :

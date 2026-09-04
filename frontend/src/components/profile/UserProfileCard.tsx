@@ -19,6 +19,7 @@ import {
   Award,
   Sparkles,
   Users,
+  Trash2,
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { UserProfileData, ProfileEditForm } from './ProfileEditForm';
@@ -64,7 +65,12 @@ export const UserProfileCard: React.FC<UserProfileCardProps> = ({
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      setUploadMessage({ type: 'error', text: 'Le fichier doit être une image (JPG, PNG, WebP).' });
+      setUploadMessage({ type: 'error', text: 'Le fichier doit être une image valide (JPG, PNG, WebP).' });
+      return;
+    }
+
+    if (file.size > 15 * 1024 * 1024) {
+      setUploadMessage({ type: 'error', text: 'La taille du fichier ne doit pas dépasser 15 Mo.' });
       return;
     }
 
@@ -85,12 +91,43 @@ export const UserProfileCard: React.FC<UserProfileCardProps> = ({
         window.dispatchEvent(new Event('auth_user_updated'));
         window.dispatchEvent(new Event('storage'));
       }
-      setUploadMessage({ type: 'success', text: 'Photo de profil mise à jour avec succès.' });
+      setUploadMessage({ 
+        type: 'success', 
+        text: 'Photo optimisée (WebP 256×256) et sauvegardée dans la base de données Railway !' 
+      });
     } catch (err: any) {
       console.error('Avatar upload error:', err);
       setUploadMessage({
         type: 'error',
         text: err?.response?.data?.detail || 'Échec de la mise à jour de la photo de profil.',
+      });
+    } finally {
+      setIsUploadingAvatar(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleDeleteAvatar = async () => {
+    if (!confirm('Voulez-vous supprimer votre photo de profil et réinitialiser vos initiales ?')) return;
+
+    setIsUploadingAvatar(true);
+    setUploadMessage(null);
+
+    try {
+      const res = await apiClient.delete('/users/me/avatar');
+      const updated = res.data;
+      setUser(updated);
+      if (onProfileUpdated) onProfileUpdated(updated);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('auth_user_updated'));
+        window.dispatchEvent(new Event('storage'));
+      }
+      setUploadMessage({ type: 'success', text: 'Photo de profil supprimée. Initiales rétablies avec succès.' });
+    } catch (err: any) {
+      console.error('Delete avatar error:', err);
+      setUploadMessage({
+        type: 'error',
+        text: err?.response?.data?.detail || 'Échec de la suppression de la photo de profil.',
       });
     } finally {
       setIsUploadingAvatar(false);
@@ -170,53 +207,71 @@ export const UserProfileCard: React.FC<UserProfileCardProps> = ({
         <div className="relative z-10 flex flex-col md:flex-row items-center md:items-start justify-between gap-6">
           {/* Avatar & User Core Details */}
           <div className="flex flex-col sm:flex-row items-center gap-5 text-center sm:text-left">
-            {/* Avatar Container with Upload trigger */}
-            <div className="relative group">
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleAvatarFileChange}
-                accept="image/*"
-                className="hidden"
-              />
+            {/* Avatar Container with Upload trigger & Delete button */}
+            <div className="flex flex-col items-center">
+              <div className="relative group">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleAvatarFileChange}
+                  accept="image/*"
+                  className="hidden"
+                />
 
-              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden border-2 border-primary/40 bg-surface flex items-center justify-center shadow-xl relative group-hover:border-primary transition-all">
-                {user.avatar_url ? (
-                  <img
-                    src={user.avatar_url}
-                    alt={fullName}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <span className="text-3xl font-extrabold text-primary">
-                    {(fullName || 'U').charAt(0).toUpperCase()}
-                  </span>
-                )}
+                <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden border-2 border-primary/40 bg-surface flex items-center justify-center shadow-xl relative group-hover:border-primary transition-all">
+                  {user.avatar_url ? (
+                    <img
+                      src={user.avatar_url}
+                      alt={fullName}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-3xl font-extrabold text-primary">
+                      {(fullName || 'U').charAt(0).toUpperCase()}
+                    </span>
+                  )}
 
-                {/* Camera Hover Overlay */}
-                {isEditable && (
+                  {/* Camera Hover Overlay */}
+                  {isEditable && (
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploadingAvatar}
+                      className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[10px] font-bold gap-1 cursor-pointer"
+                    >
+                      {isUploadingAvatar ? (
+                        <Loader2 size={20} className="animate-spin text-primary" />
+                      ) : (
+                        <>
+                          <Camera size={20} />
+                          <span>Changer</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+
+                {/* Verified Shield Badge */}
+                <div className="absolute -bottom-1 -right-1 p-1.5 rounded-full bg-primary text-white shadow-md">
+                  <Shield size={14} />
+                </div>
+              </div>
+
+              {/* Delete Avatar Action when custom avatar is present */}
+              {user.avatar_url && isEditable && (
+                <div className="mt-1.5 flex justify-center">
                   <button
                     type="button"
-                    onClick={() => fileInputRef.current?.click()}
+                    onClick={handleDeleteAvatar}
                     disabled={isUploadingAvatar}
-                    className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[10px] font-bold gap-1 cursor-pointer"
+                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-500 hover:text-rose-600 transition-colors cursor-pointer px-2 py-0.5 rounded-md hover:bg-rose-500/10"
+                    title="Supprimer la photo de profil et réinitialiser les initiales"
                   >
-                    {isUploadingAvatar ? (
-                      <Loader2 size={20} className="animate-spin text-primary" />
-                    ) : (
-                      <>
-                        <Camera size={20} />
-                        <span>Changer</span>
-                      </>
-                    )}
+                    <Trash2 size={12} />
+                    <span>Supprimer photo</span>
                   </button>
-                )}
-              </div>
-
-              {/* Verified Shield Badge */}
-              <div className="absolute -bottom-1 -right-1 p-1.5 rounded-full bg-primary text-white shadow-md">
-                <Shield size={14} />
-              </div>
+                </div>
+              )}
             </div>
 
             {/* User Title Details */}

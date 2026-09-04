@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from app.db.base import Base
@@ -28,7 +28,7 @@ class User(Base):
     departement = Column(String, nullable=True)
     specialisation = Column(String, nullable=True)
     
-    avatar_url = Column(String, nullable=True)
+    avatar_url = Column(Text, nullable=True)
     group_name = Column(String, default="Groupe A - Informatique & IA", nullable=True)
 
     courses_enrolled = relationship(

@@ -1,9 +1,13 @@
+import base64
+import io
 import os
 import shutil
 import uuid
 from typing import Any
 
 from fastapi import APIRouter, File, HTTPException, Query, Request, UploadFile
+from fastapi.responses import Response
+from PIL import Image, ImageOps
 from pydantic import BaseModel
 from sqlalchemy import or_
 
@@ -265,6 +269,47 @@ def update_password(
     return {"message": "Mot de passe mis à jour avec succès."}
 
 
+MAX_AVATAR_UPLOAD_SIZE = 15 * 1024 * 1024  # 15 MB limit for raw input file
+TARGET_AVATAR_SIZE = (256, 256)
+WEBP_QUALITY = 80
+
+
+def optimize_avatar_image(raw_bytes: bytes) -> tuple[str, bytes]:
+    """
+    Optimise et compresse automatiquement une image de profil utilisateur :
+    1. Redressement EXIF (photos smartphone).
+    2. Recadrage centré en carré 256x256 via le filtre haute fidélité LANCZOS.
+    3. Conversion au format WebP (qualité 80, compression optimale niveau 6).
+    4. Encodage Base64 Data URI pour persistance directe dans la base de données Railway.
+    Économie d'espace : réduction de 95% à 99% du poids du fichier.
+    """
+    try:
+        with Image.open(io.BytesIO(raw_bytes)) as img:
+            # Redressement automatique selon l'orientation EXIF
+            img = ImageOps.exif_transpose(img)
+
+            # Préservation du canal alpha si nécessaire, sinon RGB
+            if img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info):
+                img = img.convert("RGBA")
+            else:
+                img = img.convert("RGB")
+
+            # Recadrage centré carré 256x256 avec interpolation Lanczos
+            cropped = ImageOps.fit(img, TARGET_AVATAR_SIZE, method=Image.Resampling.LANCZOS)
+
+            # Compression WebP haute efficacité
+            out_buf = io.BytesIO()
+            cropped.save(out_buf, format="WEBP", quality=WEBP_QUALITY, method=6)
+            webp_bytes = out_buf.getvalue()
+
+            # Encodage Data URI persistant
+            b64_str = base64.b64encode(webp_bytes).decode("ascii")
+            data_uri = f"data:image/webp;base64,{b64_str}"
+            return data_uri, webp_bytes
+    except Exception as err:
+        raise ValueError(f"Traitement d'image impossible : {err}")
+
+
 @router.post("/me/avatar", response_model=UserResponse)
 def upload_avatar(
     *,
@@ -274,34 +319,114 @@ def upload_avatar(
     file: UploadFile = File(...),
 ) -> Any:
     """
-    Upload and set avatar for the current logged-in user.
+    Téléversement et auto-optimisation de la photo de profil avec persistance directe dans la base de données Railway.
+    L'image est automatiquement recadrée en carré 256x256 et compressée en WebP (qualité 80),
+    réduisant le stockage de plus de 98% tout en garantissant une persistance totale sans perte lors des redéploiements.
     """
-    if not file.content_type.startswith("image/"):
+    content_type = (file.content_type or "").lower()
+    allowed_types = ["image/jpeg", "image/png", "image/webp", "image/jpg", "image/gif", "image/bmp", "image/tiff"]
+    if not any(content_type.startswith(t) for t in allowed_types) and not content_type.startswith("image/"):
         raise HTTPException(
-            status_code=400, detail="Le fichier fourni n'est pas une image."
+            status_code=400,
+            detail="Format de fichier non pris en charge. Veuillez fournir une image valide (JPG, PNG, WebP).",
         )
 
     try:
-        os.makedirs("uploads/avatars", exist_ok=True)
-        ext = file.filename.split(".")[-1]
-        filename = f"{uuid.uuid4().hex}.{ext}"
-        filepath = os.path.join("uploads", "avatars", filename)
+        raw_bytes = file.file.read()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Échec de lecture du fichier : {e}")
 
-        with open(filepath, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+    if not raw_bytes:
+        raise HTTPException(status_code=400, detail="Le fichier fourni est vide.")
 
-        # Relative avatar URL for universal compatibility across dev and production
-        avatar_url = f"/uploads/avatars/{filename}"
+    if len(raw_bytes) > MAX_AVATAR_UPLOAD_SIZE:
+        raise HTTPException(
+            status_code=400,
+            detail="La taille du fichier dépasse la limite maximale autorisée de 15 Mo.",
+        )
 
-        current_user.avatar_url = avatar_url
+    try:
+        # Optimisation WebP & encodage Base64
+        data_uri, webp_bytes = optimize_avatar_image(raw_bytes)
+
+        # Sauvegarde miroir sur disque local facultative (pour cache)
+        try:
+            os.makedirs("uploads/avatars", exist_ok=True)
+            local_path = os.path.join("uploads", "avatars", f"user_{current_user.id}.webp")
+            with open(local_path, "wb") as f_out:
+                f_out.write(webp_bytes)
+        except Exception:
+            pass
+
+        # Persistance directe dans la base de données Railway
+        current_user.avatar_url = data_uri
         session.add(current_user)
         session.commit()
         session.refresh(current_user)
         return current_user
+    except ValueError as val_err:
+        raise HTTPException(status_code=422, detail=str(val_err))
     except Exception as e:
         raise HTTPException(
-            status_code=500, detail=f"Échec de l'upload de l'avatar: {e!s}"
+            status_code=500, detail=f"Échec de l'optimisation et de la sauvegarde de l'avatar: {e!s}"
         )
+
+
+@router.delete("/me/avatar", response_model=UserResponse)
+def delete_avatar(
+    *,
+    session: SessionDep,
+    current_user: CurrentUser,
+) -> Any:
+    """
+    Supprime la photo de profil de l'utilisateur connecté et restaure l'affichage par initiales dynamiques.
+    """
+    current_user.avatar_url = None
+    session.add(current_user)
+    session.commit()
+    session.refresh(current_user)
+
+    # Nettoyage miroir facultatif
+    try:
+        local_path = os.path.join("uploads", "avatars", f"user_{current_user.id}.webp")
+        if os.path.exists(local_path):
+            os.remove(local_path)
+    except Exception:
+        pass
+
+    return current_user
+
+
+@router.get("/{user_id}/avatar")
+def get_user_avatar(
+    user_id: int,
+    session: SessionDep,
+) -> Any:
+    """
+    Endpoint public servant directement l'avatar WebP optimisé depuis la base de données Railway.
+    """
+    user = session.query(User).filter(User.id == user_id).first()
+    if not user or not user.avatar_url:
+        raise HTTPException(status_code=404, detail="Avatar introuvable.")
+
+    if user.avatar_url.startswith("data:image/"):
+        try:
+            header, b64_str = user.avatar_url.split(",", 1)
+            mime = header.split(";")[0].replace("data:", "") or "image/webp"
+            image_bytes = base64.b64decode(b64_str)
+            return Response(
+                content=image_bytes,
+                media_type=mime,
+                headers={
+                    "Cache-Control": "public, max-age=86400, stale-while-revalidate=604800",
+                    "Content-Disposition": f"inline; filename=avatar_{user_id}.webp",
+                },
+            )
+        except Exception:
+            raise HTTPException(status_code=500, detail="Erreur de décodage de l'avatar.")
+
+    # Si c'est une URL externe ou chemin relatif existant
+    return {"avatar_url": user.avatar_url}
 
 
 @router.get("/", response_model=list[UserResponse])
