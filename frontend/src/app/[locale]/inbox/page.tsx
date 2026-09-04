@@ -1,32 +1,30 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Link } from '@/i18n/routing';
-import { RecipientInput } from '@/components/inbox/RecipientInput';
-import { UserMinimalRead } from '@/types/recipient';
-import { 
-  Inbox as InboxIcon, 
-  Send, 
-  Mail, 
-  FileText, 
-  Paperclip, 
-  Trash2, 
-  Reply, 
+import { useTranslations } from 'next-intl';
+import {
+  Inbox as InboxIcon,
+  Send,
+  Mail,
+  FileText,
+  Paperclip,
+  Trash2,
+  Reply,
   Forward,
-  Search, 
-  User, 
-  Shield, 
-  CheckCircle2, 
-  AlertCircle, 
-  Clock, 
-  Download, 
-  X, 
-  Plus, 
-  Loader2, 
-  FileSpreadsheet, 
-  Music, 
-  Film, 
+  Search,
+  User,
+  Shield,
+  CheckCircle2,
+  AlertCircle,
+  Clock,
+  Download,
+  X,
+  Plus,
+  Loader2,
+  FileSpreadsheet,
+  Music,
+  Film,
   Image as ImageIcon,
   ArrowLeft,
   ArrowRight,
@@ -38,9 +36,27 @@ import {
   Layers,
   Calendar as CalendarIcon,
   ChevronDown,
-  Video
+  Video,
+  Star,
+  Tag,
+  Users,
+  Info,
+  CheckSquare,
+  Sparkles,
+  RefreshCw,
+  MoreVertical,
+  ChevronLeft,
+  ChevronRight,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
+import { InboxHeader, SearchMode } from '@/components/inbox/InboxHeader';
+import { InboxSidebar, FolderType } from '@/components/inbox/InboxSidebar';
+import { InboxRightDock } from '@/components/inbox/InboxRightDock';
+import { GoogleAiAssistModal } from '@/components/inbox/GoogleAiAssistModal';
+import { MessageComposerModal } from '@/components/inbox/MessageComposerModal';
+import { RecipientInput } from '@/components/inbox/RecipientInput';
+import { UserMinimalRead } from '@/types/recipient';
 
 interface UserShort {
   id: number;
@@ -59,6 +75,7 @@ interface MessageItem {
   attachment_name?: string;
   attachment_type?: string;
   is_read: boolean;
+  is_starred?: boolean;
   is_draft?: boolean;
   is_trash?: boolean;
   is_reported?: boolean;
@@ -74,439 +91,211 @@ interface MessageItem {
 
 export default function InboxMessagesPage() {
   const router = useRouter();
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const t = useTranslations('Inbox');
 
   const [currentUser, setCurrentUser] = useState<UserShort | null>(null);
-  const [activeFolder, setActiveFolder] = useState<'inbox' | 'unread' | 'all' | 'sent' | 'drafts' | 'trash'>('inbox');
-  const [isComposing, setIsComposing] = useState(false);
+  const [activeFolder, setActiveFolder] = useState<FolderType>('inbox');
+  const [activeCategory, setActiveCategory] = useState<'primary' | 'promotions' | 'social' | 'updates'>('primary');
+  
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isComposingModalOpen, setIsComposingModalOpen] = useState(false);
+  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
+  const [aiModalPrompt, setAiModalPrompt] = useState('');
+
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Messages lists
   const [inboxMessages, setInboxMessages] = useState<MessageItem[]>([]);
   const [sentMessages, setSentMessages] = useState<MessageItem[]>([]);
   const [draftMessages, setDraftMessages] = useState<MessageItem[]>([]);
   const [trashMessages, setTrashMessages] = useState<MessageItem[]>([]);
+  const [starredMessages, setStarredMessages] = useState<MessageItem[]>([]);
   const [selectedMessage, setSelectedMessage] = useState<MessageItem | null>(null);
-  const [allUsers, setAllUsers] = useState<UserShort[]>([]);
+
+  // Multi-selection & Star state
+  const [selectedMessageIds, setSelectedMessageIds] = useState<Set<number>>(new Set());
 
   // Search & Filter
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterUnreadOnly, setFilterUnreadOnly] = useState(false);
+  const [searchMode, setSearchMode] = useState<SearchMode>('internal');
 
-  // Compose Form state
-  const [selectedToRecipients, setSelectedToRecipients] = useState<UserMinimalRead[]>([]);
-  const [selectedCcRecipients, setSelectedCcRecipients] = useState<UserMinimalRead[]>([]);
-  const [recipientId, setRecipientId] = useState<string>('');
-  const [recipientSearchText, setRecipientSearchText] = useState('');
-  const [isRecipientDropdownOpen, setIsRecipientDropdownOpen] = useState(false);
-  const [isBroadcastSelected, setIsBroadcastSelected] = useState(false);
-  const [subject, setSubject] = useState('');
-  const [body, setBody] = useState('');
-  const [attachedFile, setAttachedFile] = useState<File | null>(null);
-  const [existingAttachment, setExistingAttachment] = useState<{ url: string; name: string; type: string } | null>(null);
-  const [ccEmailsInput, setCcEmailsInput] = useState('');
-  const [isSending, setIsSending] = useState(false);
-  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  // Reporting Modal state
+  const [reportingMessage, setReportingMessage] = useState<MessageItem | null>(null);
+  const [reportReason, setReportReason] = useState<string>('Contenu inapproprié ou offensant');
+  const [customReportReason, setCustomReportReason] = useState<string>('');
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
+
+  const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Load current user and initial messages
+  useEffect(() => {
+    fetchInitialData();
+  }, []);
+
+  const fetchInitialData = async () => {
+    setIsLoading(true);
+    try {
+      const userRes = await apiClient.get('/users/me');
+      setCurrentUser(userRes.data);
+      await loadAllMessages();
+    } catch (err) {
+      console.error('Error fetching initial inbox data:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadAllMessages = async () => {
+    setIsRefreshing(true);
+    try {
+      const [inboxRes, sentRes, draftsRes, trashRes] = await Promise.all([
+        apiClient.get('/messages/inbox').catch(() => ({ data: [] })),
+        apiClient.get('/messages/sent').catch(() => ({ data: [] })),
+        apiClient.get('/messages/drafts').catch(() => ({ data: [] })),
+        apiClient.get('/messages/trash').catch(() => ({ data: [] })),
+      ]);
+
+      setInboxMessages(inboxRes.data || []);
+      setSentMessages(sentRes.data || []);
+      setDraftMessages(draftsRes.data || []);
+      setTrashMessages(trashRes.data || []);
+    } catch (err) {
+      console.error('Error loading messages:', err);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  const unreadCount = useMemo(() => {
+    return inboxMessages.filter((m) => !m.is_read).length;
+  }, [inboxMessages]);
 
   const userRole = (currentUser?.role || '').toLowerCase().trim();
   const isRestrictedRole = ['employer', 'employé', 'étudiant', 'etudiant', 'stagiaire'].includes(userRole);
   const canUseBroadcast = currentUser ? !isRestrictedRole : false;
 
-  // Reporting Modal state
-  const [reportingMessage, setReportingMessage] = useState<MessageItem | null>(null);
-  const [reportReason, setReportReason] = useState('Contenu inapproprié ou suspect');
-  const [customReportReason, setCustomReportReason] = useState('');
-  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
-
-  // Notification feedback
-  const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-
-  // 1. Fetch All Data
-  const loadAllMessages = async () => {
-    try {
-      const [inboxRes, sentRes, draftsRes, trashRes] = await Promise.all([
-        apiClient.get('/messages/inbox'),
-        apiClient.get('/messages/sent'),
-        apiClient.get('/messages/drafts'),
-        apiClient.get('/messages/trash')
-      ]);
-      setInboxMessages(inboxRes.data);
-      setSentMessages(sentRes.data);
-      setDraftMessages(draftsRes.data);
-      setTrashMessages(trashRes.data);
-    } catch (err) {
-      console.error('Error fetching messages lists', err);
-    }
+  // Star message handler
+  const handleToggleStar = (msgId: number, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setInboxMessages((prev) =>
+      prev.map((m) => (m.id === msgId ? { ...m, is_starred: !m.is_starred } : m))
+    );
+    setSentMessages((prev) =>
+      prev.map((m) => (m.id === msgId ? { ...m, is_starred: !m.is_starred } : m))
+    );
   };
 
-  useEffect(() => {
-    const init = async () => {
-      const token = localStorage.getItem('access_token');
-      if (!token) {
-        router.push('/login');
-        return;
-      }
+  // Get active message list based on current folder
+  const currentFolderList = useMemo(() => {
+    let list: MessageItem[] = [];
+    if (activeFolder === 'inbox') list = inboxMessages;
+    else if (activeFolder === 'sent') list = sentMessages;
+    else if (activeFolder === 'drafts') list = draftMessages;
+    else if (activeFolder === 'trash') list = trashMessages;
+    else if (activeFolder === 'starred')
+      list = [...inboxMessages, ...sentMessages].filter((m) => m.is_starred);
+    else if (activeFolder === 'snoozed')
+      list = inboxMessages.filter((m) => !m.is_read);
+    else if (activeFolder === 'broadcast')
+      list = [...inboxMessages, ...sentMessages].filter((m) => m.is_broadcast);
 
-      try {
-        const meRes = await apiClient.get('/users/me');
-        setCurrentUser(meRes.data);
-        await loadAllMessages();
-
-        try {
-          const usersRes = await apiClient.get('/users/');
-          setAllUsers(usersRes.data);
-        } catch {
-          // Non-admin fallback
-        }
-      } catch (err) {
-        console.error('Failed to init messages page', err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    init();
-  }, [router]);
-
-  // Sync recipient search text when recipientId changes externally (e.g. reply, forward, broadcast)
-  useEffect(() => {
-    if (recipientId === '-1') {
-      setRecipientSearchText('📢 Tous les utilisateurs (Envoi Général - Broadcast)');
-    } else if (recipientId && allUsers.length > 0) {
-      const user = allUsers.find(u => u.id.toString() === recipientId);
-      if (user) {
-        setRecipientSearchText(`${user.email} (${user.role.toUpperCase()})`);
-      }
-    } else if (!recipientId) {
-      setRecipientSearchText('');
+    // Apply category filtering
+    if (activeFolder === 'inbox') {
+      if (activeCategory === 'promotions') list = list.filter((m) => m.subject.toLowerCase().includes('annonce') || m.is_broadcast);
+      else if (activeCategory === 'social') list = list.filter((m) => m.subject.toLowerCase().includes('groupe') || m.subject.toLowerCase().includes('équipe'));
+      else if (activeCategory === 'updates') list = list.filter((m) => m.is_welcome_msg || m.subject.toLowerCase().includes('update'));
     }
-  }, [recipientId, allUsers]);
 
-  // 2. Select & Read Message
+    // Apply internal search filter
+    if (searchMode === 'internal' && searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter(
+        (m) =>
+          m.subject.toLowerCase().includes(q) ||
+          m.body.toLowerCase().includes(q) ||
+          m.sender?.email.toLowerCase().includes(q) ||
+          m.recipient?.email.toLowerCase().includes(q)
+      );
+    }
+
+    return list;
+  }, [activeFolder, activeCategory, inboxMessages, sentMessages, draftMessages, trashMessages, searchQuery, searchMode]);
+
+  // Handle select single message
   const handleSelectMessage = async (msg: MessageItem) => {
-    // If selecting a draft, open it in compose mode immediately
-    if (activeFolder === 'drafts') {
-      setRecipientId(msg.recipient_id?.toString() || '');
-      setSubject(msg.subject === '(Sans objet)' ? '' : msg.subject);
-      setBody(msg.body);
-      if (msg.attachment_url) {
-        setExistingAttachment({
-          url: msg.attachment_url,
-          name: msg.attachment_name || 'Pièce jointe',
-          type: msg.attachment_type || 'document'
-        });
-      } else {
-        setExistingAttachment(null);
-      }
-      setAttachedFile(null);
-      setIsComposing(true);
-      setSelectedMessage(null);
-      return;
-    }
-
     setSelectedMessage(msg);
-    setIsComposing(false);
 
     if ((activeFolder === 'inbox' || activeFolder === 'unread') && !msg.is_read) {
       try {
         await apiClient.get(`/messages/${msg.id}`);
-        setInboxMessages(prev => prev.map(m => m.id === msg.id ? { ...m, is_read: true } : m));
-        setSelectedMessage(prev => prev && prev.id === msg.id ? { ...prev, is_read: true } : prev);
+        setInboxMessages((prev) =>
+          prev.map((m) => (m.id === msg.id ? { ...m, is_read: true } : m))
+        );
+        setSelectedMessage((prev) => (prev && prev.id === msg.id ? { ...prev, is_read: true } : prev));
       } catch (err) {
-        console.error('Error marking as read', err);
+        console.error('Error marking as read:', err);
       }
     }
   };
 
-  // 3. Delete Message (Trash or Permanent)
-  const handleDeleteMessage = async (msgId: number) => {
-    const isPermanent = activeFolder === 'trash';
-    const confirmMsg = isPermanent 
-      ? 'Supprimer définitivement ce message ? Cette action est irréversible.' 
-      : 'Déplacer ce message vers la corbeille ?';
-
-    if (!confirm(confirmMsg)) return;
-
-    try {
-      const res = await apiClient.delete(`/messages/${msgId}`);
-      if (isPermanent) {
-        setTrashMessages(prev => prev.filter(m => m.id !== msgId));
-      } else {
-        // Move from current folder to trash
-        if (activeFolder === 'inbox' || activeFolder === 'unread') setInboxMessages(prev => prev.filter(m => m.id !== msgId));
-        if (activeFolder === 'sent') setSentMessages(prev => prev.filter(m => m.id !== msgId));
-        if (activeFolder === 'drafts') setDraftMessages(prev => prev.filter(m => m.id !== msgId));
-        // Refresh trash list
-        const trashRes = await apiClient.get('/messages/trash');
-        setTrashMessages(trashRes.data);
-      }
-
-      if (selectedMessage?.id === msgId) {
-        setSelectedMessage(null);
-      }
-      setActionMessage({ type: 'success', text: res.data.message });
-    } catch (err: any) {
-      setActionMessage({ type: 'error', text: err?.response?.data?.detail || 'Erreur lors de la suppression.' });
-    }
+  // Toggle selection checkbox for message
+  const toggleSelectMessage = (msgId: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedMessageIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(msgId)) next.delete(msgId);
+      else next.add(msgId);
+      return next;
+    });
   };
 
-  // 4. Restore Message from Trash
-  const handleRestoreMessage = async (msgId: number) => {
-    try {
-      const res = await apiClient.put(`/messages/${msgId}/restore`);
-      setTrashMessages(prev => prev.filter(m => m.id !== msgId));
-      await loadAllMessages();
-      setSelectedMessage(null);
-      setActionMessage({ type: 'success', text: res.data.message });
-    } catch (err: any) {
-      setActionMessage({ type: 'error', text: err?.response?.data?.detail || 'Erreur lors de la restauration.' });
-    }
-  };
-
-  // 5. Quick Reply
-  const handleReply = (msg: MessageItem) => {
-    setIsComposing(true);
-    setSelectedMessage(null);
-    if (msg.sender) {
-      setSelectedToRecipients([{
-        id: msg.sender.id,
-        full_name: msg.sender.email,
-        email: msg.sender.email,
-        role: msg.sender.role,
-        avatar_url: msg.sender.avatar_url,
-      }]);
+  // Select all / Deselect all
+  const toggleSelectAll = () => {
+    if (selectedMessageIds.size === currentFolderList.length) {
+      setSelectedMessageIds(new Set());
     } else {
-      setSelectedToRecipients([]);
+      setSelectedMessageIds(new Set(currentFolderList.map((m) => m.id)));
     }
-    setSelectedCcRecipients([]);
-    setRecipientId(msg.sender?.id?.toString() || '');
-    setSubject(msg.subject.startsWith('Re:') ? msg.subject : `Re: ${msg.subject}`);
-    setBody(`\n\n--- En réponse à ${msg.sender?.email} le ${new Date(msg.created_at).toLocaleDateString()} :\n> ${msg.body}`);
-    setAttachedFile(null);
-    setExistingAttachment(null);
   };
 
-  // 6. Forward Message (Transférer)
-  const handleForward = (msg: MessageItem) => {
-    setIsComposing(true);
-    setSelectedMessage(null);
-    setSelectedToRecipients([]);
-    setSelectedCcRecipients([]);
-    setRecipientId('');
-    setSubject(msg.subject.startsWith('Fwd:') ? msg.subject : `Fwd: ${msg.subject}`);
-    setBody(`\n\n--- Message transféré de ${msg.sender?.email || 'un utilisateur'} (le ${new Date(msg.created_at).toLocaleString()}) ---\n${msg.body}`);
-    
-    // Preserve existing attachment if any
-    if (msg.attachment_url) {
-      setExistingAttachment({
-        url: msg.attachment_url,
-        name: msg.attachment_name || 'Pièce jointe',
-        type: msg.attachment_type || 'document'
-      });
-    } else {
-      setExistingAttachment(null);
-    }
-    setAttachedFile(null);
-  };
+  // Bulk Delete
+  const handleBulkDelete = async () => {
+    if (selectedMessageIds.size === 0) return;
+    if (!confirm(`Supprimer les ${selectedMessageIds.size} message(s) sélectionné(s) ?`)) return;
 
-  // 7. Save Draft
-  const handleSaveDraft = async () => {
-    if (!subject.trim() && !body.trim()) {
-      setActionMessage({ type: 'error', text: 'Veuillez saisir au moins un objet ou du texte pour enregistrer un brouillon.' });
-      return;
-    }
-
-    setIsSavingDraft(true);
-    setActionMessage(null);
-
-    let attachment_url = existingAttachment?.url;
-    let attachment_name = existingAttachment?.name;
-    let attachment_type = existingAttachment?.type;
-
-    if (attachedFile) {
+    for (const msgId of Array.from(selectedMessageIds)) {
       try {
-        const formData = new FormData();
-        formData.append('file', attachedFile);
-        const uploadRes = await apiClient.post('/upload/chat-file', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        });
-        attachment_url = uploadRes.data.url;
-        attachment_name = uploadRes.data.filename;
-        attachment_type = uploadRes.data.category;
+        await apiClient.delete(`/messages/${msgId}`);
       } catch (err) {
-        console.error('Draft attachment upload error', err);
+        console.error('Error deleting message:', err);
       }
     }
 
-    try {
-      const ccList = ccEmailsInput ? ccEmailsInput.split(',').map(s => s.trim()).filter(Boolean) : [];
-      const res = await apiClient.post('/messages/', {
-        recipient_id: recipientId && recipientId !== '-1' ? parseInt(recipientId) : undefined,
-        subject: subject.trim() || '(Brouillon sans titre)',
-        body: body.trim(),
-        attachment_url,
-        attachment_name,
-        attachment_type,
-        is_draft: true,
-        is_broadcast: recipientId === '-1',
-        cc_emails: ccList,
-      });
-
-      setDraftMessages(prev => [res.data, ...prev]);
-      setIsComposing(false);
-      setSubject('');
-      setBody('');
-      setRecipientId('');
-      setRecipientSearchText('');
-      setCcEmailsInput('');
-      setAttachedFile(null);
-      setExistingAttachment(null);
-      setActiveFolder('drafts');
-      setActionMessage({ type: 'success', text: 'Brouillon enregistré avec succès.' });
-    } catch (err: any) {
-      setActionMessage({ type: 'error', text: err?.response?.data?.detail || "Erreur lors de l'enregistrement du brouillon." });
-    } finally {
-      setIsSavingDraft(false);
-    }
+    setSelectedMessageIds(new Set());
+    await loadAllMessages();
+    setActionMessage({ type: 'success', text: 'Messages supprimés avec succès.' });
   };
 
-  // 8. Send Message
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const isBroadcastSend = isBroadcastSelected || recipientId === '-1';
-    const hasToRecipients = selectedToRecipients.length > 0 || (recipientId !== '' && recipientId !== '-1');
-
-    if (!isBroadcastSend && !hasToRecipients) {
-      setActionMessage({ type: 'error', text: 'Veuillez sélectionner au moins un destinataire principal (À).' });
-      return;
-    }
-    if (!subject.trim() || !body.trim()) {
-      setActionMessage({ type: 'error', text: 'Veuillez renseigner l’objet et le message.' });
-      return;
-    }
-
-    setIsSending(true);
-    setActionMessage(null);
-
-    let attachment_url = existingAttachment?.url;
-    let attachment_name = existingAttachment?.name;
-    let attachment_type = existingAttachment?.type;
-
-    // Upload attachment if a new file was chosen
-    if (attachedFile) {
-      try {
-        const formData = new FormData();
-        formData.append('file', attachedFile);
-        const uploadRes = await apiClient.post('/upload/chat-file', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        });
-        attachment_url = uploadRes.data.url;
-        attachment_name = uploadRes.data.filename;
-        attachment_type = uploadRes.data.category;
-      } catch (err: any) {
-        console.error('Attachment upload failed', err);
-        setActionMessage({ type: 'error', text: err?.response?.data?.detail || "Échec de l'envoi de la pièce jointe." });
-        setIsSending(false);
-        return;
-      }
-    }
-
-    try {
-      const ccIds = selectedCcRecipients.map(u => Number(u.id)).filter(Boolean);
-      const ccEmails = [
-        ...selectedCcRecipients.map(u => u.email).filter(Boolean),
-        ...(ccEmailsInput ? ccEmailsInput.split(',').map(s => s.trim()).filter(Boolean) : [])
-      ];
-
-      if (isBroadcastSend) {
-        const res = await apiClient.post('/messages/', {
-          recipient_id: -1,
-          subject: subject.trim(),
-          body: body.trim(),
-          attachment_url,
-          attachment_name,
-          attachment_type,
-          is_draft: false,
-          is_broadcast: true,
-          cc_recipient_ids: ccIds,
-          cc_emails: ccEmails,
-        });
-        setSentMessages(prev => [res.data, ...prev]);
-        setSelectedMessage(res.data);
-      } else {
-        const targets: Array<{ id: number | string; email?: string }> = selectedToRecipients.length > 0
-          ? selectedToRecipients
-          : [{ id: parseInt(recipientId) }];
-
-        let lastSentRes = null;
-        for (const target of targets) {
-          const res = await apiClient.post('/messages/', {
-            recipient_id: Number(target.id),
-            recipient_email: target.email || null,
-            cc_recipient_ids: ccIds,
-            cc_emails: ccEmails,
-            subject: subject.trim(),
-            body: body.trim(),
-            attachment_url,
-            attachment_name,
-            attachment_type,
-            is_draft: false,
-            is_broadcast: false,
-          });
-          lastSentRes = res.data;
-          setSentMessages(prev => [res.data, ...prev]);
-        }
-        if (lastSentRes) setSelectedMessage(lastSentRes);
-      }
-
-      setIsComposing(false);
-      setSubject('');
-      setBody('');
-      setSelectedToRecipients([]);
-      setSelectedCcRecipients([]);
-      setRecipientId('');
-      setRecipientSearchText('');
-      setIsBroadcastSelected(false);
-      setCcEmailsInput('');
-      setAttachedFile(null);
-      setExistingAttachment(null);
-      setActiveFolder('sent');
-      setActionMessage({
-        type: 'success',
-        text: isBroadcastSend
-          ? '📢 Envoi général (Broadcast) transmis avec succès à l’ensemble des utilisateurs !'
-          : `Message envoyé avec succès !`
-      });
-    } catch (err: any) {
-      setActionMessage({ type: 'error', text: err?.response?.data?.detail || "Erreur lors de l'envoi du message." });
-    } finally {
-      setIsSending(false);
-    }
-  };
-
-  // 9. Report Message to Instructors and Admins (Signalement Direct)
+  // Report message
   const handleSubmitReport = async () => {
     if (!reportingMessage) return;
-
-    const finalReason = reportReason === 'Autre motif' ? (customReportReason.trim() || 'Motif non précisé') : reportReason;
+    const finalReason = reportReason === 'Autre motif' ? customReportReason.trim() || 'Motif non précisé' : reportReason;
 
     setIsSubmittingReport(true);
     try {
-      const res = await apiClient.post(`/messages/${reportingMessage.id}/report`, {
-        reason: finalReason
-      });
-
-      // Update local state to show reported badge
-      setInboxMessages(prev => prev.map(m => m.id === reportingMessage.id ? { ...m, is_reported: true, report_reason: finalReason } : m));
+      await apiClient.post(`/messages/${reportingMessage.id}/report`, { reason: finalReason });
+      setInboxMessages((prev) =>
+        prev.map((m) => (m.id === reportingMessage.id ? { ...m, is_reported: true, report_reason: finalReason } : m))
+      );
       if (selectedMessage?.id === reportingMessage.id) {
-        setSelectedMessage(prev => prev ? { ...prev, is_reported: true, report_reason: finalReason } : prev);
+        setSelectedMessage((prev) => (prev ? { ...prev, is_reported: true, report_reason: finalReason } : prev));
       }
-
       setReportingMessage(null);
       setCustomReportReason('');
-      setActionMessage({ 
-        type: 'success', 
-        text: `🚨 Signalement transmis immédiatement et directement à tous les formateurs et administrateurs de la plateforme !` 
+      setActionMessage({
+        type: 'success',
+        text: '🚨 Signalement transmis immédiatement aux formateurs et administrateurs.',
       });
     } catch (err: any) {
       setActionMessage({ type: 'error', text: err?.response?.data?.detail || 'Erreur lors du signalement.' });
@@ -515,729 +304,141 @@ export default function InboxMessagesPage() {
     }
   };
 
-  // Unread count in Inbox
-  const unreadCount = inboxMessages.filter(m => !m.is_read).length;
-
-  // Active folder items
-  const getCurrentList = () => {
-    switch (activeFolder) {
-      case 'all': {
-        const combined = [...inboxMessages, ...sentMessages];
-        return combined.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-      }
-      case 'unread': return inboxMessages.filter(m => !m.is_read);
-      case 'sent': return sentMessages;
-      case 'drafts': return draftMessages;
-      case 'trash': return trashMessages;
-      default: return inboxMessages;
-    }
-  };
-
-  const currentList = getCurrentList();
-  const filteredList = currentList.filter(msg => {
-    if (filterUnreadOnly && activeFolder === 'inbox' && msg.is_read) return false;
-    if (!searchQuery) return true;
-    const q = searchQuery.toLowerCase();
-    const isReceived = activeFolder === 'inbox' || activeFolder === 'unread';
-    const otherUser = isReceived ? msg.sender?.email : msg.recipient?.email;
-    return (
-      msg.subject.toLowerCase().includes(q) ||
-      msg.body.toLowerCase().includes(q) ||
-      (otherUser && otherUser.toLowerCase().includes(q))
-    );
-  });
-
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+          <span className="text-xs font-bold text-text-secondary">Chargement de ScholaPro Inbox...</span>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen px-4 py-24 max-w-7xl mx-auto space-y-6">
-      
-      {/* Top Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-primary/20 text-primary flex items-center justify-center shadow-lg shadow-primary/20 border border-primary/30">
-              <Mail size={24} />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">Messages & Communications</h1>
-              <p className="text-text-secondary text-xs sm:text-sm">
-                Gérez vos messages reçus, envoyés, brouillons, corbeille et échangez des pièces jointes en direct.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <button
-          onClick={() => {
-            setIsComposing(true);
-            setSelectedMessage(null);
-            setSubject('');
-            setBody('');
-            setRecipientId('');
-            setRecipientSearchText('');
-            setAttachedFile(null);
-            setExistingAttachment(null);
-          }}
-          className="btn-primary px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 shadow-lg shadow-primary/25 w-fit"
-        >
-          <Plus size={18} /> Nouveau message
-        </button>
-      </div>
+    <div className="min-h-screen bg-background text-text-primary flex flex-col font-sans select-none">
+      {/* 1. Top Header Bar (ScholaPro Logo, Multi-Mode Search, Actions) */}
+      <InboxHeader
+        onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        searchMode={searchMode}
+        onSearchModeChange={setSearchMode}
+        onOpenAiModal={() => setIsAiModalOpen(true)}
+        currentUser={currentUser}
+        labels={{
+          internal: t('search_mode_internal'),
+          google: t('search_mode_google'),
+          ai: t('search_mode_ai'),
+          placeholderInternal: t('search_placeholder_internal'),
+          placeholderGoogle: t('search_placeholder_google'),
+          placeholderAi: t('search_placeholder_ai'),
+        }}
+      />
 
       {/* Action Notification Banner */}
       {actionMessage && (
-        <div className={`p-4 rounded-xl flex items-center justify-between gap-3 text-sm font-medium ${
-          actionMessage.type === 'success' 
-            ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400' 
-            : 'bg-rose-500/10 border border-rose-500/30 text-rose-400'
-        }`}>
-          <div className="flex items-center gap-2.5">
-            {actionMessage.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
-            <span>{actionMessage.text}</span>
-          </div>
-          <button onClick={() => setActionMessage(null)} className="text-gray-400 hover:text-text-primary">✕</button>
+        <div
+          className={`px-4 py-2 text-xs font-semibold flex items-center justify-between transition-colors ${
+            actionMessage.type === 'success'
+              ? 'bg-emerald-500/15 text-emerald-400 border-b border-emerald-500/30'
+              : 'bg-rose-500/15 text-rose-400 border-b border-rose-500/30'
+          }`}
+        >
+          <span>{actionMessage.text}</span>
+          <button type="button" onClick={() => setActionMessage(null)} className="hover:opacity-80">
+            ✕
+          </button>
         </div>
       )}
 
-      {/* Main Mailbox Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[680px]">
-        
-        {/* Left Column : Folders (3 cols) */}
-        <div className="lg:col-span-3 space-y-4">
-          <div className="glass-card p-3 rounded-2xl border border-border space-y-1.5">
-            
-            {/* Messages reçus */}
-            <button
-              onClick={() => {
-                setActiveFolder('inbox');
-                setFilterUnreadOnly(false);
-                setIsComposing(false);
-              }}
-              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-xs font-bold transition-all ${
-                activeFolder === 'inbox' && !isComposing
-                  ? 'bg-primary text-white shadow-md shadow-primary/20'
-                  : 'text-text-secondary hover:bg-surface hover:text-text-primary'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <InboxIcon size={17} />
-                <span>Messages reçus</span>
-              </div>
-              <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
-                activeFolder === 'inbox' && !isComposing ? 'bg-white/20 text-white' : 'text-text-secondary'
-              }`}>
-                {inboxMessages.length}
-              </span>
-            </button>
+      {/* 2. Main Container (Sidebar + Content Panel + Right Dock) */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left Navigation Sidebar */}
+        <InboxSidebar
+          activeFolder={activeFolder}
+          onSelectFolder={(folder) => {
+            setActiveFolder(folder);
+            setSelectedMessage(null);
+            setSelectedMessageIds(new Set());
+          }}
+          onOpenCompose={() => setIsComposingModalOpen(true)}
+          unreadCount={unreadCount}
+          draftsCount={draftMessages.length}
+          starredCount={[...inboxMessages, ...sentMessages].filter((m) => m.is_starred).length}
+          isCollapsed={isSidebarCollapsed}
+          canUseBroadcast={canUseBroadcast}
+          labels={{
+            compose: t('compose'),
+            inbox: t('inbox'),
+            starred: t('starred'),
+            snoozed: t('snoozed'),
+            sent: t('sent'),
+            drafts: t('drafts'),
+            trash: t('trash'),
+            broadcast: t('broadcast'),
+            catPromotions: t('cat_promotions'),
+            catSocial: t('cat_social'),
+            catUpdates: t('cat_updates'),
+          }}
+        />
 
-            {/* Messages non lus */}
-            <button
-              onClick={() => {
-                setActiveFolder('unread');
-                setIsComposing(false);
-              }}
-              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-xs font-bold transition-all ${
-                activeFolder === 'unread' && !isComposing
-                  ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20'
-                  : 'text-text-secondary hover:bg-surface hover:text-text-primary'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <Mail size={17} className={unreadCount > 0 && activeFolder !== 'unread' ? 'text-cyan-400' : ''} />
-                <span>Messages non lus</span>
-              </div>
-              <span className={`px-2 py-0.5 rounded-full text-[11px] font-extrabold ${
-                unreadCount > 0
-                  ? activeFolder === 'unread'
-                    ? 'bg-slate-950 text-cyan-400'
-                    : 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
-                  : activeFolder === 'unread'
-                  ? 'text-slate-950'
-                  : 'text-text-secondary'
-              }`}>
-                {unreadCount}
-              </span>
-            </button>
-
-            {/* Tous les messages */}
-            <button
-              onClick={() => {
-                setActiveFolder('all');
-                setFilterUnreadOnly(false);
-                setIsComposing(false);
-              }}
-              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-xs font-bold transition-all ${
-                activeFolder === 'all' && !isComposing
-                  ? 'bg-primary text-white shadow-md shadow-primary/20'
-                  : 'text-text-secondary hover:bg-surface hover:text-text-primary'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <Layers size={17} />
-                <span>Tous les messages</span>
-              </div>
-              <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
-                activeFolder === 'all' && !isComposing ? 'bg-white/20 text-white' : 'text-text-secondary'
-              }`}>
-                {inboxMessages.length + sentMessages.length}
-              </span>
-            </button>
-
-            {/* Messages envoyés */}
-            <button
-              onClick={() => {
-                setActiveFolder('sent');
-                setIsComposing(false);
-              }}
-              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-xs font-bold transition-all ${
-                activeFolder === 'sent' && !isComposing
-                  ? 'bg-primary text-white shadow-md shadow-primary/20'
-                  : 'text-text-secondary hover:bg-surface hover:text-text-primary'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <Send size={17} />
-                <span>Messages envoyés</span>
-              </div>
-              <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
-                activeFolder === 'sent' && !isComposing ? 'bg-white/20 text-white' : 'text-text-secondary'
-              }`}>
-                {sentMessages.length}
-              </span>
-            </button>
-
-            {/* Brouillons */}
-            <button
-              onClick={() => {
-                setActiveFolder('drafts');
-                setIsComposing(false);
-              }}
-              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-xs font-bold transition-all ${
-                activeFolder === 'drafts' && !isComposing
-                  ? 'bg-primary text-white shadow-md shadow-primary/20'
-                  : 'text-text-secondary hover:bg-surface hover:text-text-primary'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <FileEdit size={17} />
-                <span>Brouillons</span>
-              </div>
-              <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
-                activeFolder === 'drafts' && !isComposing ? 'bg-white/20 text-white' : 'text-text-secondary'
-              }`}>
-                {draftMessages.length}
-              </span>
-            </button>
-
-            {/* Corbeille */}
-            <button
-              onClick={() => {
-                setActiveFolder('trash');
-                setIsComposing(false);
-              }}
-              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-xs font-bold transition-all ${
-                activeFolder === 'trash' && !isComposing
-                  ? 'bg-rose-500 text-white shadow-md shadow-rose-500/20'
-                  : 'text-text-secondary hover:bg-surface hover:text-text-primary'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <Trash2 size={17} />
-                <span>Corbeille</span>
-              </div>
-              <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
-                activeFolder === 'trash' && !isComposing ? 'bg-white/20 text-white' : 'text-text-secondary'
-              }`}>
-                {trashMessages.length}
-              </span>
-            </button>
-
-            {/* Ligne séparatrice */}
-            <div className="h-px bg-border my-1.5" />
-
-            {/* Calendrier & Emploi du temps */}
-            <Link
-              href="/calendar"
-              className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-xs font-bold transition-all text-text-secondary hover:bg-primary/10 hover:text-primary group"
-            >
-              <div className="flex items-center gap-3">
-                <CalendarIcon size={17} className="text-primary group-hover:scale-110 transition-transform" />
-                <span>Calendrier</span>
-              </div>
-              <ArrowRight size={14} className="text-text-secondary group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
-            </Link>
-          </div>
-
-          {/* User Status Card */}
-          {currentUser && (
-            <div className="glass-card p-4 rounded-2xl border border-border space-y-3">
-              <p className="text-[11px] uppercase tracking-wider font-bold text-text-secondary">Votre Compte</p>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-primary to-secondary flex items-center justify-center font-bold text-white shadow-md">
-                  {currentUser.email.charAt(0).toUpperCase()}
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs font-bold truncate text-text-primary">{currentUser.email}</p>
-                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-primary uppercase">
-                    <Shield size={11} /> {currentUser.role}
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Center Column : Messages List (4 cols) */}
-        <div className="lg:col-span-4 space-y-3 flex flex-col">
-          {/* Search bar */}
-          <div className="glass-card p-3 rounded-2xl border border-border space-y-2">
-            <div className="relative">
-              <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-secondary" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Rechercher par objet, personne..."
-                className="w-full pl-9 pr-4 py-2 bg-surface border border-border rounded-xl text-xs outline-none focus:border-primary transition-all text-text-primary"
-              />
-            </div>
-
-            {(activeFolder === 'inbox' || activeFolder === 'unread' || activeFolder === 'all') && (
-              <div className="flex items-center gap-2 pt-1 flex-wrap">
-                <button
-                  onClick={() => {
-                    setActiveFolder('all');
-                    setFilterUnreadOnly(false);
-                  }}
-                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${activeFolder === 'all' ? 'bg-primary/20 text-primary border border-primary/30' : 'text-text-secondary hover:text-text-primary'}`}
-                >
-                  Tous ({inboxMessages.length + sentMessages.length})
-                </button>
-                <button
-                  onClick={() => {
-                    setActiveFolder('inbox');
-                    setFilterUnreadOnly(false);
-                  }}
-                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${activeFolder === 'inbox' && !filterUnreadOnly ? 'bg-primary/20 text-primary border border-primary/30' : 'text-text-secondary hover:text-text-primary'}`}
-                >
-                  Reçus ({inboxMessages.length})
-                </button>
-                <button
-                  onClick={() => {
-                    setActiveFolder('unread');
-                    setFilterUnreadOnly(true);
-                  }}
-                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${activeFolder === 'unread' || filterUnreadOnly ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-text-secondary hover:text-text-primary'}`}
-                >
-                  Non lus ({unreadCount})
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* List items container */}
-          <div className="glass-card p-2 rounded-2xl border border-border flex-1 overflow-y-auto max-h-[600px] space-y-2">
-            {filteredList.length === 0 ? (
-              <div className="py-20 text-center text-text-secondary text-xs">
-                <Mail size={32} className="mx-auto mb-2 opacity-30" />
-                Aucun message dans ce dossier.
-              </div>
-            ) : (
-              filteredList.map((msg) => {
-                const isSelected = selectedMessage?.id === msg.id && !isComposing;
-                const isReceived = activeFolder === 'inbox' || activeFolder === 'unread';
-                const contact = isReceived ? msg.sender : msg.recipient;
-                const contactEmail = contact?.email || (isReceived ? 'Expéditeur inconnu' : (msg.recipient_id ? `Utilisateur #${msg.recipient_id}` : 'Non spécifié'));
-
-                return (
-                  <div
-                    key={msg.id}
-                    onClick={() => handleSelectMessage(msg)}
-                    className={`p-3.5 rounded-xl cursor-pointer transition-all border text-left relative ${
-                      isSelected
-                        ? 'bg-primary/15 border-primary/40 shadow-sm'
-                        : 'bg-surface/40 hover:bg-surface border-border hover:border-border-hover'
-                    }`}
-                  >
-                    {/* Unread indicator */}
-                    {!msg.is_read && isReceived && (
-                      <span className="absolute top-3.5 right-3.5 w-2.5 h-2.5 rounded-full bg-primary animate-pulse" />
-                    )}
-
-                    {/* Reported badge */}
-                    {msg.is_reported && (
-                      <span className="absolute top-3 right-3 px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-400 text-[10px] font-bold border border-rose-500/30 flex items-center gap-1">
-                        <Flag size={10} /> Signalé
-                      </span>
-                    )}
-
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <div className="w-6 h-6 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-[10px]">
-                        {contactEmail.charAt(0).toUpperCase()}
-                      </div>
-                      <span className={`text-xs truncate max-w-[170px] ${!msg.is_read && isReceived ? 'font-extrabold text-text-primary' : 'font-medium text-text-secondary'}`}>
-                        {isReceived ? contactEmail : `À : ${contactEmail}`}
-                      </span>
-                    </div>
-
-                    <h4 className={`text-xs truncate mb-1 ${!msg.is_read && isReceived ? 'font-extrabold text-text-primary' : 'font-semibold text-text-primary'}`}>
-                      {msg.subject}
-                    </h4>
-
-                    <p className="text-[11px] text-text-secondary truncate line-clamp-1 mb-2">
-                      {msg.body || '(Brouillon vide)'}
-                    </p>
-
-                    <div className="flex items-center justify-between text-[10px] text-text-secondary pt-1 border-t border-border/50">
-                      <span className="flex items-center gap-1">
-                        <Clock size={11} />
-                        {new Date(msg.created_at).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                      {msg.attachment_url && (
-                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/10 text-primary font-semibold">
-                          <Paperclip size={10} /> Pièce jointe
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-
-        {/* Right Column : Detail View OR Compose View (5 cols) */}
-        <div className="lg:col-span-5">
-          {/* 1. COMPOSE & DRAFT VIEW */}
-          {isComposing ? (
-            <div className="glass-card p-6 rounded-2xl border border-primary/30 space-y-6 animate-fade-in-up">
-              <div className="flex items-center justify-between pb-4 border-b border-border">
-                <h2 className="text-lg font-bold flex items-center gap-2 text-primary">
-                  <Send size={18} /> Rédiger un message
-                </h2>
-                <button
-                  onClick={() => setIsComposing(false)}
-                  className="text-text-secondary hover:text-text-primary text-sm"
-                >
-                  ✕
-                </button>
-              </div>
-
-              <form onSubmit={handleSendMessage} className="space-y-4">
-                {/* Destinataire (À) - Tokenized Multi-Select */}
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-xs uppercase font-bold text-text-secondary tracking-wider">
-                      À (Destinataires principaux) *
-                    </span>
-                    {canUseBroadcast && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const nextState = !isBroadcastSelected;
-                          setIsBroadcastSelected(nextState);
-                          if (nextState) {
-                            setRecipientId('-1');
-                            setSelectedToRecipients([]);
-                          } else {
-                            setRecipientId('');
-                          }
-                        }}
-                        className={`text-xs px-2.5 py-1 rounded-lg border transition-colors ${
-                          isBroadcastSelected
-                            ? 'bg-amber-500/20 text-amber-400 border-amber-500/40 font-bold'
-                            : 'bg-surface hover:bg-surface-hover text-text-secondary border-border'
-                        }`}
-                      >
-                        📢 {isBroadcastSelected ? 'Envoi Général (Actif)' : 'Activer Envoi Général'}
-                      </button>
-                    )}
-                  </div>
-
-                  {isBroadcastSelected ? (
-                    <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-400 font-semibold flex items-center gap-2">
-                      📢 Message général adressé à TOUS les utilisateurs de ScholaPro.
-                    </div>
-                  ) : (
-                    <RecipientInput
-                      placeholder="Rechercher par nom, prénom ou email..."
-                      selectedRecipients={selectedToRecipients}
-                      onChange={setSelectedToRecipients}
-                      alreadySelectedUsers={[...selectedToRecipients, ...selectedCcRecipients]}
-                      disabled={isSending}
-                    />
-                  )}
-                </div>
-
-                {/* Copie (CC) - Tokenized Multi-Select */}
-                <div>
-                  <RecipientInput
-                    label="Copie conforme (CC) — Destinataires secondaires"
-                    placeholder="Rechercher des destinataires en copie (CC)..."
-                    selectedRecipients={selectedCcRecipients}
-                    onChange={setSelectedCcRecipients}
-                    alreadySelectedUsers={[...selectedToRecipients, ...selectedCcRecipients]}
-                    disabled={isSending}
-                  />
-                </div>
-
-                {/* Objet */}
-                <div>
-                  <label className="block text-xs uppercase font-bold text-text-secondary mb-1.5">
-                    Objet du message *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Sujet de votre message..."
-                    value={subject}
-                    onChange={(e) => setSubject(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl bg-surface border border-border focus:border-primary text-xs outline-none"
-                  />
-                </div>
-
-                {/* Corps */}
-                <div>
-                  <label className="block text-xs uppercase font-bold text-text-secondary mb-1.5">
-                    Message *
-                  </label>
-                  <textarea
-                    required
-                    rows={6}
-                    placeholder="Rédigez votre message ici..."
-                    value={body}
-                    onChange={(e) => setBody(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl bg-surface border border-border focus:border-primary text-xs outline-none leading-relaxed resize-none"
-                  />
-                </div>
-
-                {/* Pièce jointe */}
-                <div>
-                  <label className="block text-xs uppercase font-bold text-text-secondary mb-1.5">
-                    Pièce jointe (PDF, Word, Excel, Images, Audio, Vidéo)
-                  </label>
-
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={(e) => {
-                      if (e.target.files?.[0]) {
-                        setAttachedFile(e.target.files[0]);
-                        setExistingAttachment(null);
-                      }
-                    }}
-                    accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,audio/*,video/*,image/*"
-                    className="hidden"
-                  />
-
-                  {attachedFile ? (
-                    <div className="p-3 bg-primary/10 border border-primary/30 rounded-xl flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2 truncate max-w-[85%]">
-                        <Paperclip size={16} className="text-primary shrink-0" />
-                        <span className="font-semibold text-text-primary truncate">{attachedFile.name}</span>
-                        <span className="text-[10px] text-text-secondary">({(attachedFile.size / 1024).toFixed(0)} Ko)</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setAttachedFile(null);
-                          if (fileInputRef.current) fileInputRef.current.value = '';
-                        }}
-                        className="text-text-secondary hover:text-red-400"
-                      >
-                        <X size={16} />
-                      </button>
-                    </div>
-                  ) : existingAttachment ? (
-                    <div className="p-3 bg-primary/10 border border-primary/30 rounded-xl flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2 truncate max-w-[85%]">
-                        <Paperclip size={16} className="text-primary shrink-0" />
-                        <span className="font-semibold text-text-primary truncate">{existingAttachment.name}</span>
-                        <span className="text-[10px] text-text-secondary">(Fichier existant)</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setExistingAttachment(null)}
-                        className="text-text-secondary hover:text-red-400"
-                      >
-                        <X size={16} />
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="w-full py-3 border-2 border-dashed border-border hover:border-primary/50 rounded-xl text-xs text-text-secondary hover:text-primary flex items-center justify-center gap-2 transition-colors"
-                    >
-                      <Paperclip size={16} />
-                      Cliquez pour ajouter une pièce jointe
-                    </button>
-                  )}
-                </div>
-
-                {/* Actions : Envoyer, Enregistrer Brouillon, Annuler */}
-                <div className="pt-2 flex flex-col sm:flex-row items-center gap-2.5">
-                  <button
-                    type="button"
-                    onClick={handleSaveDraft}
-                    disabled={isSavingDraft || isSending}
-                    className="w-full sm:w-auto px-4 py-3 bg-surface hover:bg-surface-hover rounded-xl text-xs font-semibold border border-border flex items-center justify-center gap-1.5 transition-colors"
-                  >
-                    {isSavingDraft ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
-                    Enregistrer brouillon
-                  </button>
-
-                  <button
-                    type="submit"
-                    disabled={isSending}
-                    className="w-full sm:flex-1 btn-primary py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-primary/25"
-                  >
-                    {isSending ? (
-                      <><Loader2 size={16} className="animate-spin" /> Envoi en cours...</>
-                    ) : (
-                      <><Send size={16} /> Envoyer</>
-                    )}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setIsComposing(false)}
-                    className="w-full sm:w-auto px-4 py-3 text-text-secondary hover:text-text-primary rounded-xl text-xs transition-colors"
-                  >
-                    Annuler
-                  </button>
-                </div>
-              </form>
-            </div>
-          ) : selectedMessage ? (
-            /* 2. MESSAGE DETAIL VIEW */
-            <div className="glass-card p-6 rounded-2xl border border-border space-y-6 animate-fade-in-up">
-              
+        {/* Center Main Panel (Message List OR Detail View) */}
+        <main className="flex-1 flex flex-col min-w-0 bg-background overflow-hidden">
+          {selectedMessage ? (
+            /* MESSAGE DETAIL VIEW */
+            <div className="flex-1 p-6 overflow-y-auto space-y-6 animate-fade-in-up">
               {/* Header Actions */}
               <div className="flex items-center justify-between pb-4 border-b border-border">
                 <button
+                  type="button"
                   onClick={() => setSelectedMessage(null)}
                   className="text-xs text-text-secondary hover:text-text-primary flex items-center gap-1 font-semibold"
                 >
-                  <ArrowLeft size={14} /> Retour
+                  <ArrowLeft size={16} /> Retour à la liste
                 </button>
 
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  {/* Bouton Répondre */}
-                  {(activeFolder === 'inbox' || activeFolder === 'unread') && (
-                    <button
-                      onClick={() => handleReply(selectedMessage)}
-                      className="px-3 py-1.5 rounded-lg bg-surface hover:bg-surface-hover border border-border text-xs font-semibold text-text-primary flex items-center gap-1.5 transition-colors"
-                      title="Répondre à ce message"
-                    >
-                      <Reply size={14} className="text-primary" /> Répondre
-                    </button>
-                  )}
-
-                  {/* Bouton Transférer */}
+                <div className="flex items-center gap-2">
                   <button
-                    onClick={() => handleForward(selectedMessage)}
-                    className="px-3 py-1.5 rounded-lg bg-surface hover:bg-surface-hover border border-border text-xs font-semibold text-text-primary flex items-center gap-1.5 transition-colors"
-                    title="Transférer ce message à un autre utilisateur"
+                    type="button"
+                    onClick={() => {
+                      setAiModalPrompt(`Résume le message suivant :\nSujet: ${selectedMessage.subject}\nCorps: ${selectedMessage.body}`);
+                      setIsAiModalOpen(true);
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/30 text-purple-300 text-xs font-bold flex items-center gap-1.5 transition-colors"
                   >
-                    <Forward size={14} className="text-cyan-400" /> Transférer
+                    <Sparkles size={14} /> Résumé par IA Gemini
                   </button>
 
-                  {/* Bouton Restaurer (si dans la corbeille) */}
-                  {activeFolder === 'trash' ? (
-                    <button
-                      onClick={() => handleRestoreMessage(selectedMessage.id)}
-                      className="px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-xs font-semibold text-emerald-400 flex items-center gap-1.5 transition-colors"
-                      title="Restaurer ce message"
-                    >
-                      <RotateCcw size={14} /> Restaurer
-                    </button>
-                  ) : (
-                    /* Bouton Signaler le message */
-                    (activeFolder === 'inbox' || activeFolder === 'unread') && (
-                      <button
-                        onClick={() => setReportingMessage(selectedMessage)}
-                        className="px-3 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-xs font-semibold text-rose-400 flex items-center gap-1.5 transition-colors"
-                        title="Signaler ce message au formateur et à l'administrateur"
-                      >
-                        <Flag size={14} /> Signaler
-                      </button>
-                    )
-                  )}
-
-                  {/* Bouton Supprimer */}
                   <button
-                    onClick={() => handleDeleteMessage(selectedMessage.id)}
-                    className="p-1.5 rounded-lg bg-surface hover:bg-rose-500/10 border border-border hover:border-rose-500/30 text-text-secondary hover:text-rose-400 transition-colors"
-                    title={activeFolder === 'trash' ? "Supprimer définitivement" : "Déplacer vers la corbeille"}
+                    type="button"
+                    onClick={() => handleToggleStar(selectedMessage.id)}
+                    className="p-2 rounded-xl bg-surface hover:bg-surface-hover border border-border text-text-secondary transition-colors"
                   >
-                    <Trash2 size={16} />
+                    <Star size={16} className={selectedMessage.is_starred ? 'text-amber-400 fill-amber-400' : ''} />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setReportingMessage(selectedMessage)}
+                    className="px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                  >
+                    <Flag size={14} /> Signaler
                   </button>
                 </div>
               </div>
-
-              {/* Reported Alert Banner if already reported */}
-              {selectedMessage.is_reported && (
-                <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs flex items-center gap-2.5 font-medium">
-                  <AlertTriangle size={18} className="shrink-0" />
-                  <div>
-                    <span className="font-bold">Message signalé aux formateurs et administrateurs</span>
-                    {selectedMessage.report_reason && (
-                      <p className="text-[11px] text-rose-300/80 mt-0.5">Motif : {selectedMessage.report_reason}</p>
-                    )}
-                  </div>
-                </div>
-              )}
 
               {/* Subject Title */}
               <div>
-                <h2 className="text-xl font-bold text-text-primary leading-snug">
-                  {selectedMessage.subject}
-                </h2>
+                <h1 className="text-xl font-bold text-text-primary leading-snug">{selectedMessage.subject}</h1>
                 <div className="flex items-center gap-2 text-xs text-text-secondary mt-1">
-                  <Clock size={12} />
-                  <span>
-                    {new Date(selectedMessage.created_at).toLocaleString([], { 
-                      dateStyle: 'full', 
-                      timeStyle: 'short' 
-                    })}
-                  </span>
+                  <Clock size={13} />
+                  <span>{new Date(selectedMessage.created_at).toLocaleString()}</span>
                 </div>
               </div>
 
-              {/* Badges Spéciaux (Broadcast, Welcome, CC, Relais) */}
-              <div className="flex flex-wrap gap-2 pt-1">
-                {selectedMessage.is_broadcast && (
-                  <span className="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-400 font-bold border border-amber-500/30 text-xs flex items-center gap-1.5">
-                    📢 Envoi Général (Broadcast)
-                  </span>
-                )}
-                {selectedMessage.is_welcome_msg && (
-                  <span className="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30 text-xs flex items-center gap-1.5">
-                    🎉 Message d'accueil automatique
-                  </span>
-                )}
-                {(selectedMessage.cc_emails || selectedMessage.subject.includes('[Copie]')) && (
-                  <span className="px-2.5 py-1 rounded-lg bg-cyan-500/20 text-cyan-400 font-bold border border-cyan-500/30 text-xs flex items-center gap-1.5">
-                    👥 Copie (CC) {selectedMessage.cc_emails ? `: ${selectedMessage.cc_emails}` : ''}
-                  </span>
-                )}
-                {selectedMessage.is_relay && (
-                  <span className="px-2.5 py-1 rounded-lg bg-purple-500/20 text-purple-400 font-bold border border-purple-500/30 text-xs flex items-center gap-1.5">
-                    🔄 Mode Relais
-                  </span>
-                )}
-              </div>
-
               {/* Sender & Recipient Box */}
-              <div className="p-4 rounded-xl bg-surface/50 border border-border flex items-center justify-between gap-4">
+              <div className="p-4 rounded-2xl bg-surface/60 border border-border flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-sm">
                     {(selectedMessage.sender?.email || 'U').charAt(0).toUpperCase()}
@@ -1247,7 +448,7 @@ export default function InboxMessagesPage() {
                       De : {selectedMessage.sender?.email || 'Utilisateur'}
                     </p>
                     <p className="text-[11px] text-text-secondary">
-                      À : {selectedMessage.recipient?.email || (selectedMessage.is_broadcast ? 'Tous les utilisateurs' : 'Vous')}
+                      À : {selectedMessage.recipient?.email || 'Vous'}
                     </p>
                   </div>
                 </div>
@@ -1257,208 +458,250 @@ export default function InboxMessagesPage() {
                 </span>
               </div>
 
-              {/* Message Body Content */}
-              <div className="p-4 rounded-xl bg-surface/30 border border-border text-sm leading-relaxed whitespace-pre-wrap text-text-primary min-h-[140px]">
+              {/* Message Body */}
+              <div className="p-5 rounded-2xl bg-surface/30 border border-border text-sm leading-relaxed whitespace-pre-wrap text-text-primary min-h-[160px]">
                 {selectedMessage.body}
               </div>
 
-              {/* Classroom Invite Action Button */}
-              {selectedMessage.subject.includes('Invitation à une classe virtuelle') && (
-                <div className="pt-4 border-t border-border mt-4">
-                  <button
-                    onClick={() => {
-                      const match = selectedMessage.body.match(/Code de la salle\s*:\s*`?([a-zA-Z0-9-]+)`?/);
-                      const code = match ? match[1] : '';
-                      if (code) {
-                        router.push(`/classroom/${code}`);
-                      } else {
-                        router.push('/classroom');
-                      }
-                    }}
-                    className="w-full sm:w-auto btn-primary px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-primary/25"
-                  >
-                    <Video size={18} /> Rejoindre la classe virtuelle
-                  </button>
-                </div>
-              )}
-
-              {/* Attachment Section */}
+              {/* Attachments */}
               {selectedMessage.attachment_url && (
                 <div className="space-y-2 pt-2 border-t border-border">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-text-secondary flex items-center gap-2">
                     <Paperclip size={14} className="text-primary" /> Pièce Jointe
                   </h4>
-
                   <a
                     href={selectedMessage.attachment_url}
                     target="_blank"
                     rel="noopener noreferrer"
                     download={selectedMessage.attachment_name}
-                    className="flex items-center justify-between p-4 bg-surface hover:bg-surface-hover rounded-xl border border-border transition-colors group/att"
+                    className="flex items-center justify-between p-3.5 bg-surface hover:bg-surface-hover rounded-xl border border-border transition-colors"
                   >
-                    <div className="flex items-center gap-3 min-w-0">
-                      {selectedMessage.attachment_type === 'image' ? (
-                        <ImageIcon size={24} className="text-purple-400 shrink-0" />
-                      ) : selectedMessage.attachment_type === 'audio' ? (
-                        <Music size={24} className="text-cyan-400 shrink-0" />
-                      ) : selectedMessage.attachment_type === 'video' ? (
-                        <Film size={24} className="text-yellow-400 shrink-0" />
-                      ) : selectedMessage.attachment_name?.includes('xls') ? (
-                        <FileSpreadsheet size={24} className="text-emerald-400 shrink-0" />
-                      ) : (
-                        <FileText size={24} className="text-primary shrink-0" />
-                      )}
-
-                      <div className="min-w-0">
-                        <p className="text-sm font-bold text-text-primary truncate">
-                          {selectedMessage.attachment_name || 'Fichier joint'}
-                        </p>
-                        <p className="text-[11px] text-text-secondary uppercase font-mono">
-                          {selectedMessage.attachment_type || 'Fichier'}
-                        </p>
-                      </div>
-                    </div>
-
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-semibold group-hover/att:bg-primary group-hover/att:text-white transition-colors">
+                    <span className="text-xs font-bold text-text-primary truncate">
+                      {selectedMessage.attachment_name || 'Fichier joint'}
+                    </span>
+                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-primary/10 text-primary text-xs font-semibold">
                       <Download size={14} /> Télécharger
                     </span>
                   </a>
-
-                  {selectedMessage.attachment_type === 'image' && (
-                    <div className="rounded-xl overflow-hidden border border-border mt-3 max-h-60">
-                      <img 
-                        src={selectedMessage.attachment_url} 
-                        alt="Pièce jointe" 
-                        className="w-full h-auto object-cover" 
-                      />
-                    </div>
-                  )}
-
-                  {selectedMessage.attachment_type === 'audio' && (
-                    <audio controls src={selectedMessage.attachment_url} className="w-full mt-3" />
-                  )}
-
-                  {selectedMessage.attachment_type === 'video' && (
-                    <video controls src={selectedMessage.attachment_url} className="w-full max-h-60 rounded-xl mt-3" />
-                  )}
                 </div>
               )}
             </div>
           ) : (
-            /* 3. EMPTY STATE */
-            <div className="glass-card p-12 rounded-2xl border border-border flex flex-col items-center justify-center text-center text-text-secondary h-full min-h-[400px] space-y-4">
-              <div className="w-16 h-16 rounded-2xl bg-surface flex items-center justify-center text-primary/40 shadow-inner">
-                <Mail size={36} />
+            /* MAIN MESSAGES LIST VIEW WITH GMAIL LAYOUT */
+            <div className="flex-1 flex flex-col min-h-0">
+              {/* 1. Gmail-Style Action Toolbar */}
+              <div className="px-4 py-3 border-b border-border/80 flex items-center justify-between bg-background/50">
+                <div className="flex items-center gap-3">
+                  {/* Select All Checkbox */}
+                  <input
+                    type="checkbox"
+                    checked={
+                      currentFolderList.length > 0 &&
+                      selectedMessageIds.size === currentFolderList.length
+                    }
+                    onChange={toggleSelectAll}
+                    className="w-4 h-4 rounded border-border text-primary focus:ring-primary cursor-pointer"
+                  />
+
+                  {/* Refresh Button */}
+                  <button
+                    type="button"
+                    onClick={loadAllMessages}
+                    disabled={isRefreshing}
+                    className="p-2 rounded-xl hover:bg-surface text-text-secondary hover:text-text-primary transition-colors"
+                    title="Actualiser"
+                  >
+                    <RefreshCw size={16} className={isRefreshing ? 'animate-spin text-primary' : ''} />
+                  </button>
+
+                  {/* Bulk Delete */}
+                  {selectedMessageIds.size > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleBulkDelete}
+                      className="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-colors"
+                      title="Supprimer la sélection"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
+                </div>
+
+                {/* Pagination Info */}
+                <div className="flex items-center gap-3 text-xs text-text-secondary font-medium">
+                  <span>
+                    1-{currentFolderList.length} sur {currentFolderList.length}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <button type="button" className="p-1 rounded hover:bg-surface text-text-secondary" disabled>
+                      <ChevronLeft size={16} />
+                    </button>
+                    <button type="button" className="p-1 rounded hover:bg-surface text-text-secondary" disabled>
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+                </div>
               </div>
-              <h3 className="text-base font-bold text-text-primary">Sélectionnez un message</h3>
-              <p className="text-xs max-w-xs">
-                Choisissez un message dans la liste à gauche pour le consulter, le transférer ou y répondre.
-              </p>
-              <button
-                onClick={() => {
-                  setIsComposing(true);
-                  setSelectedMessage(null);
-                }}
-                className="btn-primary px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 mt-2"
-              >
-                <Plus size={16} /> Écrire un message
-              </button>
+
+              {/* 2. Gmail Category Tabs (Primary, Promotions, Social, Updates) */}
+              {activeFolder === 'inbox' && (
+                <div className="flex items-center border-b border-border/80 bg-background/40">
+                  <button
+                    type="button"
+                    onClick={() => setActiveCategory('primary')}
+                    className={`flex-1 py-3 px-4 text-xs font-bold border-b-2 flex items-center justify-center gap-2 transition-colors ${
+                      activeCategory === 'primary'
+                        ? 'border-primary text-primary bg-primary/10'
+                        : 'border-transparent text-text-secondary hover:text-text-primary hover:bg-surface'
+                    }`}
+                  >
+                    <InboxIcon size={16} />
+                    <span>{t('cat_primary')}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveCategory('promotions')}
+                    className={`flex-1 py-3 px-4 text-xs font-bold border-b-2 flex items-center justify-center gap-2 transition-colors ${
+                      activeCategory === 'promotions'
+                        ? 'border-amber-400 text-amber-400 bg-amber-500/10'
+                        : 'border-transparent text-text-secondary hover:text-text-primary hover:bg-surface'
+                    }`}
+                  >
+                    <Tag size={16} />
+                    <span>{t('cat_promotions')}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveCategory('social')}
+                    className={`flex-1 py-3 px-4 text-xs font-bold border-b-2 flex items-center justify-center gap-2 transition-colors ${
+                      activeCategory === 'social'
+                        ? 'border-cyan-400 text-cyan-400 bg-cyan-500/10'
+                        : 'border-transparent text-text-secondary hover:text-text-primary hover:bg-surface'
+                    }`}
+                  >
+                    <Users size={16} />
+                    <span>{t('cat_social')}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveCategory('updates')}
+                    className={`flex-1 py-3 px-4 text-xs font-bold border-b-2 flex items-center justify-center gap-2 transition-colors ${
+                      activeCategory === 'updates'
+                        ? 'border-purple-400 text-purple-300 bg-purple-500/10'
+                        : 'border-transparent text-text-secondary hover:text-text-primary hover:bg-surface'
+                    }`}
+                  >
+                    <Info size={16} />
+                    <span>{t('cat_updates')}</span>
+                  </button>
+                </div>
+              )}
+
+              {/* 3. Messages List Table */}
+              <div className="flex-1 overflow-y-auto divide-y divide-border/60">
+                {currentFolderList.length === 0 ? (
+                  <div className="py-24 text-center text-text-secondary text-xs space-y-2">
+                    <Mail size={40} className="mx-auto opacity-30" />
+                    <p className="font-semibold">{t('no_messages')}</p>
+                  </div>
+                ) : (
+                  currentFolderList.map((msg) => {
+                    const isSelected = selectedMessageIds.has(msg.id);
+                    const senderName = msg.sender?.email ? msg.sender.email.split('@')[0] : 'Utilisateur';
+
+                    return (
+                      <div
+                        key={msg.id}
+                        onClick={() => handleSelectMessage(msg)}
+                        className={`px-4 py-3 cursor-pointer flex items-center justify-between gap-4 transition-all group hover:bg-surface/80 ${
+                          !msg.is_read ? 'bg-primary/5 font-extrabold' : 'bg-transparent'
+                        } ${isSelected ? 'bg-primary/15' : ''}`}
+                      >
+                        {/* Checkbox & Star */}
+                        <div className="flex items-center gap-3 shrink-0">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onClick={(e) => toggleSelectMessage(msg.id, e)}
+                            className="w-4 h-4 rounded border-border text-primary focus:ring-primary cursor-pointer"
+                          />
+
+                          <button
+                            type="button"
+                            onClick={(e) => handleToggleStar(msg.id, e)}
+                            className="text-text-secondary hover:text-amber-400 transition-colors p-1"
+                          >
+                            <Star
+                              size={16}
+                              className={msg.is_starred ? 'text-amber-400 fill-amber-400' : ''}
+                            />
+                          </button>
+                        </div>
+
+                        {/* Sender Name */}
+                        <div className="w-44 shrink-0 flex items-center gap-2 truncate">
+                          <div className="w-7 h-7 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-[10px] shrink-0">
+                            {senderName.charAt(0).toUpperCase()}
+                          </div>
+                          <span className={`text-xs truncate ${!msg.is_read ? 'font-bold text-text-primary' : 'font-medium text-text-secondary'}`}>
+                            {senderName}
+                          </span>
+                        </div>
+
+                        {/* Subject + Body Snippet Preview */}
+                        <div className="flex-1 min-w-0 truncate text-xs flex items-center gap-2">
+                          <span className={`truncate ${!msg.is_read ? 'font-bold text-text-primary' : 'font-semibold text-text-primary'}`}>
+                            {msg.subject}
+                          </span>
+                          <span className="text-text-secondary/60 truncate font-normal">
+                            — {msg.body}
+                          </span>
+                        </div>
+
+                        {/* Attachment indicator & Date */}
+                        <div className="flex items-center gap-3 shrink-0 text-xs text-text-secondary">
+                          {msg.attachment_url && (
+                            <Paperclip size={14} className="text-primary shrink-0" />
+                          )}
+                          <span className="text-[11px] font-medium font-mono">
+                            {new Date(msg.created_at).toLocaleDateString([], {
+                              month: 'short',
+                              day: 'numeric',
+                            })}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
             </div>
           )}
-        </div>
+        </main>
 
+        {/* Right Collapsible Utilities Dock (Calendar, Tasks, Gemini AI, Contacts) */}
+        <InboxRightDock onOpenAiModal={() => setIsAiModalOpen(true)} />
       </div>
 
-      {/* ========================================================================= */}
-      {/* MODAL : SIGNALER LE MESSAGE AU FORMATEUR ET ADMINISTRATEUR                 */}
-      {/* ========================================================================= */}
-      {reportingMessage && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="glass-card max-w-md w-full p-6 rounded-2xl border border-rose-500/30 space-y-5 animate-fade-in-up">
-            
-            <div className="flex items-center justify-between pb-3 border-b border-border">
-              <div className="flex items-center gap-2 text-rose-400 font-bold text-base">
-                <Flag size={20} />
-                <h3>Signaler ce message</h3>
-              </div>
-              <button 
-                onClick={() => setReportingMessage(null)}
-                className="text-text-secondary hover:text-text-primary font-bold"
-              >
-                ✕
-              </button>
-            </div>
+      {/* Recipient Multi-Select Compose Modal */}
+      <MessageComposerModal
+        isOpen={isComposingModalOpen}
+        onClose={() => setIsComposingModalOpen(false)}
+        onSuccess={() => {
+          loadAllMessages();
+          setActionMessage({ type: 'success', text: 'Message envoyé avec succès !' });
+        }}
+      />
 
-            <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-xs text-rose-300 space-y-1">
-              <p className="font-bold flex items-center gap-1.5">
-                <AlertTriangle size={14} /> Transmission directe d'alerte :
-              </p>
-              <p>
-                Ce signalement avec le contenu intégral du message sera transmis **automatiquement et immédiatement** à tous les formateurs et administrateurs de la plateforme.
-              </p>
-            </div>
-
-            <div className="space-y-2 text-xs">
-              <p className="text-text-secondary">
-                Message : <span className="font-semibold text-text-primary">« {reportingMessage.subject} »</span>
-              </p>
-              <p className="text-text-secondary">
-                Expéditeur : <span className="font-semibold text-text-primary">{reportingMessage.sender?.email}</span>
-              </p>
-            </div>
-
-            {/* Motif du signalement */}
-            <div className="space-y-2">
-              <label className="block text-xs font-bold uppercase text-text-secondary">
-                Motif du signalement :
-              </label>
-              <select
-                value={reportReason}
-                onChange={(e) => setReportReason(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl bg-surface border border-border text-xs outline-none focus:border-rose-500"
-              >
-                <option value="Contenu inapproprié ou offensant">Contenu inapproprié ou offensant</option>
-                <option value="Harcèlement ou propos haineux">Harcèlement ou propos haineux</option>
-                <option value="Spam ou tentative d'hameçonnage">Spam ou tentative d'hameçonnage</option>
-                <option value="Partage de fichier suspect ou dangereux">Partage de fichier suspect ou dangereux</option>
-                <option value="Autre motif">Autre motif</option>
-              </select>
-
-              {reportReason === 'Autre motif' && (
-                <textarea
-                  rows={3}
-                  value={customReportReason}
-                  onChange={(e) => setCustomReportReason(e.target.value)}
-                  placeholder="Précisez la raison de votre signalement..."
-                  className="w-full px-3 py-2 rounded-xl bg-surface border border-border text-xs outline-none focus:border-rose-500 mt-2"
-                />
-              )}
-            </div>
-
-            {/* Boutons d'action */}
-            <div className="flex items-center gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setReportingMessage(null)}
-                className="w-1/2 py-2.5 bg-surface hover:bg-surface-hover rounded-xl text-xs font-semibold border border-border"
-              >
-                Annuler
-              </button>
-              <button
-                type="button"
-                onClick={handleSubmitReport}
-                disabled={isSubmittingReport}
-                className="w-1/2 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-lg shadow-rose-600/30"
-              >
-                {isSubmittingReport ? <Loader2 size={15} className="animate-spin" /> : <Flag size={15} />}
-                Transmettre l'alerte
-              </button>
-            </div>
-
-          </div>
-        </div>
-      )}
-
+      {/* Google AI Gemini Assistant Modal */}
+      <GoogleAiAssistModal
+        isOpen={isAiModalOpen}
+        onClose={() => setIsAiModalOpen(false)}
+        initialPrompt={aiModalPrompt}
+      />
     </div>
   );
 }

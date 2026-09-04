@@ -1393,14 +1393,20 @@ E-Schola Pro/
       <p><strong>Route Frontend :</strong> <code>/inbox</code></p>
       <p><strong>Options et propriétés :</strong></p>
       <ul>
-        <li><strong>Sélecteur de Destinataires Multi-Sélection (To &amp; CC) :</strong> Composant combobox tokenisé (<code>RecipientInput.tsx</code>) supportant la saisie fluide, l'affichage de badges avec avatar et rôle, la suppression rapide (touche <em>Backspace</em> sur champ vide ou clic <em>X</em>), la navigation complète au clavier (<code>Flèches Haut/Bas, Entrée, Tab, Échap</code>) et la fermeture au clic extérieur.</li>
-        <li><strong>Autocomplétion Performante &amp; Anti-Course :</strong> Recherche déboguée par délai de 300 ms (debounce) vers l'endpoint <code>GET /api/v1/users/search</code>, avec annulation active des requêtes en cours via <code>AbortController</code> et déduplication stricte empêchant la sélection d'un même utilisateur à la fois dans les champs <strong>À</strong> et <strong>CC</strong>.</li>
-        <li><strong>Envoi Général (Broadcast / "All") :</strong> Restreint pour les rôles employés, étudiants et stagiaires (masqué en UI et bloqué HTTP 403 en API). Autorisé pour les administrateurs et formateurs.</li>
-        <li><strong>Intégration Formulaire &amp; Validation (React Hook Form) :</strong> Composant <code>MessageComposerModal.tsx</code> garantissant qu'au moins 1 destinataire principal (<code>to.length >= 1</code>) est sélectionné avant soumission. Section CC repliable optimisée par mémoïsation (<code>React.memo</code>) pour éviter tout re-rendu inutile du formulaire.</li>
-        <li><strong>Processus d'accueil automatique :</strong> Envoi automatique d'un message de bienvenue officiel à chaque nouvel utilisateur dès la création de son compte (auto-inscription ou création par admin).</li>
-        <li><strong>Brouillons &amp; Corbeille :</strong> Sauvegarde dynamique des brouillons et restauration/suppression définitive dans la corbeille.</li>
-        <li><strong>Pièces jointes &amp; Signalement :</strong> Support d'upload de fichiers (PDF, Word, Excel, Images, Audio, Vidéo) et transmission directe d'alerte en cas de signalement de message suspect aux formateurs et administrateurs.</li>
-        <li><strong>Compteur &amp; Polling :</strong> Badge lumineux de non-lus dans la sidebar et clignotement dynamique des notifications.</li>
+        <li><strong>Interface Moderne Inspirée de Gmail (Charte ScholaPro) :</strong> Refonte complète du layout <code>/inbox</code> selon les standards d'ergonomie Gmail tout en conservant rigoureusement la palette de couleurs ScholaPro (Logo ScholaPro officiel, verre dépoli glassmorphic, tokens de thème).</li>
+        <li><strong>Barre de Recherche Multi-Modes (InboxHeader.tsx) :</strong> Barre d'en-tête supérieure avec sélecteur de mode intégré :
+          <ul>
+            <li><code>Interne</code> : Filtrage en temps réel des messages, objets et expéditeurs ScholaPro.</li>
+            <li><code>Google Web</code> : Déclenchement de recherches externes sur le Web Google.</li>
+            <li><code>Google IA (Gemini)</code> : Mode Assistant IA interactif pour résumer, traduire et rédiger des messages.</li>
+          </ul>
+        </li>
+        <li><strong>Barre Latérale Ergonomique (InboxSidebar.tsx) :</strong> Bouton pilule "Rédiger", navigation par dossiers (<em>Boîte de réception, Favoris ⭐, En attente 🕒, Envoyés, Brouillons, Corbeille, Envoi Général</em>) avec badges dynamiques de comptage et section des catégories (<em>Promotions & Annonces, Social & Équipes, Updates & Mises à jour</em>).</li>
+        <li><strong>Dock d'Outils Rétractable (InboxRightDock.tsx) :</strong> Panneau latéral droit offrant un accès instantané à l'Agenda, aux Devoirs &amp; Tâches, aux Contacts et au Chat Assistant IA Gemini.</li>
+        <li><strong>Assistant IA Google Gemini (GoogleAiAssistModal.tsx) :</strong> Modal d'assistance IA pour la création de messages professionnels, la traduction automatique et la génération instantanée de résumés d'e-mails.</li>
+        <li><strong>Support Multilingue Complètement Adaptatif (i18n) :</strong> Prise en charge intégrale des traductions multilingues (Français, Anglais, Arabe avec mise en page RTL adaptative) via <code>next-intl</code>.</li>
+        <li><strong>Sélecteur de Destinataires Multi-Sélection (To &amp; CC) :</strong> Composant combobox tokenisé (<code>RecipientInput.tsx</code>) supportant la recherche avec délai de 300 ms (debounce), l'annulation de requêtes (<code>AbortController</code>), la déduplication des destinataires et la navigation au clavier.</li>
+        <li><strong>Validation &amp; Mémoïsation (React Hook Form) :</strong> Composant <code>MessageComposerModal.tsx</code> garantissant l'envoi vers au moins 1 destinataire (<code>to.length >= 1</code>) et mémoïsation de la section CC repliable (<code>React.memo</code>).</li>
       </ul>
       <div class="screenshot-container">
         <div class="screenshot-header">

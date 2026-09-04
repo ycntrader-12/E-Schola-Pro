@@ -256,5 +256,33 @@
     "etudiant": "طالب",
     "stagiaire": "متدرب",
     "employer": "موظف"
+  },
+  "Inbox": {
+    "page_title": "البريد الإلكتروني ScholaPro",
+    "search_placeholder_internal": "البحث في رسائل ScholaPro...",
+    "search_placeholder_google": "البحث في محرك جوجل Web...",
+    "search_placeholder_ai": "اسأل مساعد الذكاء الاصطناعي Google Gemini...",
+    "search_mode_internal": "داخلي",
+    "search_mode_google": "جوجل Web",
+    "search_mode_ai": "ذكاء جوجل (Gemini)",
+    "compose": "إنشاء رسالة",
+    "inbox": "البريد الوارد",
+    "starred": "المميزة بنجمة",
+    "snoozed": "المؤجلة",
+    "sent": "المرسلة",
+    "drafts": "المسودات",
+    "trash": "سلة المهملات",
+    "broadcast": "إرسال عام",
+    "cat_primary": "الرئيسية",
+    "cat_promotions": "العروض والإعلانات",
+    "cat_social": "الاجتماعية والفرق",
+    "cat_updates": "التحديثات",
+    "ai_assistant": "مساعد الذكاء الاصطناعي Gemini",
+    "ai_summarize": "ملخص الذكاء الاصطناعي Gemini",
+    "ai_draft_reply": "صياغة رد بالذكاء الاصطناعي",
+    "select_all": "تحديد الكل",
+    "refresh": "تحديث",
+    "mark_read": "تحديد كمقروء",
+    "no_messages": "لا توجد رسائل في هذا المجلد."
   }
 }

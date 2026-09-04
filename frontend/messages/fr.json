@@ -256,5 +256,33 @@
     "etudiant": "Étudiant",
     "stagiaire": "Stagiaire",
     "employer": "Employé"
+  },
+  "Inbox": {
+    "page_title": "Messagerie ScholaPro",
+    "search_placeholder_internal": "Rechercher dans les messages ScholaPro...",
+    "search_placeholder_google": "Rechercher sur Google Web...",
+    "search_placeholder_ai": "Demander à l'assistant IA Google Gemini...",
+    "search_mode_internal": "Interne",
+    "search_mode_google": "Google Web",
+    "search_mode_ai": "Google IA (Gemini)",
+    "compose": "Rédiger",
+    "inbox": "Boîte de réception",
+    "starred": "Favoris",
+    "snoozed": "En attente",
+    "sent": "Envoyés",
+    "drafts": "Brouillons",
+    "trash": "Corbeille",
+    "broadcast": "Envoi Général",
+    "cat_primary": "Principaux",
+    "cat_promotions": "Promotions & Annonces",
+    "cat_social": "Social & Équipes",
+    "cat_updates": "Mises à jour",
+    "ai_assistant": "Assistant IA Gemini",
+    "ai_summarize": "Résumé par IA Gemini",
+    "ai_draft_reply": "Rédiger une réponse IA",
+    "select_all": "Tout sélectionner",
+    "refresh": "Actualiser",
+    "mark_read": "Marquer comme lu",
+    "no_messages": "Aucun message trouvé dans ce dossier."
   }
 }
