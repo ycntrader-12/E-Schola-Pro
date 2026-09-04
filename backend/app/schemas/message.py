@@ -14,10 +14,12 @@ class UserShortResponse(BaseModel):
 
 
 class MessageCreate(BaseModel):
-    subject: str
-    body: str
+    subject: str = ""
+    body: str = ""
     recipient_id: int | None = None
     recipient_email: str | None = None
+    recipient_ids: list[int] = []
+    recipient_emails: list[str] = []
     attachment_url: str | None = None
     attachment_name: str | None = None
     attachment_type: str | None = None
@@ -35,12 +37,13 @@ class MessageResponse(BaseModel):
     id: int
     sender_id: int
     recipient_id: int | None = None
-    subject: str
-    body: str
+    subject: str = ""
+    body: str = ""
     attachment_url: str | None = None
     attachment_name: str | None = None
     attachment_type: str | None = None
-    is_read: bool
+    is_read: bool = False
+    is_starred: bool = False
     is_draft: bool = False
     is_trash: bool = False
     is_reported: bool = False

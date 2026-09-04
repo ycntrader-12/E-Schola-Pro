@@ -22,6 +22,7 @@ class Message(Base):
     attachment_name = Column(String(255), nullable=True)
     attachment_type = Column(String(50), nullable=True)
     is_read = Column(Boolean, default=False)
+    is_starred = Column(Boolean, default=False, nullable=True)
     is_draft = Column(Boolean, default=False)
     is_trash = Column(Boolean, default=False)
     is_reported = Column(Boolean, default=False)

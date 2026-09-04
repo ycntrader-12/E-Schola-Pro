@@ -147,11 +147,11 @@ export const MessageComposerModal: React.FC<MessageComposerModalProps> = ({
     try {
       const formData = new FormData();
       formData.append('file', file);
-      const res = await apiClient.post('/upload', formData, {
+      const res = await apiClient.post('/upload/file', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       return {
-        url: res.data.file_url,
+        url: res.data.file_url || res.data.url,
         name: file.name,
         type: res.data.file_type || (file.type.startsWith('image/') ? 'image' : 'document'),
       };
@@ -182,25 +182,25 @@ export const MessageComposerModal: React.FC<MessageComposerModalProps> = ({
       const ccIds = (values.cc || []).map((u) => Number(u.id)).filter(Boolean);
       const ccEmails = (values.cc || []).map((u) => u.email).filter(Boolean);
 
-      const primaryRecipients = values.to && values.to.length > 0 ? values.to : [null];
+      const recipientIds = (values.to || []).map((u) => Number(u.id)).filter(Boolean);
+      const recipientEmails = (values.to || []).map((u) => u.email).filter(Boolean);
 
-      for (let i = 0; i < primaryRecipients.length; i++) {
-        const recipient = primaryRecipients[i];
-        const payload = {
-          recipient_id: recipient ? Number(recipient.id) : null,
-          recipient_email: recipient ? recipient.email : null,
-          cc_recipient_ids: ccIds,
-          cc_emails: ccEmails,
-          subject: values.subject ? values.subject.trim() : '',
-          body: values.body,
-          attachment_url: fileData?.url || null,
-          attachment_name: fileData?.name || null,
-          attachment_type: fileData?.type || null,
-          is_draft: isDraft,
-        };
+      const payload = {
+        recipient_id: recipientIds[0] || null,
+        recipient_email: recipientEmails[0] || null,
+        recipient_ids: recipientIds,
+        recipient_emails: recipientEmails,
+        cc_recipient_ids: ccIds,
+        cc_emails: ccEmails,
+        subject: values.subject ? values.subject.trim() : '',
+        body: values.body ? values.body.trim() : '',
+        attachment_url: fileData?.url || null,
+        attachment_name: fileData?.name || null,
+        attachment_type: fileData?.type || null,
+        is_draft: isDraft,
+      };
 
-        await apiClient.post('/messages', payload);
-      }
+      await apiClient.post('/messages/', payload);
 
       reset();
       setAttachedFile(null);
@@ -208,9 +208,18 @@ export const MessageComposerModal: React.FC<MessageComposerModalProps> = ({
       onClose();
     } catch (err: any) {
       console.error('Error submitting message:', err);
+      const detail = err?.response?.data?.detail;
+      let displayMessage = 'Une erreur est survenue lors de l\'envoi du message.';
+      if (typeof detail === 'string') {
+        displayMessage = detail;
+      } else if (Array.isArray(detail)) {
+        displayMessage = detail.map((d: any) => d.msg || JSON.stringify(d)).join(', ');
+      } else if (detail?.message) {
+        displayMessage = detail.message;
+      }
       setError('root', {
         type: 'manual',
-        message: err.response?.data?.detail || 'Une erreur est survenue lors de l\'envoi du message.',
+        message: displayMessage,
       });
     }
   };

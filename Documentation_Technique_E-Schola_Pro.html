@@ -940,6 +940,7 @@ E-Schola Pro/
         <tr><td><code>body</code></td><td>Text</td><td>Not Null</td><td>Corps du message</td></tr>
         <tr><td><code>attachment_url</code></td><td>String</td><td>Nullable</td><td>URL pièce jointe</td></tr>
         <tr><td><code>is_read</code></td><td>Boolean</td><td>Default: False</td><td>Lu / Non-lu</td></tr>
+        <tr><td><code>is_starred</code></td><td>Boolean</td><td>Default: False</td><td>Favori / Marqueur Étoile (persistant)</td></tr>
         <tr><td><code>is_draft</code></td><td>Boolean</td><td>Default: False</td><td>Brouillon</td></tr>
         <tr><td><code>is_trash</code></td><td>Boolean</td><td>Default: False</td><td>Corbeille</td></tr>
         <tr><td><code>is_reported</code></td><td>Boolean</td><td>Default: False</td><td>Signalé</td></tr>
@@ -1133,7 +1134,8 @@ E-Schola Pro/
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/messages/sent</code></td><td>Messages envoyés</td><td>Authentifié</td></tr>
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/messages/drafts</code></td><td>Brouillons</td><td>Authentifié</td></tr>
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/messages/trash</code></td><td>Corbeille</td><td>Authentifié</td></tr>
-        <tr><td><span class="badge badge-post">POST</span></td><td><code>/messages/</code></td><td>Envoyer un message personnel, un envoi général (Broadcast / "All", restreint par rôle) ou un message avec Copie (CC) local et relais</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/messages/</code> · <code>/messages</code></td><td>Envoyer ou enregistrer un message (destinataires multiples, envoi général/broadcast, copie CC locale et relais, pièces jointes) avec tolérance de trailing slash</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-put">PUT</span></td><td><code>/messages/{id}/star</code></td><td>Basculer l'état favori (étoile ⭐) d'un message avec persistance immédiate en base de données</td><td>Authentifié</td></tr>
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/messages/unread-count</code></td><td>Nombre de messages non lus</td><td>Authentifié</td></tr>
       </tbody>
     </table>
@@ -1186,9 +1188,9 @@ E-Schola Pro/
     <table>
       <thead><tr><th>Méthode</th><th>Endpoint</th><th>Description</th><th>Accès</th></tr></thead>
       <tbody class="endpoint-row">
-        <tr><td><span class="badge badge-post">POST</span></td><td><code>/upload/file</code></td><td>Upload de fichier (tout format)</td><td>Authentifié</td></tr>
-        <tr><td><span class="badge badge-post">POST</span></td><td><code>/upload/image</code></td><td>Upload d'image (Cloudinary)</td><td>Authentifié</td></tr>
-        <tr><td><span class="badge badge-post">POST</span></td><td><code>/upload/video</code></td><td>Upload de vidéo (Cloudinary)</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/upload/file</code> · <code>/upload</code></td><td>Upload universel de fichier (documents, pièces jointes, images) avec retour normalisé <code>file_url</code> et <code>url</code></td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/upload/image</code></td><td>Upload d'image optimisé (Cloudinary / Stockage local)</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/upload/video</code></td><td>Upload de vidéo de cours (Cloudinary / Stockage local)</td><td>Authentifié</td></tr>
       </tbody>
     </table>
   </section>
@@ -1416,6 +1418,10 @@ E-Schola Pro/
         <li><strong>Support Multilingue Complètement Adaptatif (i18n) :</strong> Prise en charge intégrale des traductions multilingues (Français, Anglais, Arabe avec mise en page RTL adaptative) via <code>next-intl</code>.</li>
         <li><strong>Sélecteur de Destinataires Multi-Sélection (To &amp; CC) :</strong> Composant combobox tokenisé (<code>RecipientInput.tsx</code>) supportant la recherche avec délai de 300 ms (debounce), l'annulation de requêtes (<code>AbortController</code>), la déduplication des destinataires et la navigation au clavier.</li>
         <li><strong>Formulaire de Rédaction Intégré In-App &amp; Fiche Récapitulative (MessageComposerView.tsx) :</strong> Remplacement de l'ouverture isolée par une vue intégrée au panneau principal, alignée sur la même grille que la lecture des dossiers. Format rectangulaire équilibré (<code>w-full max-w-4xl mx-auto</code>), bordures nettes et séparateurs discrets. Lors de la sauvegarde (brouillon ou envoi), bascule automatiquement sans redirection externe vers une fiche récapitulative détaillée avec statut, destinataires et actions de reprise rapide.</li>
+        <li><strong>Standardisation REST &amp; Traitement Trailing Slash (Fix 405 Method Not Allowed) :</strong> Résolution définitive des conflits de routage HTTP grâce à l'enregistrement dual des décorateurs FastAPI (<code>@router.post("")</code> et <code>@router.post("/")</code>) et l'alignement des clients frontend (<code>MessageComposerView</code> et <code>MessageComposerModal</code>) vers <code>/messages/</code>. Prévention totale des redirections 307/405 sur les reverse-proxies de production (Railway/Nginx).</li>
+        <li><strong>Téléversement Universel de Fichiers &amp; Pièces Jointes :</strong> Prise en charge sans faille des pièces jointes (documents PDF, Office, archives, images, audio, vidéo) avec routage unifié vers <code>/api/v1/upload/file</code> et alias <code>/upload</code>, normalisation des retours JSON (<code>file_url</code> et <code>url</code>) et gestion des erreurs de téléversement contextuelles.</li>
+        <li><strong>Persistance Base de Données des Favoris (⭐) &amp; Mise à Jour Optimiste :</strong> Ajout du champ <code>is_starred</code> dans le modèle <code>Message</code>, script de migration automatique <code>migrate_messages_star.py</code> appliqué au démarrage, endpoint <code>PUT /messages/{id}/star</code>, et réactivité immédiate de l'interface avec filtrage cohérent du dossier Favoris (y compris brouillons favoris).</li>
+        <li><strong>Résolution et Tolérance des Destinataires :</strong> Moteur de résolution avancé acceptant à la fois les identifiants numériques (<code>recipient_ids</code>) et textuels (<code>recipient_emails</code>), recherche insensible à la casse (<code>func.lower</code>) sur les e-mails et noms d'utilisateurs, gestion multi-destinataires principaux et copie carbone (CC) dédupliquée.</li>
       </ul>
       <div class="screenshot-container">
         <div class="screenshot-header">

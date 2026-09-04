@@ -1,7 +1,7 @@
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
-from sqlalchemy import desc, or_
+from sqlalchemy import desc, or_, func
 
 from app.api.deps import CurrentUser, SessionDep
 from app.models.message import Message
@@ -121,6 +121,7 @@ def get_unread_count(
 RESTRICTED_BROADCAST_ROLES = ["employer", "employé", "étudiant", "etudiant", "stagiaire"]
 
 
+@router.post("", response_model=MessageResponse)
 @router.post("/", response_model=MessageResponse)
 def send_or_save_message(
     *,
@@ -130,7 +131,8 @@ def send_or_save_message(
 ) -> Any:
     """
     Send a new message or save as draft.
-    Supports personal messages, broadcast ("All") with role restrictions, and CC (copie) in local & relay modes.
+    Supports personal messages, multi-recipients, broadcast ("All") with role restrictions, and CC (copie) in local & relay modes.
+    Handles both /messages and /messages/ routes seamlessly.
     """
     user_role = (current_user.role or "").strip().lower()
     is_broadcast_req = msg_in.is_broadcast or (msg_in.recipient_id == -1)
@@ -209,97 +211,185 @@ def send_or_save_message(
         session.refresh(sent_broadcast_msg)
         return sent_broadcast_msg
 
-    # 2. Standard Personal Message & CC Processing
-    recipient = None
-    if msg_in.recipient_id and msg_in.recipient_id > 0:
-        recipient = session.query(User).filter(User.id == msg_in.recipient_id).first()
-    elif msg_in.recipient_email:
-        recipient = (
-            session.query(User)
-            .filter(User.email == msg_in.recipient_email.strip().lower())
-            .first()
-        )
+    # 2. Standard Personal & Multi-Recipient Resolution
+    primary_users = []
+    seen_ids = set()
 
-    # If it's not a draft, primary recipient is mandatory
-    if not msg_in.is_draft and not recipient:
-        raise HTTPException(status_code=404, detail="Destinataire principal introuvable.")
+    # Collect by recipient_ids list
+    for r_id in (msg_in.recipient_ids or []):
+        if r_id and r_id > 0 and r_id not in seen_ids:
+            u = session.query(User).filter(User.id == r_id).first()
+            if u:
+                primary_users.append(u)
+                seen_ids.add(u.id)
+
+    # Collect by singular recipient_id
+    if msg_in.recipient_id and msg_in.recipient_id > 0 and msg_in.recipient_id not in seen_ids:
+        u = session.query(User).filter(User.id == msg_in.recipient_id).first()
+        if u:
+            primary_users.append(u)
+            seen_ids.add(u.id)
+
+    # Collect by recipient_emails list
+    for r_email in (msg_in.recipient_emails or []):
+        clean_email = (r_email or "").strip().lower()
+        if clean_email:
+            u = session.query(User).filter(
+                (func.lower(User.email) == clean_email)
+                | (func.lower(User.username) == clean_email)
+            ).first()
+            if u and u.id not in seen_ids:
+                primary_users.append(u)
+                seen_ids.add(u.id)
+
+    # Collect by singular recipient_email
+    if msg_in.recipient_email:
+        clean_email = msg_in.recipient_email.strip().lower()
+        if clean_email:
+            u = session.query(User).filter(
+                (func.lower(User.email) == clean_email)
+                | (func.lower(User.username) == clean_email)
+            ).first()
+            if u and u.id not in seen_ids:
+                primary_users.append(u)
+                seen_ids.add(u.id)
+
+    # Fallback to external email string if non-registered recipient
+    external_recipient_email = msg_in.recipient_email.strip() if msg_in.recipient_email else None
+    if not primary_users and external_recipient_email:
+        # If email looks valid, allow relay send
+        if "@" in external_recipient_email:
+            pass
+        else:
+            raise HTTPException(status_code=404, detail="Destinataire principal introuvable.")
+
+    if not msg_in.is_draft and not primary_users and not external_recipient_email:
+        raise HTTPException(status_code=400, detail="Veuillez sélectionner au moins un destinataire valide.")
 
     cc_email_list = [e.strip().lower() for e in msg_in.cc_emails if e and e.strip()]
     cc_summary_str = ", ".join(cc_email_list) if cc_email_list else None
-    has_relay = bool(cc_email_list or (msg_in.recipient_email and not recipient))
+    has_relay = bool(cc_email_list or (external_recipient_email and not primary_users))
 
-    main_msg = Message(
-        sender_id=current_user.id,
-        recipient_id=recipient.id if recipient else None,
-        subject=msg_in.subject.strip() if msg_in.subject else "(Sans objet)",
-        body=msg_in.body.strip() if msg_in.body else "",
-        attachment_url=msg_in.attachment_url,
-        attachment_name=msg_in.attachment_name,
-        attachment_type=msg_in.attachment_type,
-        is_read=False,
-        is_draft=msg_in.is_draft,
-        is_trash=False,
-        is_broadcast=False,
-        is_relay=has_relay,
-        cc_emails=cc_summary_str,
-    )
-    session.add(main_msg)
+    # If it is a draft
+    if msg_in.is_draft:
+        draft_recipient_id = primary_users[0].id if primary_users else None
+        draft_msg = Message(
+            sender_id=current_user.id,
+            recipient_id=draft_recipient_id,
+            subject=msg_in.subject.strip() if msg_in.subject else "(Brouillon)",
+            body=msg_in.body.strip() if msg_in.body else "",
+            attachment_url=msg_in.attachment_url,
+            attachment_name=msg_in.attachment_name,
+            attachment_type=msg_in.attachment_type,
+            is_read=False,
+            is_draft=True,
+            is_trash=False,
+            is_broadcast=False,
+            is_relay=has_relay,
+            cc_emails=cc_summary_str,
+        )
+        session.add(draft_msg)
+        session.commit()
+        session.refresh(draft_msg)
+        return draft_msg
 
-    # If sending (not draft), dispatch CC copies to specified users/emails
-    if not msg_in.is_draft:
-        processed_cc_ids = set()
-        if recipient:
-            processed_cc_ids.add(recipient.id)
-        processed_cc_ids.add(current_user.id)
+    # Active Sending
+    created_primary_messages = []
+    if primary_users:
+        for recipient in primary_users:
+            main_msg = Message(
+                sender_id=current_user.id,
+                recipient_id=recipient.id,
+                subject=msg_in.subject.strip() if msg_in.subject else "(Sans objet)",
+                body=msg_in.body.strip() if msg_in.body else "",
+                attachment_url=msg_in.attachment_url,
+                attachment_name=msg_in.attachment_name,
+                attachment_type=msg_in.attachment_type,
+                is_read=False,
+                is_draft=False,
+                is_trash=False,
+                is_broadcast=False,
+                is_relay=has_relay,
+                cc_emails=cc_summary_str,
+            )
+            session.add(main_msg)
+            created_primary_messages.append(main_msg)
+    else:
+        # Relay only external recipient
+        main_msg = Message(
+            sender_id=current_user.id,
+            recipient_id=None,
+            subject=msg_in.subject.strip() if msg_in.subject else "(Sans objet)",
+            body=msg_in.body.strip() if msg_in.body else "",
+            attachment_url=msg_in.attachment_url,
+            attachment_name=msg_in.attachment_name,
+            attachment_type=msg_in.attachment_type,
+            is_read=False,
+            is_draft=False,
+            is_trash=False,
+            is_broadcast=False,
+            is_relay=True,
+            cc_emails=f"{external_recipient_email}, {cc_summary_str}" if cc_summary_str else external_recipient_email,
+        )
+        session.add(main_msg)
+        created_primary_messages.append(main_msg)
 
-        # A) CC by recipient IDs
-        for cc_id in msg_in.cc_recipient_ids:
-            if cc_id not in processed_cc_ids:
-                cc_user = session.query(User).filter(User.id == cc_id).first()
-                if cc_user:
-                    processed_cc_ids.add(cc_user.id)
-                    cc_msg = Message(
-                        sender_id=current_user.id,
-                        recipient_id=cc_user.id,
-                        subject=f"[Copie] {main_msg.subject}",
-                        body=f"--- Message en copie (CC) envoyé à {recipient.email if recipient else 'destinataire'} ---\n\n{main_msg.body}",
-                        attachment_url=main_msg.attachment_url,
-                        attachment_name=main_msg.attachment_name,
-                        attachment_type=main_msg.attachment_type,
-                        is_read=False,
-                        is_draft=False,
-                        is_trash=False,
-                        is_broadcast=False,
-                        is_relay=False,
-                        cc_emails=cc_summary_str,
-                    )
-                    session.add(cc_msg)
+    # Dispatch CC copies (once per unique CC user)
+    processed_cc_ids = set(seen_ids)
+    processed_cc_ids.add(current_user.id)
 
-        # B) CC by email addresses (local DB users or external relay)
-        for email_addr in cc_email_list:
-            cc_user = session.query(User).filter(User.email == email_addr).first()
-            if cc_user and cc_user.id not in processed_cc_ids:
+    # A) CC by recipient IDs
+    for cc_id in (msg_in.cc_recipient_ids or []):
+        if cc_id and cc_id not in processed_cc_ids:
+            cc_user = session.query(User).filter(User.id == cc_id).first()
+            if cc_user:
                 processed_cc_ids.add(cc_user.id)
                 cc_msg = Message(
                     sender_id=current_user.id,
                     recipient_id=cc_user.id,
-                    subject=f"[Copie] {main_msg.subject}",
-                    body=f"--- Message en copie (CC) envoyé à {recipient.email if recipient else 'destinataire'} ---\n\n{main_msg.body}",
-                    attachment_url=main_msg.attachment_url,
-                    attachment_name=main_msg.attachment_name,
-                    attachment_type=main_msg.attachment_type,
+                    subject=f"[Copie] {msg_in.subject.strip() if msg_in.subject else '(Sans objet)'}",
+                    body=f"--- Message en copie (CC) ---\n\n{msg_in.body.strip() if msg_in.body else ''}",
+                    attachment_url=msg_in.attachment_url,
+                    attachment_name=msg_in.attachment_name,
+                    attachment_type=msg_in.attachment_type,
                     is_read=False,
                     is_draft=False,
                     is_trash=False,
                     is_broadcast=False,
-                    is_relay=True,
+                    is_relay=False,
                     cc_emails=cc_summary_str,
                 )
                 session.add(cc_msg)
 
+    # B) CC by email addresses
+    for email_addr in cc_email_list:
+        cc_user = session.query(User).filter(
+            (func.lower(User.email) == email_addr) | (func.lower(User.username) == email_addr)
+        ).first()
+        if cc_user and cc_user.id not in processed_cc_ids:
+            processed_cc_ids.add(cc_user.id)
+            cc_msg = Message(
+                sender_id=current_user.id,
+                recipient_id=cc_user.id,
+                subject=f"[Copie] {msg_in.subject.strip() if msg_in.subject else '(Sans objet)'}",
+                body=f"--- Message en copie (CC) ---\n\n{msg_in.body.strip() if msg_in.body else ''}",
+                attachment_url=msg_in.attachment_url,
+                attachment_name=msg_in.attachment_name,
+                attachment_type=msg_in.attachment_type,
+                is_read=False,
+                is_draft=False,
+                is_trash=False,
+                is_broadcast=False,
+                is_relay=True,
+                cc_emails=cc_summary_str,
+            )
+            session.add(cc_msg)
+
     session.commit()
-    session.refresh(main_msg)
-    return main_msg
+    for m in created_primary_messages:
+        session.refresh(m)
+
+    return created_primary_messages[0]
 
 
 @router.get("/{message_id}", response_model=MessageResponse)
@@ -330,6 +420,33 @@ def get_message_detail(
         session.refresh(msg)
 
     return msg
+
+
+@router.put("/{message_id}/star")
+def toggle_star_message(
+    message_id: int,
+    session: SessionDep,
+    current_user: CurrentUser,
+) -> Any:
+    """
+    Toggle star / favorite flag for a message.
+    """
+    msg = session.query(Message).filter(Message.id == message_id).first()
+    if not msg:
+        raise HTTPException(status_code=404, detail="Message introuvable.")
+
+    admin_roles = ["admin", "admin_manager", "admin_limited"]
+    if (
+        msg.sender_id != current_user.id
+        and msg.recipient_id != current_user.id
+        and current_user.role not in admin_roles
+    ):
+        raise HTTPException(status_code=403, detail="Accès non autorisé.")
+
+    msg.is_starred = not bool(getattr(msg, "is_starred", False))
+    session.commit()
+    session.refresh(msg)
+    return {"message_id": message_id, "is_starred": msg.is_starred}
 
 
 @router.put("/{message_id}/restore")

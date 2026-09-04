@@ -218,8 +218,8 @@ export default function InboxMessagesPage() {
   const isRestrictedRole = ['employer', 'employé', 'étudiant', 'etudiant', 'stagiaire'].includes(userRole);
   const canUseBroadcast = currentUser ? !isRestrictedRole : false;
 
-  // Star message handler
-  const handleToggleStar = (msgId: number, e?: React.MouseEvent) => {
+  // Star message handler with optimistic UI and database persistence
+  const handleToggleStar = async (msgId: number, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     setInboxMessages((prev) =>
       prev.map((m) => (m.id === msgId ? { ...m, is_starred: !m.is_starred } : m))
@@ -227,6 +227,17 @@ export default function InboxMessagesPage() {
     setSentMessages((prev) =>
       prev.map((m) => (m.id === msgId ? { ...m, is_starred: !m.is_starred } : m))
     );
+    setDraftMessages((prev) =>
+      prev.map((m) => (m.id === msgId ? { ...m, is_starred: !m.is_starred } : m))
+    );
+    if (selectedMessage && selectedMessage.id === msgId) {
+      setSelectedMessage((prev) => (prev ? { ...prev, is_starred: !prev.is_starred } : null));
+    }
+    try {
+      await apiClient.put(`/messages/${msgId}/star`);
+    } catch (err) {
+      console.error('Failed to toggle star:', err);
+    }
   };
 
   // Get active message list based on current folder
@@ -239,7 +250,7 @@ export default function InboxMessagesPage() {
     else if (activeFolder === 'drafts') list = draftMessages;
     else if (activeFolder === 'trash') list = trashMessages;
     else if (activeFolder === 'starred')
-      list = [...inboxMessages, ...sentMessages].filter((m) => m.is_starred);
+      list = [...inboxMessages, ...sentMessages, ...draftMessages].filter((m) => m.is_starred);
     else if (activeFolder === 'snoozed')
       list = inboxMessages.filter((m) => !m.is_read);
     else if (activeFolder === 'classroom')

@@ -182,6 +182,8 @@ def upload_chat_file(
         raise HTTPException(status_code=500, detail=f"Upload failed: {e!s}")
 
 
+@router.post("")
+@router.post("/")
 @router.post("/file")
 def upload_any_file(
     *,
@@ -190,7 +192,8 @@ def upload_any_file(
     file: UploadFile = File(...),
 ) -> Any:
     """
-    Upload any file format (for deliverables, etc.).
+    Upload any file format (for attachments, deliverables, etc.).
+    Supports /upload, /upload/, and /upload/file.
     """
     try:
         os.makedirs("uploads/files", exist_ok=True)
@@ -198,7 +201,7 @@ def upload_any_file(
         # Get extension if exists
         ext = ""
         if "." in file.filename:
-            ext = file.filename.split(".")[-1]
+            ext = file.filename.split(".")[-1].lower()
 
         filename = f"{uuid.uuid4().hex}"
         if ext:
@@ -210,6 +213,11 @@ def upload_any_file(
             shutil.copyfileobj(file.file, buffer)
 
         url = f"{get_base_url(request)}/uploads/files/{filename}"
-        return {"url": url, "filename": file.filename}
+        return {
+            "url": url,
+            "file_url": url,
+            "filename": file.filename,
+            "file_type": ext,
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"File upload failed: {e!s}")
