@@ -1,38 +1,85 @@
-# 🎓 E-Schola Pro — Plateforme de Gestion Éducative Intégrée
+# 🎓 E-Schola Pro — Plateforme de Gestion Éducative Intégrée & Sécurisée
 
-**E-Schola Pro** est une plateforme de gestion éducative moderne, complète et intégrée. Elle a été conçue pour unifier les flux de travail des administrateurs, des formateurs et des apprenants (étudiants, stagiaires, employés) au sein d'un écosystème numérique unique, fluide et performant.
+[![FastAPI](https://img.shields.io/badge/Backend-FastAPI%200.111-009688?logo=fastapi)](https://fastapi.tiangolo.com)
+[![Next.js](https://img.shields.io/badge/Frontend-Next.js%2015-black?logo=next.js)](https://nextjs.org)
+[![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL%20%26%20SQLite-336791?logo=postgresql)](https://postgresql.org)
+[![Railway](https://img.shields.io/badge/Deploy-Railway%20Cloud-0B0D0E?logo=railway)](https://railway.app)
+[![OWASP](https://img.shields.io/badge/Security-OWASP%20Hardened-blue?logo=owasp)](https://owasp.org)
+[![License](https://img.shields.io/badge/License-Proprietary-red)](#)
+
+**E-Schola Pro** est une plateforme éducative industrielle complète, conçue pour unifier les flux de travail des administrateurs, des formateurs et des apprenants (étudiants, stagiaires, employés) au sein d'un écosystème numérique rapide, esthétique et hautement sécurisé.
 
 ---
 
 ## 🚀 Démarrage Rapide
 
-Si vous êtes sur **Windows**, vous pouvez lancer simultanément le backend et le frontend en double-cliquant sur le script de démarrage global :
-👉 [`start_all.bat`](file:///d:/my%20projet/E-Schola%20Pro/start_all.bat)
+### Lancement en un clic (Windows)
+Pour démarrer simultanément le backend FastAPI et le frontend Next.js en développement local :
+👉 Double-cliquez sur [`start_all.bat`](file:///d:/my%20projet/E-Schola%20Pro/start_all.bat)
 
-- **Backend API (Swagger) :** [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
-- **Frontend App :** [http://localhost:3000](http://localhost:3000)
-- **Console SQLAdmin (Admin uniquement) :** [http://localhost:8000/admin](http://localhost:8000/admin)
+- **Application Web (Frontend) :** [http://localhost:3000](http://localhost:3000)
+- **Documentation API Interactive (Swagger) :** [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+- **Console d'Administration SQLAdmin :** [http://localhost:8000/admin](http://localhost:8000/admin)
+- **Portail de Documentation Technique Complète :** [Documentation_Technique_E-Schola_Pro.html](file:///d:/my%20projet/E-Schola%20Pro/Documentation_Technique_E-Schola_Pro.html)
+
+---
+
+## 🛡️ Sécurité Industrielle & Protection Anti-Menaces (Local & Railway)
+
+Le système de messagerie et les endpoints de la plateforme intègrent un blindage multicouche conforme aux recommandations **OWASP** :
+
+| Vecteur d'Attaque / Menace | Risque | Protection Déployée |
+| :--- | :--- | :--- |
+| **XSS Stocké & Injections HTML** | Injection de `<script>`, `<iframe>` ou d'événements JS (`onerror=`, `onclick=`) dans les messages | **Désinfection systématique** (`app/core/sanitizer.py`). Éradication de toutes les balises et attributs dangereux avant persistance. |
+| **Attaque XSS via Pièces Jointes** | Exécution de JavaScript via `attachment_url` (`javascript:...`, `data:text/html;base64,...`) | **Validation stricte de protocole** : Seuls `http://`, `https://`, `/uploads/` et images Base64 sont autorisés. Rejet immédiat avec code **HTTP 400**. Vérification défensive additionnelle dans l'interface React. |
+| **Malware, WebShells & DoS Fichier** | Upload de fichiers exécutables (`.exe`, `.bat`, `.sh`, `.php`, `.js`, etc.) ou saturation de disque | **Liste noire stricte** dans `app/api/v1/upload.py`, assainissement contre les traversées de répertoires (*Path Traversal* `../`), et **limite streaming de 25 Mo** (rejet **HTTP 413**). |
+| **IDOR & Fuite de Messages Privés** | Exfiltration de messages confidentiels via `POST /{id}/report` ou suppression frauduleuse | **Vérification d'accès stricte** : un utilisateur ne peut consulter, supprimer ou signaler qu'un message dont il est le destinataire direct ou l'expéditeur (**HTTP 403**). |
+| **Spam, Flooding & Déni de Service (DoS)** | Scripts automatisés bombardant la base PostgreSQL pour épuiser les connexions | **Limiteur de débit par fenêtre glissante** (`app/core/rate_limiter.py`) : max **25 messages/min** et **5 signalements/min** par utilisateur (**HTTP 429** avec `Retry-After`). |
+| **Spam Broadcast / Envoi Massif** | Envois massifs non autorisés à tous les membres par des étudiants | Rôle restreint sur `is_broadcast` et **plafond anti-spam de 10 destinataires max** pour les rôles étudiants et employés. |
+| **Clickjacking & Sécurité Réseau Railway** | Reniflage MIME, détournement d'iframe, requêtes cross-origin non autorisées | Middleware FastAPI injectant les **en-têtes de sécurité OWASP** (`X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, `X-XSS-Protection`, `Referrer-Policy`) et support CORS regex Railway. |
+
+---
+
+## 🗄️ Persistance Hybride PostgreSQL (Railway) & SQLite (Local)
+
+E-Schola Pro supporte nativement deux modes de persistance sans modification de code :
+
+1. **Production Cloud (Railway PostgreSQL) :**
+   - Support complet de l'URL template Railway avec résolution automatique des variables d'environnement :
+     ```text
+     DATABASE_URL=postgresql://${{PGUSER}}:${{POSTGRES_PASSWORD}}@${{RAILWAY_PRIVATE_DOMAIN}}:5432/${{PGDATABASE}}
+     ```
+   - Protection contre les bascules silencieuses vers SQLite éphémère sur Railway (`is_in_railway()`).
+   - Gestion automatique des rollbacks de transaction (`db.rollback()`) pour préserver l'intégrité du pool de connexions PostgreSQL.
+   - Suppression en cascade intégrale (`delete_user`) évitant toute violation de clé étrangère (*Foreign Key Violation*).
+2. **Développement Local (SQLite Fallback) :**
+   - Bascule automatique et transparente vers `backend/eschola.db` en environnement local hors-ligne.
+3. **Optimisation Automatique des Avatars (WebP Base64) :**
+   - Auto-orientation EXIF, recadrage centré carré 256×256 et compression WebP ultra-haute performance (>98 % d'économie d'espace).
+   - Stockage direct sous forme de Data URI Base64 dans la colonne `avatar_url` de PostgreSQL : **zéro perte de données lors des redéploiements de conteneurs Railway**.
+   - Endpoint de streaming direct : `GET /api/v1/users/{id}/avatar`.
 
 ---
 
 ## 🛠️ Stack Technologique
 
 ### Frontend
-- **Framework :** [Next.js 15 / 16](file:///d:/my%20projet/E-Schola%20Pro/frontend) (App Router, Server Components)
-- **Bibliothèque UI :** React 19 & [Lucide Icons](https://lucide.dev)
-- **Langage :** TypeScript
-- **Stylisation :** CSS Vanilla personnalisé (Glassmorphism, thèmes Adaptatifs Sombre/Clair)
-- **Internationalisation :** `next-intl` (Français, Anglais, Arabe)
-- **Client HTTP :** Axios
+- **Framework :** [Next.js 15](https://nextjs.org) (App Router, Server & Client Components)
+- **UI & Icônes :** React 19, [Lucide React](https://lucide.dev)
+- **Langage :** TypeScript (mode strict, validation 100 % sans erreur)
+- **Design System :** CSS Vanilla moderne (Glassmorphism, thèmes Sombre/Clair, animations GPU 60 FPS)
+- **Internationalisation :** `next-intl` (Français, Anglais, Arabe avec support RTL complet)
+- **Formulaires & Validation :** `react-hook-form`
+- **Client HTTP :** Axios configuré avec intercepteurs JWT
 
 ### Backend
-- **Framework :** FastAPI (Python 3.11+)
-- **ORM :** SQLAlchemy 2.0 & Migrations avec Alembic
-- **Validation :** Pydantic v2
-- **Base de données :** SQLite (`eschola.db`)
-- **Sécurité :** Authentification JWT (JSON Web Tokens) & Passlib (Bcrypt)
-- **Uploads :** Intégration Cloudinary (images, vidéos)
-- **Console d'Administration :** SQLAdmin (Panel d'administration web auto-généré)
+- **Framework :** [FastAPI 0.111+](https://fastapi.tiangolo.com) (Python 3.11+)
+- **ORM :** SQLAlchemy 2.0 avec migrations automatiques au démarrage
+- **Moteur Base de Données :** PostgreSQL (Railway Production) & SQLite (Local Dev)
+- **Validation & Schémas :** Pydantic v2
+- **Sécurité & Auth :** JWT Bearer Tokens (python-jose), Passlib (Bcrypt)
+- **Traitement d'Images :** Pillow (PIL) avec algorithme Lanczos & encodage WebP
+- **Administration :** SQLAdmin (Panel web connecté en direct à la base de données)
 
 ---
 
@@ -40,116 +87,109 @@ Si vous êtes sur **Windows**, vous pouvez lancer simultanément le backend et l
 
 ```text
 E-Schola Pro/
-├── backend/                  # API REST FastAPI & Base de données
-│   ├── app/                  # Logique applicative (models, schemas, api...)
-│   │   ├── api/              # Endpoints REST (v1) et Dépendances
-│   │   ├── core/             # Sécurité, JWT et Configurations
-│   │   ├── db/               # Configuration Session et Engine
-│   │   ├── models/           # Modèles SQLAlchemy (ORM)
-│   │   ├── schemas/          # Schémas Pydantic (validation)
-│   │   └── admin.py          # Configuration SQLAdmin
-│   ├── alembic/              # Fichiers de migration de base de données
-│   ├── requirements.txt      # Dépendances Python
-│   └── .env                  # Variables d'environnement du backend
-├── frontend/                 # Client Next.js (App Router)
-│   ├── src/                  # Composants, hooks, lib et pages Next.js
-│   │   └── app/[locale]/     # Routage internationalisé (fr, en, ar)
-│   ├── messages/             # Traductions JSON (FR, EN, AR)
-│   └── package.json          # Scripts et dépendances Node.js
-├── start_all.bat             # Batch de démarrage rapide (Windows)
-└── Documentation_Technique_E-Schola_Pro.html # Documentation technique complète
+├── backend/                             # API REST FastAPI & Persistance
+│   ├── app/
+│   │   ├── api/                         # Endpoints REST (v1) et Dépendances
+│   │   │   ├── v1/
+│   │   │   │   ├── messages.py          # Messagerie sécurisée, inbox, favoris, signalement
+│   │   │   │   ├── users.py             # CRUD Utilisateurs, profil, avatar WebP
+│   │   │   │   ├── upload.py            # Upload sécurisé anti-malware, limite 25 Mo
+│   │   │   │   └── ...                  # Cours, Quiz, Présences, Devoirs, Groupes
+│   │   │   └── deps.py                  # Injection de dépendances et gestion de session DB
+│   │   ├── core/
+│   │   │   ├── config.py                # Résolution variables d'environnement & Railway
+│   │   │   ├── rate_limiter.py          # Limiteur de débit à fenêtre glissante (HTTP 429)
+│   │   │   ├── sanitizer.py             # Désinfection XSS, validation URL & extensions
+│   │   │   └── security.py              # Hachage bcrypt et création de jetons JWT
+│   │   ├── models/                      # Modèles ORM SQLAlchemy (User, Message, etc.)
+│   │   ├── schemas/                     # Schémas de validation Pydantic v2
+│   │   └── main.py                      # Application FastAPI, headers OWASP et CORS
+│   ├── migrate_messages_schema.py       # Synchronisation dynamique du schéma messages
+│   ├── migrate_user_profiles.py         # Migration des colonnes de profils étendus
+│   ├── test_messaging_security.py       # Suite de tests de sécurité OWASP (XSS, IDOR, DoS)
+│   ├── test_railway_persistence.py      # Suite de tests de persistance Railway PostgreSQL
+│   ├── requirements.txt                 # Dépendances Python
+│   └── start.sh                         # Script de démarrage pour conteneur Docker/Railway
+├── frontend/                            # Client Next.js 15 (App Router)
+│   ├── src/
+│   │   ├── app/[locale]/
+│   │   │   ├── inbox/                   # Boîte de messagerie Gmail-style sécurisée
+│   │   │   ├── profile/                 # Profil utilisateur & portail admin
+│   │   │   ├── classroom/               # Classes virtuelles visioconférence HD
+│   │   │   └── ...                      # Cours, Quiz, Devoirs, Présences, Groupes
+│   │   ├── components/                  # Composants réutilisables
+│   │   └── lib/api.ts                   # Client Axios configuré
+│   ├── messages/                        # Dictionnaires i18n (fr.json, en.json, ar.json)
+│   └── package.json                     # Dépendances Node.js
+├── start_all.bat                        # Script de lancement global pour Windows
+└── Documentation_Technique_E-Schola_Pro.html # Documentation technique complète synchronisée
 ```
 
 ---
 
 ## 🌟 Fonctionnalités Principales
 
-* 📚 **Gestion des Cours :** Création, édition et suppression de cours avec support de vidéos, documents PDF et images de couverture. Inscription automatique des étudiants.
-* 🏆 **Quiz & Évaluations :** Système de QCM avec timer configurable, correction automatique, calcul du score en pourcentage et tableau de classement.
-* ✅ **Présences & Émargement :** Suivi des présences par session avec statuts (Présent, En retard, Absent, Excusé), filtrage par groupe et par date.
-* 📅 **Calendrier & Planning :** Planification des cours et événements, navigation mensuelle, ciblage par rôle, et dépôt de livrables (fichiers/liens).
-* 💬 **Messagerie Interne :** Système de messagerie complet avec boîte de réception, messages envoyés, brouillons, corbeille et pièces jointes.
-* 🎥 **Classe Virtuelle :** Salles de visioconférence intégrées avec identifiant unique, accessibles par tous les utilisateurs inscrits.
-* 👥 **Gestion des Groupes & Classes :** Création de classes et niveaux avec affectation dynamique des étudiants aux groupes.
-* ⚙️ **Panel d'Administration (SQLAdmin) :** Gestion de 14 tables de base de données en direct via une interface web intégrée.
+* 💬 **Messagerie Inbox Sécurisée :** Boîte de réception inspirée de Gmail, multi-destinataires, copie carbone (CC), brouillons, corbeille, favoris (⭐), recherche multi-modes (Interne, Google Web, Assistant IA Gemini), signalement de sécurité immédiat aux administrateurs/formateurs et protection anti-spam.
+* 👤 **Gestion des Utilisateurs & Avatars :** Profil complet par rôle (Admin, Formateur, Étudiant, Stagiaire, Employé), téléversement et optimisation instantanée des photos en WebP 256×256 stockées en Base64 dans Railway PostgreSQL.
+* 📚 **Gestion des Cours & Vidéos :** Organisation des cours par catégories, chapitres vidéo avec lecteur HD, documents PDF et suivi de progression des apprenants.
+* 🏆 **Quiz & Évaluations :** Création de QCM chronométrés, notation automatique, calcul du score sur 20 et publication instantanée des résultats.
+* 📋 **Feuille de Présences & Émargement :** Pointage d'assiduité par séance avec statuts détaillés (Présent, Retard, Absent, Excusé) et statistiques personnelles pour les apprenants.
+* 📅 **Agenda & Calendrier :** Planification des sessions et échéances avec filtrage mensuel et soumission de livrables liés.
+* 📹 **Classes Virtuelles HD :** Visioconférence interactive avec salle d'attente sécurisée, contrôle d'accès par l'hôte, partage d'écran et messagerie de salle.
+* 👥 **Groupes & Promotions :** Gestion des promotions et affectation ciblée des étudiants avec contrôle d'accès strict.
+* ⚙️ **Panel SQLAdmin Intégré :** Visualisation et manipulation sécurisée des 14 tables de données réservée aux administrateurs.
 
 ---
 
-## ⚙️ Guide d'Installation & Configuration
+## 🧪 Tests & Validation
 
-### 1. Prérequis
-Assurez-vous d'avoir installé **Python 3.11+**, **Node.js 18+** et **Git**.
+La plateforme intègre des suites de tests automatisées assurant la robustesse et la non-régression :
 
-### 2. Configuration du Backend
+### 1. Tests de Sécurité (XSS, IDOR, Flooding, Uploads)
+```bash
+python backend/test_messaging_security.py
+```
+*Validation : Nettoyage XSS, blocage `javascript:`, rejet des web shells `.exe/.php`, contrôle IDOR sur signalement, et limitation HTTP 429.*
 
-1. Allez dans le dossier backend :
-   ```bash
-   cd backend
-   ```
-2. Créez et activez un environnement virtuel :
-   ```bash
-   # Windows :
-   python -m venv venv
-   venv\Scripts\activate
+### 2. Tests de Persistance Railway PostgreSQL
+```bash
+python backend/test_railway_persistence.py
+```
+*Validation : Résolution de template Railway `${{...}}`, CRUD utilisateur, persistance messagerie et suppression en cascade.*
 
-   # Linux/Mac :
-   python -m venv venv
-   source venv/bin/activate
-   ```
-3. Installez les dépendances :
-   ```bash
-   pip install -r requirements.txt
-   ```
-4. Configurez le fichier `.env` :
-   Créez un fichier `.env` dans le dossier `backend` sur le modèle suivant :
-   ```env
-   SECRET_KEY=votre_cle_secrete_jwt
-   DATABASE_URL=sqlite:///./eschola.db
-   ACCESS_TOKEN_EXPIRE_MINUTES=10080
-   CLOUDINARY_CLOUD_NAME=votre_cloud_name
-   CLOUDINARY_API_KEY=votre_api_key
-   CLOUDINARY_API_SECRET=votre_api_secret
-   ```
-5. Appliquez les migrations de base de données :
-   ```bash
-   alembic upgrade head
-   ```
-6. (Optionnel) Créez ou réinitialisez le compte administrateur par défaut :
-   ```bash
-   python create_admin.py
-   ```
-7. Lancez le serveur de développement backend :
-   ```bash
-   uvicorn app.main:app --reload --port 8000
-   ```
-
-### 3. Configuration du Frontend
-
-1. Allez dans le dossier frontend :
-   ```bash
-   cd ../frontend
-   ```
-2. Installez les dépendances Node.js :
-   ```bash
-   npm install
-   ```
-3. Lancez le serveur de développement frontend :
-   ```bash
-   npm run dev
-   ```
+### 3. Vérification TypeScript Frontend
+```bash
+cd frontend && npx tsc --noEmit
+```
+*Validation : Zéro erreur de typage sur l'ensemble du projet Next.js.*
 
 ---
 
-## 🛡️ Rôles & Permissions
+## ⚙️ Variables d'Environnement
 
-L'application intègre un contrôle d'accès basé sur les rôles (RBAC) :
-- **Admin :** Accès complet à l'application, panel d'administration SQLAdmin et portail de debug.
-- **Formateur :** Création de cours, gestion de groupes, notation des quiz, suivi des présences, création d'événements.
-- **Étudiant / Stagiaire / Employé :** Consultation des cours, passage des quiz, consultation du calendrier et dépôt des devoirs/livrables.
+### Backend (`backend/.env` ou Dashboard Railway)
+```env
+SECRET_KEY=votre_cle_secrete_jwt_super_robuste
+ACCESS_TOKEN_EXPIRE_MINUTES=10080
+
+# En local :
+DATABASE_URL=sqlite:///./eschola.db
+
+# Sur Railway (l'une ou l'autre syntaxe est acceptée automatiquement) :
+DATABASE_URL=postgresql://${{PGUSER}}:${{POSTGRES_PASSWORD}}@${{RAILWAY_PRIVATE_DOMAIN}}:5432/${{PGDATABASE}}
+# Ou variables directes : PGUSER, POSTGRES_PASSWORD, RAILWAY_PRIVATE_DOMAIN, PGDATABASE
+```
+
+### Frontend (`frontend/.env.local`)
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+# Sur Railway/Production :
+# NEXT_PUBLIC_API_URL=https://votre-app-backend.up.railway.app/api/v1
+```
 
 ---
 
 ## 📖 Documentation Technique
 
-Pour plus de détails sur le schéma détaillé de la base de données, la liste des 16 endpoints de l'API REST, les permissions précises ou le fonctionnement interne des modules, consultez la documentation HTML incluse :
-👉 [Documentation_Technique_E-Schola_Pro.html](file:///d:/my%20projet/E-Schola%20Pro/Documentation_Technique_E-Schola_Pro.html)
+Pour consulter l'architecture complète, la liste des tables, la matrice des rôles et l'ensemble des endpoints REST :
+👉 Ouvrez [Documentation_Technique_E-Schola_Pro.html](file:///d:/my%20projet/E-Schola%20Pro/Documentation_Technique_E-Schola_Pro.html) dans votre navigateur.
