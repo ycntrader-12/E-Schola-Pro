@@ -1,14 +1,24 @@
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
-from sqlalchemy import desc, or_, func
+from sqlalchemy import desc, func, or_
 
 from app.api.deps import CurrentUser, SessionDep
+from app.core.rate_limiter import rate_limiter
+from app.core.sanitizer import (
+    sanitize_attachment_url,
+    sanitize_filename,
+    sanitize_subject,
+    sanitize_text,
+)
 from app.models.message import Message
 from app.models.user import User
 from app.schemas.message import MessageCreate, MessageReport, MessageResponse
 
 router = APIRouter()
+
+ADMIN_ROLES = ["admin", "admin_manager", "admin_limited"]
+RESTRICTED_BROADCAST_ROLES = ["employer", "employé", "étudiant", "etudiant", "stagiaire"]
 
 
 @router.get("/inbox", response_model=list[MessageResponse])
@@ -17,7 +27,8 @@ def get_inbox_messages(
     current_user: CurrentUser,
 ) -> Any:
     """
-    Get all received messages (excluding trash and drafts).
+    Get all received messages for the authenticated user (excluding trash and drafts).
+    Strict authorization: strictly scoped to current_user.id.
     """
     messages = (
         session.query(Message)
@@ -38,7 +49,8 @@ def get_sent_messages(
     current_user: CurrentUser,
 ) -> Any:
     """
-    Get all sent messages (excluding trash and drafts).
+    Get all sent messages for the authenticated user (excluding trash and drafts).
+    Strict authorization: strictly scoped to current_user.id.
     """
     messages = (
         session.query(Message)
@@ -80,7 +92,7 @@ def get_trash_messages(
     current_user: CurrentUser,
 ) -> Any:
     """
-    Get all messages moved to trash by the current user.
+    Get all messages moved to trash involving the current user.
     """
     messages = (
         session.query(Message)
@@ -103,7 +115,7 @@ def get_unread_count(
     current_user: CurrentUser,
 ) -> Any:
     """
-    Get the count of unread received messages (excluding trash).
+    Get the count of unread received messages for the authenticated user.
     """
     count = (
         session.query(Message)
@@ -118,9 +130,6 @@ def get_unread_count(
     return {"unread_count": count}
 
 
-RESTRICTED_BROADCAST_ROLES = ["employer", "employé", "étudiant", "etudiant", "stagiaire"]
-
-
 @router.post("", response_model=MessageResponse)
 @router.post("/", response_model=MessageResponse)
 def send_or_save_message(
@@ -131,13 +140,57 @@ def send_or_save_message(
 ) -> Any:
     """
     Send a new message or save as draft.
-    Supports personal messages, multi-recipients, broadcast ("All") with role restrictions, and CC (copie) in local & relay modes.
-    Handles both /messages and /messages/ routes seamlessly.
+    Protected against:
+    - Flooding / DoS (Rate limited)
+    - Stored XSS / Injection (Text & Subject Sanitization)
+    - Malicious Attachment URLs (Scheme & Protocol validation)
+    - Unauthorized Broadcasts & Mass-recipient spamming
     """
+    # 1. Anti-Flooding / Rate Limit Protection
+    rate_limiter.check_rate_limit(
+        identifier=f"msg_send_{current_user.id}",
+        max_requests=25,
+        window_seconds=60,
+        action_name="envoi de messages",
+    )
+
     user_role = (current_user.role or "").strip().lower()
     is_broadcast_req = msg_in.is_broadcast or (msg_in.recipient_id == -1)
 
-    # 1. Envoi Général / Broadcast Restriction Check
+    # 2. Input Sanitization (XSS & Protocol Protection)
+    clean_subject = sanitize_subject(msg_in.subject)
+    clean_body = sanitize_text(msg_in.body, max_length=50000, strip_html=True)
+
+    raw_att_url = (msg_in.attachment_url or "").strip()
+    clean_attachment_url = None
+    if raw_att_url:
+        clean_attachment_url = sanitize_attachment_url(raw_att_url)
+        if not clean_attachment_url:
+            raise HTTPException(
+                status_code=400,
+                detail="URL de pièce jointe non sécurisée ou protocole interdit (javascript:, vbscript:, etc.).",
+            )
+
+    clean_attachment_name = sanitize_filename(msg_in.attachment_name) if msg_in.attachment_name else None
+    clean_attachment_type = sanitize_text(msg_in.attachment_type, max_length=50) if msg_in.attachment_type else None
+
+    # 3. Anti-Spam: Recipient Count Limitation for Non-Staff Users
+    if user_role in RESTRICTED_BROADCAST_ROLES:
+        total_recipients_count = (
+            len(msg_in.recipient_ids or [])
+            + (1 if msg_in.recipient_id and msg_in.recipient_id > 0 else 0)
+            + len(msg_in.recipient_emails or [])
+            + (1 if msg_in.recipient_email else 0)
+            + len(msg_in.cc_recipient_ids or [])
+            + len(msg_in.cc_emails or [])
+        )
+        if total_recipients_count > 10:
+            raise HTTPException(
+                status_code=403,
+                detail="Protection anti-spam : les étudiants et employés ne peuvent pas dépasser 10 destinataires par message.",
+            )
+
+    # 4. Envoi Général / Broadcast Restriction Check
     if is_broadcast_req:
         if user_role in RESTRICTED_BROADCAST_ROLES:
             raise HTTPException(
@@ -149,11 +202,11 @@ def send_or_save_message(
             new_msg = Message(
                 sender_id=current_user.id,
                 recipient_id=None,
-                subject=msg_in.subject.strip() if msg_in.subject else "(Brouillon général)",
-                body=msg_in.body.strip() if msg_in.body else "",
-                attachment_url=msg_in.attachment_url,
-                attachment_name=msg_in.attachment_name,
-                attachment_type=msg_in.attachment_type,
+                subject=clean_subject if clean_subject != "(Sans objet)" else "(Brouillon général)",
+                body=clean_body,
+                attachment_url=clean_attachment_url,
+                attachment_name=clean_attachment_name,
+                attachment_type=clean_attachment_type,
                 is_read=False,
                 is_draft=True,
                 is_trash=False,
@@ -176,11 +229,11 @@ def send_or_save_message(
             msg_item = Message(
                 sender_id=current_user.id,
                 recipient_id=target_user.id,
-                subject=msg_in.subject.strip() if msg_in.subject else "(Sans objet)",
-                body=msg_in.body.strip() if msg_in.body else "",
-                attachment_url=msg_in.attachment_url,
-                attachment_name=msg_in.attachment_name,
-                attachment_type=msg_in.attachment_type,
+                subject=clean_subject,
+                body=clean_body,
+                attachment_url=clean_attachment_url,
+                attachment_name=clean_attachment_name,
+                attachment_type=clean_attachment_type,
                 is_read=False,
                 is_draft=False,
                 is_trash=False,
@@ -195,11 +248,11 @@ def send_or_save_message(
             sent_broadcast_msg = Message(
                 sender_id=current_user.id,
                 recipient_id=None,
-                subject=msg_in.subject.strip() if msg_in.subject else "(Sans objet)",
-                body=msg_in.body.strip() if msg_in.body else "",
-                attachment_url=msg_in.attachment_url,
-                attachment_name=msg_in.attachment_name,
-                attachment_type=msg_in.attachment_type,
+                subject=clean_subject,
+                body=clean_body,
+                attachment_url=clean_attachment_url,
+                attachment_name=clean_attachment_name,
+                attachment_type=clean_attachment_type,
                 is_read=True,
                 is_draft=False,
                 is_trash=False,
@@ -211,7 +264,7 @@ def send_or_save_message(
         session.refresh(sent_broadcast_msg)
         return sent_broadcast_msg
 
-    # 2. Standard Personal & Multi-Recipient Resolution
+    # 5. Standard Personal & Multi-Recipient Resolution
     primary_users = []
     seen_ids = set()
 
@@ -232,7 +285,7 @@ def send_or_save_message(
 
     # Collect by recipient_emails list
     for r_email in (msg_in.recipient_emails or []):
-        clean_email = (r_email or "").strip().lower()
+        clean_email = sanitize_text(r_email, max_length=255).lower().strip()
         if clean_email:
             u = session.query(User).filter(
                 (func.lower(User.email) == clean_email)
@@ -244,7 +297,7 @@ def send_or_save_message(
 
     # Collect by singular recipient_email
     if msg_in.recipient_email:
-        clean_email = msg_in.recipient_email.strip().lower()
+        clean_email = sanitize_text(msg_in.recipient_email, max_length=255).lower().strip()
         if clean_email:
             u = session.query(User).filter(
                 (func.lower(User.email) == clean_email)
@@ -255,7 +308,7 @@ def send_or_save_message(
                 seen_ids.add(u.id)
 
     # Fallback to external email string if non-registered recipient
-    external_recipient_email = msg_in.recipient_email.strip() if msg_in.recipient_email else None
+    external_recipient_email = sanitize_text(msg_in.recipient_email, max_length=255).strip() if msg_in.recipient_email else None
     if not primary_users and external_recipient_email:
         # If email looks valid, allow relay send
         if "@" in external_recipient_email:
@@ -266,21 +319,25 @@ def send_or_save_message(
     if not msg_in.is_draft and not primary_users and not external_recipient_email:
         raise HTTPException(status_code=400, detail="Veuillez sélectionner au moins un destinataire valide.")
 
-    cc_email_list = [e.strip().lower() for e in msg_in.cc_emails if e and e.strip()]
+    cc_email_list = [
+        sanitize_text(e, max_length=255).lower().strip()
+        for e in (msg_in.cc_emails or [])
+        if e and e.strip() and "@" in e
+    ]
     cc_summary_str = ", ".join(cc_email_list) if cc_email_list else None
     has_relay = bool(cc_email_list or (external_recipient_email and not primary_users))
 
-    # If it is a draft
+    # Draft saving
     if msg_in.is_draft:
         draft_recipient_id = primary_users[0].id if primary_users else None
         draft_msg = Message(
             sender_id=current_user.id,
             recipient_id=draft_recipient_id,
-            subject=msg_in.subject.strip() if msg_in.subject else "(Brouillon)",
-            body=msg_in.body.strip() if msg_in.body else "",
-            attachment_url=msg_in.attachment_url,
-            attachment_name=msg_in.attachment_name,
-            attachment_type=msg_in.attachment_type,
+            subject=clean_subject if clean_subject != "(Sans objet)" else "(Brouillon)",
+            body=clean_body,
+            attachment_url=clean_attachment_url,
+            attachment_name=clean_attachment_name,
+            attachment_type=clean_attachment_type,
             is_read=False,
             is_draft=True,
             is_trash=False,
@@ -300,11 +357,11 @@ def send_or_save_message(
             main_msg = Message(
                 sender_id=current_user.id,
                 recipient_id=recipient.id,
-                subject=msg_in.subject.strip() if msg_in.subject else "(Sans objet)",
-                body=msg_in.body.strip() if msg_in.body else "",
-                attachment_url=msg_in.attachment_url,
-                attachment_name=msg_in.attachment_name,
-                attachment_type=msg_in.attachment_type,
+                subject=clean_subject,
+                body=clean_body,
+                attachment_url=clean_attachment_url,
+                attachment_name=clean_attachment_name,
+                attachment_type=clean_attachment_type,
                 is_read=False,
                 is_draft=False,
                 is_trash=False,
@@ -319,11 +376,11 @@ def send_or_save_message(
         main_msg = Message(
             sender_id=current_user.id,
             recipient_id=None,
-            subject=msg_in.subject.strip() if msg_in.subject else "(Sans objet)",
-            body=msg_in.body.strip() if msg_in.body else "",
-            attachment_url=msg_in.attachment_url,
-            attachment_name=msg_in.attachment_name,
-            attachment_type=msg_in.attachment_type,
+            subject=clean_subject,
+            body=clean_body,
+            attachment_url=clean_attachment_url,
+            attachment_name=clean_attachment_name,
+            attachment_type=clean_attachment_type,
             is_read=False,
             is_draft=False,
             is_trash=False,
@@ -347,11 +404,11 @@ def send_or_save_message(
                 cc_msg = Message(
                     sender_id=current_user.id,
                     recipient_id=cc_user.id,
-                    subject=f"[Copie] {msg_in.subject.strip() if msg_in.subject else '(Sans objet)'}",
-                    body=f"--- Message en copie (CC) ---\n\n{msg_in.body.strip() if msg_in.body else ''}",
-                    attachment_url=msg_in.attachment_url,
-                    attachment_name=msg_in.attachment_name,
-                    attachment_type=msg_in.attachment_type,
+                    subject=f"[Copie] {clean_subject}",
+                    body=f"--- Message en copie (CC) ---\n\n{clean_body}",
+                    attachment_url=clean_attachment_url,
+                    attachment_name=clean_attachment_name,
+                    attachment_type=clean_attachment_type,
                     is_read=False,
                     is_draft=False,
                     is_trash=False,
@@ -371,11 +428,11 @@ def send_or_save_message(
             cc_msg = Message(
                 sender_id=current_user.id,
                 recipient_id=cc_user.id,
-                subject=f"[Copie] {msg_in.subject.strip() if msg_in.subject else '(Sans objet)'}",
-                body=f"--- Message en copie (CC) ---\n\n{msg_in.body.strip() if msg_in.body else ''}",
-                attachment_url=msg_in.attachment_url,
-                attachment_name=msg_in.attachment_name,
-                attachment_type=msg_in.attachment_type,
+                subject=f"[Copie] {clean_subject}",
+                body=f"--- Message en copie (CC) ---\n\n{clean_body}",
+                attachment_url=clean_attachment_url,
+                attachment_name=clean_attachment_name,
+                attachment_type=clean_attachment_type,
                 is_read=False,
                 is_draft=False,
                 is_trash=False,
@@ -400,16 +457,16 @@ def get_message_detail(
 ) -> Any:
     """
     Get message details. Marks as read if current user is the recipient.
+    Strict IDOR prevention: only sender, recipient, or admin can access.
     """
     msg = session.query(Message).filter(Message.id == message_id).first()
     if not msg:
         raise HTTPException(status_code=404, detail="Message introuvable.")
 
-    admin_roles = ["admin", "admin_manager", "admin_limited"]
     if (
         msg.sender_id != current_user.id
         and msg.recipient_id != current_user.id
-        and current_user.role not in admin_roles
+        and current_user.role not in ADMIN_ROLES
     ):
         raise HTTPException(status_code=403, detail="Accès non autorisé à ce message.")
 
@@ -430,16 +487,16 @@ def toggle_star_message(
 ) -> Any:
     """
     Toggle star / favorite flag for a message.
+    Strict IDOR prevention: only sender, recipient, or admin can toggle.
     """
     msg = session.query(Message).filter(Message.id == message_id).first()
     if not msg:
         raise HTTPException(status_code=404, detail="Message introuvable.")
 
-    admin_roles = ["admin", "admin_manager", "admin_limited"]
     if (
         msg.sender_id != current_user.id
         and msg.recipient_id != current_user.id
-        and current_user.role not in admin_roles
+        and current_user.role not in ADMIN_ROLES
     ):
         raise HTTPException(status_code=403, detail="Accès non autorisé.")
 
@@ -457,16 +514,16 @@ def restore_message_from_trash(
 ) -> Any:
     """
     Restore a message from trash.
+    Strict IDOR prevention: only sender, recipient, or admin can restore.
     """
     msg = session.query(Message).filter(Message.id == message_id).first()
     if not msg:
         raise HTTPException(status_code=404, detail="Message introuvable.")
 
-    admin_roles = ["admin", "admin_manager", "admin_limited"]
     if (
         msg.sender_id != current_user.id
         and msg.recipient_id != current_user.id
-        and current_user.role not in admin_roles
+        and current_user.role not in ADMIN_ROLES
     ):
         raise HTTPException(status_code=403, detail="Accès non autorisé.")
 
@@ -483,16 +540,16 @@ def delete_message(
 ) -> Any:
     """
     Delete a message: soft-delete to trash on first deletion, permanent delete on second.
+    Strict IDOR prevention: only sender, recipient, or admin can delete.
     """
     msg = session.query(Message).filter(Message.id == message_id).first()
     if not msg:
         raise HTTPException(status_code=404, detail="Message introuvable.")
 
-    admin_roles = ["admin", "admin_manager", "admin_limited"]
     if (
         msg.sender_id != current_user.id
         and msg.recipient_id != current_user.id
-        and current_user.role not in admin_roles
+        and current_user.role not in ADMIN_ROLES
     ):
         raise HTTPException(
             status_code=403, detail="Accès non autorisé pour supprimer ce message."
@@ -526,15 +583,49 @@ def report_message(
     current_user: CurrentUser,
 ) -> Any:
     """
-    Report a message. Automatically alerts and transmits directly to ALL admins and instructors.
+    Report a message for suspicious or inappropriate content.
+    Protected against:
+    - IDOR / Data Leakage: User must be direct recipient, sender, or admin
+    - Self-reporting abuse
+    - Flooding (Rate limited)
+    - XSS in report reason
     """
+    # 1. Rate Limiting on Reports (Anti-Flooding)
+    rate_limiter.check_rate_limit(
+        identifier=f"msg_report_{current_user.id}",
+        max_requests=5,
+        window_seconds=60,
+        action_name="signalement de messages",
+    )
+
     msg = session.query(Message).filter(Message.id == message_id).first()
     if not msg:
         raise HTTPException(status_code=404, detail="Message introuvable.")
 
+    # 2. Strict IDOR Authorization Check
+    is_involved = (
+        msg.recipient_id == current_user.id
+        or msg.sender_id == current_user.id
+        or current_user.role in ADMIN_ROLES
+    )
+    if not is_involved:
+        raise HTTPException(
+            status_code=403,
+            detail="Accès non autorisé : vous ne pouvez signaler qu'un message dont vous êtes le destinataire direct.",
+        )
+
+    if msg.sender_id == current_user.id and current_user.role not in ADMIN_ROLES:
+        raise HTTPException(
+            status_code=400,
+            detail="Vous ne pouvez pas signaler un message que vous avez vous-même rédigé.",
+        )
+
+    # 3. Sanitize Reason
+    clean_reason = sanitize_text(report_in.reason, max_length=1000) or "Contenu inapproprié ou offensant"
+
     # Flag the original message
     msg.is_reported = True
-    msg.report_reason = report_in.reason
+    msg.report_reason = clean_reason
 
     sender_email = msg.sender.email if msg.sender else f"ID #{msg.sender_id}"
 
@@ -556,7 +647,7 @@ def report_message(
         f"Auteur du message suspect : {sender_email} (ID #{msg.sender_id})\n"
         f"Date d'envoi du message : {msg.created_at.strftime('%d/%m/%Y à %H:%M')}\n"
         f"Objet d'origine : {msg.subject}\n"
-        f"Motif du signalement : {report_in.reason}\n\n"
+        f"Motif du signalement : {clean_reason}\n\n"
         f"--- CONTENU TRANSMIS DU MESSAGE SIGNALÉ ---\n"
         f"{msg.body}\n"
         f"=============================================================\n"

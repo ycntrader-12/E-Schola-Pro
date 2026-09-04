@@ -1138,13 +1138,17 @@ E-Schola Pro/
     <table>
       <thead><tr><th>Méthode</th><th>Endpoint</th><th>Description</th><th>Accès</th></tr></thead>
       <tbody class="endpoint-row">
-        <tr><td><span class="badge badge-get">GET</span></td><td><code>/messages/inbox</code></td><td>Boîte de réception des messages</td><td>Authentifié</td></tr>
-        <tr><td><span class="badge badge-get">GET</span></td><td><code>/messages/sent</code></td><td>Messages envoyés</td><td>Authentifié</td></tr>
-        <tr><td><span class="badge badge-get">GET</span></td><td><code>/messages/drafts</code></td><td>Brouillons</td><td>Authentifié</td></tr>
-        <tr><td><span class="badge badge-get">GET</span></td><td><code>/messages/trash</code></td><td>Corbeille</td><td>Authentifié</td></tr>
-        <tr><td><span class="badge badge-post">POST</span></td><td><code>/messages/</code> · <code>/messages</code></td><td>Envoyer ou enregistrer un message (destinataires multiples, envoi général/broadcast, copie CC locale et relais, pièces jointes) avec tolérance de trailing slash</td><td>Authentifié</td></tr>
-        <tr><td><span class="badge badge-put">PUT</span></td><td><code>/messages/{id}/star</code></td><td>Basculer l'état favori (étoile ⭐) d'un message avec persistance immédiate en base de données</td><td>Authentifié</td></tr>
-        <tr><td><span class="badge badge-get">GET</span></td><td><code>/messages/unread-count</code></td><td>Nombre de messages non lus</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/messages/inbox</code></td><td>Boîte de réception des messages (isolée strictement à l'utilisateur connecté)</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/messages/sent</code></td><td>Messages envoyés par l'utilisateur connecté</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/messages/drafts</code></td><td>Brouillons de l'utilisateur connecté</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/messages/trash</code></td><td>Corbeille personnelle des messages reçus ou envoyés</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/messages/</code> · <code>/messages</code></td><td>Envoyer ou enregistrer un message (destinataires multiples, envoi général/broadcast sécurisé avec contrôle de rôle, copie CC, pièces jointes sûres, assainissement Anti-XSS et protection Anti-Flooding 25 req/min)</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/messages/{id}</code></td><td>Détail d'un message avec marquage de lecture automatique (Protection IDOR : uniquement expéditeur, destinataire ou administrateur)</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-put">PUT</span></td><td><code>/messages/{id}/star</code></td><td>Basculer l'état favori (⭐) d'un message avec persistance immédiate en base de données</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-put">PUT</span></td><td><code>/messages/{id}/restore</code></td><td>Restaurer un message depuis la corbeille vers la boîte normale</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-delete">DELETE</span></td><td><code>/messages/{id}</code></td><td>Suppression d'un message : déplacement vers corbeille au 1er appel, suppression définitive au 2e appel</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/messages/{id}/report</code></td><td>Signaler un message suspect (Protection Anti-IDOR : restreint au destinataire direct, alerte automatique transmise aux formateurs et administrateurs avec Rate Limit 5 req/min)</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/messages/unread-count</code></td><td>Nombre de messages non lus personnels</td><td>Authentifié</td></tr>
       </tbody>
     </table>
 
@@ -1430,6 +1434,15 @@ E-Schola Pro/
         <li><strong>Téléversement Universel de Fichiers &amp; Pièces Jointes :</strong> Prise en charge sans faille des pièces jointes (documents PDF, Office, archives, images, audio, vidéo) avec routage unifié vers <code>/api/v1/upload/file</code> et alias <code>/upload</code>, normalisation des retours JSON (<code>file_url</code> et <code>url</code>) et gestion des erreurs de téléversement contextuelles.</li>
         <li><strong>Persistance Base de Données des Favoris (⭐) &amp; Mise à Jour Optimiste :</strong> Ajout du champ <code>is_starred</code> dans le modèle <code>Message</code>, script de migration automatique <code>migrate_messages_star.py</code> appliqué au démarrage, endpoint <code>PUT /messages/{id}/star</code>, et réactivité immédiate de l'interface avec filtrage cohérent du dossier Favoris (y compris brouillons favoris).</li>
         <li><strong>Résolution et Tolérance des Destinataires :</strong> Moteur de résolution avancé acceptant à la fois les identifiants numériques (<code>recipient_ids</code>) et textuels (<code>recipient_emails</code>), recherche insensible à la casse (<code>func.lower</code>) sur les e-mails et noms d'utilisateurs, gestion multi-destinataires principaux et copie carbone (CC) dédupliquée.</li>
+        <li><strong>Sécurité Avancée &amp; Protection Anti-Menaces (Local &amp; Railway) :</strong> Blindage complet de la boîte de messagerie contre les attaques OWASP :
+          <ul>
+            <li><em>Protection Anti-XSS &amp; Injections HTML :</em> Désinfection systématique des objets et corps de messages (<code>app/core/sanitizer.py</code>) neutralisant les balises <code>&lt;script&gt;</code>, <code>&lt;iframe&gt;</code> et gestionnaires d'événements JS (<code>onerror=</code>, <code>onclick=</code>).</li>
+            <li><em>Sécurité des Pièces Jointes &amp; Anti-Malware :</em> Rejet formel des scripts et exécutables (<code>.exe</code>, <code>.bat</code>, <code>.sh</code>, <code>.php</code>, <code>.html</code>, <code>.js</code>) avec liste blanche stricte, limitation de taille streaming à 25 Mo et blocage des pseudo-protocoles (<code>javascript:</code>, <code>data:text/html</code>) côté backend et frontend.</li>
+            <li><em>Protection Anti-IDOR &amp; Confidentialité :</em> Contrôle strict d'autorisation sur chaque message (<code>GET /{id}</code>, <code>DELETE /{id}</code>, <code>POST /{id}/report</code>). Un utilisateur ne peut ni consulter ni signaler un message auquel il n'a pas directement pris part.</li>
+            <li><em>Protection Anti-Flooding &amp; Rate Limiting :</em> Limiteur de débit en mémoire à fenêtre glissante (<code>app/core/rate_limiter.py</code>) plafonnant les envois à 25 req/min et les signalements à 5 req/min par utilisateur avec réponse HTTP 429 et en-tête <code>Retry-After</code>.</li>
+            <li><em>En-têtes HTTP de Sécurité OWASP &amp; CORS Railway :</em> Middleware injectant <code>X-Content-Type-Options: nosniff</code>, <code>X-Frame-Options: SAMEORIGIN</code>, <code>X-XSS-Protection</code>, <code>Referrer-Policy</code> et prise en charge des sous-domaines Railway via regex CORS.</li>
+          </ul>
+        </li>
       </ul>
       <div class="screenshot-container">
         <div class="screenshot-header">

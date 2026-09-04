@@ -591,20 +591,40 @@ export default function InboxMessagesPage() {
                   <h4 className="text-xs font-bold uppercase tracking-wider text-text-secondary flex items-center gap-2">
                     <Paperclip size={14} className="text-primary" /> Pièce Jointe
                   </h4>
-                  <a
-                    href={selectedMessage.attachment_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    download={selectedMessage.attachment_name}
-                    className="flex items-center justify-between p-3.5 bg-surface hover:bg-surface-hover rounded-xl border border-border transition-colors"
-                  >
-                    <span className="text-xs font-bold text-text-primary truncate">
-                      {selectedMessage.attachment_name || 'Fichier joint'}
-                    </span>
-                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-primary/10 text-primary text-xs font-semibold">
-                      <Download size={14} /> Télécharger
-                    </span>
-                  </a>
+                  {(() => {
+                    const cleanUrl = (selectedMessage.attachment_url || '').trim().toLowerCase();
+                    const isSafe =
+                      cleanUrl.startsWith('http://') ||
+                      cleanUrl.startsWith('https://') ||
+                      cleanUrl.startsWith('/uploads/') ||
+                      (cleanUrl.startsWith('data:image/') && cleanUrl.includes(';base64,'));
+
+                    if (!isSafe) {
+                      return (
+                        <div className="flex items-center gap-2 p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-xs text-rose-400 font-medium">
+                          <AlertTriangle size={15} />
+                          <span>Pièce jointe désactivée par mesure de sécurité (protocole ou URL non sécurisé).</span>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <a
+                        href={selectedMessage.attachment_url}
+                        target="_blank"
+                        rel="noopener noreferrer nofollow"
+                        download={selectedMessage.attachment_name}
+                        className="flex items-center justify-between p-3.5 bg-surface hover:bg-surface-hover rounded-xl border border-border transition-colors"
+                      >
+                        <span className="text-xs font-bold text-text-primary truncate">
+                          {selectedMessage.attachment_name || 'Fichier joint'}
+                        </span>
+                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-primary/10 text-primary text-xs font-semibold">
+                          <Download size={14} /> Télécharger
+                        </span>
+                      </a>
+                    );
+                  })()}
                 </div>
               )}
 

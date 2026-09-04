@@ -1,13 +1,21 @@
 import os
-import shutil
 import uuid
 from typing import Any
 
 from fastapi import APIRouter, File, HTTPException, Request, UploadFile
 
 from app.api.deps import CurrentUser
+from app.core.sanitizer import (
+    ALLOWED_EXTENSIONS,
+    FORBIDDEN_EXTENSIONS,
+    is_safe_extension,
+    sanitize_filename,
+)
 
 router = APIRouter()
+
+MAX_ATTACHMENT_SIZE = 25 * 1024 * 1024  # 25 MB
+MAX_VIDEO_SIZE = 60 * 1024 * 1024       # 60 MB
 
 
 def get_base_url(request: Request) -> str:
@@ -19,6 +27,65 @@ def get_base_url(request: Request) -> str:
     return f"{request.url.scheme}://{request.client.host if request.client else '127.0.0.1'}:{request.url.port or 8000}"
 
 
+def save_upload_file_securely(
+    file: UploadFile,
+    subfolder: str,
+    max_size: int = MAX_ATTACHMENT_SIZE,
+    allowed_exts: set[str] | None = None,
+) -> tuple[str, str, str]:
+    """
+    Secure file writer:
+    - Sanitizes original filename against Path Traversal
+    - Enforces extension whitelist and executable/script blacklist
+    - Enforces maximum file size limit (streaming chunk verification)
+    - Emits HTTP 400 for forbidden extensions and HTTP 413 for oversized files
+    """
+    raw_filename = file.filename or "file"
+    safe_name = sanitize_filename(raw_filename)
+    ext = safe_name.split(".")[-1].lower() if "." in safe_name else ""
+
+    if not ext or not is_safe_extension(ext):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Type de fichier interdit (.{(ext or 'inconnu')}). Les scripts (.php, .html, .js) et exécutables (.exe, .bat, .sh) sont strictement rejetés.",
+        )
+
+    if allowed_exts and ext not in allowed_exts:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Extension .{ext} non prise en charge pour cette catégorie.",
+        )
+
+    dest_dir = os.path.join("uploads", subfolder)
+    os.makedirs(dest_dir, exist_ok=True)
+    unique_filename = f"{uuid.uuid4().hex}.{ext}"
+    filepath = os.path.join(dest_dir, unique_filename)
+
+    total_bytes = 0
+    chunk_size = 1024 * 1024  # 1MB
+    try:
+        with open(filepath, "wb") as buffer:
+            while chunk := file.file.read(chunk_size):
+                total_bytes += len(chunk)
+                if total_bytes > max_size:
+                    buffer.close()
+                    if os.path.exists(filepath):
+                        os.remove(filepath)
+                    raise HTTPException(
+                        status_code=413,
+                        detail=f"Fichier trop volumineux. La taille maximale autorisée est de {max_size // (1024 * 1024)} Mo.",
+                    )
+                buffer.write(chunk)
+    except HTTPException:
+        raise
+    except Exception as e:
+        if os.path.exists(filepath):
+            os.remove(filepath)
+        raise HTTPException(status_code=500, detail=f"Échec de l'enregistrement sécurisé du fichier: {e!s}")
+
+    return unique_filename, safe_name, ext
+
+
 @router.post("/image")
 def upload_image_file(
     *,
@@ -27,24 +94,21 @@ def upload_image_file(
     file: UploadFile = File(...),
 ) -> Any:
     """
-    Upload an image file locally.
+    Upload an image file securely (JPG, PNG, WebP, GIF).
     """
-    if not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="File provided is not an image.")
+    image_allowed = {"jpg", "jpeg", "png", "webp", "gif", "bmp", "ico"}
+    if file.content_type and not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Le fichier fourni n'est pas une image valide.")
 
-    try:
-        os.makedirs("uploads/images", exist_ok=True)
-        ext = file.filename.split(".")[-1]
-        filename = f"{uuid.uuid4().hex}.{ext}"
-        filepath = os.path.join("uploads", "images", filename)
+    unique_filename, safe_name, ext = save_upload_file_securely(
+        file=file,
+        subfolder="images",
+        max_size=15 * 1024 * 1024,
+        allowed_exts=image_allowed,
+    )
 
-        with open(filepath, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-
-        url = f"{get_base_url(request)}/uploads/images/{filename}"
-        return {"url": url}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Image upload failed: {e!s}")
+    url = f"{get_base_url(request)}/uploads/images/{unique_filename}"
+    return {"url": url, "filename": safe_name}
 
 
 @router.post("/document")
@@ -55,28 +119,21 @@ def upload_document_file(
     file: UploadFile = File(...),
 ) -> Any:
     """
-    Upload a document file locally.
+    Upload a document file securely (PDF, Word, Excel, PowerPoint, TXT, CSV, Zip).
     """
-    allowed_extensions = ["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx"]
-    ext = file.filename.split(".")[-1].lower()
+    doc_allowed = {
+        "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "csv", "rtf",
+        "odt", "ods", "odp", "zip", "rar", "7z"
+    }
+    unique_filename, safe_name, ext = save_upload_file_securely(
+        file=file,
+        subfolder="documents",
+        max_size=MAX_ATTACHMENT_SIZE,
+        allowed_exts=doc_allowed,
+    )
 
-    if ext not in allowed_extensions:
-        raise HTTPException(
-            status_code=400, detail="File provided is not a supported document format."
-        )
-
-    try:
-        os.makedirs("uploads/documents", exist_ok=True)
-        filename = f"{uuid.uuid4().hex}.{ext}"
-        filepath = os.path.join("uploads", "documents", filename)
-
-        with open(filepath, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-
-        url = f"{get_base_url(request)}/uploads/documents/{filename}"
-        return {"url": url}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Document upload failed: {e!s}")
+    url = f"{get_base_url(request)}/uploads/documents/{unique_filename}"
+    return {"url": url, "filename": safe_name}
 
 
 @router.post("/video")
@@ -87,24 +144,21 @@ def upload_video_file(
     file: UploadFile = File(...),
 ) -> Any:
     """
-    Upload a video file locally.
+    Upload a video file securely (MP4, WebM, MOV, MKV).
     """
-    if not file.content_type.startswith("video/"):
-        raise HTTPException(status_code=400, detail="File provided is not a video.")
+    video_allowed = {"mp4", "webm", "mov", "mkv", "avi"}
+    if file.content_type and not file.content_type.startswith("video/"):
+        raise HTTPException(status_code=400, detail="Le fichier fourni n'est pas une vidéo valide.")
 
-    try:
-        os.makedirs("uploads/videos", exist_ok=True)
-        ext = file.filename.split(".")[-1]
-        filename = f"{uuid.uuid4().hex}.{ext}"
-        filepath = os.path.join("uploads", "videos", filename)
+    unique_filename, safe_name, ext = save_upload_file_securely(
+        file=file,
+        subfolder="videos",
+        max_size=MAX_VIDEO_SIZE,
+        allowed_exts=video_allowed,
+    )
 
-        with open(filepath, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-
-        url = f"{get_base_url(request)}/uploads/videos/{filename}"
-        return {"url": url}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Video upload failed: {e!s}")
+    url = f"{get_base_url(request)}/uploads/videos/{unique_filename}"
+    return {"url": url, "filename": safe_name}
 
 
 @router.post("/chat-file")
@@ -117,69 +171,28 @@ def upload_chat_file(
     """
     Upload any classroom chat attachment (document, audio, video, image, text).
     """
-    allowed_extensions = [
-        # Documents & text
-        "pdf",
-        "doc",
-        "docx",
-        "xls",
-        "xlsx",
-        "ppt",
-        "pptx",
-        "txt",
-        "csv",
-        "zip",
-        # Audio
-        "mp3",
-        "wav",
-        "ogg",
-        "m4a",
-        "aac",
-        # Video
-        "mp4",
-        "webm",
-        "mov",
-        "mkv",
-        # Images
-        "jpg",
-        "jpeg",
-        "png",
-        "webp",
-        "gif",
-    ]
-    ext = file.filename.split(".")[-1].lower() if "." in file.filename else ""
-    if ext not in allowed_extensions:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Extension .{ext} non supportée. Formats autorisés : PDF, Office, TXT, Audio, Vidéo, Images.",
-        )
+    unique_filename, safe_name, ext = save_upload_file_securely(
+        file=file,
+        subfolder="chat",
+        max_size=MAX_ATTACHMENT_SIZE,
+        allowed_exts=ALLOWED_EXTENSIONS,
+    )
 
-    try:
-        os.makedirs("uploads/chat", exist_ok=True)
-        unique_name = f"{uuid.uuid4().hex}.{ext}"
-        filepath = os.path.join("uploads", "chat", unique_name)
+    file_category = "document"
+    if ext in ["mp3", "wav", "ogg", "m4a", "aac", "flac"]:
+        file_category = "audio"
+    elif ext in ["mp4", "webm", "mov", "mkv", "avi"]:
+        file_category = "video"
+    elif ext in ["jpg", "jpeg", "png", "webp", "gif", "bmp", "ico"]:
+        file_category = "image"
 
-        with open(filepath, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-
-        # Detect category
-        file_category = "document"
-        if ext in ["mp3", "wav", "ogg", "m4a", "aac"]:
-            file_category = "audio"
-        elif ext in ["mp4", "webm", "mov", "mkv"]:
-            file_category = "video"
-        elif ext in ["jpg", "jpeg", "png", "webp", "gif"]:
-            file_category = "image"
-
-        url = f"{get_base_url(request)}/uploads/chat/{unique_name}"
-        return {
-            "url": url,
-            "filename": file.filename,
-            "category": file_category,
-            "ext": ext,
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Upload failed: {e!s}")
+    url = f"{get_base_url(request)}/uploads/chat/{unique_filename}"
+    return {
+        "url": url,
+        "filename": safe_name,
+        "category": file_category,
+        "ext": ext,
+    }
 
 
 @router.post("")
@@ -192,32 +205,20 @@ def upload_any_file(
     file: UploadFile = File(...),
 ) -> Any:
     """
-    Upload any file format (for attachments, deliverables, etc.).
-    Supports /upload, /upload/, and /upload/file.
+    Upload an attachment or deliverable file securely.
+    Guaranteed protection against malicious executables, web shells, and scripts.
     """
-    try:
-        os.makedirs("uploads/files", exist_ok=True)
+    unique_filename, safe_name, ext = save_upload_file_securely(
+        file=file,
+        subfolder="files",
+        max_size=MAX_ATTACHMENT_SIZE,
+        allowed_exts=ALLOWED_EXTENSIONS,
+    )
 
-        # Get extension if exists
-        ext = ""
-        if "." in file.filename:
-            ext = file.filename.split(".")[-1].lower()
-
-        filename = f"{uuid.uuid4().hex}"
-        if ext:
-            filename += f".{ext}"
-
-        filepath = os.path.join("uploads", "files", filename)
-
-        with open(filepath, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-
-        url = f"{get_base_url(request)}/uploads/files/{filename}"
-        return {
-            "url": url,
-            "file_url": url,
-            "filename": file.filename,
-            "file_type": ext,
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"File upload failed: {e!s}")
+    url = f"{get_base_url(request)}/uploads/files/{unique_filename}"
+    return {
+        "url": url,
+        "file_url": url,
+        "filename": safe_name,
+        "file_type": ext,
+    }
