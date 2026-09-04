@@ -1621,12 +1621,23 @@ E-Schola Pro/
       </ul>
     </div>
 
-    <h3>Portail d'Accueil &amp; Landing Page Visuelle</h3>
+    <h3>Portail d'Accueil, Landing Page Visuelle &amp; Section « À Propos »</h3>
     <div class="card">
-      <p>La page d'accueil (<code>/</code>) propose une expérience <strong>100% visuelle, épurée et immersive</strong> :</p>
+      <p>La page d'accueil (<code>/</code>) propose une expérience <strong>100% visuelle, moderne et immersive</strong> articulée en deux sections complémentaires :</p>
       <ul>
-        <li><strong>Canvas Visuel Plein Écran :</strong> Rendu vidéo d'arrière-plan animé avec bande sonore activée par défaut en haute définition (<code>vids_anime.mp4</code>) couvrant l'intégralité du viewport (lecture automatique avec son, boucle continue et contrôleur audio dynamique).</li>
-        <li><strong>Barre d'Action Flottante Minimisée :</strong> Dock compact semi-transparent (<code>backdrop-blur-xl bg-white/90</code>) positionné en bas d'écran avec contrôleur de son interactif (Mute/Unmute), ainsi que les accès directs <em>Se Connecter</em> et <em>Créer un Compte</em>.</li>
+        <li><strong>Canvas Visuel Plein Écran (Hero) :</strong> Rendu vidéo d'arrière-plan animé en haute définition avec bande sonore activée par défaut (<code>vids_anime.mp4</code>) couvrant le viewport (lecture automatique, boucle continue et contrôleur audio dynamique interactif).</li>
+        <li><strong>Barre d'Action Flottante &amp; Bouton « À Propos » :</strong> Dock compact en verre dépoli (<code>backdrop-blur-2xl bg-white/95</code>) avec contrôleur audio, saut direct vers la section À propos, accès rapides <em>Se Connecter</em> et <em>Créer un Compte</em>, complété par un indicateur de défilement fluide.</li>
+        <li><strong>Section « À Propos » Détaillée (<code>#about</code>) :</strong> Présentation riche et responsive des fondamentaux d'E-Schola Pro :
+          <ul>
+            <li><em>Mission &amp; Vision :</em> Unification de l'excellence pédagogique universitaire, de l'ingénierie moderne et de l'intelligence artificielle.</li>
+            <li><em>4 Piliers d'Excellence :</em> Pédagogie &amp; cours interactifs, classes virtuelles HD en direct, messagerie collaborative sécurisée (OWASP) et intégration de l'IA avec hébergement haute disponibilité sur Railway.</li>
+            <li><em>4 Métriques KPI :</em> Disponibilité Cloud 99.9%, 5 rôles métier intégrés, fluidité garantie à 60 FPS et sécurité industrielle à 100%.</li>
+            <li><em>Espaces par Rôles :</em> 3 cartes thématiques dédiées aux apprenants/étudiants, formateurs/enseignants et direction/administrateurs.</li>
+            <li><em>Garantie Sécurité &amp; Confidentialité :</em> Badges de conformité (Bcrypt, JWT, Anti-XSS, PostgreSQL Railway, Avatars WebP Base64).</li>
+            <li><em>Call to Action (CTA) &amp; Footer :</em> Bannière d'engagement direct et pied de page institutionnel.</li>
+          </ul>
+        </li>
+        <li><strong>Lien « À Propos » dans la Navbar :</strong> Ancrage fluide intégré dans la barre de navigation supérieure (<code>Navbar.tsx</code>) visible sur la page d'accueil avec prise en charge multilingue intégrale (FR, EN, AR en mode RTL).</li>
       </ul>
     </div>
 

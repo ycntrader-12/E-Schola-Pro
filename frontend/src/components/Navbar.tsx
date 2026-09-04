@@ -14,6 +14,7 @@ export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const tNav = useTranslations('Navigation');
+  const tAbout = useTranslations('About');
   const [isMounted, setIsMounted] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
@@ -102,6 +103,15 @@ export default function Navbar() {
               E-Schola <span className="text-[#1877f2] font-extrabold">Pro</span>
             </span>
           </Link>
+
+          {isHomePage && (
+            <a
+              href="#about"
+              className="hidden sm:inline-flex items-center text-xs sm:text-sm font-bold text-slate-600 hover:text-[#1877f2] px-3 py-1.5 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+            >
+              {tAbout('nav_link')}
+            </a>
+          )}
         </div>
 
         {/* Center Section : Top Center Dashboard Return Button */}
