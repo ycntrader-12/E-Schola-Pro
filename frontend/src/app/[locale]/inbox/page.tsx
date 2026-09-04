@@ -100,8 +100,49 @@ export default function InboxMessagesPage() {
   
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isComposingModalOpen, setIsComposingModalOpen] = useState(false);
+  const [composerInitialData, setComposerInitialData] = useState<{
+    to?: UserMinimalRead[];
+    subject?: string;
+    body?: string;
+  } | null>(null);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const [aiModalPrompt, setAiModalPrompt] = useState('');
+
+  // Open composer in-app without full page reload or new tab
+  const openComposer = (data?: { to?: UserMinimalRead[]; subject?: string; body?: string }) => {
+    if (data) {
+      setComposerInitialData(data);
+    } else {
+      setComposerInitialData(null);
+    }
+    setIsComposingModalOpen(true);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('compose', 'true');
+      window.history.replaceState({}, '', url.toString());
+    }
+  };
+
+  // Close composer, reset form state, and clean URL query parameter
+  const closeComposer = () => {
+    setIsComposingModalOpen(false);
+    setComposerInitialData(null);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('compose');
+      window.history.replaceState({}, '', url.toString());
+    }
+  };
+
+  // Synchronize on mount if URL contains ?compose=true or ?compose=new
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('compose') === 'true' || params.get('compose') === 'new') {
+        setIsComposingModalOpen(true);
+      }
+    }
+  }, []);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -242,6 +283,34 @@ export default function InboxMessagesPage() {
     }
   };
 
+  // Reply and Forward handlers
+  const handleReply = (msg: MessageItem) => {
+    const replyRecipient: UserMinimalRead[] = msg.sender
+      ? [
+          {
+            id: String(msg.sender.id),
+            email: msg.sender.email,
+            full_name: msg.sender.email.split('@')[0],
+            role: msg.sender.role,
+            avatar_url: msg.sender.avatar_url,
+          },
+        ]
+      : [];
+    openComposer({
+      to: replyRecipient,
+      subject: msg.subject.startsWith('Re:') ? msg.subject : `Re: ${msg.subject}`,
+      body: `\n\n--- Message d'origine ---\nDe : ${msg.sender?.email || 'Inconnu'}\nDate : ${new Date(msg.created_at).toLocaleString()}\n\n${msg.body}`,
+    });
+  };
+
+  const handleForward = (msg: MessageItem) => {
+    openComposer({
+      to: [],
+      subject: msg.subject.startsWith('Fwd:') ? msg.subject : `Fwd: ${msg.subject}`,
+      body: `\n\n---------- Message transféré ----------\nDe : ${msg.sender?.email || 'Inconnu'}\nDate : ${new Date(msg.created_at).toLocaleString()}\nObjet : ${msg.subject}\n\n${msg.body}`,
+    });
+  };
+
   // Toggle selection checkbox for message
   const toggleSelectMessage = (msgId: number, e?: React.SyntheticEvent) => {
     if (e) e.stopPropagation();
@@ -365,7 +434,7 @@ export default function InboxMessagesPage() {
             setSelectedMessage(null);
             setSelectedMessageIds(new Set());
           }}
-          onOpenCompose={() => setIsComposingModalOpen(true)}
+          onOpenCompose={() => openComposer()}
           onNavigateCalendar={() => router.push(`/${locale}/calendar`)}
           onNavigateClassroom={() => {
             setActiveFolder('classroom');
@@ -408,6 +477,14 @@ export default function InboxMessagesPage() {
                 </button>
 
                 <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleReply(selectedMessage)}
+                    className="px-3 py-1.5 rounded-xl bg-primary/15 hover:bg-primary/25 border border-primary/30 text-primary text-xs font-bold flex items-center gap-1.5 transition-colors"
+                  >
+                    <Reply size={14} /> Répondre
+                  </button>
+
                   <button
                     type="button"
                     onClick={() => {
@@ -494,6 +571,24 @@ export default function InboxMessagesPage() {
                   </a>
                 </div>
               )}
+
+              {/* Reply and Forward Quick Action Buttons */}
+              <div className="flex items-center gap-3 pt-4 border-t border-border">
+                <button
+                  type="button"
+                  onClick={() => handleReply(selectedMessage)}
+                  className="px-4 py-2.5 rounded-xl bg-primary text-white text-xs font-bold flex items-center gap-2 shadow-md shadow-primary/25 hover:bg-primary-hover transition-colors"
+                >
+                  <Reply size={15} /> Répondre
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleForward(selectedMessage)}
+                  className="px-4 py-2.5 rounded-xl bg-surface hover:bg-surface-hover border border-border text-text-primary text-xs font-semibold flex items-center gap-2 transition-colors"
+                >
+                  <Forward size={15} /> Transférer
+                </button>
+              </div>
             </div>
           ) : (
             /* MAIN MESSAGES LIST VIEW WITH GMAIL LAYOUT */
@@ -669,11 +764,14 @@ export default function InboxMessagesPage() {
       {/* Recipient Multi-Select Compose Modal */}
       <MessageComposerModal
         isOpen={isComposingModalOpen}
-        onClose={() => setIsComposingModalOpen(false)}
+        onClose={closeComposer}
         onSuccess={() => {
           loadAllMessages();
           setActionMessage({ type: 'success', text: 'Message envoyé avec succès !' });
         }}
+        initialToRecipients={composerInitialData?.to}
+        initialSubject={composerInitialData?.subject}
+        initialBody={composerInitialData?.body}
       />
 
       {/* Google AI Gemini Assistant Modal */}
