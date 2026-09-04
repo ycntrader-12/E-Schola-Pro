@@ -1047,6 +1047,7 @@ E-Schola Pro/
       <tbody class="endpoint-row">
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/users/</code></td><td>Lister tous les utilisateurs</td><td>Admin, Admin Manager</td></tr>
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/users/me</code></td><td>Profil de l'utilisateur connecté</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/users/search</code></td><td>Recherche d'utilisateurs par nom, prénom, email ou nom d'utilisateur (Matching ILIKE, limite paramétrable) avec payload <code>UserMinimalRead</code></td><td>Authentifié</td></tr>
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/users/check-username</code></td><td>Vérifier la disponibilité d'un nom d'utilisateur en temps réel</td><td>Public</td></tr>
         <tr><td><span class="badge badge-post">POST</span></td><td><code>/users/</code></td><td>Créer un utilisateur (inscription publique avec profil complet)</td><td>Public</td></tr>
         <tr><td><span class="badge badge-post">POST</span></td><td><code>/users/admin-create</code></td><td>Créer un compte depuis le panneau d'administration (profil standard ou allégé admin)</td><td>Admin, Admin Manager</td></tr>
@@ -1392,9 +1393,10 @@ E-Schola Pro/
       <p><strong>Route Frontend :</strong> <code>/inbox</code></p>
       <p><strong>Options et propriétés :</strong></p>
       <ul>
-        <li><strong>Boîte de réception :</strong> Messages reçus avec statut lu/non-lu, badges d'envoi général et de copie</li>
+        <li><strong>Sélecteur de Destinataires Multi-Sélection (To &amp; CC) :</strong> Composant combobox tokenisé (<code>RecipientInput.tsx</code>) supportant la saisie fluide, l'affichage de badges avec avatar et rôle, la suppression rapide (touche <em>Backspace</em> sur champ vide ou clic <em>X</em>), la navigation complète au clavier (<code>Flèches Haut/Bas, Entrée, Tab, Échap</code>) et la fermeture au clic extérieur.</li>
+        <li><strong>Autocomplétion Performante &amp; Anti-Course :</strong> Recherche déboguée par délai de 300 ms (debounce) vers l'endpoint <code>GET /api/v1/users/search</code>, avec annulation active des requêtes en cours via <code>AbortController</code> et déduplication stricte empêchant la sélection d'un même utilisateur à la fois dans les champs <strong>À</strong> et <strong>CC</strong>.</li>
         <li><strong>Envoi Général (Broadcast / "All") :</strong> Restreint pour les rôles employés, étudiants et stagiaires (masqué en UI et bloqué HTTP 403 en API). Autorisé pour les administrateurs et formateurs.</li>
-        <li><strong>Fonctionnalités standards &amp; Copie (CC) :</strong> Envoi de messages personnels direct 1-à-1 et possibilité d'ajouter des destinataires en copie (CC) aussi bien en mode local (BDD <code>eschola.db</code>) qu'en mode relais (emails/transmissions externes).</li>
+        <li><strong>Intégration Formulaire &amp; Validation (React Hook Form) :</strong> Composant <code>MessageComposerModal.tsx</code> garantissant qu'au moins 1 destinataire principal (<code>to.length >= 1</code>) est sélectionné avant soumission. Section CC repliable optimisée par mémoïsation (<code>React.memo</code>) pour éviter tout re-rendu inutile du formulaire.</li>
         <li><strong>Processus d'accueil automatique :</strong> Envoi automatique d'un message de bienvenue officiel à chaque nouvel utilisateur dès la création de son compte (auto-inscription ou création par admin).</li>
         <li><strong>Brouillons &amp; Corbeille :</strong> Sauvegarde dynamique des brouillons et restauration/suppression définitive dans la corbeille.</li>
         <li><strong>Pièces jointes &amp; Signalement :</strong> Support d'upload de fichiers (PDF, Word, Excel, Images, Audio, Vidéo) et transmission directe d'alerte en cas de signalement de message suspect aux formateurs et administrateurs.</li>

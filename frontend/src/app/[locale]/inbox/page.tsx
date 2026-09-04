@@ -3,6 +3,8 @@
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Link } from '@/i18n/routing';
+import { RecipientInput } from '@/components/inbox/RecipientInput';
+import { UserMinimalRead } from '@/types/recipient';
 import { 
   Inbox as InboxIcon, 
   Send, 
@@ -92,9 +94,12 @@ export default function InboxMessagesPage() {
   const [filterUnreadOnly, setFilterUnreadOnly] = useState(false);
 
   // Compose Form state
+  const [selectedToRecipients, setSelectedToRecipients] = useState<UserMinimalRead[]>([]);
+  const [selectedCcRecipients, setSelectedCcRecipients] = useState<UserMinimalRead[]>([]);
   const [recipientId, setRecipientId] = useState<string>('');
   const [recipientSearchText, setRecipientSearchText] = useState('');
   const [isRecipientDropdownOpen, setIsRecipientDropdownOpen] = useState(false);
+  const [isBroadcastSelected, setIsBroadcastSelected] = useState(false);
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
@@ -262,6 +267,18 @@ export default function InboxMessagesPage() {
   const handleReply = (msg: MessageItem) => {
     setIsComposing(true);
     setSelectedMessage(null);
+    if (msg.sender) {
+      setSelectedToRecipients([{
+        id: msg.sender.id,
+        full_name: msg.sender.email,
+        email: msg.sender.email,
+        role: msg.sender.role,
+        avatar_url: msg.sender.avatar_url,
+      }]);
+    } else {
+      setSelectedToRecipients([]);
+    }
+    setSelectedCcRecipients([]);
     setRecipientId(msg.sender?.id?.toString() || '');
     setSubject(msg.subject.startsWith('Re:') ? msg.subject : `Re: ${msg.subject}`);
     setBody(`\n\n--- En réponse à ${msg.sender?.email} le ${new Date(msg.created_at).toLocaleDateString()} :\n> ${msg.body}`);
@@ -273,6 +290,8 @@ export default function InboxMessagesPage() {
   const handleForward = (msg: MessageItem) => {
     setIsComposing(true);
     setSelectedMessage(null);
+    setSelectedToRecipients([]);
+    setSelectedCcRecipients([]);
     setRecipientId('');
     setSubject(msg.subject.startsWith('Fwd:') ? msg.subject : `Fwd: ${msg.subject}`);
     setBody(`\n\n--- Message transféré de ${msg.sender?.email || 'un utilisateur'} (le ${new Date(msg.created_at).toLocaleString()}) ---\n${msg.body}`);
@@ -354,9 +373,15 @@ export default function InboxMessagesPage() {
   // 8. Send Message
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    const isBroadcastSend = recipientId === '-1';
-    if ((!recipientId && !isBroadcastSend) || !subject.trim() || !body.trim()) {
-      setActionMessage({ type: 'error', text: 'Veuillez renseigner le destinataire, l’objet et le message.' });
+    const isBroadcastSend = isBroadcastSelected || recipientId === '-1';
+    const hasToRecipients = selectedToRecipients.length > 0 || (recipientId !== '' && recipientId !== '-1');
+
+    if (!isBroadcastSend && !hasToRecipients) {
+      setActionMessage({ type: 'error', text: 'Veuillez sélectionner au moins un destinataire principal (À).' });
+      return;
+    }
+    if (!subject.trim() || !body.trim()) {
+      setActionMessage({ type: 'error', text: 'Veuillez renseigner l’objet et le message.' });
       return;
     }
 
@@ -387,35 +412,70 @@ export default function InboxMessagesPage() {
     }
 
     try {
-      const ccList = ccEmailsInput ? ccEmailsInput.split(',').map(s => s.trim()).filter(Boolean) : [];
-      const res = await apiClient.post('/messages/', {
-        recipient_id: isBroadcastSend ? -1 : parseInt(recipientId),
-        subject: subject.trim(),
-        body: body.trim(),
-        attachment_url,
-        attachment_name,
-        attachment_type,
-        is_draft: false,
-        is_broadcast: isBroadcastSend,
-        cc_emails: ccList,
-      });
+      const ccIds = selectedCcRecipients.map(u => Number(u.id)).filter(Boolean);
+      const ccEmails = [
+        ...selectedCcRecipients.map(u => u.email).filter(Boolean),
+        ...(ccEmailsInput ? ccEmailsInput.split(',').map(s => s.trim()).filter(Boolean) : [])
+      ];
 
-      setSentMessages(prev => [res.data, ...prev]);
+      if (isBroadcastSend) {
+        const res = await apiClient.post('/messages/', {
+          recipient_id: -1,
+          subject: subject.trim(),
+          body: body.trim(),
+          attachment_url,
+          attachment_name,
+          attachment_type,
+          is_draft: false,
+          is_broadcast: true,
+          cc_recipient_ids: ccIds,
+          cc_emails: ccEmails,
+        });
+        setSentMessages(prev => [res.data, ...prev]);
+        setSelectedMessage(res.data);
+      } else {
+        const targets: Array<{ id: number | string; email?: string }> = selectedToRecipients.length > 0
+          ? selectedToRecipients
+          : [{ id: parseInt(recipientId) }];
+
+        let lastSentRes = null;
+        for (const target of targets) {
+          const res = await apiClient.post('/messages/', {
+            recipient_id: Number(target.id),
+            recipient_email: target.email || null,
+            cc_recipient_ids: ccIds,
+            cc_emails: ccEmails,
+            subject: subject.trim(),
+            body: body.trim(),
+            attachment_url,
+            attachment_name,
+            attachment_type,
+            is_draft: false,
+            is_broadcast: false,
+          });
+          lastSentRes = res.data;
+          setSentMessages(prev => [res.data, ...prev]);
+        }
+        if (lastSentRes) setSelectedMessage(lastSentRes);
+      }
+
       setIsComposing(false);
       setSubject('');
       setBody('');
+      setSelectedToRecipients([]);
+      setSelectedCcRecipients([]);
       setRecipientId('');
       setRecipientSearchText('');
+      setIsBroadcastSelected(false);
       setCcEmailsInput('');
       setAttachedFile(null);
       setExistingAttachment(null);
       setActiveFolder('sent');
-      setSelectedMessage(res.data);
       setActionMessage({
         type: 'success',
         text: isBroadcastSend
           ? '📢 Envoi général (Broadcast) transmis avec succès à l’ensemble des utilisateurs !'
-          : `Message envoyé avec succès à ${res.data.recipient?.email || 'votre correspondant'}.`
+          : `Message envoyé avec succès !`
       });
     } catch (err: any) {
       setActionMessage({ type: 'error', text: err?.response?.data?.detail || "Erreur lors de l'envoi du message." });
@@ -871,98 +931,60 @@ export default function InboxMessagesPage() {
               </div>
 
               <form onSubmit={handleSendMessage} className="space-y-4">
-                {/* Destinataire */}
-                <div className="relative">
-                  <label className="block text-xs uppercase font-bold text-text-secondary mb-1.5 flex items-center justify-between">
-                    <span>Destinataire *</span>
-                    {!canUseBroadcast && (
-                      <span className="text-[10px] text-amber-400 font-normal lowercase">
-                        (Envoi général "Tous" restreint pour votre rôle)
-                      </span>
+                {/* Destinataire (À) - Tokenized Multi-Select */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-xs uppercase font-bold text-text-secondary tracking-wider">
+                      À (Destinataires principaux) *
+                    </span>
+                    {canUseBroadcast && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const nextState = !isBroadcastSelected;
+                          setIsBroadcastSelected(nextState);
+                          if (nextState) {
+                            setRecipientId('-1');
+                            setSelectedToRecipients([]);
+                          } else {
+                            setRecipientId('');
+                          }
+                        }}
+                        className={`text-xs px-2.5 py-1 rounded-lg border transition-colors ${
+                          isBroadcastSelected
+                            ? 'bg-amber-500/20 text-amber-400 border-amber-500/40 font-bold'
+                            : 'bg-surface hover:bg-surface-hover text-text-secondary border-border'
+                        }`}
+                      >
+                        📢 {isBroadcastSelected ? 'Envoi Général (Actif)' : 'Activer Envoi Général'}
+                      </button>
                     )}
-                  </label>
-                  {allUsers.length > 0 || canUseBroadcast ? (
-                    <div className="relative">
-                      <input
-                        type="text"
-                        placeholder="-- Sélectionnez ou tapez un destinataire --"
-                        value={recipientSearchText}
-                        onChange={(e) => {
-                          setRecipientSearchText(e.target.value);
-                          setIsRecipientDropdownOpen(true);
-                          setRecipientId('');
-                        }}
-                        onFocus={() => setIsRecipientDropdownOpen(true)}
-                        onBlur={() => {
-                           setTimeout(() => setIsRecipientDropdownOpen(false), 200);
-                        }}
-                        className="w-full px-4 py-2.5 pr-10 rounded-xl bg-surface border border-border focus:border-primary text-xs outline-none"
-                      />
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-text-secondary">
-                        <ChevronDown size={16} />
-                      </div>
-                      {isRecipientDropdownOpen && (
-                        <div className="absolute z-10 w-full mt-1 bg-surface border border-border rounded-xl shadow-lg max-h-48 overflow-y-auto">
-                          {/* Option Envoi Général (Broadcast) si rôle autorisé */}
-                          {canUseBroadcast && (
-                            <div
-                              onClick={() => {
-                                setRecipientId('-1');
-                                setRecipientSearchText('📢 Tous les utilisateurs (Envoi Général - Broadcast)');
-                                setIsRecipientDropdownOpen(false);
-                              }}
-                              className="px-4 py-2.5 cursor-pointer bg-amber-500/10 hover:bg-amber-500/20 text-xs font-bold text-amber-400 border-b border-border flex items-center gap-2 transition-colors"
-                            >
-                              <span>📢 Tous les utilisateurs (Envoi Général - Broadcast)</span>
-                            </div>
-                          )}
-                          {allUsers
-                            .filter(u => u.id !== currentUser?.id)
-                            .filter(u => {
-                               const search = recipientSearchText.toLowerCase();
-                               return u.email.toLowerCase().includes(search) || u.role.toLowerCase().includes(search);
-                            })
-                            .map(u => (
-                              <div
-                                key={u.id}
-                                onClick={() => {
-                                  setRecipientId(u.id.toString());
-                                  setRecipientSearchText(`${u.email} (${u.role.toUpperCase()})`);
-                                  setIsRecipientDropdownOpen(false);
-                                }}
-                                className="px-4 py-2.5 cursor-pointer hover:bg-primary/10 text-xs text-text-primary border-b border-border/50 last:border-0 transition-colors"
-                              >
-                                {u.email} <span className="text-text-secondary font-medium">({u.role.toUpperCase()})</span>
-                              </div>
-                            ))}
-                            {allUsers.filter(u => u.id !== currentUser?.id && (u.email.toLowerCase().includes(recipientSearchText.toLowerCase()) || u.role.toLowerCase().includes(recipientSearchText.toLowerCase()))).length === 0 && !canUseBroadcast && (
-                              <div className="px-4 py-3 text-xs text-text-secondary text-center">Aucun destinataire trouvé</div>
-                            )}
-                        </div>
-                      )}
+                  </div>
+
+                  {isBroadcastSelected ? (
+                    <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-400 font-semibold flex items-center gap-2">
+                      📢 Message général adressé à TOUS les utilisateurs de ScholaPro.
                     </div>
                   ) : (
-                    <input
-                      type="number"
-                      placeholder="ID du destinataire (ex: 1 pour administrateur)"
-                      value={recipientId}
-                      onChange={(e) => setRecipientId(e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl bg-surface border border-border focus:border-primary text-xs outline-none"
+                    <RecipientInput
+                      placeholder="Rechercher par nom, prénom ou email..."
+                      selectedRecipients={selectedToRecipients}
+                      onChange={setSelectedToRecipients}
+                      alreadySelectedUsers={[...selectedToRecipients, ...selectedCcRecipients]}
+                      disabled={isSending}
                     />
                   )}
                 </div>
 
-                {/* Copie (CC) */}
+                {/* Copie (CC) - Tokenized Multi-Select */}
                 <div>
-                  <label className="block text-xs uppercase font-bold text-text-secondary mb-1.5">
-                    Copie (CC) — Adresses email / destinataires secondaires (séparés par des virgules)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="ex: direction@eschola.pro, formateur@eschola.pro"
-                    value={ccEmailsInput}
-                    onChange={(e) => setCcEmailsInput(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl bg-surface border border-border focus:border-primary text-xs outline-none"
+                  <RecipientInput
+                    label="Copie conforme (CC) — Destinataires secondaires"
+                    placeholder="Rechercher des destinataires en copie (CC)..."
+                    selectedRecipients={selectedCcRecipients}
+                    onChange={setSelectedCcRecipients}
+                    alreadySelectedUsers={[...selectedToRecipients, ...selectedCcRecipients]}
+                    disabled={isSending}
                   />
                 </div>
 

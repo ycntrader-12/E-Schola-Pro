@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Union
 from pydantic import BaseModel
 
 
@@ -26,6 +26,17 @@ class UserCreate(UserBase):
 
 class UserResponse(UserBase):
     id: int
+
+    class Config:
+        from_attributes = True
+
+
+class UserMinimalRead(BaseModel):
+    id: Union[int, str]
+    full_name: str
+    email: Optional[str] = None
+    role: str = "étudiant"
+    avatar_url: Optional[str] = None
 
     class Config:
         from_attributes = True

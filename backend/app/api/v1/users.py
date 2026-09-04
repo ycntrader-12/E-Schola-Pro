@@ -3,13 +3,20 @@ import shutil
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, File, HTTPException, Request, UploadFile
+from fastapi import APIRouter, File, HTTPException, Query, Request, UploadFile
 from pydantic import BaseModel
+from sqlalchemy import or_
 
 from app.api.deps import CurrentUser, SessionDep
 from app.core.security import get_password_hash, verify_password
 from app.models.user import User
-from app.schemas.user import UserCreate, UserResponse, UserUpdate, UserUpdatePassword
+from app.schemas.user import (
+    UserCreate,
+    UserMinimalRead,
+    UserResponse,
+    UserUpdate,
+    UserUpdatePassword,
+)
 from app.services.welcome import send_welcome_message
 
 router = APIRouter()
@@ -53,6 +60,57 @@ def check_username(
         .first()
     )
     return {"available": existing is None, "username": val}
+
+
+@router.get("/search", response_model=list[UserMinimalRead])
+def search_users(
+    session: SessionDep,
+    current_user: CurrentUser,
+    q: str = Query("", description="Terme de recherche pour filtrer les utilisateurs"),
+    limit: int = Query(10, ge=1, le=50, description="Nombre maximum de résultats"),
+) -> Any:
+    """
+    Recherche d'utilisateurs par nom, prénom, email ou nom d'utilisateur.
+    Matching ILIKE insensible à la casse, exclusion des utilisateurs inactifs ou supprimés.
+    """
+    query_str = q.strip()
+    base_query = session.query(User)
+
+    if hasattr(User, "is_active"):
+        base_query = base_query.filter(User.is_active == True)
+    if hasattr(User, "is_deleted"):
+        base_query = base_query.filter(User.is_deleted == False)
+    if hasattr(User, "deleted_at"):
+        base_query = base_query.filter(getattr(User, "deleted_at").is_(None))
+
+    if query_str:
+        pattern = f"%{query_str}%"
+        base_query = base_query.filter(
+            or_(
+                User.prenom.ilike(pattern),
+                User.nom.ilike(pattern),
+                User.email.ilike(pattern),
+                User.username.ilike(pattern),
+            )
+        )
+
+    users = base_query.limit(limit).all()
+
+    result = []
+    for u in users:
+        fn_parts = [p for p in [u.prenom, u.nom] if p]
+        full_name = " ".join(fn_parts).strip() or u.username or u.email or f"Utilisateur #{u.id}"
+        result.append(
+            UserMinimalRead(
+                id=u.id,
+                full_name=full_name,
+                email=u.email,
+                role=u.role or "étudiant",
+                avatar_url=u.avatar_url,
+            )
+        )
+
+    return result
 
 
 @router.post("/", response_model=UserResponse)
