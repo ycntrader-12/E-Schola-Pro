@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
+import { Link } from '@/i18n/routing';
 import { usePathname, useRouter } from 'next/navigation';
-import { LogOut, User, GraduationCap, MessageSquare, Video } from 'lucide-react';
+import { LogOut, User, GraduationCap, MessageSquare, Video, LayoutDashboard } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { apiClient } from '@/lib/api';
 import LanguageSwitcher from './LanguageSwitcher';
@@ -78,13 +78,15 @@ export default function Navbar() {
   const normalizedPath = pathname.replace(/^\/[a-z]{2}(\/|$)/, '/');
   if (normalizedPath === '/dashboard' || normalizedPath.startsWith('/dashboard/')) return null;
 
+  const isHomePage = normalizedPath === '/' || normalizedPath === '';
+
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-[#e4e6eb] h-16 transition-colors shadow-xs">
-      <div className="max-w-7xl mx-auto px-4 h-full flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-4 h-full flex items-center justify-between relative">
         
         {/* Left Section */}
-        <div className="flex items-center gap-4">
-          {normalizedPath !== '/' && normalizedPath !== '' && (
+        <div className="flex items-center gap-2 sm:gap-4">
+          {!isHomePage && (
             <div className="hidden sm:flex items-center gap-2">
               <BackButton label="" className="p-2 bg-slate-100 border border-slate-200 rounded-full hover:bg-slate-200" />
               <ForwardButton label="" className="p-2 bg-slate-100 border border-slate-200 rounded-full hover:bg-slate-200" />
@@ -93,14 +95,31 @@ export default function Navbar() {
           
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="w-8 h-8 rounded-lg bg-[#1877f2] flex items-center justify-center text-white shadow-xs group-hover:scale-105 transition-transform">
+            <div className="w-8 h-8 rounded-lg bg-[#1877f2] flex items-center justify-center text-white shadow-xs group-hover:scale-105 transition-transform shrink-0">
               <GraduationCap size={18} />
             </div>
-            <span className="text-xl font-bold tracking-tight text-[#050505]">
+            <span className={`text-base sm:text-xl font-bold tracking-tight text-[#050505] ${isAuthenticated && !isHomePage ? 'hidden min-[520px]:inline' : 'inline'}`}>
               E-Schola <span className="text-[#1877f2] font-extrabold">Pro</span>
             </span>
           </Link>
         </div>
+
+        {/* Center Section : Top Center Dashboard Return Button */}
+        {isMounted && isAuthenticated && !isHomePage && (
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex items-center justify-center pointer-events-auto">
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center justify-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-gradient-to-r from-[#1877f2] via-[#2563eb] to-[#1d4ed8] hover:from-[#166fe5] hover:to-[#1e40af] text-white font-bold text-xs sm:text-sm shadow-sm hover:shadow-md hover:shadow-blue-500/25 active:scale-95 transition-all duration-200 border border-white/20 group cursor-pointer min-h-[38px] sm:min-h-[44px]"
+              title={tNav('dashboard')}
+              aria-label={tNav('dashboard')}
+            >
+              <LayoutDashboard size={17} className="transition-transform duration-200 group-hover:scale-110 shrink-0" />
+              <span className="font-bold tracking-tight">
+                {tNav('dashboard')}
+              </span>
+            </Link>
+          </div>
+        )}
 
         {/* Right Section : Language Switcher & Auth */}
         <div className="flex items-center gap-3">

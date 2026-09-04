@@ -1583,6 +1583,17 @@ E-Schola Pro/
       </ol>
     </div>
 
+    <h3>Barre de Navigation Supérieure (Navbar) &amp; Bouton Dashboard Centralisé</h3>
+    <div class="card">
+      <p>La barre supérieure (<code>Navbar.tsx</code>) intègre un <strong>bouton de retour au Tableau de bord positionné au centre supérieur</strong> de l'écran :</p>
+      <ul>
+        <li><strong>Règle de visibilité :</strong> Affiché au haut centre sur <em>toutes les pages</em> de l'application (cours, classes virtuelles, boîte de réception, calendrier, présences, quiz, devoirs, profil, etc.), <strong>sauf la page d'accueil</strong> (landing page <code>/</code>) qui conserve son design immersif épuré.</li>
+        <li><strong>Contrôle d'accès :</strong> Autorisé pour l'ensemble des rôles utilisateurs (Administrateur, Formateur, Étudiant, Stagiaire, Employé) à condition stricte que l'utilisateur soit connecté (vérification <code>isAuthenticated</code> et token JWT actif).</li>
+        <li><strong>Esthétique &amp; Ergonomie :</strong> Capsule avec dégradé bleu royal (<code>#1877f2</code> / <code>#2563eb</code>), icône <code>LayoutDashboard</code> de Lucide React, libellé dynamique multilingue (<code>Tableau de bord</code> / <code>Dashboard</code> / <code>لوحة التحكم</code>) géré par <code>next-intl</code>.</li>
+        <li><strong>Design Adaptatif (Responsive) :</strong> Parfaitement centré (<code>absolute left-1/2 -translate-x-1/2</code>) avec accélération GPU 60 FPS (<code>transform</code>), cible tactile optimisée $\ge 44$ px, et masquage adaptatif du logo textuel sur petits écrans pour un affichage mobile sans aucun chevauchement.</li>
+      </ul>
+    </div>
+
     <h3>Portail d'Accueil &amp; Landing Page Visuelle</h3>
     <div class="card">
       <p>La page d'accueil (<code>/</code>) propose une expérience <strong>100% visuelle, épurée et immersive</strong> :</p>
