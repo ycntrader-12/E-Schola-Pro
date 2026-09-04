@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useCallback, memo } from 'react';
+import React, { useState, useRef, memo } from 'react';
 import { useForm, Controller, Control } from 'react-hook-form';
 import {
   Send,
@@ -8,8 +8,6 @@ import {
   Paperclip,
   X,
   Loader2,
-  ChevronDown,
-  ChevronUp,
   UserPlus,
   Mail,
 } from 'lucide-react';
@@ -41,21 +39,21 @@ const CollapsibleCcSection: React.FC<CcSectionProps> = memo(
     const [isCcVisible, setIsCcVisible] = useState(false);
 
     return (
-      <div className="space-y-1.5 transition-all">
+      <div className="space-y-1 transition-all">
         {!isCcVisible ? (
           <button
             type="button"
             disabled={disabled}
             onClick={() => setIsCcVisible(true)}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary-hover hover:underline transition-colors py-1"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary-hover hover:underline transition-colors py-0.5"
           >
-            <UserPlus size={14} />
+            <UserPlus size={13} />
             + Ajouter des destinataires en copie (CC)
           </button>
         ) : (
-          <div className="space-y-1 bg-surface/40 p-3 rounded-xl border border-border/60 animate-fade-in-up">
+          <div className="space-y-1 bg-surface/40 p-2.5 rounded-xl border border-border/60 animate-fade-in-up">
             <div className="flex items-center justify-between pb-1">
-              <span className="text-xs uppercase font-bold text-text-secondary tracking-wider">
+              <span className="text-[11px] uppercase font-bold text-text-secondary tracking-wider">
                 Copie conforme (CC)
               </span>
               <button
@@ -204,12 +202,12 @@ export const MessageComposerModal: React.FC<MessageComposerModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="glass-card max-w-2xl w-full p-6 rounded-2xl border border-border space-y-5 animate-fade-in-up max-h-[90vh] flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-border">
-          <div className="flex items-center gap-2 text-primary font-bold text-base">
-            <Mail size={20} />
+    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 md:p-4 overflow-hidden">
+      <div className="glass-card w-full max-w-2xl h-auto max-h-[85vh] flex flex-col rounded-2xl border border-border/80 shadow-2xl overflow-hidden animate-fade-in-up">
+        {/* Compact Header */}
+        <div className="py-3 px-5 border-b border-border flex items-center justify-between shrink-0 bg-surface/60 backdrop-blur-md">
+          <div className="flex items-center gap-2 text-primary font-bold text-sm">
+            <Mail size={18} />
             <h2>Nouveau Message</h2>
           </div>
           <button
@@ -221,180 +219,187 @@ export const MessageComposerModal: React.FC<MessageComposerModalProps> = ({
           </button>
         </div>
 
-        {/* Form Body */}
+        {/* Form Wrap */}
         <form
           onSubmit={handleSubmit((values: ComposerFormValues) => handleFormSubmit(values, false))}
-          className="space-y-4 overflow-y-auto pr-1 flex-1"
+          className="flex-1 flex flex-col min-h-0 overflow-hidden"
         >
-          {errors.root && (
-            <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-xs text-rose-400 font-semibold">
-              {errors.root.message}
-            </div>
-          )}
+          {/* Scrollable Body */}
+          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+            {errors.root && (
+              <div className="p-2.5 bg-rose-500/10 border border-rose-500/30 rounded-xl text-xs text-rose-400 font-semibold">
+                {errors.root.message}
+              </div>
+            )}
 
-          {/* Primary Recipients (To) */}
-          <Controller
-            name="to"
-            control={control}
-            rules={{
-              validate: (val: UserMinimalRead[]) =>
-                (val && val.length >= 1) || 'Veuillez sélectionner au moins un destinataire principal.',
-            }}
-            render={({ field }: { field: { value: UserMinimalRead[]; onChange: (val: UserMinimalRead[]) => void } }) => (
-              <RecipientInput
-                label="À (Destinataires principaux) *"
-                placeholder="Entrez le nom, prénom ou email du destinataire..."
-                selectedRecipients={field.value || []}
-                onChange={(recipients) => {
-                  field.onChange(recipients);
-                  if (recipients.length > 0) clearErrors('to');
+            {/* Primary Recipients (To) */}
+            <div className="relative z-30">
+              <Controller
+                name="to"
+                control={control}
+                rules={{
+                  validate: (val: UserMinimalRead[]) =>
+                    (val && val.length >= 1) || 'Veuillez sélectionner au moins un destinataire principal.',
                 }}
-                alreadySelectedUsers={[...(field.value || []), ...watchCc]}
-                error={errors.to?.message}
+                render={({ field }: { field: { value: UserMinimalRead[]; onChange: (val: UserMinimalRead[]) => void } }) => (
+                  <RecipientInput
+                    label="À (Destinataires principaux) *"
+                    placeholder="Entrez le nom, prénom ou email du destinataire..."
+                    selectedRecipients={field.value || []}
+                    onChange={(recipients) => {
+                      field.onChange(recipients);
+                      if (recipients.length > 0) clearErrors('to');
+                    }}
+                    alreadySelectedUsers={[...(field.value || []), ...watchCc]}
+                    error={errors.to?.message}
+                    disabled={isSubmitting || isUploading}
+                  />
+                )}
+              />
+            </div>
+
+            {/* Collapsible CC Section */}
+            <div className="relative z-20">
+              <CollapsibleCcSection
+                control={control}
+                toRecipients={watchTo}
                 disabled={isSubmitting || isUploading}
               />
-            )}
-          />
+            </div>
 
-          {/* Collapsible CC Section (Isolated to prevent unnecessary re-renders) */}
-          <CollapsibleCcSection
-            control={control}
-            toRecipients={watchTo}
-            disabled={isSubmitting || isUploading}
-          />
+            {/* Subject */}
+            <div>
+              <label className="block text-[11px] uppercase font-bold text-text-secondary mb-1 tracking-wider">
+                Objet du message *
+              </label>
+              <input
+                type="text"
+                placeholder="Objet de votre message..."
+                disabled={isSubmitting || isUploading}
+                {...register('subject', { required: 'L\'objet est obligatoire' })}
+                className={`w-full px-3.5 py-2 rounded-xl bg-surface border text-xs outline-none transition-colors ${
+                  errors.subject
+                    ? 'border-rose-500 focus:border-rose-500'
+                    : 'border-border focus:border-primary'
+                }`}
+              />
+              {errors.subject && (
+                <p className="text-[11px] text-rose-500 font-medium mt-0.5">
+                  {errors.subject.message}
+                </p>
+              )}
+            </div>
 
-          {/* Subject */}
-          <div>
-            <label className="block text-xs uppercase font-bold text-text-secondary mb-1.5 tracking-wider">
-              Objet du message *
-            </label>
-            <input
-              type="text"
-              placeholder="Objet de votre message..."
-              disabled={isSubmitting || isUploading}
-              {...register('subject', { required: 'L\'objet est obligatoire' })}
-              className={`w-full px-4 py-2.5 rounded-xl bg-surface border text-xs outline-none transition-colors ${
-                errors.subject
-                  ? 'border-rose-500 focus:border-rose-500'
-                  : 'border-border focus:border-primary'
-              }`}
-            />
-            {errors.subject && (
-              <p className="text-[11px] text-rose-500 font-medium mt-1">
-                {errors.subject.message}
-              </p>
-            )}
-          </div>
+            {/* Body */}
+            <div>
+              <label className="block text-[11px] uppercase font-bold text-text-secondary mb-1 tracking-wider">
+                Message *
+              </label>
+              <textarea
+                rows={4}
+                placeholder="Rédigez votre message ici..."
+                disabled={isSubmitting || isUploading}
+                {...register('body', { required: 'Le corps du message est obligatoire' })}
+                className={`w-full px-3.5 py-2.5 rounded-xl bg-surface border text-xs outline-none leading-relaxed resize-none transition-colors h-28 max-h-36 ${
+                  errors.body
+                    ? 'border-rose-500 focus:border-rose-500'
+                    : 'border-border focus:border-primary'
+                }`}
+              />
+              {errors.body && (
+                <p className="text-[11px] text-rose-500 font-medium mt-0.5">
+                  {errors.body.message}
+                </p>
+              )}
+            </div>
 
-          {/* Body */}
-          <div>
-            <label className="block text-xs uppercase font-bold text-text-secondary mb-1.5 tracking-wider">
-              Message *
-            </label>
-            <textarea
-              rows={5}
-              placeholder="Rédigez votre message ici..."
-              disabled={isSubmitting || isUploading}
-              {...register('body', { required: 'Le corps du message est obligatoire' })}
-              className={`w-full px-4 py-3 rounded-xl bg-surface border text-xs outline-none leading-relaxed resize-none transition-colors ${
-                errors.body
-                  ? 'border-rose-500 focus:border-rose-500'
-                  : 'border-border focus:border-primary'
-              }`}
-            />
-            {errors.body && (
-              <p className="text-[11px] text-rose-500 font-medium mt-1">
-                {errors.body.message}
-              </p>
-            )}
-          </div>
+            {/* Compact Attachment */}
+            <div>
+              <label className="block text-[11px] uppercase font-bold text-text-secondary mb-1 tracking-wider">
+                Pièce jointe (Optionnel)
+              </label>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={(e) => {
+                  if (e.target.files?.[0]) {
+                    setAttachedFile(e.target.files[0]);
+                  }
+                }}
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,audio/*,video/*,image/*"
+                className="hidden"
+              />
 
-          {/* Attachment */}
-          <div>
-            <label className="block text-xs uppercase font-bold text-text-secondary mb-1.5 tracking-wider">
-              Pièce jointe (Optionnel)
-            </label>
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={(e) => {
-                if (e.target.files?.[0]) {
-                  setAttachedFile(e.target.files[0]);
-                }
-              }}
-              accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,audio/*,video/*,image/*"
-              className="hidden"
-            />
-
-            {attachedFile ? (
-              <div className="p-3 bg-primary/10 border border-primary/30 rounded-xl flex items-center justify-between text-xs">
-                <div className="flex items-center gap-2 truncate max-w-[85%]">
-                  <Paperclip size={16} className="text-primary shrink-0" />
-                  <span className="font-semibold text-text-primary truncate">
-                    {attachedFile.name}
-                  </span>
-                  <span className="text-[10px] text-text-secondary">
-                    ({(attachedFile.size / 1024).toFixed(0)} Ko)
-                  </span>
+              {attachedFile ? (
+                <div className="py-2 px-3 bg-primary/10 border border-primary/30 rounded-xl flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2 truncate max-w-[85%]">
+                    <Paperclip size={14} className="text-primary shrink-0" />
+                    <span className="font-semibold text-text-primary truncate">
+                      {attachedFile.name}
+                    </span>
+                    <span className="text-[10px] text-text-secondary">
+                      ({(attachedFile.size / 1024).toFixed(0)} Ko)
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAttachedFile(null);
+                      if (fileInputRef.current) fileInputRef.current.value = '';
+                    }}
+                    className="text-text-secondary hover:text-rose-400 p-0.5 rounded"
+                  >
+                    <X size={15} />
+                  </button>
                 </div>
+              ) : (
                 <button
                   type="button"
-                  onClick={() => {
-                    setAttachedFile(null);
-                    if (fileInputRef.current) fileInputRef.current.value = '';
-                  }}
-                  className="text-text-secondary hover:text-rose-400 p-1 rounded"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isSubmitting || isUploading}
+                  className="w-full py-2 border border-dashed border-border hover:border-primary/50 rounded-xl text-xs text-text-secondary hover:text-primary flex items-center justify-center gap-2 transition-colors"
                 >
-                  <X size={16} />
+                  <Paperclip size={14} />
+                  Cliquez pour sélectionner un fichier joint
                 </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isSubmitting || isUploading}
-                className="w-full py-2.5 border-2 border-dashed border-border hover:border-primary/50 rounded-xl text-xs text-text-secondary hover:text-primary flex items-center justify-center gap-2 transition-colors"
-              >
-                <Paperclip size={16} />
-                Cliquez pour sélectionner un fichier joint
-              </button>
-            )}
+              )}
+            </div>
           </div>
 
-          {/* Form Actions */}
-          <div className="pt-2 flex flex-col sm:flex-row items-center gap-2.5 border-t border-border mt-4">
+          {/* Sticky / Fixed Footer Actions */}
+          <div className="py-3 px-5 border-t border-border bg-surface/80 backdrop-blur-md flex items-center justify-end gap-2.5 shrink-0">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-3.5 py-2 text-text-secondary hover:text-text-primary rounded-xl text-xs font-semibold hover:bg-surface transition-colors"
+            >
+              Annuler
+            </button>
+
             <button
               type="button"
               onClick={onSaveDraft}
               disabled={isSubmitting || isUploading}
-              className="w-full sm:w-auto px-4 py-2.5 bg-surface hover:bg-surface-hover rounded-xl text-xs font-semibold border border-border flex items-center justify-center gap-1.5 transition-colors text-text-primary"
+              className="px-3.5 py-2 bg-surface hover:bg-surface-hover rounded-xl text-xs font-semibold border border-border flex items-center gap-1.5 transition-colors text-text-primary"
             >
-              <Save size={15} />
+              <Save size={14} />
               Enregistrer brouillon
             </button>
 
             <button
               type="submit"
               disabled={isSubmitting || isUploading}
-              className="w-full sm:flex-1 btn-primary py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-primary/25"
+              className="px-5 py-2 btn-primary rounded-xl text-xs font-bold flex items-center gap-2 shadow-md shadow-primary/20"
             >
               {isSubmitting || isUploading ? (
                 <>
-                  <Loader2 size={16} className="animate-spin" /> Envoi en cours...
+                  <Loader2 size={15} className="animate-spin" /> Envoi...
                 </>
               ) : (
                 <>
-                  <Send size={16} /> Envoyer
+                  <Send size={15} /> Envoyer
                 </>
               )}
-            </button>
-
-            <button
-              type="button"
-              onClick={onClose}
-              className="w-full sm:w-auto px-4 py-2.5 text-text-secondary hover:text-text-primary rounded-xl text-xs transition-colors"
-            >
-              Annuler
             </button>
           </div>
         </form>

@@ -174,7 +174,7 @@ export const RecipientInput: React.FC<RecipientInputProps> = ({
         </label>
       )}
 
-      <div ref={containerRef} className="relative">
+      <div ref={containerRef} className={`relative ${isDropdownOpen ? 'z-40' : 'z-20'}`}>
         <div
           onClick={() => inputRef.current?.focus()}
           className={`min-h-[44px] p-2 rounded-xl bg-surface border transition-colors flex flex-wrap items-center gap-1.5 cursor-text ${
