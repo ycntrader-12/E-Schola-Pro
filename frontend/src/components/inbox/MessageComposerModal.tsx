@@ -87,11 +87,13 @@ const CollapsibleCcSection: React.FC<CcSectionProps> = memo(
 
 CollapsibleCcSection.displayName = 'CollapsibleCcSection';
 
+const EMPTY_RECIPIENTS: UserMinimalRead[] = [];
+
 export const MessageComposerModal: React.FC<MessageComposerModalProps> = ({
   isOpen,
   onClose,
   onSuccess,
-  initialToRecipients = [],
+  initialToRecipients = EMPTY_RECIPIENTS,
   initialSubject = '',
   initialBody = '',
 }) => {
@@ -99,6 +101,7 @@ export const MessageComposerModal: React.FC<MessageComposerModalProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [displayMode, setDisplayMode] = useState<'modal' | 'docked' | 'minimized'>('modal');
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const prevIsOpenRef = useRef(false);
 
   const {
     register,
@@ -118,11 +121,11 @@ export const MessageComposerModal: React.FC<MessageComposerModalProps> = ({
     },
   });
 
-  // Re-synchronize form when initial values or open status change
+  // Re-synchronize form only when modal transitions from closed to open
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !prevIsOpenRef.current) {
       reset({
-        to: initialToRecipients || [],
+        to: initialToRecipients || EMPTY_RECIPIENTS,
         cc: [],
         subject: initialSubject || '',
         body: initialBody || '',
@@ -130,6 +133,7 @@ export const MessageComposerModal: React.FC<MessageComposerModalProps> = ({
       setAttachedFile(null);
       clearErrors();
     }
+    prevIsOpenRef.current = isOpen;
   }, [isOpen, initialToRecipients, initialSubject, initialBody, reset, clearErrors]);
 
   const watchTo = watch('to') || [];
