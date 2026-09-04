@@ -1401,12 +1401,13 @@ E-Schola Pro/
             <li><code>Google IA (Gemini)</code> : Mode Assistant IA interactif pour résumer, traduire et rédiger des messages.</li>
           </ul>
         </li>
-        <li><strong>Barre Latérale Ergonomique (InboxSidebar.tsx) :</strong> Bouton pilule "Rédiger", navigation par dossiers (<em>Boîte de réception, Favoris ⭐, En attente 🕒, Envoyés, Brouillons, Corbeille, Envoi Général</em>) avec badges dynamiques de comptage et section des catégories (<em>Promotions & Annonces, Social & Équipes, Updates & Mises à jour</em>).</li>
+        <li><strong>Barre Latérale Unifiée (InboxSidebar.tsx) :</strong> Bouton pilule "Rédiger", navigation par dossiers (<em>Boîte de réception, Tous les messages, Favoris ⭐, En attente 🕒, Envoyés, Brouillons, Classes Virtuelles 📹, Corbeille</em>) avec compteurs dynamiques, lien direct vers le <strong>Calendrier</strong> et élimination des catégories redondantes pour une fluidité maximale.</li>
+        <li><strong>Intégration Classe Virtuelle (Classroom) :</strong> Dossier dédié et bannière interactive reliant directement la messagerie aux sessions de visioconférence HD (<code>/classroom</code>).</li>
         <li><strong>Dock d'Outils Rétractable (InboxRightDock.tsx) :</strong> Panneau latéral droit offrant un accès instantané à l'Agenda, aux Devoirs &amp; Tâches, aux Contacts et au Chat Assistant IA Gemini.</li>
         <li><strong>Assistant IA Google Gemini (GoogleAiAssistModal.tsx) :</strong> Modal d'assistance IA pour la création de messages professionnels, la traduction automatique et la génération instantanée de résumés d'e-mails.</li>
         <li><strong>Support Multilingue Complètement Adaptatif (i18n) :</strong> Prise en charge intégrale des traductions multilingues (Français, Anglais, Arabe avec mise en page RTL adaptative) via <code>next-intl</code>.</li>
         <li><strong>Sélecteur de Destinataires Multi-Sélection (To &amp; CC) :</strong> Composant combobox tokenisé (<code>RecipientInput.tsx</code>) supportant la recherche avec délai de 300 ms (debounce), l'annulation de requêtes (<code>AbortController</code>), la déduplication des destinataires et la navigation au clavier.</li>
-        <li><strong>Validation &amp; Mémoïsation (React Hook Form) :</strong> Composant <code>MessageComposerModal.tsx</code> garantissant l'envoi vers au moins 1 destinataire (<code>to.length >= 1</code>) et mémoïsation de la section CC repliable (<code>React.memo</code>).</li>
+        <li><strong>Validation &amp; Mémoïsation (React Hook Form) :</strong> Composant <code>MessageComposerModal.tsx</code> garantissant l'envoi vers au moins 1 destinataire (<code>to.length >= 1</code>), pied d'actions fixe et isolation des couches de z-index.</li>
       </ul>
       <div class="screenshot-container">
         <div class="screenshot-header">

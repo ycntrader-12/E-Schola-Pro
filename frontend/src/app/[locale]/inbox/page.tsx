@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useMemo, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import {
   Inbox as InboxIcon,
@@ -91,11 +91,12 @@ interface MessageItem {
 
 export default function InboxMessagesPage() {
   const router = useRouter();
+  const params = useParams();
+  const locale = (params?.locale as string) || 'fr';
   const t = useTranslations('Inbox');
 
   const [currentUser, setCurrentUser] = useState<UserShort | null>(null);
   const [activeFolder, setActiveFolder] = useState<FolderType>('inbox');
-  const [activeCategory, setActiveCategory] = useState<'primary' | 'promotions' | 'social' | 'updates'>('primary');
   
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isComposingModalOpen, setIsComposingModalOpen] = useState(false);
@@ -190,6 +191,8 @@ export default function InboxMessagesPage() {
   const currentFolderList = useMemo(() => {
     let list: MessageItem[] = [];
     if (activeFolder === 'inbox') list = inboxMessages;
+    else if (activeFolder === 'all')
+      list = [...inboxMessages, ...sentMessages, ...draftMessages];
     else if (activeFolder === 'sent') list = sentMessages;
     else if (activeFolder === 'drafts') list = draftMessages;
     else if (activeFolder === 'trash') list = trashMessages;
@@ -197,15 +200,15 @@ export default function InboxMessagesPage() {
       list = [...inboxMessages, ...sentMessages].filter((m) => m.is_starred);
     else if (activeFolder === 'snoozed')
       list = inboxMessages.filter((m) => !m.is_read);
-    else if (activeFolder === 'broadcast')
-      list = [...inboxMessages, ...sentMessages].filter((m) => m.is_broadcast);
-
-    // Apply category filtering
-    if (activeFolder === 'inbox') {
-      if (activeCategory === 'promotions') list = list.filter((m) => m.subject.toLowerCase().includes('annonce') || m.is_broadcast);
-      else if (activeCategory === 'social') list = list.filter((m) => m.subject.toLowerCase().includes('groupe') || m.subject.toLowerCase().includes('équipe'));
-      else if (activeCategory === 'updates') list = list.filter((m) => m.is_welcome_msg || m.subject.toLowerCase().includes('update'));
-    }
+    else if (activeFolder === 'classroom')
+      list = [...inboxMessages, ...sentMessages].filter(
+        (m) =>
+          m.is_broadcast ||
+          m.subject.toLowerCase().includes('classe') ||
+          m.subject.toLowerCase().includes('cours') ||
+          m.subject.toLowerCase().includes('session') ||
+          m.body.toLowerCase().includes('classe')
+      );
 
     // Apply internal search filter
     if (searchMode === 'internal' && searchQuery.trim()) {
@@ -220,13 +223,13 @@ export default function InboxMessagesPage() {
     }
 
     return list;
-  }, [activeFolder, activeCategory, inboxMessages, sentMessages, draftMessages, trashMessages, searchQuery, searchMode]);
+  }, [activeFolder, inboxMessages, sentMessages, draftMessages, trashMessages, searchQuery, searchMode]);
 
   // Handle select single message
   const handleSelectMessage = async (msg: MessageItem) => {
     setSelectedMessage(msg);
 
-    if ((activeFolder === 'inbox' || activeFolder === 'unread') && !msg.is_read) {
+    if ((activeFolder === 'inbox' || activeFolder === 'all') && !msg.is_read) {
       try {
         await apiClient.get(`/messages/${msg.id}`);
         setInboxMessages((prev) =>
@@ -363,23 +366,29 @@ export default function InboxMessagesPage() {
             setSelectedMessageIds(new Set());
           }}
           onOpenCompose={() => setIsComposingModalOpen(true)}
+          onNavigateCalendar={() => router.push(`/${locale}/calendar`)}
+          onNavigateClassroom={() => {
+            setActiveFolder('classroom');
+            setSelectedMessage(null);
+            setSelectedMessageIds(new Set());
+          }}
           unreadCount={unreadCount}
           draftsCount={draftMessages.length}
           starredCount={[...inboxMessages, ...sentMessages].filter((m) => m.is_starred).length}
+          allCount={inboxMessages.length + sentMessages.length + draftMessages.length}
           isCollapsed={isSidebarCollapsed}
           canUseBroadcast={canUseBroadcast}
           labels={{
             compose: t('compose'),
             inbox: t('inbox'),
+            allMail: t('all_mail'),
             starred: t('starred'),
             snoozed: t('snoozed'),
             sent: t('sent'),
             drafts: t('drafts'),
+            classroom: t('classroom'),
             trash: t('trash'),
-            broadcast: t('broadcast'),
-            catPromotions: t('cat_promotions'),
-            catSocial: t('cat_social'),
-            catUpdates: t('cat_updates'),
+            calendar: t('calendar'),
           }}
         />
 
@@ -543,59 +552,27 @@ export default function InboxMessagesPage() {
                 </div>
               </div>
 
-              {/* 2. Gmail Category Tabs (Primary, Promotions, Social, Updates) */}
-              {activeFolder === 'inbox' && (
-                <div className="flex items-center border-b border-border/80 bg-background/40">
+              {/* Classe Virtuelle Classroom HD Banner */}
+              {activeFolder === 'classroom' && (
+                <div className="mx-4 my-3 p-4 rounded-2xl bg-gradient-to-r from-blue-600/15 via-indigo-600/10 to-primary/10 border border-blue-500/30 flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0">
+                      <Video size={20} />
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-bold text-text-primary">Espace Classes Virtuelles HD</h3>
+                      <p className="text-[11px] text-text-secondary">
+                        Rejoignez vos sessions interactives en visioconférence HD avec les enseignants et les apprenants.
+                      </p>
+                    </div>
+                  </div>
                   <button
                     type="button"
-                    onClick={() => setActiveCategory('primary')}
-                    className={`flex-1 py-3 px-4 text-xs font-bold border-b-2 flex items-center justify-center gap-2 transition-colors ${
-                      activeCategory === 'primary'
-                        ? 'border-primary text-primary bg-primary/10'
-                        : 'border-transparent text-text-secondary hover:text-text-primary hover:bg-surface'
-                    }`}
+                    onClick={() => router.push(`/${locale}/classroom`)}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl shadow-md shadow-blue-500/25 flex items-center gap-2 shrink-0 transition-colors cursor-pointer"
                   >
-                    <InboxIcon size={16} />
-                    <span>{t('cat_primary')}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setActiveCategory('promotions')}
-                    className={`flex-1 py-3 px-4 text-xs font-bold border-b-2 flex items-center justify-center gap-2 transition-colors ${
-                      activeCategory === 'promotions'
-                        ? 'border-amber-400 text-amber-400 bg-amber-500/10'
-                        : 'border-transparent text-text-secondary hover:text-text-primary hover:bg-surface'
-                    }`}
-                  >
-                    <Tag size={16} />
-                    <span>{t('cat_promotions')}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setActiveCategory('social')}
-                    className={`flex-1 py-3 px-4 text-xs font-bold border-b-2 flex items-center justify-center gap-2 transition-colors ${
-                      activeCategory === 'social'
-                        ? 'border-cyan-400 text-cyan-400 bg-cyan-500/10'
-                        : 'border-transparent text-text-secondary hover:text-text-primary hover:bg-surface'
-                    }`}
-                  >
-                    <Users size={16} />
-                    <span>{t('cat_social')}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setActiveCategory('updates')}
-                    className={`flex-1 py-3 px-4 text-xs font-bold border-b-2 flex items-center justify-center gap-2 transition-colors ${
-                      activeCategory === 'updates'
-                        ? 'border-purple-400 text-purple-300 bg-purple-500/10'
-                        : 'border-transparent text-text-secondary hover:text-text-primary hover:bg-surface'
-                    }`}
-                  >
-                    <Info size={16} />
-                    <span>{t('cat_updates')}</span>
+                    <span>Ouvrir Classroom</span>
+                    <ChevronRight size={14} />
                   </button>
                 </div>
               )}
