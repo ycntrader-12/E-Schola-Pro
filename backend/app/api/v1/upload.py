@@ -11,7 +11,11 @@ router = APIRouter()
 
 
 def get_base_url(request: Request) -> str:
-    # Get the base URL from the request to construct absolute URLs for the frontend
+    # Check for reverse proxy / Railway / Nginx forwarded headers
+    forwarded_host = request.headers.get("x-forwarded-host") or request.headers.get("host")
+    if forwarded_host:
+        proto = request.headers.get("x-forwarded-proto", "https" if "https" in str(request.base_url) else "http")
+        return f"{proto}://{forwarded_host}"
     return f"{request.url.scheme}://{request.client.host if request.client else '127.0.0.1'}:{request.url.port or 8000}"
 
 

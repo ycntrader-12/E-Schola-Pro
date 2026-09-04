@@ -85,6 +85,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
     control,
     watch,
     setValue,
+    reset,
     formState: { errors, isSubmitting },
   } = useForm<ProfileEditFormValues>({
     defaultValues: {
@@ -103,6 +104,27 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
       password: '',
     },
   });
+
+  // Keep form synchronized if user prop changes
+  useEffect(() => {
+    if (user) {
+      reset({
+        nom: user.nom || '',
+        prenom: user.prenom || '',
+        username: user.username || '',
+        email: user.email || '',
+        telephone: user.telephone || '',
+        cin: user.cin || '',
+        date_naissance: user.date_naissance || '',
+        pays: user.pays || 'Tunisie',
+        ville: user.ville || 'Tunis',
+        departement: user.departement || '',
+        specialisation: user.specialisation || '',
+        adresse: user.adresse || '',
+        password: '',
+      });
+    }
+  }, [user, reset]);
 
   const watchNom = watch('nom');
   const watchPrenom = watch('prenom');
@@ -143,21 +165,24 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
 
     try {
       const endpoint = isAdminMode ? `/users/${user.id}` : '/users/me';
-      const payload = {
-        username: values.username.trim() || undefined,
-        email: values.email.trim() || undefined,
-        nom: values.nom.trim() || undefined,
-        prenom: values.prenom.trim() || undefined,
-        telephone: values.telephone.trim() || undefined,
-        cin: values.cin.trim() || undefined,
-        date_naissance: values.date_naissance || undefined,
-        adresse: values.adresse.trim() || undefined,
-        ville: values.ville || undefined,
-        pays: values.pays || undefined,
-        departement: isEmployeeOrStagiaire ? values.departement : undefined,
-        specialisation: isStudentOrStagiaire ? values.specialisation : undefined,
-        password: values.password && values.password.trim() ? values.password.trim() : undefined,
+      const payload: any = {
+        username: values.username.trim(),
+        email: values.email.trim(),
+        nom: values.nom.trim(),
+        prenom: values.prenom.trim(),
+        telephone: values.telephone?.trim() || '',
+        cin: values.cin?.trim() || '',
+        date_naissance: values.date_naissance || '',
+        adresse: values.adresse?.trim() || '',
+        ville: values.ville || '',
+        pays: values.pays || '',
+        departement: isEmployeeOrStagiaire ? (values.departement || '') : '',
+        specialisation: isStudentOrStagiaire ? (values.specialisation || '') : '',
       };
+
+      if (values.password && values.password.trim()) {
+        payload.password = values.password.trim();
+      }
 
       const response = await apiClient.put(endpoint, payload);
       onSuccess(response.data);

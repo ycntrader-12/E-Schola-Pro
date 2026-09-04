@@ -290,8 +290,8 @@ def upload_avatar(
         with open(filepath, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
-        base_url = f"{request.url.scheme}://{request.client.host if request.client else '127.0.0.1'}:{request.url.port or 8000}"
-        avatar_url = f"{base_url}/uploads/avatars/{filename}"
+        # Relative avatar URL for universal compatibility across dev and production
+        avatar_url = f"/uploads/avatars/{filename}"
 
         current_user.avatar_url = avatar_url
         session.add(current_user)
@@ -605,33 +605,74 @@ def update_user_me(
     """
     Update details for the currently authenticated user.
     """
-    if user_in.nom is not None:
-        current_user.nom = user_in.nom.strip()
-    if user_in.prenom is not None:
-        current_user.prenom = user_in.prenom.strip()
+    # 1. Update username with uniqueness check
+    if user_in.username is not None:
+        new_username = user_in.username.strip().lower()
+        if new_username and new_username != (current_user.username or "").lower():
+            existing = (
+                session.query(User)
+                .filter(
+                    (User.username == new_username) | (User.email == new_username),
+                    User.id != current_user.id,
+                )
+                .first()
+            )
+            if existing:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Le nom d'utilisateur '{new_username}' est déjà pris par un autre compte.",
+                )
+            current_user.username = new_username
+
+    # 2. Update email with uniqueness check
     if user_in.email is not None:
         new_email = user_in.email.strip().lower()
-        if new_email and new_email != current_user.email:
-            existing = session.query(User).filter(User.email == new_email, User.id != current_user.id).first()
+        if new_email and new_email != (current_user.email or "").lower():
+            existing = (
+                session.query(User)
+                .filter(
+                    (User.email == new_email) | (User.username == new_email),
+                    User.id != current_user.id,
+                )
+                .first()
+            )
             if existing:
-                raise HTTPException(status_code=400, detail="Cette adresse email est déjà utilisée par un autre compte.")
+                raise HTTPException(
+                    status_code=400,
+                    detail="Cette adresse email est déjà utilisée par un autre compte.",
+                )
             current_user.email = new_email
+
+    # 3. Update password if provided
+    if user_in.password and user_in.password.strip():
+        pwd_val = user_in.password.strip()
+        if len(pwd_val) < 6:
+            raise HTTPException(
+                status_code=400, detail="Le mot de passe doit contenir au moins 6 caractères."
+            )
+        current_user.hashed_password = get_password_hash(pwd_val)
+
+    # 4. Standard and conditional profile fields
+    if user_in.nom is not None:
+        current_user.nom = user_in.nom.strip() or None
+    if user_in.prenom is not None:
+        current_user.prenom = user_in.prenom.strip() or None
     if user_in.telephone is not None:
-        current_user.telephone = user_in.telephone.strip()
+        current_user.telephone = user_in.telephone.strip() or None
     if user_in.adresse is not None:
-        current_user.adresse = user_in.adresse.strip()
+        current_user.adresse = user_in.adresse.strip() or None
     if user_in.ville is not None:
-        current_user.ville = user_in.ville.strip()
+        current_user.ville = user_in.ville.strip() or None
     if user_in.pays is not None:
-        current_user.pays = user_in.pays.strip()
+        current_user.pays = user_in.pays.strip() or None
     if user_in.date_naissance is not None:
-        current_user.date_naissance = user_in.date_naissance.strip()
+        current_user.date_naissance = user_in.date_naissance.strip() or None
     if user_in.cin is not None:
-        current_user.cin = user_in.cin.strip()
+        current_user.cin = user_in.cin.strip() or None
     if user_in.departement is not None:
-        current_user.departement = user_in.departement.strip()
+        current_user.departement = user_in.departement.strip() or None
     if user_in.specialisation is not None:
-        current_user.specialisation = user_in.specialisation.strip()
+        current_user.specialisation = user_in.specialisation.strip() or None
 
     session.add(current_user)
     session.commit()
@@ -668,8 +709,15 @@ def admin_update_user(
     # Check username uniqueness if changed
     if user_in.username is not None:
         new_username = user_in.username.strip().lower()
-        if new_username and new_username != user.username:
-            existing = session.query(User).filter(User.username == new_username, User.id != user_id).first()
+        if new_username and new_username != (user.username or "").lower():
+            existing = (
+                session.query(User)
+                .filter(
+                    (User.username == new_username) | (User.email == new_username),
+                    User.id != user_id,
+                )
+                .first()
+            )
             if existing:
                 raise HTTPException(status_code=400, detail=f"Le nom d'utilisateur '{new_username}' est déjà pris.")
             user.username = new_username
@@ -677,44 +725,68 @@ def admin_update_user(
     # Check email uniqueness if changed
     if user_in.email is not None:
         new_email = user_in.email.strip().lower()
-        if new_email and new_email != user.email:
-            existing = session.query(User).filter(User.email == new_email, User.id != user_id).first()
+        if new_email and new_email != (user.email or "").lower():
+            existing = (
+                session.query(User)
+                .filter(
+                    (User.email == new_email) | (User.username == new_email),
+                    User.id != user_id,
+                )
+                .first()
+            )
             if existing:
                 raise HTTPException(status_code=400, detail=f"L'adresse email '{new_email}' est déjà utilisée.")
             user.email = new_email
 
-    # Role update
+    # Role update with accent normalization
     if user_in.role is not None:
-        new_role = user_in.role.strip()
-        if current_user.role.lower() == "admin_manager" and new_role.lower() in ADMIN_ROLES:
+        raw_role = user_in.role.strip().lower()
+        role_map = {
+            "etudiant": "étudiant",
+            "étudiant": "étudiant",
+            "formateur": "formateur",
+            "stagiaire": "stagiaire",
+            "employer": "employer",
+            "employe": "employer",
+            "employé": "employer",
+            "pedagogique": "pedagogique",
+            "admin": "admin",
+            "admin_manager": "admin_manager",
+            "admin_limited": "admin_limited",
+        }
+        normalized_role = role_map.get(raw_role, raw_role)
+        if current_user.role.lower() == "admin_manager" and normalized_role in ADMIN_ROLES:
             raise HTTPException(status_code=403, detail="Un ADMIN_MANAGER ne peut pas accorder de rôle administrateur.")
-        user.role = new_role
+        user.role = normalized_role
 
     if user_in.nom is not None:
-        user.nom = user_in.nom.strip()
+        user.nom = user_in.nom.strip() or None
     if user_in.prenom is not None:
-        user.prenom = user_in.prenom.strip()
+        user.prenom = user_in.prenom.strip() or None
     if user_in.date_naissance is not None:
-        user.date_naissance = user_in.date_naissance.strip()
+        user.date_naissance = user_in.date_naissance.strip() or None
     if user_in.cin is not None:
-        user.cin = user_in.cin.strip()
+        user.cin = user_in.cin.strip() or None
     if user_in.telephone is not None:
-        user.telephone = user_in.telephone.strip()
+        user.telephone = user_in.telephone.strip() or None
     if user_in.adresse is not None:
-        user.adresse = user_in.adresse.strip()
+        user.adresse = user_in.adresse.strip() or None
     if user_in.ville is not None:
-        user.ville = user_in.ville.strip()
+        user.ville = user_in.ville.strip() or None
     if user_in.pays is not None:
-        user.pays = user_in.pays.strip()
+        user.pays = user_in.pays.strip() or None
     if user_in.departement is not None:
-        user.departement = user_in.departement.strip()
+        user.departement = user_in.departement.strip() or None
     if user_in.specialisation is not None:
-        user.specialisation = user_in.specialisation.strip()
+        user.specialisation = user_in.specialisation.strip() or None
     if user_in.group_name is not None:
-        user.group_name = user_in.group_name.strip()
+        user.group_name = user_in.group_name.strip() or None
 
     if user_in.password and user_in.password.strip():
-        user.hashed_password = get_password_hash(user_in.password.strip())
+        pwd_val = user_in.password.strip()
+        if len(pwd_val) < 6:
+            raise HTTPException(status_code=400, detail="Le mot de passe doit contenir au moins 6 caractères.")
+        user.hashed_password = get_password_hash(pwd_val)
 
     session.add(user)
     session.commit()

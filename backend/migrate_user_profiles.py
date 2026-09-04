@@ -22,6 +22,8 @@ def run_migration():
                 ("pays", "VARCHAR"),
                 ("departement", "VARCHAR"),
                 ("specialisation", "VARCHAR"),
+                ("avatar_url", "VARCHAR"),
+                ("group_name", "VARCHAR"),
             ]
             with engine.begin() as conn:
                 for col_name, col_type in new_columns:

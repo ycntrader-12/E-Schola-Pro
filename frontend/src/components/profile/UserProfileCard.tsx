@@ -81,6 +81,10 @@ export const UserProfileCard: React.FC<UserProfileCardProps> = ({
       const updated = res.data;
       setUser(updated);
       if (onProfileUpdated) onProfileUpdated(updated);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('auth_user_updated'));
+        window.dispatchEvent(new Event('storage'));
+      }
       setUploadMessage({ type: 'success', text: 'Photo de profil mise à jour avec succès.' });
     } catch (err: any) {
       console.error('Avatar upload error:', err);
@@ -97,6 +101,10 @@ export const UserProfileCard: React.FC<UserProfileCardProps> = ({
     setUser(updatedUser);
     setIsEditing(false);
     if (onProfileUpdated) onProfileUpdated(updatedUser);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('auth_user_updated'));
+      window.dispatchEvent(new Event('storage'));
+    }
     setUploadMessage({ type: 'success', text: 'Profil mis à jour avec succès.' });
   };
 

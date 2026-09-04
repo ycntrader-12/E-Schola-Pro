@@ -255,18 +255,25 @@ export default function ProfilePage() {
         role: editRole,
         nom: editNom.trim() || undefined,
         prenom: editPrenom.trim() || undefined,
-        date_naissance: editDateNaissance || undefined,
-        cin: editCin.trim() || undefined,
-        telephone: editTelephone.trim() || undefined,
-        adresse: editAdresse.trim() || undefined,
-        ville: editVille || undefined,
-        pays: editPays || undefined,
-        departement: editDepartement || undefined,
-        specialisation: editSpecialisation || undefined,
+        date_naissance: editDateNaissance || '',
+        cin: editCin.trim() || '',
+        telephone: editTelephone.trim() || '',
+        adresse: editAdresse.trim() || '',
+        ville: editVille || '',
+        pays: editPays || '',
+        departement: editDepartement || '',
+        specialisation: editSpecialisation || '',
         password: editPassword.trim() || undefined,
       });
 
       setAllUsers((prev) => prev.map((u) => (u.id === editingUser.id ? res.data : u)));
+      if (user && editingUser.id === user.id) {
+        setUser(res.data);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('auth_user_updated'));
+          window.dispatchEvent(new Event('storage'));
+        }
+      }
       setIsEditUserModalOpen(false);
       setEditingUser(null);
       setActionMessage({ type: 'success', text: `Compte utilisateur "${res.data.username || res.data.email}" modifié avec succès.` });
