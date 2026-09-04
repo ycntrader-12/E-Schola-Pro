@@ -17,9 +17,12 @@ oauth2_scheme = OAuth2PasswordBearer(
 
 
 def get_db() -> Generator:
+    db = SessionLocal()
     try:
-        db = SessionLocal()
         yield db
+    except Exception:
+        db.rollback()
+        raise
     finally:
         db.close()
 

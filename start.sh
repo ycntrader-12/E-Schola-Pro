@@ -34,6 +34,7 @@ for i in range(10):
 " || true
 
 python migrate_user_profiles.py || true
+python migrate_messages_schema.py || true
 python migrate_classrooms.py || true
 python migrate_tasks_attachment.py || true
 

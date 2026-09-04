@@ -36,14 +36,14 @@ Base.metadata.create_all(bind=engine)
 try:
     from create_admin import seed_groups, seed_users
     from migrate_classrooms import run_migration as run_classrooms_migration
-    from migrate_messages_star import run_migration as run_messages_star_migration
+    from migrate_messages_schema import run_migration as run_messages_schema_migration
     from migrate_tasks_attachment import run_migration as run_tasks_migration
     from migrate_user_profiles import run_migration as run_user_profiles_migration
 
     run_user_profiles_migration()
+    run_messages_schema_migration()
     run_classrooms_migration()
     run_tasks_migration()
-    run_messages_star_migration()
     seed_users()
     seed_groups()
 except Exception as e:

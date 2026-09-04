@@ -7,6 +7,48 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
 
 
+def is_in_railway() -> bool:
+    """Detects if code is executing inside Railway cloud infrastructure."""
+    return bool(
+        os.getenv("RAILWAY_ENVIRONMENT")
+        or os.getenv("RAILWAY_PROJECT_ID")
+        or os.getenv("RAILWAY_SERVICE_ID")
+        or os.getenv("RAILWAY_PRIVATE_DOMAIN")
+        or os.getenv("RAILWAY_PUBLIC_DOMAIN")
+    )
+
+
+def expand_railway_template_variables(url: str) -> str:
+    """
+    Expands Railway template tokens like ${{PGUSER}}, ${{POSTGRES_PASSWORD}}, ${{RAILWAY_PRIVATE_DOMAIN}}, etc.
+    even if passed literally in DATABASE_URL or .env file.
+    """
+    if not url or ("${{" not in url and "${" not in url):
+        return url
+
+    replacements = {
+        "PGUSER": os.getenv("PGUSER") or os.getenv("POSTGRES_USER") or "postgres",
+        "POSTGRES_USER": os.getenv("POSTGRES_USER") or os.getenv("PGUSER") or "postgres",
+        "POSTGRES_PASSWORD": os.getenv("POSTGRES_PASSWORD") or os.getenv("PGPASSWORD") or "",
+        "PGPASSWORD": os.getenv("PGPASSWORD") or os.getenv("POSTGRES_PASSWORD") or "",
+        "RAILWAY_PRIVATE_DOMAIN": os.getenv("RAILWAY_PRIVATE_DOMAIN") or os.getenv("PGHOST") or os.getenv("POSTGRES_HOST") or "postgres.railway.internal",
+        "PGHOST": os.getenv("PGHOST") or os.getenv("RAILWAY_PRIVATE_DOMAIN") or os.getenv("POSTGRES_HOST") or "postgres.railway.internal",
+        "POSTGRES_HOST": os.getenv("POSTGRES_HOST") or os.getenv("RAILWAY_PRIVATE_DOMAIN") or os.getenv("PGHOST") or "postgres.railway.internal",
+        "PGDATABASE": os.getenv("PGDATABASE") or os.getenv("POSTGRES_DB") or "railway",
+        "POSTGRES_DB": os.getenv("POSTGRES_DB") or os.getenv("PGDATABASE") or "railway",
+        "PGPORT": os.getenv("PGPORT") or os.getenv("POSTGRES_PORT") or "5432",
+        "POSTGRES_PORT": os.getenv("POSTGRES_PORT") or os.getenv("PGPORT") or "5432",
+    }
+
+    result = url
+    for k, v in replacements.items():
+        result = result.replace(f"${{{{ {k} }}}}", v)
+        result = result.replace(f"${{{{{k}}}}}", v)
+        result = result.replace(f"${{{k}}}", v)
+        result = result.replace(f"${k}", v)
+    return result
+
+
 def is_postgres_url_resolvable(url: str) -> bool:
     if not url or ("postgresql" not in url and "postgres" not in url):
         return True
@@ -26,19 +68,23 @@ def get_default_database_url() -> str:
     for env_var in ["DATABASE_URL", "POSTGRES_URL", "DATABASE_PUBLIC_URL"]:
         val = os.getenv(env_var)
         if val and val.strip():
-            db_val = val.strip().strip("'\"")
+            db_val = expand_railway_template_variables(val.strip().strip("'\""))
             if db_val.startswith("postgres://"):
                 return db_val.replace("postgres://", "postgresql+psycopg2://", 1)
             elif db_val.startswith("postgresql://") and not db_val.startswith("postgresql+"):
                 return db_val.replace("postgresql://", "postgresql+psycopg2://", 1)
             return db_val
 
-    # 2. Individual Railway / PostgreSQL variables (PGHOST, PGPORT, PGUSER, PGPASSWORD, PGDATABASE)
-    pghost = os.getenv("PGHOST")
-    pguser = os.getenv("PGUSER")
-    pgpassword = os.getenv("PGPASSWORD", "")
-    pgdatabase = os.getenv("PGDATABASE")
-    pgport = os.getenv("PGPORT", "5432")
+    # 2. Individual Railway / PostgreSQL variables (PGHOST, RAILWAY_PRIVATE_DOMAIN, PGPORT, PGUSER, PGPASSWORD, PGDATABASE)
+    pghost = (
+        os.getenv("RAILWAY_PRIVATE_DOMAIN")
+        or os.getenv("PGHOST")
+        or os.getenv("POSTGRES_HOST")
+    )
+    pguser = os.getenv("PGUSER") or os.getenv("POSTGRES_USER")
+    pgpassword = os.getenv("POSTGRES_PASSWORD") or os.getenv("PGPASSWORD", "")
+    pgdatabase = os.getenv("PGDATABASE") or os.getenv("POSTGRES_DB")
+    pgport = os.getenv("PGPORT") or os.getenv("POSTGRES_PORT") or "5432"
     if pghost and pguser and pgdatabase:
         auth = f"{pguser}:{pgpassword}@" if pgpassword else f"{pguser}@"
         return f"postgresql+psycopg2://{auth}{pghost}:{pgport}/{pgdatabase}"
@@ -84,10 +130,10 @@ class Settings(BaseSettings):
     def normalize_database_url(cls, v: str) -> str:
         if not v or not str(v).strip():
             return get_default_database_url()
-        v = str(v).strip().strip("'\"")
+        v = expand_railway_template_variables(str(v).strip().strip("'\""))
 
-        # Fallback if internal Railway host is configured on a local machine without TCP Proxy
-        if "railway.internal" in v and not is_postgres_url_resolvable(v):
+        # Fallback to local SQLite ONLY when running locally (outside Railway) and Railway internal host is unresolvable
+        if not is_in_railway() and "railway.internal" in v and not is_postgres_url_resolvable(v):
             print("[Database Notice] 'postgres.railway.internal' est un réseau privé Railway inaccessible hors du cloud.")
             print("                 Pour le dev local : configurez le TCP Proxy Railway (DATABASE_PUBLIC_URL) ou utilisez la base SQLite.")
             print("                 Basculement automatique sur la base SQLite locale pour garantir la stabilité.")

@@ -531,11 +531,13 @@ def delete_user(
     try:
         from app.models.attendance import Attendance
         from app.models.classroom import Classroom
+        from app.models.course import Course
+        from app.models.course_video import CourseVideo
         from app.models.enrollment import Enrollment
         from app.models.event import EventDeliverable
         from app.models.group import GroupMember
         from app.models.message import Message
-        from app.models.quiz import Quiz, QuizAttempt
+        from app.models.quiz import Quiz, QuizAttempt, QuizQuestion
         from app.models.task import Task, TaskSubmission
 
         session.query(GroupMember).filter(GroupMember.user_id == user_id).delete(synchronize_session=False)
@@ -553,7 +555,16 @@ def delete_user(
         # For quizzes created by this user
         user_quizzes = session.query(Quiz).filter(Quiz.created_by_id == user_id).all()
         for q in user_quizzes:
+            session.query(QuizQuestion).filter(QuizQuestion.quiz_id == q.id).delete(synchronize_session=False)
+            session.query(QuizAttempt).filter(QuizAttempt.quiz_id == q.id).delete(synchronize_session=False)
             session.delete(q)
+
+        # For courses taught by this user, clean videos and enrollments first
+        user_courses = session.query(Course).filter(Course.instructor_id == user_id).all()
+        for c in user_courses:
+            session.query(CourseVideo).filter(CourseVideo.course_id == c.id).delete(synchronize_session=False)
+            session.query(Enrollment).filter(Enrollment.course_id == c.id).delete(synchronize_session=False)
+            session.delete(c)
 
         session.query(Attendance).filter(
             (Attendance.user_id == user_id) | (Attendance.marked_by_id == user_id)
