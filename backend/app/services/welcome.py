@@ -54,11 +54,13 @@ def send_welcome_message(session: Session, new_user: User) -> Message | None:
             is_relay=False,
         )
 
-        session.add(welcome_msg)
+        with session.begin_nested():
+            session.add(welcome_msg)
         session.commit()
         session.refresh(welcome_msg)
         return welcome_msg
     except Exception as e:
+        session.rollback()
         # Log error gracefully so user creation is not aborted if welcome message fails
         print(f"[WARN] Failed to send automatic welcome message: {e}")
         return None

@@ -1048,6 +1048,14 @@ E-Schola Pro/
     <h2><span class="section-number">05</span> API Endpoints (REST)</h2>
     <p>Liste exhaustive de tous les endpoints exposés par le backend FastAPI. Base URL : <code>http://localhost:8000/api/v1</code></p>
 
+    <h3>Santé & Diagnostic Système (/health)</h3>
+    <table>
+      <thead><tr><th>Méthode</th><th>Endpoint</th><th>Description</th><th>Accès</th></tr></thead>
+      <tbody class="endpoint-row">
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/health/db-status</code></td><td>Diagnostic en temps réel de la persistance base de données (dialecte actif, vérification write-commit-read canary, latence, métriques du pool et statut des mutations)</td><td>Public</td></tr>
+      </tbody>
+    </table>
+
     <h3>Authentification (/login)</h3>
     <table>
       <thead><tr><th>Méthode</th><th>Endpoint</th><th>Description</th><th>Accès</th></tr></thead>

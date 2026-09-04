@@ -222,16 +222,18 @@ def create_user(
         try:
             from app.models.group import Group, GroupMember
 
-            default_grp = session.query(Group).first()
-            if default_grp:
-                session.add(
-                    GroupMember(group_id=default_grp.id, user_id=user_create.id)
-                )
-                user_create.group_name = default_grp.name
-                session.commit()
-                session.refresh(user_create)
-        except Exception:
-            pass
+            with session.begin_nested():
+                default_grp = session.query(Group).first()
+                if default_grp:
+                    session.add(
+                        GroupMember(group_id=default_grp.id, user_id=user_create.id)
+                    )
+                    user_create.group_name = default_grp.name
+            session.commit()
+            session.refresh(user_create)
+        except Exception as grp_err:
+            session.rollback()
+            print(f"[Notice] Group attachment skipped: {grp_err}")
 
     # Send automatic welcome message
     send_welcome_message(session, user_create)
@@ -540,42 +542,44 @@ def delete_user(
         from app.models.quiz import Quiz, QuizAttempt, QuizQuestion
         from app.models.task import Task, TaskSubmission
 
-        session.query(GroupMember).filter(GroupMember.user_id == user_id).delete(synchronize_session=False)
-        session.query(EventDeliverable).filter(EventDeliverable.user_id == user_id).delete(synchronize_session=False)
-        session.query(TaskSubmission).filter(TaskSubmission.user_id == user_id).delete(synchronize_session=False)
+        with session.begin_nested():
+            session.query(GroupMember).filter(GroupMember.user_id == user_id).delete(synchronize_session=False)
+            session.query(EventDeliverable).filter(EventDeliverable.user_id == user_id).delete(synchronize_session=False)
+            session.query(TaskSubmission).filter(TaskSubmission.user_id == user_id).delete(synchronize_session=False)
 
-        # For tasks assigned by this user, clean submissions first
-        user_tasks = session.query(Task).filter(Task.assigned_by_id == user_id).all()
-        for t in user_tasks:
-            session.query(TaskSubmission).filter(TaskSubmission.task_id == t.id).delete(synchronize_session=False)
-            session.delete(t)
+            # For tasks assigned by this user, clean submissions first
+            user_tasks = session.query(Task).filter(Task.assigned_by_id == user_id).all()
+            for t in user_tasks:
+                session.query(TaskSubmission).filter(TaskSubmission.task_id == t.id).delete(synchronize_session=False)
+                session.delete(t)
 
-        session.query(QuizAttempt).filter(QuizAttempt.user_id == user_id).delete(synchronize_session=False)
+            session.query(QuizAttempt).filter(QuizAttempt.user_id == user_id).delete(synchronize_session=False)
 
-        # For quizzes created by this user
-        user_quizzes = session.query(Quiz).filter(Quiz.created_by_id == user_id).all()
-        for q in user_quizzes:
-            session.query(QuizQuestion).filter(QuizQuestion.quiz_id == q.id).delete(synchronize_session=False)
-            session.query(QuizAttempt).filter(QuizAttempt.quiz_id == q.id).delete(synchronize_session=False)
-            session.delete(q)
+            # For quizzes created by this user
+            user_quizzes = session.query(Quiz).filter(Quiz.created_by_id == user_id).all()
+            for q in user_quizzes:
+                session.query(QuizQuestion).filter(QuizQuestion.quiz_id == q.id).delete(synchronize_session=False)
+                session.query(QuizAttempt).filter(QuizAttempt.quiz_id == q.id).delete(synchronize_session=False)
+                session.delete(q)
 
-        # For courses taught by this user, clean videos and enrollments first
-        user_courses = session.query(Course).filter(Course.instructor_id == user_id).all()
-        for c in user_courses:
-            session.query(CourseVideo).filter(CourseVideo.course_id == c.id).delete(synchronize_session=False)
-            session.query(Enrollment).filter(Enrollment.course_id == c.id).delete(synchronize_session=False)
-            session.delete(c)
+            # For courses taught by this user, clean videos and enrollments first
+            user_courses = session.query(Course).filter(Course.instructor_id == user_id).all()
+            for c in user_courses:
+                session.query(CourseVideo).filter(CourseVideo.course_id == c.id).delete(synchronize_session=False)
+                session.query(Enrollment).filter(Enrollment.course_id == c.id).delete(synchronize_session=False)
+                session.delete(c)
 
-        session.query(Attendance).filter(
-            (Attendance.user_id == user_id) | (Attendance.marked_by_id == user_id)
-        ).delete(synchronize_session=False)
+            session.query(Attendance).filter(
+                (Attendance.user_id == user_id) | (Attendance.marked_by_id == user_id)
+            ).delete(synchronize_session=False)
 
-        session.query(Classroom).filter(Classroom.instructor_id == user_id).delete(synchronize_session=False)
-        session.query(Message).filter(
-            (Message.sender_id == user_id) | (Message.recipient_id == user_id)
-        ).delete(synchronize_session=False)
-        session.query(Enrollment).filter(Enrollment.user_id == user_id).delete(synchronize_session=False)
+            session.query(Classroom).filter(Classroom.instructor_id == user_id).delete(synchronize_session=False)
+            session.query(Message).filter(
+                (Message.sender_id == user_id) | (Message.recipient_id == user_id)
+            ).delete(synchronize_session=False)
+            session.query(Enrollment).filter(Enrollment.user_id == user_id).delete(synchronize_session=False)
     except Exception as cascade_err:
+        session.rollback()
         print(f"[Warning] Safe cascade cleanup notice for user {user_id}: {cascade_err}")
 
     session.delete(user)
@@ -683,14 +687,16 @@ def admin_create_user(
         try:
             from app.models.group import Group, GroupMember
 
-            default_grp = session.query(Group).first()
-            if default_grp:
-                session.add(GroupMember(group_id=default_grp.id, user_id=user.id))
-                user.group_name = default_grp.name
-                session.commit()
-                session.refresh(user)
-        except Exception:
-            pass
+            with session.begin_nested():
+                default_grp = session.query(Group).first()
+                if default_grp:
+                    session.add(GroupMember(group_id=default_grp.id, user_id=user.id))
+                    user.group_name = default_grp.name
+            session.commit()
+            session.refresh(user)
+        except Exception as grp_err:
+            session.rollback()
+            print(f"[Notice] Group attachment skipped: {grp_err}")
 
     # Send automatic welcome message
     send_welcome_message(session, user)
