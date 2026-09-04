@@ -54,7 +54,7 @@ import { InboxHeader, SearchMode } from '@/components/inbox/InboxHeader';
 import { InboxSidebar, FolderType } from '@/components/inbox/InboxSidebar';
 import { InboxRightDock } from '@/components/inbox/InboxRightDock';
 import { GoogleAiAssistModal } from '@/components/inbox/GoogleAiAssistModal';
-import { MessageComposerModal } from '@/components/inbox/MessageComposerModal';
+import { MessageComposerView } from '@/components/inbox/MessageComposerView';
 import { RecipientInput } from '@/components/inbox/RecipientInput';
 import { UserMinimalRead } from '@/types/recipient';
 
@@ -99,7 +99,7 @@ export default function InboxMessagesPage() {
   const [activeFolder, setActiveFolder] = useState<FolderType>('inbox');
   
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [isComposingModalOpen, setIsComposingModalOpen] = useState(false);
+  const [isComposing, setIsComposing] = useState(false);
   const [composerInitialData, setComposerInitialData] = useState<{
     to?: UserMinimalRead[];
     subject?: string;
@@ -108,14 +108,15 @@ export default function InboxMessagesPage() {
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const [aiModalPrompt, setAiModalPrompt] = useState('');
 
-  // Open composer in-app without full page reload or new tab
+  // Open integrated in-app composer directly in main panel without page reload or new tab
   const openComposer = (data?: { to?: UserMinimalRead[]; subject?: string; body?: string }) => {
+    setSelectedMessage(null);
     if (data) {
       setComposerInitialData(data);
     } else {
       setComposerInitialData(null);
     }
-    setIsComposingModalOpen(true);
+    setIsComposing(true);
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
       url.searchParams.set('compose', 'true');
@@ -125,7 +126,7 @@ export default function InboxMessagesPage() {
 
   // Close composer, reset form state, and clean URL query parameter
   const closeComposer = () => {
-    setIsComposingModalOpen(false);
+    setIsComposing(false);
     setComposerInitialData(null);
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
@@ -139,7 +140,7 @@ export default function InboxMessagesPage() {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       if (params.get('compose') === 'true' || params.get('compose') === 'new') {
-        setIsComposingModalOpen(true);
+        setIsComposing(true);
       }
     }
   }, []);
@@ -432,14 +433,26 @@ export default function InboxMessagesPage() {
           onSelectFolder={(folder) => {
             setActiveFolder(folder);
             setSelectedMessage(null);
+            setIsComposing(false);
             setSelectedMessageIds(new Set());
+            if (typeof window !== 'undefined') {
+              const url = new URL(window.location.href);
+              url.searchParams.delete('compose');
+              window.history.replaceState({}, '', url.toString());
+            }
           }}
           onOpenCompose={() => openComposer()}
           onNavigateCalendar={() => router.push(`/${locale}/calendar`)}
           onNavigateClassroom={() => {
             setActiveFolder('classroom');
             setSelectedMessage(null);
+            setIsComposing(false);
             setSelectedMessageIds(new Set());
+            if (typeof window !== 'undefined') {
+              const url = new URL(window.location.href);
+              url.searchParams.delete('compose');
+              window.history.replaceState({}, '', url.toString());
+            }
           }}
           unreadCount={unreadCount}
           draftsCount={draftMessages.length}
@@ -461,9 +474,21 @@ export default function InboxMessagesPage() {
           }}
         />
 
-        {/* Center Main Panel (Message List OR Detail View) */}
+        {/* Center Main Panel (Message List OR Detail View OR In-App Integrated Composer) */}
         <main className="flex-1 flex flex-col min-w-0 bg-background overflow-hidden">
-          {selectedMessage ? (
+          {isComposing ? (
+            /* IN-APP INTEGRATED RECTANGULAR COMPOSER & POST-SAVE SUMMARY CARD */
+            <MessageComposerView
+              onClose={closeComposer}
+              onSuccess={() => {
+                loadAllMessages();
+                setActionMessage({ type: 'success', text: 'Message enregistré avec succès !' });
+              }}
+              initialToRecipients={composerInitialData?.to}
+              initialSubject={composerInitialData?.subject}
+              initialBody={composerInitialData?.body}
+            />
+          ) : selectedMessage ? (
             /* MESSAGE DETAIL VIEW */
             <div className="flex-1 p-6 overflow-y-auto space-y-6 animate-fade-in-up">
               {/* Header Actions */}
@@ -760,19 +785,6 @@ export default function InboxMessagesPage() {
         {/* Right Collapsible Utilities Dock (Calendar, Tasks, Gemini AI, Contacts) */}
         <InboxRightDock onOpenAiModal={() => setIsAiModalOpen(true)} />
       </div>
-
-      {/* Recipient Multi-Select Compose Modal */}
-      <MessageComposerModal
-        isOpen={isComposingModalOpen}
-        onClose={closeComposer}
-        onSuccess={() => {
-          loadAllMessages();
-          setActionMessage({ type: 'success', text: 'Message envoyé avec succès !' });
-        }}
-        initialToRecipients={composerInitialData?.to}
-        initialSubject={composerInitialData?.subject}
-        initialBody={composerInitialData?.body}
-      />
 
       {/* Google AI Gemini Assistant Modal */}
       <GoogleAiAssistModal
