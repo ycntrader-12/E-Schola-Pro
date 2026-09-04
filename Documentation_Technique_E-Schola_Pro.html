@@ -1462,10 +1462,11 @@ E-Schola Pro/
       <p><strong>Routes Frontend :</strong> <code>/profile</code> · <code>/settings</code></p>
       <p><strong>Options et propriétés :</strong></p>
       <ul>
-        <li><strong>Photo de profil :</strong> Upload et modification de l'avatar</li>
-        <li><strong>Informations :</strong> Modification de l'e-mail et des données personnelles</li>
-        <li><strong>Mot de passe :</strong> Changement sécurisé du mot de passe</li>
-        <li><strong>Langue :</strong> Basculement entre Français, Anglais et Arabe</li>
+        <li><strong>Carte de Profil Haute Qualité (UserProfileCard.tsx) :</strong> Bannière d'en-tête avec verre dépoli (glassmorphism), upload direct de la photo de profil (Avatar), écussons de rôles colorés, et 3 cartes thématiques d'informations (<em>Personnelles, Coordonnées &amp; Localisation, Institution &amp; Spécifications</em>).</li>
+        <li><strong>Formulaire de Modification Standard (ProfileEditForm.tsx) :</strong> Formulaire réactif intégrant <code>react-hook-form</code>, génération automatique du pseudonyme (<code>prenom.nom</code>), calcul d'âge en temps réel (<code>🎂 XX ans</code> avec contrôle de l'âge $\ge 14$ ans), listes déroulantes en cascade pour les pays/villes, et champs conditionnels par rôle (département pour employé/stagiaire, spécialisation pour étudiant/stagiaire).</li>
+        <li><strong>Photo de profil :</strong> Upload et modification instantanée de l'avatar utilisateur via <code>POST /api/v1/users/me/avatar</code></li>
+        <li><strong>Mot de passe &amp; Sécurité :</strong> Changement sécurisé du mot de passe avec validation de l'ancien mot de passe.</li>
+        <li><strong>Langue :</strong> Basculement multilingue (Français, Anglais, Arabe).</li>
         <li><strong>Portail Backend & Base de Données (Exclusif Admin) :</strong> Onglet dédié contenant tous les accès techniques directs :
           <ul>
             <li>Accès direct aux <strong>14 tables de la base de données</strong> dans SQLAdmin (Utilisateurs, Cours, Vidéos, Inscriptions, Événements, Livrables, Quiz, Questions, Notes, Présences, Groupes, Membres, Classes virtuelles, Messages)</li>

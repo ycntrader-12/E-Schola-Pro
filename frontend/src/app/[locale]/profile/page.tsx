@@ -56,6 +56,7 @@ import { apiClient } from '@/lib/api';
 import BackButton from '@/components/BackButton';
 import RoleSettings from '@/components/profile/RoleSettings';
 import PasswordChange from '@/components/profile/PasswordChange';
+import { UserProfileCard } from '@/components/profile/UserProfileCard';
 import {
   COUNTRIES_AND_CITIES,
   SPECIALIZATIONS,
@@ -668,98 +669,7 @@ export default function ProfilePage() {
       </div>
 
       {/* Profil Card (Visible par tous les utilisateurs) */}
-      <div className="bg-white p-8 space-y-8 rounded-3xl border border-slate-200 shadow-sm">
-        
-        {/* Avatar Section */}
-        <div className="flex flex-col md:flex-row items-center gap-8 pb-8 border-b border-border">
-          {/* Hidden File Input */}
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleAvatarUpload}
-            accept="image/*"
-            className="hidden"
-          />
-
-          <div 
-            onClick={() => fileInputRef.current?.click()}
-            className="relative group cursor-pointer shrink-0"
-            title="Cliquer pour insérer ou modifier votre photo de profil"
-          >
-            {user.avatar_url ? (
-              <Image 
-                src={user.avatar_url} 
-                alt="Avatar" 
-                width={110} 
-                height={110} 
-                className="rounded-full ring-4 ring-primary/30 object-cover w-[110px] h-[110px]"
-                unoptimized
-              />
-            ) : (
-              <div className="w-[110px] h-[110px] rounded-full bg-gradient-to-tr from-primary to-secondary flex items-center justify-center text-4xl font-black text-white ring-4 ring-primary/30 shadow-xl select-none">
-                {user.email.charAt(0).toUpperCase()}
-              </div>
-            )}
-
-            {/* Hover overlay with Camera & Spinner */}
-            <div className="absolute inset-0 bg-black/60 rounded-full flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white text-xs font-semibold gap-1">
-              {avatarLoading ? (
-                <Loader2 size={24} className="animate-spin text-primary" />
-              ) : (
-                <>
-                  <Camera size={22} />
-                  <span>Changer</span>
-                </>
-              )}
-            </div>
-          </div>
-
-          <div className="text-center md:text-left space-y-2">
-            <h2 className="text-2xl font-bold">{user.email.split('@')[0]}</h2>
-            <div className="flex items-center justify-center md:justify-start gap-2 text-text-secondary">
-              <Shield size={16} className="text-primary" />
-              <span className="capitalize font-semibold text-primary">{user.role}</span>
-            </div>
-
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={avatarLoading}
-              className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-surface hover:bg-surface-hover border border-border text-xs font-semibold transition-colors"
-            >
-              {avatarLoading ? (
-                <><Loader2 size={14} className="animate-spin" /> Envoi de l'image...</>
-              ) : (
-                <><Camera size={14} className="text-primary" /> Insérer / Modifier photo</>
-              )}
-            </button>
-          </div>
-        </div>
-
-
-        {/* Details Section */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-surface/50 p-4 rounded-xl border border-border">
-            <label className="text-xs text-text-secondary uppercase tracking-wider font-semibold mb-1 block">
-              Adresse Email
-            </label>
-            <div className="flex items-center gap-2 font-medium">
-              <Mail size={16} className="text-primary" />
-              {user.email}
-            </div>
-          </div>
-          
-          <div className="bg-surface/50 p-4 rounded-xl border border-border">
-            <label className="text-xs text-text-secondary uppercase tracking-wider font-semibold mb-1 block">
-              Rôle sur la plateforme
-            </label>
-            <div className="flex items-center gap-2 capitalize font-medium">
-              <Shield size={16} className="text-primary" />
-              {user.role}
-            </div>
-          </div>
-        </div>
-
-      </div>
+      <UserProfileCard user={user} onProfileUpdated={(updated) => setUser(updated)} />
 
       {/* SECTION PARAMÈTRES PAR RÔLE */}
       <RoleSettings role={user.role} />
