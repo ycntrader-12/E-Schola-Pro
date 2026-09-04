@@ -634,13 +634,15 @@
                         │  SQLAlchemy ORM
                         ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                   <strong style="color: var(--text-primary);">BASE DE DONNÉES (SQLite)</strong>                      │
+│          <strong style="color: var(--text-primary);">BASE DE DONNÉES CENTRALISÉE (PostgreSQL & SQLite)</strong>         │
 │                                                             │
-│   10 Tables :  users, courses, enrollments, events,         │
+│   PostgreSQL 15+ (Production Railway & Synchronisation)     │
+│   SQLite WAL (Développement local autonome de secours)       │
+│   16 Tables : users, courses, enrollments, events,          │
 │   classrooms, messages, quizzes, quiz_questions,            │
 │   quiz_attempts, attendance, course_videos,                 │
-│   event_deliverables, groups, group_members                 │
-│                 Fichier : <strong style="color: var(--primary);">eschola.db</strong>                     │
+│   event_deliverables, groups, group_members, tasks...       │
+│   Connexion unifiée : <strong style="color: var(--primary);">DATABASE_URL / DATABASE_PUBLIC_URL</strong>    │
 └─────────────────────────────────────────────────────────────┘
     </div>
 
@@ -675,9 +677,10 @@ E-Schola Pro/
 │   │   ├── admin.py                 # Panel Admin (SQLAdmin)
 │   │   └── main.py                  # Point d'entrée FastAPI
 │   ├── alembic/                     # Migrations de base de données
+│   ├── sync_users_db.py             # Synchronisation & migration SQLite <-> PostgreSQL
 │   ├── uploads/                     # Fichiers uploadés
 │   ├── .env                         # Variables d'environnement
-│   └── requirements.txt             # Dépendances Python
+│   └── requirements.txt             # Dépendances Python (psycopg2-binary, etc.)
 │
 ├── frontend/
 │   ├── src/
@@ -732,10 +735,12 @@ E-Schola Pro/
       <tbody>
         <tr><td><strong>Python</strong></td><td>3.11+</td><td>Langage de programmation principal</td></tr>
         <tr><td><strong>FastAPI</strong></td><td>0.110+</td><td>Framework API REST haute performance</td></tr>
-        <tr><td><strong>SQLAlchemy</strong></td><td>2.x</td><td>ORM (Object-Relational Mapping)</td></tr>
-        <tr><td><strong>Alembic</strong></td><td>1.x</td><td>Migration de base de données</td></tr>
+        <tr><td><strong>SQLAlchemy</strong></td><td>2.x</td><td>ORM (Object-Relational Mapping) avec pool résilient</td></tr>
+        <tr><td><strong>PostgreSQL</strong></td><td>15+</td><td>Base de données relationnelle centralisée (Production Railway)</td></tr>
+        <tr><td><strong>psycopg2-binary</strong></td><td>2.9.9+</td><td>Driver haute performance PostgreSQL pour Python</td></tr>
+        <tr><td><strong>SQLite</strong></td><td>3.x</td><td>Base de données relationnelle embarquée de secours (WAL)</td></tr>
+        <tr><td><strong>Alembic</strong></td><td>1.x</td><td>Migration et versionnement de base de données</td></tr>
         <tr><td><strong>Pydantic</strong></td><td>2.x</td><td>Validation et sérialisation des données</td></tr>
-        <tr><td><strong>SQLite</strong></td><td>3.x</td><td>Base de données relationnelle embarquée</td></tr>
         <tr><td><strong>PyJWT / python-jose</strong></td><td>—</td><td>Authentification par tokens JWT</td></tr>
         <tr><td><strong>Cloudinary</strong></td><td>—</td><td>Stockage et optimisation des médias (images, vidéos)</td></tr>
         <tr><td><strong>SQLAdmin</strong></td><td>—</td><td>Panel d'administration web auto-généré</td></tr>
@@ -759,8 +764,11 @@ E-Schola Pro/
       <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">
         <strong>Chaîne de Migrations Alembic Automatisée :</strong> Le schéma complet des 16 tables relationnelles, contraintes CASCADE, colonnes étendues et index est versionné et synchronisé via Alembic (révisions <code>23940a40bfca</code> &rarr; <code>b863afb6a5e3</code> &rarr; <code>c1a2b3d4e5f6</code>). Lors du déploiement ou du redémarrage, <code>alembic upgrade head</code> s'exécute automatiquement avant le lancement des serveurs.
       </p>
-      <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 0;">
+      <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">
         <strong>Idempotence & Intégrité des Mots de Passe :</strong> L'initialisation automatique (seeder <code>create_admin.py</code>) est strictement non-destructive : la vérification d'existence est insensible à la casse (<code>func.lower(User.email)</code>) et ne réécrit jamais les mots de passe modifiés ni les rôles des comptes existants. En environnement SQLite de secours, le mode <strong>WAL (Write-Ahead Logging)</strong> garantit des écritures concurrentes immédiates sans verrouillage, avec redirection automatique sur les volumes Railway (<code>RAILWAY_VOLUME_MOUNT_PATH</code> ou <code>/app/backend/data</code>).
+      </p>
+      <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 0;">
+        <strong>Intégrité Référentielle & Suppression en Cascade Sécurisée :</strong> Pour respecter la rigueur transactionnelle de PostgreSQL, le gestionnaire de suppression (<code>DELETE /api/v1/users/{id}</code>) exécute un nettoyage ordonné des tables dépendantes (<code>group_members</code>, <code>event_deliverables</code>, <code>task_submissions</code>, <code>tasks</code>, <code>quiz_attempts</code>, <code>quizzes</code>, <code>attendance</code>, <code>classrooms</code>, <code>messages</code>, <code>enrollments</code>) avant d'effacer le profil utilisateur. Ceci élimine tout risque de <code>ForeignKeyViolation</code> ou d'incohérence entre les environnements local et cloud.
       </p>
     </div>
 
@@ -1761,7 +1769,8 @@ http://localhost:8000/admin
       <thead><tr><th>Variable</th><th>Valeur par défaut</th><th>Description</th></tr></thead>
       <tbody>
         <tr><td><code>SECRET_KEY</code></td><td>supersecretkey_please_change</td><td>Clé secrète pour signer les tokens JWT. <strong>⚠️ À changer en production.</strong></td></tr>
-        <tr><td><code>DATABASE_URL</code></td><td>sqlite:///./eschola.db</td><td>URL SQLite (WAL) ou PostgreSQL. Auto-détecte le volume persistant Railway (<code>RAILWAY_VOLUME_MOUNT_PATH</code> ou <code>/app/backend/data</code>) pour une persistance permanente.</td></tr>
+        <tr><td><code>DATABASE_URL</code></td><td>postgresql://postgres:...@postgres.railway.internal:5432/railway</td><td>URL de connexion PostgreSQL centralisée. Sur Railway, pointe vers le service Postgres interne. En local, bascule automatiquement sur SQLite si l'hôte distant n'est pas routable.</td></tr>
+        <tr><td><code>DATABASE_PUBLIC_URL</code></td><td>postgresql://postgres:...@roundhouse.proxy.rlwy.net:PORT/railway</td><td>(Optionnel) URL TCP Proxy publique de Railway permettant au backend de dev local de se connecter directement à la base PostgreSQL de production.</td></tr>
         <tr><td><code>ACCESS_TOKEN_EXPIRE_MINUTES</code></td><td>10080 (7 jours)</td><td>Durée de validité des tokens JWT en minutes</td></tr>
         <tr><td><code>CLOUDINARY_CLOUD_NAME</code></td><td>—</td><td>Nom du cloud Cloudinary pour l'upload de médias</td></tr>
         <tr><td><code>CLOUDINARY_API_KEY</code></td><td>—</td><td>Clé API Cloudinary</td></tr>
@@ -1769,18 +1778,31 @@ http://localhost:8000/admin
       </tbody>
     </table>
 
+    <div class="card" style="margin: 16px 0;">
+      <h4 style="margin-bottom: 8px; color: var(--text-primary);">🔄 Utilitaire de Synchronisation CLI (<code>backend/sync_users_db.py</code>)</h4>
+      <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 6px;">
+        Pour synchroniser et inspecter les comptes utilisateurs entre les bases :
+      </p>
+      <ul style="font-size: 13px; color: var(--text-secondary); margin-left: 20px;">
+        <li><code>python sync_users_db.py --check</code> : Vérifie la connectivité et liste les tables actives.</li>
+        <li><code>python sync_users_db.py --list</code> : Affiche la liste consolidée des utilisateurs, rôles et identifiants.</li>
+        <li><code>python sync_users_db.py --import-sqlite</code> : Migre de manière idempotente les utilisateurs de SQLite vers PostgreSQL sans altérer les mots de passe modifiés.</li>
+        <li><code>python sync_users_db.py --seed</code> : Initialise les comptes et groupes par défaut en toute sécurité.</li>
+      </ul>
+    </div>
+
     <h3>Variables Frontend (frontend/.env.local)</h3>
     <table>
       <thead><tr><th>Variable</th><th>Valeur recommandée</th><th>Description</th></tr></thead>
       <tbody>
-        <tr><td><code>NEXT_PUBLIC_API_URL</code></td><td><code>http://127.0.0.1:8000/api/v1</code></td><td>Point d'accès API pour le client web. En local : <code>http://127.0.0.1:8000/api/v1</code>. En production : URL de l'instance cloud (ex: Railway).</td></tr>
+        <tr><td><code>NEXT_PUBLIC_API_URL</code></td><td><code>http://127.0.0.1:8000/api/v1</code></td><td>Point d'accès API pour le client web. Décommentez <code>https://e-schola-pro-production.up.railway.app/api/v1</code> pour tester directement l'environnement Railway distant depuis le frontend local.</td></tr>
         <tr><td><code>NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME</code></td><td>—</td><td>Identifiant Cloudinary pour l'affichage direct côté client</td></tr>
         <tr><td><code>NEXT_PUBLIC_CLOUDINARY_API_KEY</code></td><td>—</td><td>Clé publique Cloudinary</td></tr>
       </tbody>
     </table>
 
     <div class="warning-box">
-      <strong>⚠️ Sécurité & Environnement Local :</strong> Ne jamais committer les fichiers <code>.env</code> ou <code>.env.local</code> dans un dépôt Git. En développement local via <code>start_all.bat</code>, veillez à ce que <code>NEXT_PUBLIC_API_URL</code> pointe bien sur <code>http://127.0.0.1:8000/api/v1</code> pour éviter les erreurs réseau (<code>Network Error</code>) causées par des serveurs distants en veille.
+      <strong>⚠️ Sécurité & Synchronisation Réseau :</strong> Pour connecter votre machine locale directement à la base PostgreSQL de production Railway, activez le <strong>TCP Proxy</strong> dans l'onglet <em>Networking</em> du service Postgres sur Railway et renseignez l'adresse dans <code>DATABASE_PUBLIC_URL</code>. Sinon, vous pouvez directement faire pointer <code>NEXT_PUBLIC_API_URL</code> sur le backend de production Railway.
     </div>
   </section>
 

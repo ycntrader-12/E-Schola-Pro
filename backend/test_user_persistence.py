@@ -27,10 +27,15 @@ def test_persistence_flow():
     print(f"DATABASE_URL configured: {settings.DATABASE_URL}")
 
     with engine.connect() as conn:
-        result = conn.execute(text("PRAGMA journal_mode;")).scalar()
-        print(f"SQLite PRAGMA journal_mode: {result}")
-        assert str(result).lower() == "wal", f"Expected WAL mode, got {result}"
-        print("  -> PASSED: SQLite WAL mode is actively enabled!")
+        if "sqlite" in str(engine.url):
+            result = conn.execute(text("PRAGMA journal_mode;")).scalar()
+            print(f"SQLite PRAGMA journal_mode: {result}")
+            assert str(result).lower() == "wal", f"Expected WAL mode, got {result}"
+            print("  -> PASSED: SQLite WAL mode is actively enabled!")
+        else:
+            result = conn.execute(text("SELECT version();")).scalar()
+            print(f"PostgreSQL Version: {str(result)[:50]}...")
+            print("  -> PASSED: PostgreSQL connection is active and responsive!")
 
     print("\n" + "=" * 60)
     print("2. TESTING USER ACCOUNT CREATION")

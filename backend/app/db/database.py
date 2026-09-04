@@ -8,7 +8,7 @@ from app.core.config import settings
 db_url = settings.DATABASE_URL
 if db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql+psycopg2://", 1)
-elif db_url.startswith("postgresql://"):
+elif db_url.startswith("postgresql://") and not db_url.startswith("postgresql+"):
     db_url = db_url.replace("postgresql://", "postgresql+psycopg2://", 1)
 
 if db_url.startswith("sqlite"):
@@ -36,15 +36,25 @@ if db_url.startswith("sqlite"):
             cursor.close()
         except Exception:
             pass
+
+    print(f"[Database] Connected using SQLite engine: {raw_path}")
 else:
-    # PostgreSQL Configuration with resilient pool settings for Railway / Supabase / Cloud
+    # PostgreSQL Configuration with resilient pool settings for Railway / Cloud
+    connect_args = {"connect_timeout": 15}
     engine = create_engine(
         db_url,
         pool_pre_ping=True,      # Automatically reconnects dropped or idle connections
         pool_recycle=300,        # Recycle connections every 5 minutes to prevent stale TCP sockets
         pool_size=10,
         max_overflow=20,
+        connect_args=connect_args,
     )
+    # Mask password for safe logging
+    try:
+        masked_url = db_url.split("@")[-1] if "@" in db_url else db_url
+        print(f"[Database] Connected using PostgreSQL engine (host: {masked_url})")
+    except Exception:
+        print("[Database] Connected using PostgreSQL engine")
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

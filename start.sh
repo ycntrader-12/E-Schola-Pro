@@ -14,8 +14,25 @@ if [ -n "$RAILWAY_VOLUME_MOUNT_PATH" ]; then
 fi
 
 # Application des migrations de base de données (PostgreSQL & SQLite)
-echo "Running database migrations (Alembic & custom)..."
+echo "Checking database availability & running migrations..."
 cd /app/backend
+
+python -c "
+import time
+from app.db.database import engine
+from sqlalchemy import text
+
+for i in range(10):
+    try:
+        with engine.connect() as conn:
+            conn.execute(text('SELECT 1'))
+            print('Database connection established successfully.')
+            break
+    except Exception as e:
+        print(f'Database connection pending ({i+1}/10): {e}')
+        time.sleep(2)
+" || true
+
 python migrate_user_profiles.py || true
 python migrate_classrooms.py || true
 python migrate_tasks_attachment.py || true

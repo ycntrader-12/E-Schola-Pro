@@ -402,6 +402,46 @@ def delete_user(
             detail="Un ADMIN_MANAGER ne peut pas supprimer un compte administrateur.",
         )
 
+    # Safe cascade deletion of dependent records to respect PostgreSQL strict foreign keys
+    try:
+        from app.models.attendance import Attendance
+        from app.models.classroom import Classroom
+        from app.models.enrollment import Enrollment
+        from app.models.event import EventDeliverable
+        from app.models.group import GroupMember
+        from app.models.message import Message
+        from app.models.quiz import Quiz, QuizAttempt
+        from app.models.task import Task, TaskSubmission
+
+        session.query(GroupMember).filter(GroupMember.user_id == user_id).delete(synchronize_session=False)
+        session.query(EventDeliverable).filter(EventDeliverable.user_id == user_id).delete(synchronize_session=False)
+        session.query(TaskSubmission).filter(TaskSubmission.user_id == user_id).delete(synchronize_session=False)
+
+        # For tasks assigned by this user, clean submissions first
+        user_tasks = session.query(Task).filter(Task.assigned_by_id == user_id).all()
+        for t in user_tasks:
+            session.query(TaskSubmission).filter(TaskSubmission.task_id == t.id).delete(synchronize_session=False)
+            session.delete(t)
+
+        session.query(QuizAttempt).filter(QuizAttempt.user_id == user_id).delete(synchronize_session=False)
+
+        # For quizzes created by this user
+        user_quizzes = session.query(Quiz).filter(Quiz.created_by_id == user_id).all()
+        for q in user_quizzes:
+            session.delete(q)
+
+        session.query(Attendance).filter(
+            (Attendance.user_id == user_id) | (Attendance.marked_by_id == user_id)
+        ).delete(synchronize_session=False)
+
+        session.query(Classroom).filter(Classroom.instructor_id == user_id).delete(synchronize_session=False)
+        session.query(Message).filter(
+            (Message.sender_id == user_id) | (Message.recipient_id == user_id)
+        ).delete(synchronize_session=False)
+        session.query(Enrollment).filter(Enrollment.user_id == user_id).delete(synchronize_session=False)
+    except Exception as cascade_err:
+        print(f"[Warning] Safe cascade cleanup notice for user {user_id}: {cascade_err}")
+
     session.delete(user)
     session.commit()
     return {"message": "User deleted successfully", "id": user_id}

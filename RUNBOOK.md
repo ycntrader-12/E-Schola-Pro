@@ -108,7 +108,27 @@ Si vous modifiez ou ajoutez un modèle SQLAlchemy dans `backend/app/models/` :
 - **Mots de Passe & Comptes :** Les modifications de mot de passe utilisateur et de rôles sont **100% persistantes** et ne sont jamais écrasées lors des redémarrages. Le script de peuplement `create_admin.py` vérifie l'existence de façon insensible à la casse (`func.lower(User.email)`) et n'ajoute que les comptes manquants.
 
 ### D. Accès Direct & Administration (SQLAdmin)
-Le panel d'administration Web SQLAdmin offre une interface complète pour manipuler les données.
+Le panel d'administration SQLAdmin est accessible sur :
+`http://localhost:8000/admin` (ou `/admin` sur votre domaine Railway).
+Authentification requise avec un compte administrateur (`admin` ou `admin_limited`).
+
+### E. Synchronisation et Migration des Utilisateurs (`sync_users_db.py`)
+Un outil CLI dédié est disponible pour contrôler, inspecter et synchroniser les utilisateurs entre SQLite et PostgreSQL :
+```bash
+cd backend
+
+# 1. Vérifier la connexion à la base configurée (PostgreSQL ou SQLite)
+venv\Scripts\python.exe sync_users_db.py --check
+
+# 2. Lister tous les utilisateurs présents dans la base
+venv\Scripts\python.exe sync_users_db.py --list
+
+# 3. Migrer tous les comptes de SQLite vers PostgreSQL (sans écraser les mots de passe)
+venv\Scripts\python.exe sync_users_db.py --import-sqlite
+
+# 4. Initialiser les utilisateurs et groupes par défaut si la base est vide
+venv\Scripts\python.exe sync_users_db.py --seed
+```
 - **URL :** [http://localhost:8000/admin](http://localhost:8000/admin)
 - **Permissions :** Accessible uniquement si vous êtes connecté en tant qu'utilisateur ayant le rôle `admin`.
 
@@ -197,16 +217,23 @@ Si vous ajoutez une clé de traduction dans un fichier JSON, **veillez à l'ajou
 ### Étape 2 : Configurer les Variables d'Environnement
 1. Une fois le service créé sur Railway, cliquez sur le bloc du service (`E-Schola-Pro`) et allez dans l'onglet **Variables**.
 2. Ajoutez les variables d'environnement suivantes :
-   * `DATABASE_URL` = `sqlite:///./eschola.db` (ou URL PostgreSQL, ex: `postgresql://...`)
+   * `DATABASE_URL` = `postgresql://postgres:JiYvfWjZyLzTVMlmlykvqEIIxFqtrnqp@postgres.railway.internal:5432/railway`
+     *(Permet à la production sur Railway d'utiliser la base de données PostgreSQL centralisée)*
    * `SECRET_KEY` = *[Votre clé secrète JWT]* (ex: générée avec `openssl rand -hex 32`)
    * `ACCESS_TOKEN_EXPIRE_MINUTES` = `10080` (7 jours)
    * `CLOUDINARY_CLOUD_NAME` = *[Votre Cloud Name]* (Requis pour médias Cloudinary)
    * `CLOUDINARY_API_KEY` = *[Votre API Key]*
    * `CLOUDINARY_API_SECRET` = *[Votre API Secret]*
-3. **Persistance Permanente des Données sur Railway :**
-   * **Méthode Recommandée (Volume Railway) :** Dans Railway, ajoutez un **Volume** à votre service avec le point de montage `/app/backend/data` (ou `/data`). Le backend détecte automatiquement `RAILWAY_VOLUME_MOUNT_PATH` et y stocke `eschola.db`.
-   * **Alternative explicite :** Définissez `DATABASE_URL=sqlite:////app/backend/data/eschola.db`.
-   * **Mode SQLite WAL :** Le backend active automatiquement le mode `PRAGMA journal_mode=WAL` pour une haute concurrence et une persistance disque immédiate sans verrouillage.
+
+3. **Synchronisation Centralisée avec le Développement Local :**
+   * **Dans Railway (Postgres Service) :** Cliquez sur le service **Postgres** -> **Settings** -> **Networking** -> Cliquez sur **Add TCP Proxy** (ou notez le domaine généré, ex: `roundhouse.proxy.rlwy.net:43210`).
+   * **Dans votre environnement local (`backend/.env`) :**
+     Renseignez cette URL publique comme suit :
+     ```env
+     DATABASE_PUBLIC_URL="postgresql://postgres:JiYvfWjZyLzTVMlmlykvqEIIxFqtrnqp@roundhouse.proxy.rlwy.net:43210/railway"
+     ```
+     Dès lors, votre backend local et votre conteneur Railway de production interrogent et écrivent dans la **même et unique base PostgreSQL** en temps réel.
+   * **Alternative Frontend Direct :** Dans `frontend/.env.local`, vous pouvez simplement activer `NEXT_PUBLIC_API_URL="https://e-schola-pro-production.up.railway.app/api/v1"` pour que le frontend local dialogue directement avec la production.
    * **Non-destructivité des comptes :** Le script d'initialisation (`create_admin.py`) est strictement non-destructif : il ne réécrit jamais les mots de passe modifiés ni les changements de rôle lors des redémarrages.
 
 ### Étape 3 : Générer le Domaine Public
