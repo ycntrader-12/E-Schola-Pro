@@ -4,7 +4,6 @@ import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import { Link } from '@/i18n/routing';
 import {
-  ArrowRight,
   Sparkles,
   Volume2,
   VolumeX,
@@ -111,77 +110,21 @@ export default function Home() {
           <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-slate-950 via-slate-950/60 to-transparent pointer-events-none" />
         </div>
 
-        {/* Minimized Floating Glass Action Bar */}
-        <div className="relative z-10 w-full max-w-2xl animate-fade-in-up">
-          <div className="bg-white/95 hover:bg-white backdrop-blur-2xl border border-white/90 shadow-2xl shadow-slate-950/40 rounded-2xl p-3 sm:px-6 sm:py-3.5 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 transition-all duration-300">
-            
-            {/* Brand & Mini Tagline */}
-            <div className="flex items-center gap-3 text-center sm:text-left">
-              <div className="relative w-9 h-9 rounded-xl overflow-hidden shrink-0 shadow-sm">
-                <Image
-                  src="/images/logo_icon_transparent.png"
-                  alt="E-Schola Pro"
-                  width={36}
-                  height={36}
-                  className="w-full h-full object-contain"
-                  priority
-                />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-base font-black tracking-tight text-slate-900">
-                    E-Schola <span className="text-[#1877f2]">Pro</span>
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-500 font-medium hidden sm:block">
-                  {t('tagline')}
-                </p>
-              </div>
-            </div>
-
-            {/* Actions + Sound Toggle + About Jump Button */}
-            <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 justify-center flex-wrap sm:flex-nowrap">
-              <button
-                onClick={toggleSound}
-                type="button"
-                className="p-2 rounded-xl text-slate-700 bg-slate-100/90 hover:bg-slate-200/90 border border-slate-200/80 active:scale-95 transition-all cursor-pointer flex items-center justify-center shrink-0"
-                title={isMuted ? "Activer le son" : "Désactiver le son"}
-                aria-label={isMuted ? "Activer le son" : "Désactiver le son"}
-              >
-                {isMuted ? (
-                  <VolumeX size={17} className="text-slate-500" />
-                ) : (
-                  <Volume2 size={17} className="text-[#1877f2] animate-pulse" />
-                )}
-              </button>
-
-              <button
-                onClick={scrollToAbout}
-                type="button"
-                className="px-3 py-2 rounded-xl font-bold text-xs text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 active:scale-95 transition-all cursor-pointer flex items-center gap-1"
-                title={tAbout('nav_link')}
-              >
-                <span>{tAbout('nav_link')}</span>
-                <ChevronDown size={14} className="text-[#1877f2]" />
-              </button>
-
-              <Link 
-                href="/login" 
-                className="px-4 py-2 rounded-xl font-bold text-xs text-white bg-[#1877f2] hover:bg-[#166fe5] hover:shadow-md hover:shadow-blue-500/25 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 shadow-sm shadow-blue-500/20 cursor-pointer"
-              >
-                <span>{t('cta_login')}</span>
-                <ArrowRight size={13} />
-              </Link>
-
-              <Link 
-                href="/register" 
-                className="px-3.5 py-2 rounded-xl font-bold text-xs text-[#1877f2] bg-blue-50/90 hover:bg-blue-100 border border-blue-200 active:scale-[0.98] transition-all shadow-xs cursor-pointer flex items-center justify-center"
-              >
-                <span>{t('cta_register')}</span>
-              </Link>
-            </div>
-
-          </div>
+        {/* Discreet Sound Control Button (Bottom Right) */}
+        <div className="absolute bottom-6 right-6 z-10">
+          <button
+            onClick={toggleSound}
+            type="button"
+            className="p-3 rounded-full bg-slate-900/60 hover:bg-slate-900/80 text-white/90 hover:text-white backdrop-blur-md border border-white/20 active:scale-95 transition-all cursor-pointer shadow-lg shadow-black/30"
+            title={isMuted ? "Activer le son" : "Désactiver le son"}
+            aria-label={isMuted ? "Activer le son" : "Désactiver le son"}
+          >
+            {isMuted ? (
+              <VolumeX size={18} className="text-slate-400" />
+            ) : (
+              <Volume2 size={18} className="text-blue-400 animate-pulse" />
+            )}
+          </button>
         </div>
 
         {/* Floating Scroll Indicator */}
