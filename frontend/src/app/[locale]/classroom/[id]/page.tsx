@@ -47,7 +47,8 @@ import {
   Smartphone,
   Clock,
   Trash2,
-  ChevronLeft
+  ChevronLeft,
+  Square
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import BackButton from '@/components/BackButton';
@@ -124,6 +125,8 @@ export default function VirtualClassroomLivePage() {
   const [pendingRequests, setPendingRequests] = useState<JoinRequestItem[]>([]);
   const [showRequestsModal, setShowRequestsModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showStopModal, setShowStopModal] = useState(false);
+  const [isStoppingRoom, setIsStoppingRoom] = useState(false);
 
   // Emojis state
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -179,7 +182,10 @@ export default function VirtualClassroomLivePage() {
   const localStreamRef = useRef<MediaStream | null>(null);
   const screenStreamRef = useRef<MediaStream | null>(null);
 
-  const isManager = ['formateur', 'admin', 'admin_manager', 'pedagogique'].includes(currentUser?.role || '');
+  const userRole = (currentUser?.role || '').toLowerCase();
+  const isLearner = ['etudiant', 'étudiant', 'stagiaire', 'employer'].includes(userRole);
+  const isManager = ['formateur', 'admin', 'admin_manager', 'pedagogique'].includes(userRole);
+  const canStopClassroom = !isLearner && isManager;
 
   // Detect mobile screen & browser
   useEffect(() => {
@@ -298,10 +304,18 @@ export default function VirtualClassroomLivePage() {
           }
         }
 
-        const [subRes, msgRes] = await Promise.all([
-          apiClient.get(`/classrooms/${roomId}/subgroups`),
-          apiClient.get(`/classrooms/${roomId}/messages`)
+        const [subRes, msgRes, roomRes] = await Promise.all([
+          apiClient.get(`/classrooms/${roomId}/subgroups`).catch(() => ({ data: null })),
+          apiClient.get(`/classrooms/${roomId}/messages`).catch(() => ({ data: null })),
+          apiClient.get(`/classrooms/${roomId}`).catch(() => ({ data: null }))
         ]);
+
+        if (roomRes?.data && roomRes.data.is_active === false) {
+          stopAllMedia();
+          alert("La classe virtuelle a été arrêtée.");
+          router.push('/classroom');
+          return;
+        }
 
         if (subRes.data) {
           setSubgroupsState(subRes.data);
@@ -734,6 +748,22 @@ export default function VirtualClassroomLivePage() {
     navigator.clipboard.writeText(roomId);
     setCopiedCode(true);
     setTimeout(() => setCopiedCode(false), 2000);
+  };
+
+
+
+  const handleStopClassroom = async () => {
+    setIsStoppingRoom(true);
+    try {
+      await apiClient.post(`/classrooms/${roomId}/stop`);
+      stopAllMedia();
+      router.push('/classroom');
+    } catch (err: any) {
+      alert(err?.response?.data?.detail || "Erreur lors de l'arrêt de la classe.");
+    } finally {
+      setIsStoppingRoom(false);
+      setShowStopModal(false);
+    }
   };
 
   if (isLoadingRoom) {
@@ -1518,13 +1548,25 @@ export default function VirtualClassroomLivePage() {
             </button>
           )}
 
-          {/* Leave Call (Red Button) */}
+          {/* Stop Classroom Button (Only for Formateurs, Admins, Pedagogique - Strictly forbidden for etudiant, stagiaire, employer) */}
+          {canStopClassroom && (
+            <button
+              onClick={() => setShowStopModal(true)}
+              className="px-3 sm:px-5 h-11 sm:h-12 bg-red-600 hover:bg-red-700 text-white font-bold rounded-full flex items-center gap-1.5 shadow-md shadow-red-600/40 transition-all shrink-0 text-xs sm:text-sm cursor-pointer"
+              title="Arrêter la classe pour tous les participants"
+            >
+              <Square size={15} fill="currentColor" />
+              <span className="hidden sm:inline">Arrêter la classe</span>
+            </button>
+          )}
+
+          {/* Leave Call Button (All users - exits only own session) */}
           <button
             onClick={handleLeaveClass}
-            className="px-4 sm:px-6 h-11 sm:h-12 bg-red-600 hover:bg-red-700 text-white font-bold rounded-full flex items-center gap-1.5 shadow-md shadow-red-600/40 transition-all shrink-0"
-            title="Quitter la classe virtuelle"
+            className="px-3 sm:px-5 h-11 sm:h-12 bg-white/10 hover:bg-white/20 text-white font-bold rounded-full flex items-center gap-1.5 transition-all shrink-0 text-xs sm:text-sm border border-white/10 cursor-pointer"
+            title="Quitter la classe virtuelle (session personnelle)"
           >
-            <PhoneOff size={18} />
+            <PhoneOff size={16} />
             <span className="hidden sm:inline">Quitter</span>
           </button>
 
@@ -1847,6 +1889,50 @@ export default function VirtualClassroomLivePage() {
                 className="btn-primary py-2.5 px-6 rounded-xl font-bold text-xs shadow-md shadow-blue-500/20 cursor-pointer"
               >
                 Fait
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ========================================================================= */}
+      {/* MODAL CONFIRMATION ARRÊT DE LA CLASSE (Formateurs & Admins uniquement)     */}
+      {/* ========================================================================= */}
+      {showStopModal && (
+        <div className="fixed inset-0 z-[100] bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white max-w-md w-full p-6 sm:p-7 rounded-3xl border border-slate-200 shadow-2xl space-y-5 text-slate-900 animate-zoom-in my-auto">
+            <div className="flex items-center gap-3 text-red-600">
+              <div className="w-12 h-12 rounded-2xl bg-red-50 border border-red-200 flex items-center justify-center text-red-600 shrink-0">
+                <Square size={24} fill="currentColor" />
+              </div>
+              <div>
+                <h3 className="text-lg font-extrabold text-slate-900">Arrêter la Classe Virtuelle ?</h3>
+                <p className="text-xs text-slate-500">Cette action fermera la session pour l'ensemble des apprenants.</p>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-red-50/80 border border-red-200 text-xs text-red-800 space-y-1.5">
+              <p className="font-bold">Attention :</p>
+              <p>• Tous les participants connectés seront immédiatement redirigés vers l'accueil.</p>
+              <p>• La session sera marquée comme clôturée et les flux audio/vidéo seront interrompus.</p>
+            </div>
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowStopModal(false)}
+                disabled={isStoppingRoom}
+                className="flex-1 py-3 rounded-xl border border-slate-300 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition-all text-xs cursor-pointer"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={handleStopClassroom}
+                disabled={isStoppingRoom}
+                className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-all text-xs flex items-center justify-center gap-2 shadow-lg shadow-red-600/30 cursor-pointer"
+              >
+                {isStoppingRoom ? <Loader2 size={16} className="animate-spin" /> : <Square size={16} fill="currentColor" />}
+                <span>Confirmer l'arrêt</span>
               </button>
             </div>
           </div>

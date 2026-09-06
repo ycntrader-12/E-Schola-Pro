@@ -15,7 +15,8 @@ import {
   AlertCircle,
   Loader2,
   Clock,
-  Trash2
+  Trash2,
+  Square
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import BackButton from '@/components/BackButton';
@@ -162,7 +163,24 @@ export default function ClassroomHubPage() {
     }
   };
 
-  const canCreateClass = ['admin', 'admin_manager', 'formateur', 'pedagogique'].includes(currentUserRole);
+  const [stoppingRoomId, setStoppingRoomId] = useState<string | null>(null);
+
+  const handleStopClassroom = async (roomId: string) => {
+    if (!window.confirm("Êtes-vous sûr de vouloir ARRÊTER cette classe virtuelle pour tous les participants ?")) return;
+    setStoppingRoomId(roomId);
+    try {
+      await apiClient.post(`/classrooms/${roomId}/stop`);
+      fetchData();
+    } catch (err: any) {
+      alert(err?.response?.data?.detail || "Erreur lors de l'arrêt de la classe.");
+    } finally {
+      setStoppingRoomId(null);
+    }
+  };
+
+  const isLearner = ['etudiant', 'étudiant', 'stagiaire', 'employer'].includes((currentUserRole || '').toLowerCase());
+  const canCreateClass = !isLearner && ['admin', 'admin_manager', 'formateur', 'pedagogique'].includes((currentUserRole || '').toLowerCase());
+  const canStopClassroom = !isLearner && ['admin', 'admin_manager', 'formateur', 'pedagogique'].includes((currentUserRole || '').toLowerCase());
 
   return (
     <div className="min-h-screen px-4 py-24 max-w-6xl mx-auto space-y-12">
@@ -340,12 +358,25 @@ export default function ClassroomHubPage() {
                       </div>
                     </div>
 
-                    <Link
-                      href={`/classroom/${room.room_id}`}
-                      className="w-full py-3 bg-primary text-white font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors shadow"
-                    >
-                      <Video size={16} /> Rejoindre la classe
-                    </Link>
+                    <div className="flex gap-2">
+                      <Link
+                        href={`/classroom/${room.room_id}`}
+                        className="flex-1 py-3 bg-primary text-white font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors shadow text-xs sm:text-sm"
+                      >
+                        <Video size={16} /> Rejoindre la classe
+                      </Link>
+                      {canStopClassroom && (
+                        <button
+                          onClick={() => handleStopClassroom(room.room_id)}
+                          disabled={stoppingRoomId === room.room_id}
+                          className="px-3.5 py-3 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/30 rounded-xl font-bold transition-colors flex items-center justify-center gap-1.5 shrink-0 text-xs cursor-pointer"
+                          title="Arrêter la classe pour tous les participants"
+                        >
+                          {stoppingRoomId === room.room_id ? <Loader2 size={16} className="animate-spin" /> : <Square size={14} fill="currentColor" />}
+                          <span className="hidden sm:inline">Arrêter</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               );

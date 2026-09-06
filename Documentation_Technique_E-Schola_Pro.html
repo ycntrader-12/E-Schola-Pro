@@ -1180,6 +1180,7 @@ E-Schola Pro/
         <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/{room_id}/join-requests/{uid}/reject</code></td><td>Rejeter la demande d'accès d'un participant</td><td>Formateur, Admin</td></tr>
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/classrooms/{room_id}/join-status</code></td><td>Vérifier le statut d'approbation pour rejoindre la salle</td><td>Authentifié</td></tr>
         <tr><td><span class="badge badge-patch">PATCH</span></td><td><code>/classrooms/{room_id}/settings</code></td><td>Modifier les paramètres en direct de la salle (écran, salle d'attente, confidentialité)</td><td>Formateur, Admin</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/{room_id}/stop</code></td><td>Arrêter/clôturer la classe virtuelle en direct pour tous les participants (Strictement interdit aux étudiants, stagiaires et employés)</td><td>Admin, Formateur, Pédagogique</td></tr>
         <tr><td><span class="badge badge-delete">DELETE</span></td><td><code>/classrooms/{id}</code></td><td>Supprimer une salle</td><td>Admin, Formateur</td></tr>
       </tbody>
     </table>
@@ -1291,6 +1292,7 @@ E-Schola Pro/
         <tr><td><strong>Gérer les groupes &amp; affecter les apprenants</strong></td><td>✅</td><td>✅</td><td>✅</td><td>❌</td></tr>
         <tr><td><strong>Afficher &amp; accéder au bouton "Groupes" (/group)</strong></td><td>✅</td><td>✅</td><td>✅</td><td>❌ <em>(Masqué &amp; Interdit)</em></td></tr>
         <tr><td><strong>Créer des classes virtuelles &amp; sous-groupes</strong></td><td>✅</td><td>✅</td><td>✅</td><td>❌</td></tr>
+        <tr><td><strong>Arrêter / Clôturer la classe virtuelle en direct</strong></td><td>✅</td><td>✅</td><td>✅</td><td>❌ <em>(Strictement interdit aux Étudiants, Stagiaires et Employés)</em></td></tr>
         <tr><td><strong>Messagerie interne (Messages personnels &amp; Copie CC local/relais)</strong></td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
         <tr><td><strong>Envoi Général / Broadcast ("All")</strong></td><td>✅</td><td>✅</td><td>✅</td><td>❌ <em>(Interdit &amp; HTTP 403 pour Étudiant, Stagiaire, Employé)</em></td></tr>
         <tr><td><strong>Réception du Message d'Accueil Automatique</strong></td><td>✅</td><td>✅</td><td>✅</td><td>✅ <em>(Déclenché à la création du compte)</em></td></tr>
@@ -1476,7 +1478,8 @@ E-Schola Pro/
         <li><strong>Messagerie Instantanée & Émojis :</strong> Rendu immédiat des messages dans le chat avec sélecteur d'émojis expressifs intégré.</li>
         <li><strong>Émargement & Assiduité Intégrés :</strong> Enregistrement automatique lors du passage de la salle d'attente à la session en direct.</li>
         <li><strong>Sous-Groupes (Breakout Rooms) &amp; Modales Mode Clair UX :</strong> Refonte complète de la modale de création et répartition des ateliers en mode clair (fond blanc <code>bg-white</code>, cartes de sous-groupes <code>bg-slate-50 border-slate-200</code>, champs de durée/salles <code>bg-white border-slate-300 text-slate-900</code>, bouton de mélange aléatoire <code>#1877f2</code> et typographie ultra-lisible à haute netteté).</li>
-        <li><strong>Gestion & Clôture :</strong> Le formateur ou l'administrateur peut fermer la session, clôturer les ateliers et purger l'historique des classes inactives.</li>
+        <li><strong>Arrêt de la Classe Virtuelle &amp; Sécurité RBAC :</strong> Option d'arrêt de la classe en direct accessible depuis le hub (<code>/classroom</code>) et la barre de contrôles (<code>/classroom/{id}</code>). <strong>Restrictions de sécurité strictes :</strong> Réservé exclusivement aux formateurs, administrateurs et responsables pédagogiques. <em>Strictement interdit et masqué pour les étudiants, stagiaires et employés</em> (avec vérification et rejet HTTP 403 côté API backend FastAPI). Lors de l'arrêt, la session est fermée pour tous les membres et les participants connectés sont automatiquement redirigés.</li>
+        <li><strong>Gestion &amp; Clôture :</strong> Le formateur ou l'administrateur peut fermer la session, clôturer les ateliers et purger l'historique des classes inactives.</li>
 
       </ul>
       <div class="screenshot-container">

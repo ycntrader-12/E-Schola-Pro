@@ -242,6 +242,47 @@ def join_classroom(
     return {"message": "Rejoint avec succès", "room_id": classroom.room_id}
 
 
+@router.post("/{room_id}/stop")
+@router.post("/{room_id}/end")
+def stop_classroom(
+    room_id: str,
+    session: SessionDep,
+    current_user: CurrentUser,
+) -> Any:
+    """
+    Stop/End a virtual classroom session.
+    Strictly forbidden for learners, interns, and employees (etudiant, stagiaire, employer).
+    Only authorized for formateurs, pedagogique, and admins.
+    """
+    user_role = (current_user.role or "").strip().lower()
+    LEARNER_ROLES = ["etudiant", "étudiant", "stagiaire", "employer"]
+    STAFF_ROLES = ["admin", "admin_manager", "formateur", "pedagogique"]
+
+    if user_role in LEARNER_ROLES or user_role not in STAFF_ROLES:
+        raise HTTPException(
+            status_code=403,
+            detail="Accès interdit : les étudiants, stagiaires et employés ne sont pas autorisés à arrêter la classe.",
+        )
+
+    cleaned_id = room_id.strip().lower()
+    classroom = session.query(Classroom).filter(Classroom.room_id == cleaned_id).first()
+    if not classroom:
+        raise HTTPException(status_code=404, detail="Classe virtuelle introuvable.")
+
+    classroom.is_active = False
+    session.commit()
+
+    # Clear subgroups if active
+    if cleaned_id in ROOM_SUBGROUPS:
+        ROOM_SUBGROUPS[cleaned_id] = {"is_active": False, "timer_minutes": 15, "subgroups": []}
+
+    return {
+        "message": "La classe virtuelle a été arrêtée avec succès.",
+        "room_id": cleaned_id,
+        "is_active": False,
+    }
+
+
 @router.delete("/{room_id}")
 def delete_classroom(
     room_id: str,
@@ -249,17 +290,23 @@ def delete_classroom(
     current_user: CurrentUser,
 ) -> Any:
     """
-    Close or delete a virtual classroom. Restricted to room instructor and admins.
+    Close or delete a virtual classroom. Restricted to staff (formateur, admin) only.
+    Strictly forbidden for learners, interns, and employees.
     """
+    user_role = (current_user.role or "").strip().lower()
+    LEARNER_ROLES = ["etudiant", "étudiant", "stagiaire", "employer"]
+    STAFF_ROLES = ["admin", "admin_manager", "formateur", "pedagogique"]
+
+    if user_role in LEARNER_ROLES or user_role not in STAFF_ROLES:
+        raise HTTPException(
+            status_code=403,
+            detail="Accès interdit : les étudiants, stagiaires et employés ne sont pas autorisés à supprimer la classe.",
+        )
+
     cleaned_id = room_id.strip().lower()
     classroom = session.query(Classroom).filter(Classroom.room_id == cleaned_id).first()
     if not classroom:
         raise HTTPException(status_code=404, detail="Classe virtuelle introuvable.")
-
-    if current_user.role not in ADMIN_ROLES and classroom.instructor_id != current_user.id:
-        raise HTTPException(
-            status_code=403, detail="Non autorisé à supprimer cette classe virtuelle."
-        )
 
     classroom.is_active = False
     session.commit()
