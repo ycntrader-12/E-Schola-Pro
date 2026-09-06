@@ -1552,17 +1552,20 @@ export default function VirtualClassroomLivePage() {
       {/* MODAL DE CRÉATION & GESTION DES SOUS-GROUPES (Formateurs & Admins)        */}
       {/* ========================================================================= */}
       {showSubgroupModal && (
-        <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-          <div className="glass-card max-w-2xl w-full p-5 sm:p-8 rounded-3xl border border-purple-500/40 space-y-5 shadow-2xl my-auto">
+        <div className="fixed inset-0 z-[100] bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white max-w-2xl w-full p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-2xl space-y-5 my-auto text-slate-900 animate-zoom-in">
             
-            <div className="flex items-center justify-between pb-3 border-b border-white/10">
-              <div className="flex items-center gap-2 text-purple-400 font-extrabold text-sm sm:text-base">
-                <Split size={18} />
-                <h3>Création des Sous-Groupes (Breakout Rooms)</h3>
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5 text-[#1877f2] font-extrabold text-sm sm:text-base">
+                <div className="w-8 h-8 rounded-xl bg-blue-50 border border-blue-200/60 text-[#1877f2] flex items-center justify-center font-bold shrink-0">
+                  <Split size={18} />
+                </div>
+                <h3 className="text-base font-extrabold text-slate-900">Création des Sous-Groupes (Breakout Rooms)</h3>
               </div>
               <button 
                 onClick={() => setShowSubgroupModal(false)}
-                className="text-gray-400 hover:text-white font-bold text-sm"
+                className="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 transition-colors text-sm font-bold cursor-pointer"
+                aria-label="Fermer"
               >
                 ✕
               </button>
@@ -1570,9 +1573,9 @@ export default function VirtualClassroomLivePage() {
 
             <div className="space-y-4 text-xs">
               
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-2xl bg-white/5 border border-white/5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 p-4 rounded-2xl bg-slate-50 border border-slate-200">
                 <div>
-                  <label className="block uppercase font-bold text-gray-300 mb-1 text-[10px]">
+                  <label className="block uppercase font-bold text-slate-700 mb-1.5 text-xs tracking-wider">
                     Nombre de Salles
                   </label>
                   <select
@@ -1589,7 +1592,7 @@ export default function VirtualClassroomLivePage() {
                       });
                       setStagedSubgroups(gen);
                     }}
-                    className="w-full px-3 py-2 rounded-xl bg-black border border-white/10 text-white outline-none focus:border-purple-400 cursor-pointer text-xs"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 font-semibold outline-none focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 cursor-pointer text-xs transition-all"
                   >
                     <option value={2}>2 Sous-groupes</option>
                     <option value={3}>3 Sous-groupes</option>
@@ -1599,7 +1602,7 @@ export default function VirtualClassroomLivePage() {
                 </div>
 
                 <div>
-                  <label className="block uppercase font-bold text-gray-300 mb-1 text-[10px]">
+                  <label className="block uppercase font-bold text-slate-700 mb-1.5 text-xs tracking-wider">
                     Durée de l&apos;atelier (Minutes)
                   </label>
                   <input
@@ -1608,14 +1611,14 @@ export default function VirtualClassroomLivePage() {
                     max={120}
                     value={subgroupTimer}
                     onChange={(e) => setSubgroupTimer(parseInt(e.target.value) || 15)}
-                    className="w-full px-3 py-2 rounded-xl bg-black border border-white/10 text-white outline-none focus:border-purple-400 text-xs"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 font-semibold outline-none focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-xs transition-all"
                   />
                 </div>
               </div>
 
-              <div className="space-y-2.5">
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="font-extrabold uppercase text-gray-300 text-[10px]">
+                  <span className="font-extrabold uppercase text-slate-700 text-xs tracking-wider">
                     Répartition des Apprenants :
                   </span>
                   <button
@@ -1628,16 +1631,16 @@ export default function VirtualClassroomLivePage() {
                       });
                       setStagedSubgroups(gen);
                     }}
-                    className="text-purple-400 hover:text-purple-300 font-bold flex items-center gap-1 text-[10px]"
+                    className="text-[#1877f2] hover:text-blue-700 font-bold flex items-center gap-1.5 text-xs transition-colors cursor-pointer"
                   >
-                    <Shuffle size={11} /> Mélanger aléatoirement
+                    <Shuffle size={13} /> Mélanger aléatoirement
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-56 overflow-y-auto">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-60 overflow-y-auto pr-1">
                   {stagedSubgroups.map((sg) => (
-                    <div key={sg.id} className="p-3 rounded-2xl bg-black/40 border border-purple-500/20 space-y-1.5">
-                      <div className="flex items-center justify-between">
+                    <div key={sg.id} className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+                      <div className="flex items-center justify-between gap-2">
                         <input
                           type="text"
                           value={sg.name}
@@ -1645,53 +1648,58 @@ export default function VirtualClassroomLivePage() {
                             const val = e.target.value;
                             setStagedSubgroups(prev => prev.map(s => s.id === sg.id ? { ...s, name: val } : s));
                           }}
-                          className="font-bold text-purple-300 bg-transparent border-b border-transparent hover:border-purple-500/40 outline-none text-xs w-3/4"
+                          className="font-bold text-slate-900 bg-transparent border-b border-slate-300 focus:border-[#1877f2] outline-none text-xs w-3/4"
                         />
-                        <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 text-[9px] font-bold">
+                        <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-[#1877f2] text-[10px] font-bold">
                           {sg.members.length}
                         </span>
                       </div>
 
-                      <div className="space-y-1">
-                        {sg.members.map(member => (
-                          <div key={member} className="px-2 py-0.5 rounded-lg bg-white/5 text-[10px] text-gray-300 truncate">
-                            👤 {member.split('@')[0]}
-                          </div>
-                        ))}
+                      <div className="space-y-1.5 pt-1">
+                        {sg.members.length === 0 ? (
+                          <p className="text-[11px] text-slate-400 italic">Aucun membre affecté</p>
+                        ) : (
+                          sg.members.map(member => (
+                            <div key={member} className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-xs text-slate-800 font-medium truncate flex items-center gap-1.5 shadow-2xs">
+                              <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
+                              <span className="truncate">{member.split('@')[0]}</span>
+                            </div>
+                          ))
+                        )}
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-3 border-t border-white/10">
+              <div className="flex items-center justify-between pt-3 border-t border-slate-100">
                 {subgroupsState.is_active ? (
                   <button
                     type="button"
                     onClick={handleCloseSubgroups}
-                    className="px-3.5 py-2 rounded-xl bg-red-600 hover:bg-red-700 font-bold text-white text-xs flex items-center gap-1.5"
+                    className="px-4 py-2.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-colors"
                   >
-                    <PhoneOff size={13} />
+                    <PhoneOff size={14} />
                     <span>Clôturer</span>
                   </button>
                 ) : (
                   <div />
                 )}
 
-                <div className="flex items-center gap-2.5">
+                <div className="flex items-center gap-3">
                   <button
                     type="button"
                     onClick={() => setShowSubgroupModal(false)}
-                    className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 font-semibold text-gray-300 text-xs"
+                    className="px-4 py-2.5 rounded-xl border border-slate-300 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition-all text-xs cursor-pointer"
                   >
                     Annuler
                   </button>
                   <button
                     type="button"
                     onClick={handleLaunchSubgroups}
-                    className="px-5 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 font-bold text-white shadow-md shadow-blue-500/30 flex items-center gap-1.5 text-xs"
+                    className="btn-primary py-2.5 px-6 rounded-xl font-bold flex items-center justify-center gap-2 text-xs shadow-md shadow-blue-500/20 cursor-pointer"
                   >
-                    <Split size={14} />
+                    <Split size={15} />
                     <span>Lancer les Salles</span>
                   </button>
                 </div>
@@ -1707,42 +1715,48 @@ export default function VirtualClassroomLivePage() {
       {/* MODAL GESTION DES DEMANDES D'ACCÈS (Formateur / Hôte)                      */}
       {/* ========================================================================= */}
       {showRequestsModal && (
-        <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-          <div className="glass-card max-w-lg w-full p-5 sm:p-7 rounded-3xl border border-purple-500/40 space-y-4 shadow-2xl my-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-white/10">
-              <div className="flex items-center gap-2 text-purple-400 font-extrabold text-sm sm:text-base">
-                <Shield size={18} />
-                <h3>Demandes d'accès à la classe ({pendingRequests.length})</h3>
+        <div className="fixed inset-0 z-[100] bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white max-w-lg w-full p-6 sm:p-7 rounded-3xl border border-slate-200 shadow-2xl space-y-4 text-slate-900 animate-zoom-in my-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5 text-[#1877f2] font-extrabold text-sm sm:text-base">
+                <div className="w-8 h-8 rounded-xl bg-blue-50 border border-blue-200/60 text-[#1877f2] flex items-center justify-center font-bold shrink-0">
+                  <Shield size={18} />
+                </div>
+                <h3 className="text-base font-extrabold text-slate-900">Demandes d'accès à la classe ({pendingRequests.length})</h3>
               </div>
-              <button onClick={() => setShowRequestsModal(false)} className="text-gray-400 hover:text-white font-bold text-sm">
+              <button 
+                onClick={() => setShowRequestsModal(false)} 
+                className="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 transition-colors text-sm font-bold cursor-pointer"
+                aria-label="Fermer"
+              >
                 ✕
               </button>
             </div>
 
             {pendingRequests.length === 0 ? (
-              <div className="py-8 text-center text-xs text-gray-400 space-y-2">
-                <CheckCircle2 size={32} className="mx-auto text-green-400 opacity-60" />
-                <p>Aucune demande d'accès en attente pour le moment.</p>
+              <div className="py-8 text-center text-xs text-slate-500 space-y-2">
+                <CheckCircle2 size={32} className="mx-auto text-emerald-500 opacity-80" />
+                <p className="font-medium">Aucune demande d'accès en attente pour le moment.</p>
               </div>
             ) : (
-              <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+              <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
                 {pendingRequests.map((req) => (
-                  <div key={req.user_id} className="p-3 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between gap-3 text-xs">
+                  <div key={req.user_id} className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-3 text-xs">
                     <div className="min-w-0 space-y-0.5">
-                      <p className="font-bold text-white truncate">{req.user_name} ({req.user_email.split('@')[0]})</p>
-                      <p className="text-[10px] text-gray-400 uppercase font-mono">Rôle : {req.user_role} · Demande à {req.requested_at}</p>
+                      <p className="font-bold text-slate-900 truncate">{req.user_name} ({req.user_email.split('@')[0]})</p>
+                      <p className="text-[10px] text-slate-500 font-medium">Rôle : {req.user_role} · Demande à {req.requested_at}</p>
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
                       <button
                         onClick={() => handleRejectRequest(req.user_id)}
-                        className="px-2.5 py-1.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-300 font-bold border border-red-500/30 flex items-center gap-1 transition-colors"
+                        className="px-3 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 font-bold border border-red-200 flex items-center gap-1 transition-colors text-xs cursor-pointer"
                       >
                         <X size={13} /> Rejeter
                       </button>
                       <button
                         onClick={() => handleApproveRequest(req.user_id)}
-                        className="px-3 py-1.5 rounded-xl bg-green-600 hover:bg-green-500 text-white font-bold shadow-md shadow-green-600/30 flex items-center gap-1 transition-colors"
+                        className="btn-primary px-3.5 py-1.5 rounded-xl font-bold flex items-center gap-1 text-xs cursor-pointer shadow-md shadow-blue-500/20"
                       >
                         <Check size={13} /> Approuver
                       </button>
@@ -1752,10 +1766,10 @@ export default function VirtualClassroomLivePage() {
               </div>
             )}
 
-            <div className="pt-2 text-right">
+            <div className="pt-3 border-t border-slate-100 text-right">
               <button
                 onClick={() => setShowRequestsModal(false)}
-                className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 font-bold text-xs text-gray-200"
+                className="px-4 py-2.5 rounded-xl border border-slate-300 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition-all text-xs cursor-pointer"
               >
                 Fermer
               </button>
@@ -1768,63 +1782,69 @@ export default function VirtualClassroomLivePage() {
       {/* MODAL PARAMÈTRES EN DIRECT DE LA SALLE (Formateur / Hôte)                  */}
       {/* ========================================================================= */}
       {showSettingsModal && classroom && (
-        <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-          <div className="glass-card max-w-md w-full p-5 sm:p-7 rounded-3xl border border-border space-y-4 shadow-2xl my-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-white/10">
-              <div className="flex items-center gap-2 text-primary font-extrabold text-sm sm:text-base">
-                <Settings size={18} />
-                <h3>Paramètres de la classe en direct</h3>
+        <div className="fixed inset-0 z-[100] bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white max-w-md w-full p-6 sm:p-7 rounded-3xl border border-slate-200 shadow-2xl space-y-4 text-slate-900 animate-zoom-in my-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5 text-[#1877f2] font-extrabold text-sm sm:text-base">
+                <div className="w-8 h-8 rounded-xl bg-blue-50 border border-blue-200/60 text-[#1877f2] flex items-center justify-center font-bold shrink-0">
+                  <Settings size={18} />
+                </div>
+                <h3 className="text-base font-extrabold text-slate-900">Paramètres de la classe en direct</h3>
               </div>
-              <button onClick={() => setShowSettingsModal(false)} className="text-gray-400 hover:text-white font-bold text-sm">
+              <button 
+                onClick={() => setShowSettingsModal(false)} 
+                className="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 transition-colors text-sm font-bold cursor-pointer"
+                aria-label="Fermer"
+              >
                 ✕
               </button>
             </div>
 
             <div className="space-y-3 text-xs">
-              <label className="p-3 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between cursor-pointer">
+              <label className="p-3.5 rounded-2xl bg-slate-50 hover:bg-slate-100/70 border border-slate-200 flex items-center justify-between cursor-pointer transition-colors">
                 <div>
-                  <p className="font-bold text-white">🖥️ Partage d'écran</p>
-                  <p className="text-[10px] text-gray-400">Autoriser les participants à partager leur écran</p>
+                  <p className="font-bold text-slate-900">🖥️ Partage d'écran</p>
+                  <p className="text-[11px] text-slate-500 font-medium">Autoriser les participants à partager leur écran</p>
                 </div>
                 <input
                   type="checkbox"
                   checked={classroom.allow_screen_sharing ?? false}
                   onChange={(e) => handleToggleRoomSetting('allow_screen_sharing', e.target.checked)}
-                  className="accent-primary w-4 h-4 cursor-pointer"
+                  className="accent-[#1877f2] w-4 h-4 cursor-pointer"
                 />
               </label>
 
-              <label className="p-3 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between cursor-pointer">
+              <label className="p-3.5 rounded-2xl bg-slate-50 hover:bg-slate-100/70 border border-slate-200 flex items-center justify-between cursor-pointer transition-colors">
                 <div>
-                  <p className="font-bold text-white">🛡️ Salle d'attente (Approbation)</p>
-                  <p className="text-[10px] text-gray-400">Exiger une approbation avant d'entrer dans la salle</p>
+                  <p className="font-bold text-slate-900">🛡️ Salle d'attente (Approbation)</p>
+                  <p className="text-[11px] text-slate-500 font-medium">Exiger une approbation avant d'entrer dans la salle</p>
                 </div>
                 <input
                   type="checkbox"
                   checked={classroom.requires_approval ?? true}
                   onChange={(e) => handleToggleRoomSetting('requires_approval', e.target.checked)}
-                  className="accent-primary w-4 h-4 cursor-pointer"
+                  className="accent-[#1877f2] w-4 h-4 cursor-pointer"
                 />
               </label>
 
-              <label className="p-3 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between cursor-pointer">
+              <label className="p-3.5 rounded-2xl bg-slate-50 hover:bg-slate-100/70 border border-slate-200 flex items-center justify-between cursor-pointer transition-colors">
                 <div>
-                  <p className="font-bold text-white">🔒 Salle privée</p>
-                  <p className="text-[10px] text-gray-400">Salle fermée aux utilisateurs anonymes</p>
+                  <p className="font-bold text-slate-900">🔒 Salle privée</p>
+                  <p className="text-[11px] text-slate-500 font-medium">Salle fermée aux utilisateurs anonymes</p>
                 </div>
                 <input
                   type="checkbox"
                   checked={classroom.is_private ?? true}
                   onChange={(e) => handleToggleRoomSetting('is_private', e.target.checked)}
-                  className="accent-primary w-4 h-4 cursor-pointer"
+                  className="accent-[#1877f2] w-4 h-4 cursor-pointer"
                 />
               </label>
             </div>
 
-            <div className="pt-2 text-right">
+            <div className="pt-3 border-t border-slate-100 text-right">
               <button
                 onClick={() => setShowSettingsModal(false)}
-                className="px-4 py-2 rounded-xl bg-primary text-white font-bold text-xs"
+                className="btn-primary py-2.5 px-6 rounded-xl font-bold text-xs shadow-md shadow-blue-500/20 cursor-pointer"
               >
                 Fait
               </button>
