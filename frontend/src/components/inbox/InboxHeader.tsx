@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
+import Image from 'next/image';
 import {
   Menu,
   Search,
@@ -125,8 +126,14 @@ export const InboxHeader: React.FC<InboxHeaderProps> = ({
 
         {/* ScholaPro Logo & Brand (Replaces Gmail logo) */}
         <Link href="/dashboard" className="flex items-center gap-2.5 group">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-primary to-primary-hover flex items-center justify-center text-white font-extrabold text-lg shadow-md shadow-primary/20 group-hover:scale-105 transition-transform">
-            E
+          <div className="relative w-9 h-9 rounded-xl overflow-hidden shadow-xs group-hover:scale-105 transition-transform shrink-0">
+            <Image
+              src="/images/logo_icon_transparent.png"
+              alt="E-Schola Pro"
+              width={36}
+              height={36}
+              className="w-full h-full object-contain"
+            />
           </div>
           <div className="flex flex-col">
             <span className="font-extrabold text-base tracking-tight text-text-primary group-hover:text-primary transition-colors flex items-center gap-1">

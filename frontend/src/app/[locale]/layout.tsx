@@ -16,7 +16,16 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "E-Schola Pro",
-  description: "Modern E-learning platform",
+  description: "Plateforme moderne de gestion pédagogique, formations et apprentissage en ligne",
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/images/logo_icon_transparent.png', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/images/logo_icon_transparent.png' },
+    ],
+  },
 };
 
 export default async function RootLayout({

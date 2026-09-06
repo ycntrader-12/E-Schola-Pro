@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Link, usePathname, useRouter } from '@/i18n/routing';
+import Image from 'next/image';
 import { LogOut, User, GraduationCap, MessageSquare, Video, LayoutDashboard } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { apiClient } from '@/lib/api';
@@ -95,8 +96,15 @@ export default function Navbar() {
           
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="w-8 h-8 rounded-lg bg-[#1877f2] flex items-center justify-center text-white shadow-xs group-hover:scale-105 transition-transform shrink-0">
-              <GraduationCap size={18} />
+            <div className="relative w-8 h-8 rounded-lg overflow-hidden group-hover:scale-105 transition-transform shrink-0 shadow-xs">
+              <Image
+                src="/images/logo_icon_transparent.png"
+                alt="E-Schola Pro"
+                width={32}
+                height={32}
+                className="w-full h-full object-contain"
+                priority
+              />
             </div>
             <span className={`text-base sm:text-xl font-bold tracking-tight text-[#050505] ${isAuthenticated && !isHomePage ? 'hidden min-[520px]:inline' : 'inline'}`}>
               E-Schola <span className="text-[#1877f2] font-extrabold">Pro</span>

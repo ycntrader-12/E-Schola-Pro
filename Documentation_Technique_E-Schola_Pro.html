@@ -482,6 +482,9 @@
 <!-- ═══════════════════════════════════════════════════════════════ -->
 <div class="cover">
   <div class="cover-content">
+    <div style="margin-bottom: 20px;">
+      <img src="frontend/public/images/logo_icon_transparent.png" alt="E-Schola Pro" style="width: 88px; height: 88px; object-fit: contain; filter: drop-shadow(0 12px 24px rgba(0,0,0,0.6));">
+    </div>
     <div class="logo">E-Schola <span>Pro</span></div>
     <div class="subtitle">Plateforme de Gestion Éducative Intégrée</div>
     <div class="doc-title">Documentation Technique</div>
@@ -1658,6 +1661,33 @@ E-Schola Pro/
         <li><strong>Middleware Anti-Loop Résilient :</strong> Le middleware normalise les chemins sans préfixe et intercepte les requêtes RSC (<code>_rsc</code>) déjà localisées pour renvoyer directement <code>NextResponse.next()</code> sans redirection intermédiaire.</li>
         <li><strong>Stabilité Cloud Railway &amp; Cookies Sécurisés :</strong> Les cookies d'authentification (<code>access_token</code>) intègrent dynamiquement le flag <code>Secure</code> sous protocole HTTPS et <code>SameSite=Lax</code>, garantissant une transmission immédiate aux routes protégées et éliminant la surconsommation de bande passante et de mémoire CPU.</li>
         <li><strong>Robustesse des Composants Serveur :</strong> Les requêtes API côté serveur (ex. <code>/courses/</code>) intègrent un <code>AbortController</code> avec timeout protecteur de 5 secondes et une normalisation d'URL avec barre oblique finale pour éviter les redirections FastAPI.</li>
+      </ul>
+    </div>
+
+    <h3>Identité Visuelle, Nouveau Logo Métallique &amp; Intégration Graphique Globale</h3>
+    <div class="card" style="border-left: 4px solid var(--accent-blue);">
+      <p>L'application bénéficie d'une <strong>identité visuelle industrielle et moderne</strong> articulée autour du nouvel emblème officiel 3D en aluminium brossé :</p>
+      <ul>
+        <li><strong>Emblème Officiel (Badge Squircle 3D) :</strong> Squircle métallique texturé en aluminium brossé haute définition intégrant en relief 3D le mortier académique (graduation cap) surmontant le livre ouvert, avec biseau d'acier et dégradé subtil bleu saphir.</li>
+        <li><strong>Assets Graphiques Générés &amp; Formats Optimisés :</strong>
+          <ul>
+            <li><code>frontend/public/images/logo_icon_transparent.png</code> &amp; <code>.webp</code> : Emblème détouré 512×512 sans artefact, lissage anti-aliasing par masque supersamplé (Lanczos).</li>
+            <li><code>frontend/public/images/logo.png</code> &amp; <code>logo_transparent.png</code> : Logo horizontal officiel intégrant l'emblème et la typographie institutionnelle <em>E-Schola Pro</em>.</li>
+            <li><code>frontend/src/app/icon.png</code> : Favicon officiel Next.js 15 App Router (512×512).</li>
+            <li><code>frontend/src/app/apple-icon.png</code> : Icône tactile pour appareils Apple iOS / Safari (180×180).</li>
+            <li><code>frontend/public/favicon.ico</code> : Favicon multi-résolutions (16, 32, 48, 64, 128, 256 px).</li>
+          </ul>
+        </li>
+        <li><strong>Déploiement UI Intégral &amp; Responsive :</strong>
+          <ul>
+            <li><strong>Navbar (<code>Navbar.tsx</code>) :</strong> Emblème métallique haute fidélité avec effet d'échelle au survol (<code>group-hover:scale-105</code>) et typographie adaptative.</li>
+            <li><strong>Sidebar (<code>Sidebar.tsx</code>) :</strong> Emblème 40×40 avec ombre portée douce parfaitement contrastée sur le fond bleu marine <code>#16325C</code>.</li>
+            <li><strong>Page d'Accueil (<code>page.tsx</code>) :</strong> Badge officiel intégré dans le dock d'action flottant en verre dépoli et dans le footer institutionnel.</li>
+            <li><strong>Tableau de Bord (<code>dashboard/page.tsx</code>) :</strong> En-tête desktop et barre de navigation mobile synchronisés.</li>
+            <li><strong>Messagerie Inbox (<code>InboxHeader.tsx</code>) :</strong> Remplacement de l'initiale placeholder par le véritable emblème officiel.</li>
+            <li><strong>Authentification (<code>login</code> &amp; <code>register</code>) :</strong> Emblème centré surmontant les formulaires avec lien direct vers la page d'accueil.</li>
+          </ul>
+        </li>
       </ul>
     </div>
 

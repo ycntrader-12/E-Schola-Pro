@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import Image from 'next/image';
 import { Link, useRouter } from '@/i18n/routing';
 import { apiClient } from '@/lib/api';
 import { 
@@ -207,7 +208,22 @@ export default function RegisterPage() {
       <div className="relative z-10 w-full max-w-2xl p-6 sm:p-10 rounded-3xl bg-white border border-slate-200 shadow-xl space-y-6 my-auto transition-all">
         
         {/* Header with Badge */}
-        <div className="text-center space-y-2">
+        <div className="text-center space-y-3">
+          <div className="flex justify-center">
+            <Link href="/" className="inline-block group" title="Accueil E-Schola Pro">
+              <div className="relative w-14 h-14 rounded-2xl overflow-hidden shadow-md shadow-blue-500/10 group-hover:scale-105 transition-transform">
+                <Image
+                  src="/images/logo_icon_transparent.png"
+                  alt="E-Schola Pro"
+                  width={56}
+                  height={56}
+                  className="w-full h-full object-contain"
+                  priority
+                />
+              </div>
+            </Link>
+          </div>
+
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-[#1877f2] text-[10px] font-extrabold uppercase tracking-wider shadow-xs">
             <UserPlus size={13} className="text-[#1877f2]" />
             <span>E-Schola Pro Inscription</span>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import Image from 'next/image';
 import { Link } from '@/i18n/routing';
 import {
   ArrowRight,
@@ -116,8 +117,15 @@ export default function Home() {
             
             {/* Brand & Mini Tagline */}
             <div className="flex items-center gap-3 text-center sm:text-left">
-              <div className="w-9 h-9 rounded-xl bg-[#1877f2] flex items-center justify-center text-white shadow-md shadow-blue-500/30 shrink-0">
-                <Sparkles size={18} />
+              <div className="relative w-9 h-9 rounded-xl overflow-hidden shrink-0 shadow-sm">
+                <Image
+                  src="/images/logo_icon_transparent.png"
+                  alt="E-Schola Pro"
+                  width={36}
+                  height={36}
+                  className="w-full h-full object-contain"
+                  priority
+                />
               </div>
               <div>
                 <div className="flex items-center gap-2">
@@ -442,7 +450,8 @@ export default function Home() {
           {/* Footer Bar */}
           <div className="pt-8 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400">
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+              <Image src="/images/logo_icon_transparent.png" alt="E-Schola Pro" width={18} height={18} className="w-4.5 h-4.5 rounded object-contain shrink-0" />
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping ml-1" />
               <span className="font-semibold text-slate-300">E-Schola Pro v1.0.0</span>
               <span>— {tAbout('footer_rights')}</span>
             </div>

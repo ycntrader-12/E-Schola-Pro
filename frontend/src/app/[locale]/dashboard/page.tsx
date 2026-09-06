@@ -189,7 +189,8 @@ export default function DashboardPage() {
         >
           <Menu size={18} />
         </button>
-        <span className="font-extrabold text-sm tracking-tight flex items-center gap-1">
+        <span className="font-extrabold text-sm tracking-tight flex items-center gap-1.5">
+          <Image src="/images/logo_icon_transparent.png" alt="E-Schola Pro" width={22} height={22} className="w-5.5 h-5.5 rounded-md object-contain" />
           E-Schola <span className="text-primary font-black">Pro</span>
         </span>
         <button 
@@ -209,8 +210,14 @@ export default function DashboardPage() {
           
           {/* E-Schola Pro Brand Logo Header */}
           <div className="hidden sm:flex items-center gap-2.5 shrink-0">
-            <div className="w-8 h-8 rounded-xl bg-[#1877f2] flex items-center justify-center text-white shadow-sm shadow-blue-500/20">
-              <GraduationCap size={18} />
+            <div className="relative w-8 h-8 rounded-xl overflow-hidden shrink-0 shadow-xs">
+              <Image
+                src="/images/logo_icon_transparent.png"
+                alt="E-Schola Pro"
+                width={32}
+                height={32}
+                className="w-full h-full object-contain"
+              />
             </div>
             <div>
               <p className="text-xs font-black leading-tight text-slate-900">

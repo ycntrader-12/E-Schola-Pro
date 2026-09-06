@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { usePathname, Link } from '@/i18n/routing';
+import Image from 'next/image';
 import { LayoutDashboard, Inbox, BookOpen, CheckSquare, Settings, Video, Award, UserCheck, Calendar, X, GraduationCap, Users } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { apiClient } from '@/lib/api';
@@ -143,8 +144,15 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
         {/* Brand Header */}
         <div className="flex items-center justify-between px-6 mb-8">
           <Link href="/dashboard" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#2563eb] to-[#38bdf8] flex items-center justify-center text-white shadow-md shadow-blue-500/30 group-hover:scale-105 transition-transform">
-              <GraduationCap size={22} />
+            <div className="relative w-10 h-10 rounded-xl overflow-hidden group-hover:scale-105 transition-transform shrink-0 shadow-md shadow-black/20">
+              <Image
+                src="/images/logo_icon_transparent.png"
+                alt="E-Schola Pro"
+                width={40}
+                height={40}
+                className="w-full h-full object-contain"
+                priority
+              />
             </div>
             <div>
               <span className="text-lg font-black tracking-tight text-white flex items-center gap-1">
