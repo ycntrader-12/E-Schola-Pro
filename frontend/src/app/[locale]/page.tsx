@@ -439,34 +439,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Bottom Call to Action (CTA) */}
-          <div className="p-8 sm:p-12 rounded-3xl bg-gradient-to-r from-blue-600 via-[#1877f2] to-indigo-600 text-white shadow-2xl shadow-blue-500/25 text-center space-y-6">
-            <div className="max-w-2xl mx-auto space-y-3">
-              <h3 className="text-2xl sm:text-4xl font-black tracking-tight">
-                {tAbout('cta_title')}
-              </h3>
-              <p className="text-sm sm:text-base text-blue-100">
-                {tAbout('cta_subtitle')}
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-center gap-4">
-              <Link
-                href="/register"
-                className="px-6 py-3 rounded-xl bg-white text-[#1877f2] font-black text-sm hover:bg-blue-50 hover:shadow-lg active:scale-95 transition-all shadow-md flex items-center gap-2"
-              >
-                <span>{tAbout('cta_button')}</span>
-                <ArrowRight size={16} />
-              </Link>
-              <Link
-                href="/login"
-                className="px-6 py-3 rounded-xl bg-blue-700/60 hover:bg-blue-700 border border-white/30 text-white font-bold text-sm active:scale-95 transition-all"
-              >
-                <span>{t('cta_login')}</span>
-              </Link>
-            </div>
-          </div>
-
           {/* Footer Bar */}
           <div className="pt-8 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400">
             <div className="flex items-center gap-2">
