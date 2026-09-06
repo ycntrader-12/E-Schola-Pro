@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import Image from "next/image";
 import { Link, useRouter } from '@/i18n/routing';
-import { BookOpen, Users, ArrowLeft, Star, Clock, CheckCircle, Loader2, PlayCircle, Plus, Trash2, Upload, Video, Sparkles } from "lucide-react";
+import { BookOpen, Users, ArrowLeft, Star, Clock, CheckCircle, Loader2, PlayCircle, Plus, Trash2, Upload, Video, Sparkles, AlertCircle } from "lucide-react";
 import { useParams } from 'next/navigation';
 import { apiClient } from '@/lib/api';
 import DownloadCourseButton from "@/components/DownloadCourseButton";
@@ -466,13 +466,17 @@ export default function CourseDetailPage() {
 
       {/* Upload Video Modal */}
       {isUploadModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
-          <div className="relative w-full max-w-md p-6 rounded-3xl bg-white/95 dark:bg-[#111413]/90 backdrop-blur-xl border border-black/5 dark:border-white/10 shadow-2xl shadow-primary/10 space-y-4 text-xs animate-zoom-in">
-            <div className="flex justify-between items-center pb-2 border-b border-border">
-              <h3 className="text-base font-bold text-text-primary flex items-center gap-2">
-                <Video size={18} className="text-primary" />
-                <span>Ajouter une vidéo</span>
-              </h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4 text-left animate-fade-in">
+          <div className="relative w-full max-w-md p-6 sm:p-7 rounded-3xl bg-white border border-slate-200 shadow-2xl space-y-4 text-slate-900 animate-zoom-in">
+            <div className="flex justify-between items-center pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-blue-50 border border-blue-200/60 text-[#1877f2] flex items-center justify-center font-bold shrink-0">
+                  <Video size={18} />
+                </div>
+                <h3 className="text-base font-extrabold text-slate-900">
+                  Ajouter une vidéo
+                </h3>
+              </div>
               <button 
                 onClick={() => {
                   setIsUploadModalOpen(false);
@@ -481,55 +485,57 @@ export default function CourseDetailPage() {
                   setNewVideoFile(null);
                   setUploadError('');
                 }}
-                className="text-text-secondary hover:text-text-primary transition-colors text-sm font-bold"
+                className="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 transition-colors text-sm font-bold cursor-pointer"
+                aria-label="Fermer"
               >
                 ✕
               </button>
             </div>
             
             {uploadError && (
-              <div className="bg-red-500/10 border border-red-500/30 text-red-500 p-3 rounded-xl font-semibold">
-                {uploadError}
+              <div className="bg-red-50 border border-red-200 text-red-700 p-3.5 rounded-xl font-semibold text-xs flex items-center gap-2">
+                <AlertCircle size={16} className="shrink-0 text-red-600" />
+                <span>{uploadError}</span>
               </div>
             )}
             
             <form onSubmit={handleUploadSubmit} className="space-y-4">
               <div>
-                <label className="block text-[11px] font-bold text-text-secondary uppercase tracking-wider mb-1">
-                  Titre de la vidéo
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Titre de la vidéo *
                 </label>
                 <input 
                   type="text" 
                   required
                   value={newVideoTitle}
                   onChange={(e) => setNewVideoTitle(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border focus:border-primary outline-none transition-all text-text-primary text-xs"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 focus:bg-white focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 outline-none transition-all text-slate-900 text-xs font-medium placeholder:text-slate-400"
                   placeholder="Ex: 01 - Introduction au cours"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-text-secondary uppercase tracking-wider mb-1">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                   Description (Optionnelle)
                 </label>
                 <textarea 
                   rows={3}
                   value={newVideoDescription}
                   onChange={(e) => setNewVideoDescription(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border focus:border-primary outline-none transition-all text-text-primary text-xs resize-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 focus:bg-white focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 outline-none transition-all text-slate-900 text-xs font-medium placeholder:text-slate-400 resize-none"
                   placeholder="Décrivez brièvement le contenu de cette leçon..."
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-text-secondary uppercase tracking-wider mb-1">
-                  Fichier Vidéo
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Fichier Vidéo *
                 </label>
                 <div 
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
                   onDrop={handleDrop}
-                  className={`border border-dashed rounded-xl p-8 text-center transition-all cursor-pointer relative ${isDragging ? 'border-primary bg-primary/5 scale-[1.02] shadow-inner' : 'border-border bg-background hover:border-primary/50'}`}
+                  className={`border-2 border-dashed rounded-2xl p-6 text-center transition-all cursor-pointer relative ${isDragging ? 'border-[#1877f2] bg-blue-50/80 scale-[1.01]' : 'border-slate-300 bg-slate-50 hover:bg-slate-100/80 hover:border-[#1877f2]/60'}`}
                 >
                   <input 
                     type="file" 
@@ -544,22 +550,24 @@ export default function CourseDetailPage() {
                     }}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                   />
-                  <div className="flex flex-col items-center gap-3 text-text-secondary pointer-events-none">
-                    <Upload size={28} className={`transition-transform duration-200 ${isDragging ? 'scale-110 text-primary' : 'text-primary/75'}`} />
-                    <span className="font-semibold text-text-primary text-xs block truncate max-w-[250px]">
+                  <div className="flex flex-col items-center gap-2.5 text-slate-600 pointer-events-none">
+                    <div className="w-10 h-10 rounded-full bg-blue-50 text-[#1877f2] flex items-center justify-center">
+                      <Upload size={20} className={`transition-transform duration-200 ${isDragging ? 'scale-110' : ''}`} />
+                    </div>
+                    <span className="font-bold text-slate-900 text-xs block truncate max-w-[260px]">
                       {newVideoFile ? newVideoFile.name : 'Déposez votre vidéo ici ou cliquez'}
                     </span>
-                    {!newVideoFile && <span className="text-[10px]">Formats acceptés : MP4, WebM</span>}
+                    {!newVideoFile && <span className="text-[11px] text-slate-500 font-medium">Formats acceptés : MP4, WebM</span>}
                   </div>
                 </div>
                 {isUploadingVideo && (
-                  <div className="w-full bg-border rounded-full h-1 mt-3 overflow-hidden">
-                    <div className="bg-primary h-1 rounded-full animate-[pulse_1s_infinite] w-full" />
+                  <div className="w-full bg-slate-200 rounded-full h-1.5 mt-3 overflow-hidden">
+                    <div className="bg-[#1877f2] h-full rounded-full animate-[pulse_1s_infinite] w-full" />
                   </div>
                 )}
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-2">
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => {
@@ -569,14 +577,14 @@ export default function CourseDetailPage() {
                     setNewVideoFile(null);
                     setUploadError('');
                   }}
-                  className="px-4 py-2 rounded-xl border border-border text-text-secondary hover:bg-surface-hover font-bold transition-all cursor-pointer text-xs"
+                  className="px-4 py-2.5 rounded-xl border border-slate-300 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition-all cursor-pointer text-xs"
                 >
                   Annuler
                 </button>
                 <button
                   type="submit"
                   disabled={isUploadingVideo}
-                  className="btn-primary py-2 px-5 rounded-xl font-bold flex items-center justify-center gap-2 text-xs"
+                  className="btn-primary py-2.5 px-5 rounded-xl font-bold flex items-center justify-center gap-2 text-xs shadow-md shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isUploadingVideo ? (
                     <><Loader2 size={14} className="animate-spin" /> Téléchargement...</>

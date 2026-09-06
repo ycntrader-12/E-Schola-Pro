@@ -2183,40 +2183,41 @@ export default function ProfilePage() {
 
           {/* MODAL ÉDITER UN COMPTE UTILISATEUR (Formateurs / Admin) */}
           {isEditUserModalOpen && editingUser && (
-            <div className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-              <div className="glass-card max-w-2xl w-full p-6 sm:p-8 rounded-3xl border border-primary/40 space-y-5 my-auto max-h-[90vh] overflow-y-auto animate-fade-in-up">
-                <div className="flex items-center justify-between pb-3 border-b border-border">
+            <div className="fixed inset-0 z-[100] bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+              <div className="bg-white max-w-2xl w-full p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-2xl space-y-5 my-auto max-h-[90vh] overflow-y-auto text-slate-900 animate-zoom-in">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold">
+                    <div className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-200/60 text-[#1877f2] flex items-center justify-center font-bold shrink-0">
                       <Pencil size={18} />
                     </div>
                     <div>
-                      <h3 className="text-lg font-bold text-text-primary">Modifier l'utilisateur</h3>
-                      <p className="text-xs text-text-secondary">Édition des informations du compte #{editingUser.id}</p>
+                      <h3 className="text-lg font-extrabold text-slate-900">Modifier l'utilisateur</h3>
+                      <p className="text-xs text-slate-500 font-medium">Édition des informations du compte #{editingUser.id}</p>
                     </div>
                   </div>
                   <button 
                     onClick={() => { setIsEditUserModalOpen(false); setEditingUser(null); }}
-                    className="text-text-secondary hover:text-text-primary font-bold text-sm"
+                    className="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 transition-colors text-sm font-bold cursor-pointer"
+                    aria-label="Fermer"
                   >
                     ✕
                   </button>
                 </div>
 
                 {editUserError && (
-                  <div className="p-3.5 bg-red-500/10 border border-red-500/30 text-red-400 rounded-xl text-xs flex items-center gap-2">
-                    <AlertCircle size={16} className="shrink-0" /> {editUserError}
+                  <div className="p-3.5 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs flex items-center gap-2 font-semibold">
+                    <AlertCircle size={16} className="shrink-0 text-red-600" /> {editUserError}
                   </div>
                 )}
 
                 <form onSubmit={handleUpdateUser} className="space-y-4 text-xs">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block uppercase font-bold text-text-secondary mb-1">Rôle *</label>
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Rôle *</label>
                       <select
                         value={editRole}
                         onChange={(e) => setEditRole(e.target.value)}
-                        className="w-full px-3 py-2.5 rounded-xl bg-surface border border-border outline-none focus:border-primary font-semibold"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 focus:bg-white focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 outline-none transition-all font-semibold cursor-pointer"
                       >
                         {ALL_ROLES.map((r) => (
                           <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>
@@ -2225,141 +2226,141 @@ export default function ProfilePage() {
                     </div>
 
                     <div>
-                      <label className="block uppercase font-bold text-text-secondary mb-1">Nom d'utilisateur</label>
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Nom d'utilisateur</label>
                       <input
                         type="text"
                         value={editUsername}
                         onChange={(e) => setEditUsername(e.target.value)}
-                        className="w-full px-3 py-2.5 rounded-xl bg-surface border border-border outline-none focus:border-primary font-mono"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 focus:bg-white focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 outline-none transition-all font-mono"
                       />
                     </div>
 
                     <div>
-                      <label className="block uppercase font-bold text-text-secondary mb-1">Nom</label>
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Nom</label>
                       <input
                         type="text"
                         value={editNom}
                         onChange={(e) => setEditNom(e.target.value)}
-                        className="w-full px-3 py-2.5 rounded-xl bg-surface border border-border outline-none focus:border-primary"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 focus:bg-white focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 outline-none transition-all font-medium"
                       />
                     </div>
 
                     <div>
-                      <label className="block uppercase font-bold text-text-secondary mb-1">Prénom</label>
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Prénom</label>
                       <input
                         type="text"
                         value={editPrenom}
                         onChange={(e) => setEditPrenom(e.target.value)}
-                        className="w-full px-3 py-2.5 rounded-xl bg-surface border border-border outline-none focus:border-primary"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 focus:bg-white focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 outline-none transition-all font-medium"
                       />
                     </div>
 
                     <div>
-                      <label className="block uppercase font-bold text-text-secondary mb-1">Adresse Email</label>
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Adresse Email</label>
                       <input
                         type="email"
                         value={editEmail}
                         onChange={(e) => setEditEmail(e.target.value)}
-                        className="w-full px-3 py-2.5 rounded-xl bg-surface border border-border outline-none focus:border-primary"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 focus:bg-white focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 outline-none transition-all font-medium"
                       />
                     </div>
 
                     <div>
-                      <label className="block uppercase font-bold text-text-secondary mb-1">Téléphone</label>
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Téléphone</label>
                       <input
                         type="text"
                         value={editTelephone}
                         onChange={(e) => setEditTelephone(e.target.value)}
-                        className="w-full px-3 py-2.5 rounded-xl bg-surface border border-border outline-none focus:border-primary"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 focus:bg-white focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 outline-none transition-all font-medium"
                       />
                     </div>
 
                     <div>
-                      <label className="block uppercase font-bold text-text-secondary mb-1">CIN / Pièce d'identité</label>
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">CIN / Pièce d'identité</label>
                       <input
                         type="text"
                         value={editCin}
                         onChange={(e) => setEditCin(e.target.value)}
-                        className="w-full px-3 py-2.5 rounded-xl bg-surface border border-border outline-none focus:border-primary"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 focus:bg-white focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 outline-none transition-all font-medium"
                       />
                     </div>
 
                     <div>
-                      <label className="block uppercase font-bold text-text-secondary mb-1">Date de naissance</label>
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Date de naissance</label>
                       <input
                         type="date"
                         value={editDateNaissance}
                         onChange={(e) => setEditDateNaissance(e.target.value)}
-                        className="w-full px-3 py-2.5 rounded-xl bg-surface border border-border outline-none focus:border-primary"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 focus:bg-white focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 outline-none transition-all font-medium"
                       />
                     </div>
 
                     <div>
-                      <label className="block uppercase font-bold text-text-secondary mb-1">Pays</label>
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Pays</label>
                       <input
                         type="text"
                         value={editPays}
                         onChange={(e) => setEditPays(e.target.value)}
-                        className="w-full px-3 py-2.5 rounded-xl bg-surface border border-border outline-none focus:border-primary"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 focus:bg-white focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 outline-none transition-all font-medium"
                       />
                     </div>
 
                     <div>
-                      <label className="block uppercase font-bold text-text-secondary mb-1">Ville</label>
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Ville</label>
                       <input
                         type="text"
                         value={editVille}
                         onChange={(e) => setEditVille(e.target.value)}
-                        className="w-full px-3 py-2.5 rounded-xl bg-surface border border-border outline-none focus:border-primary"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 focus:bg-white focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 outline-none transition-all font-medium"
                       />
                     </div>
 
                     <div>
-                      <label className="block uppercase font-bold text-text-secondary mb-1">Département (Employé / Stagiaire)</label>
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Département (Employé / Stagiaire)</label>
                       <input
                         type="text"
                         value={editDepartement}
                         onChange={(e) => setEditDepartement(e.target.value)}
                         placeholder="Ex: Informatique, RH..."
-                        className="w-full px-3 py-2.5 rounded-xl bg-surface border border-border outline-none focus:border-primary"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 focus:bg-white focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 outline-none transition-all font-medium placeholder:text-slate-400"
                       />
                     </div>
 
                     <div>
-                      <label className="block uppercase font-bold text-text-secondary mb-1">Spécialisation (Étudiant / Stagiaire)</label>
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Spécialisation (Étudiant / Stagiaire)</label>
                       <input
                         type="text"
                         value={editSpecialisation}
                         onChange={(e) => setEditSpecialisation(e.target.value)}
                         placeholder="Ex: Génie Logiciel, Data..."
-                        className="w-full px-3 py-2.5 rounded-xl bg-surface border border-border outline-none focus:border-primary"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 focus:bg-white focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 outline-none transition-all font-medium placeholder:text-slate-400"
                       />
                     </div>
 
                     <div className="sm:col-span-2">
-                      <label className="block uppercase font-bold text-text-secondary mb-1">Nouveau mot de passe (optionnel)</label>
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Nouveau mot de passe (optionnel)</label>
                       <input
                         type="password"
                         value={editPassword}
                         onChange={(e) => setEditPassword(e.target.value)}
                         placeholder="Laisser vide pour conserver le mot de passe actuel"
-                        className="w-full px-3 py-2.5 rounded-xl bg-surface border border-border outline-none focus:border-primary font-mono"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 focus:bg-white focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 outline-none transition-all font-mono placeholder:text-slate-400"
                       />
                     </div>
                   </div>
 
-                  <div className="flex gap-3 pt-3 border-t border-border">
+                  <div className="flex gap-3 pt-3 border-t border-slate-100">
                     <button
                       type="button"
                       onClick={() => { setIsEditUserModalOpen(false); setEditingUser(null); }}
-                      className="w-1/2 py-3 bg-surface hover:bg-surface-hover rounded-xl font-semibold border border-border"
+                      className="w-1/2 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold border border-slate-300 transition-colors"
                     >
                       Annuler
                     </button>
                     <button
                       type="submit"
                       disabled={isUpdatingUser}
-                      className="w-1/2 btn-primary py-3 rounded-xl font-bold flex items-center justify-center gap-2"
+                      className="w-1/2 btn-primary py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-md shadow-blue-500/20"
                     >
                       {isUpdatingUser ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
                       <span>Enregistrer les modifications</span>
