@@ -5,11 +5,34 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
-from app.core.config import settings
+from app.core.config import is_production, settings
 from app.db.database import engine
 from app.models.user import User
 
 router = APIRouter()
+
+
+@router.get("")
+@router.get("/")
+def health_check(session: Session = Depends(get_db)) -> dict[str, Any]:
+    """
+    Standard health check endpoint for Railway and container orchestrators.
+    Returns 200 OK when database connectivity is verified.
+    """
+    dialect = engine.dialect.name
+    try:
+        session.execute(text("SELECT 1")).scalar()
+        db_alive = True
+    except Exception:
+        db_alive = False
+
+    return {
+        "status": "healthy" if db_alive else "unhealthy",
+        "database_alive": db_alive,
+        "database_engine": dialect,
+        "environment": settings.ENVIRONMENT,
+        "is_production": is_production(),
+    }
 
 
 @router.get("/db-status")

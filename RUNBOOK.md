@@ -205,20 +205,29 @@ Si vous ajoutez une clé de traduction dans un fichier JSON, **veillez à l'ajou
 
 ---
 
-## 6. Guide de Déploiement sur Railway (Méthode Simplifiée - Conteneur Unique)
+## 6. Guide de Déploiement sur Railway (Intégration Continue GitHub & Isolation Base de Données)
 
-[Railway.com](https://railway.com/) permet de déployer facilement des applications à partir d'un dépôt GitHub. Grâce au `Dockerfile` présent à la racine du dépôt, **E-Schola Pro** est automatiquement configuré pour compiler et s'exécuter dans un **conteneur Docker unique** combinant le frontend Next.js, le backend FastAPI et un serveur reverse-proxy Nginx.
+[Railway.com](https://railway.com/) permet de déployer automatiquement l'application à chaque commit poussé sur le dépôt GitHub. Grâce à [`railway.json`](file:///d:/my%20projet/E-Schola%20Pro/railway.json) et au [`Dockerfile`](file:///d:/my%20projet/E-Schola%20Pro/Dockerfile), **E-Schola Pro** est compilé et exécuté dans un conteneur Docker unifié (Next.js 15, FastAPI, Nginx, Supervisor).
+
+### 🛡️ Garantie d'Intégrité de la Base de Données lors des Déploiements UI
+Chaque mise à jour de l'interface utilisateur (composants React, CSS, landing page, traductions i18n) poussée sur GitHub déclenche une reconstruction de l'image Docker sur Railway. L'architecture garantit l'isolation absolue des données :
+1. **Zéro Écrasement Utilisateur (`SEED_DEMO_DATA=false`) :** Le script de démarrage n'injecte aucun compte de démonstration en production si un administrateur existe déjà. Les comptes, rôles, profils et mots de passe modifiés par les utilisateurs ne sont **jamais réinitialisés**.
+2. **Garde-fou Anti-SQLite Éphémère :** Si l'environnement Railway est détecté sans `DATABASE_URL` PostgreSQL ni volume persistant, le backend avertit immédiatement pour empêcher toute utilisation d'une base SQLite temporaire qui disparaîtrait au prochain commit GitHub.
+3. **Boucle d'Attente Résiliente (`start.sh`) :** Avant de démarrer Supervisor, le script attend jusqu'à 60 secondes la disponibilité effective de PostgreSQL (`postgres.railway.internal`).
+4. **Découplage DDL de FastAPI :** L'import de l'application FastAPI n'exécute aucune modification concurrente de schéma, éliminant tout blocage de table au démarrage des workers.
+5. **Healthcheck Natif Railway :** Railway surveille l'endpoint `GET /api/v1/health` configuré dans `railway.json` avant de basculer le trafic sur le nouveau conteneur.
 
 ### Étape 1 : Lancer le Déploiement
 1. Connectez-vous à votre compte Railway.
 2. Cliquez sur **New Project** -> **Deploy from GitHub repo** et choisissez votre dépôt `E-Schola-Pro`.
-3. Railway va détecter le `Dockerfile` à la racine et lancer automatiquement la compilation et le déploiement du conteneur unifié.
+3. Railway détecte automatiquement `railway.json` et le `Dockerfile` et lance la compilation.
 
 ### Étape 2 : Configurer les Variables d'Environnement
-1. Une fois le service créé sur Railway, cliquez sur le bloc du service (`E-Schola-Pro`) et allez dans l'onglet **Variables**.
-2. Ajoutez les variables d'environnement suivantes :
+1. Dans le tableau de bord Railway, cliquez sur le service `E-Schola-Pro` -> onglet **Variables**.
+2. Renseignez les variables suivantes :
    * `DATABASE_URL` = `postgresql://postgres:JiYvfWjZyLzTVMlmlykvqEIIxFqtrnqp@postgres.railway.internal:5432/railway`
      *(Permet à la production sur Railway d'utiliser la base de données PostgreSQL centralisée)*
+   * `SEED_DEMO_DATA` = `false` *(Désactive la réinjection de comptes de démo lors des redéploiements)*
    * `SECRET_KEY` = *[Votre clé secrète JWT]* (ex: générée avec `openssl rand -hex 32`)
    * `ACCESS_TOKEN_EXPIRE_MINUTES` = `10080` (7 jours)
    * `CLOUDINARY_CLOUD_NAME` = *[Votre Cloud Name]* (Requis pour médias Cloudinary)
@@ -226,20 +235,21 @@ Si vous ajoutez une clé de traduction dans un fichier JSON, **veillez à l'ajou
    * `CLOUDINARY_API_SECRET` = *[Votre API Secret]*
 
 3. **Synchronisation Centralisée avec le Développement Local :**
-   * **Dans Railway (Postgres Service) :** Cliquez sur le service **Postgres** -> **Settings** -> **Networking** -> Cliquez sur **Add TCP Proxy** (ou notez le domaine généré, ex: `roundhouse.proxy.rlwy.net:43210`).
+   * **Dans Railway (Postgres Service) :** Cliquez sur le service **Postgres** -> **Settings** -> **Networking** -> Cliquez sur **Add TCP Proxy** (ex: `roundhouse.proxy.rlwy.net:43210`).
    * **Dans votre environnement local (`backend/.env`) :**
-     Renseignez cette URL publique comme suit :
+     Renseignez cette URL publique :
      ```env
      DATABASE_PUBLIC_URL="postgresql://postgres:JiYvfWjZyLzTVMlmlykvqEIIxFqtrnqp@roundhouse.proxy.rlwy.net:43210/railway"
      ```
-     Dès lors, votre backend local et votre conteneur Railway de production interrogent et écrivent dans la **même et unique base PostgreSQL** en temps réel.
-   * **Alternative Frontend Direct :** Dans `frontend/.env.local`, vous pouvez simplement activer `NEXT_PUBLIC_API_URL="https://e-schola-pro-production.up.railway.app/api/v1"` pour que le frontend local dialogue directement avec la production.
-   * **Non-destructivité des comptes :** Le script d'initialisation (`create_admin.py`) est strictement non-destructif : il ne réécrit jamais les mots de passe modifiés ni les changements de rôle lors des redémarrages.
+     Dès lors, le backend local et le conteneur Railway de production écrivent dans la **même et unique base PostgreSQL** en temps réel.
+   * **Alternative Frontend Direct :** Dans `frontend/.env.local`, activez `NEXT_PUBLIC_API_URL="https://e-schola-pro-production.up.railway.app/api/v1"`.
 
-### Étape 3 : Générer le Domaine Public
+### Étape 3 : Générer le Domaine Public & Vérifier le Healthcheck
 1. Allez dans l'onglet **Settings** du service sur Railway.
-2. Dans la section **Public Networking**, cliquez sur **Generate Domain** (ou configurez votre nom de domaine personnalisé).
-3. L'application est maintenant accessible en ligne via cette adresse unique (Nginx gère intelligemment la répartition du trafic vers Next.js et l'API FastAPI en interne).
+2. Dans la section **Public Networking**, cliquez sur **Generate Domain**.
+3. Vérifiez la santé du déploiement en interrogeant l'endpoint :
+   `https://<votre-domaine>.up.railway.app/api/v1/health`
+   qui doit retourner `{"status": "healthy", "database_alive": true, "database_engine": "postgresql"}`.
 
 ---
 

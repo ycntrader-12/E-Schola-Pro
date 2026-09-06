@@ -11,11 +11,18 @@ def is_in_railway() -> bool:
     """Detects if code is executing inside Railway cloud infrastructure."""
     return bool(
         os.getenv("RAILWAY_ENVIRONMENT")
+        or os.getenv("RAILWAY_ENVIRONMENT_ID")
         or os.getenv("RAILWAY_PROJECT_ID")
         or os.getenv("RAILWAY_SERVICE_ID")
         or os.getenv("RAILWAY_PRIVATE_DOMAIN")
         or os.getenv("RAILWAY_PUBLIC_DOMAIN")
     )
+
+
+def is_production() -> bool:
+    """Detects if app is in production mode (Railway cloud or explicit PRODUCTION env)."""
+    env = (os.getenv("ENVIRONMENT") or os.getenv("APP_ENV") or "").strip().lower()
+    return is_in_railway() or env in ["production", "prod"]
 
 
 def expand_railway_template_variables(url: str) -> str:
@@ -64,8 +71,8 @@ def is_postgres_url_resolvable(url: str) -> bool:
 
 
 def get_default_database_url() -> str:
-    # 1. Direct environment variable (DATABASE_URL, POSTGRES_URL, or DATABASE_PUBLIC_URL from Railway)
-    for env_var in ["DATABASE_URL", "POSTGRES_URL", "DATABASE_PUBLIC_URL"]:
+    # 1. Direct environment variable (DATABASE_URL, POSTGRES_URL, DATABASE_PUBLIC_URL, or DATABASE_URL_UNPOOLED)
+    for env_var in ["DATABASE_URL", "POSTGRES_URL", "DATABASE_PUBLIC_URL", "DATABASE_URL_UNPOOLED"]:
         val = os.getenv(env_var)
         if val and val.strip():
             db_val = expand_railway_template_variables(val.strip().strip("'\""))
@@ -96,12 +103,19 @@ def get_default_database_url() -> str:
         vol_path.mkdir(parents=True, exist_ok=True)
         return f"sqlite:///{(vol_path / 'eschola.db').as_posix()}"
 
-    # 4. Known persistent mount directories in container
+    # 4. In Railway without a volume: prevent silent ephemeral SQLite fallback unless explicitly opted in
+    if is_in_railway():
+        allow_ephemeral = os.getenv("ALLOW_EPHEMERAL_SQLITE", "false").strip().lower() in ("true", "1", "yes")
+        if not allow_ephemeral:
+            print("[CRITICAL RAILWAY WARNING] Railway container detected without DATABASE_URL or persistent volume!")
+            print("To prevent accidental data loss on redeployment, link a PostgreSQL database in Railway.")
+
+    # 5. Known persistent mount directories in container
     for mount_dir in ["/data", "/app/backend/data", "/app/data"]:
         if os.path.exists(mount_dir) and os.path.isdir(mount_dir):
             return f"sqlite:///{(Path(mount_dir) / 'eschola.db').as_posix()}"
 
-    # 5. Canonical local SQLite path anchored to backend/eschola.db
+    # 6. Canonical local SQLite path anchored to backend/eschola.db
     canonical_db = BACKEND_DIR / "eschola.db"
     return f"sqlite:///{canonical_db.as_posix()}"
 
@@ -112,7 +126,13 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "supersecretkey_please_change_in_production"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
 
-    # Canonical default pointing to eschola.db or PostgreSQL
+    # Environment & Deployment Control
+    ENVIRONMENT: str = "production" if is_in_railway() else "development"
+    # Seed demo accounts only in local development by default; NEVER overwrite or reseed demo data in production
+    SEED_DEMO_DATA: bool = False if is_in_railway() else True
+    ALLOW_EPHEMERAL_SQLITE: bool = False
+
+    # Canonical default pointing to PostgreSQL or eschola.db
     DATABASE_URL: str = get_default_database_url()
 
     # Cloudinary Config

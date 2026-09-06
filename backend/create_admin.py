@@ -1,11 +1,44 @@
 from sqlalchemy import func
+from app.core.config import settings
 from app.core.security import get_password_hash
 from app.db.database import SessionLocal
 from app.models.user import User
 
 
 def seed_users():
+    """
+    Ensures that the application has an active administrator account while strictly preserving
+    all existing users, passwords, roles, and profiles. In production or Railway deployments,
+    demo accounts are never injected or re-created if removed.
+    """
     db = SessionLocal()
+    existing_admin = db.query(User).filter(User.role == "admin").first()
+
+    # In Production (or if SEED_DEMO_DATA is False):
+    # Only bootstrap the root admin if NO administrator exists at all.
+    if not settings.SEED_DEMO_DATA:
+        if existing_admin:
+            print("[Seed Notice] Production mode: Administrator account already exists. Skipping user seeding to preserve integrity.")
+            db.close()
+            return
+
+        # No admin found; bootstrap initial root administrator
+        print("[Seed] Production mode: Bootstrapping initial administrator account ('admin@eschola.pro')...")
+        new_admin = User(
+            email="admin@eschola.pro",
+            username="admin",
+            hashed_password=get_password_hash("Abc1234"),
+            role="admin",
+            nom="Administrateur",
+            prenom="Système",
+        )
+        db.add(new_admin)
+        db.commit()
+        print("[Seed] Root administrator account created successfully.")
+        db.close()
+        return
+
+    # Development / Demo environment (SEED_DEMO_DATA is True):
     default_users = [
         {"email": "admin", "password": "Abc1234", "role": "admin"},
         {"email": "admin@eschola.pro", "password": "Abc1234", "role": "admin"},
@@ -25,19 +58,28 @@ def seed_users():
         if not user:
             new_user = User(
                 email=u_info["email"],
+                username=u_info["email"].split("@")[0],
                 hashed_password=get_password_hash(u_info["password"]),
                 role=u_info["role"],
             )
             db.add(new_user)
             db.commit()
-            print(f"Created default user '{u_info['email']}' ({u_info['role']}).")
+            print(f"[Seed] Created demo user '{u_info['email']}' ({u_info['role']}).")
         else:
-            print(f"User '{u_info['email']}' already exists. Preserving password and role.")
+            print(f"[Seed] User '{u_info['email']}' already exists. Preserving password and role.")
 
     db.close()
 
 
 def seed_groups():
+    """
+    Creates demo educational groups ONLY if enabled (SEED_DEMO_DATA=True) and groups table is empty.
+    Never alters existing group configurations or learner assignments in production.
+    """
+    if not settings.SEED_DEMO_DATA:
+        print("[Seed Notice] Production mode: Demo groups seeding skipped.")
+        return
+
     from app.models.group import Group, GroupMember
 
     db = SessionLocal()
@@ -71,19 +113,21 @@ def seed_groups():
             db.commit()
             db.refresh(grp)
             created_groups.append(grp)
-            print(f"Created group '{grp.name}'.")
+            print(f"[Seed] Created demo group '{grp.name}'.")
 
-        # Assign existing student / stagiaire users to Groupe A (and others)
+        # Assign existing student / stagiaire users to Groupe A without overwriting existing group_name
         learners = db.query(User).filter(User.role.in_(["étudiant", "stagiaire", "employer"])).all()
         for idx, learner in enumerate(learners):
             target_grp = created_groups[idx % len(created_groups)]
-            # Also ensure all learners are at least in Groupe A for comprehensive tests
-            db.add(GroupMember(group_id=created_groups[0].id, user_id=learner.id))
-            if target_grp.id != created_groups[0].id:
-                db.add(GroupMember(group_id=target_grp.id, user_id=learner.id))
-            learner.group_name = created_groups[0].name
+            existing_member = db.query(GroupMember).filter(GroupMember.user_id == learner.id).first()
+            if not existing_member:
+                db.add(GroupMember(group_id=created_groups[0].id, user_id=learner.id))
+                if target_grp.id != created_groups[0].id:
+                    db.add(GroupMember(group_id=target_grp.id, user_id=learner.id))
+                if not learner.group_name:
+                    learner.group_name = created_groups[0].name
         db.commit()
-        print(f"Assigned {len(learners)} learners to default groups.")
+        print(f"[Seed] Assigned {len(learners)} learners to demo groups.")
 
     db.close()
 

@@ -759,10 +759,16 @@ E-Schola Pro/
     <div class="card" style="margin-bottom: 24px;">
       <h4 style="margin-bottom: 8px; color: var(--text-primary);">🛡️ Persistance Permanente & Haute Disponibilité Railway (PostgreSQL & SQLite)</h4>
       <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">
-        <strong>Support Natif PostgreSQL Railway & Multi-Variables :</strong> E-Schola Pro supporte nativement <strong>PostgreSQL</strong> (en local ou sur cloud via Railway, Supabase, Neon) avec le driver performant <code>psycopg2-binary</code>. Le backend gère automatiquement la normalisation des chaînes de connexion (conversion <code>postgres://</code> en <code>postgresql+psycopg2://</code>), l'expansion automatique des variables de template Railway (ex. <code>postgresql://${{PGUSER}}:${{POSTGRES_PASSWORD}}@${{RAILWAY_PRIVATE_DOMAIN}}:5432/${{PGDATABASE}}</code>) et la détection multi-variables (<code>DATABASE_URL</code>, <code>POSTGRES_URL</code>, <code>DATABASE_PUBLIC_URL</code>, <code>RAILWAY_PRIVATE_DOMAIN</code>, <code>PGHOST</code>, <code>POSTGRES_PASSWORD</code>, <code>PGDATABASE</code>).
+        <strong>Support Natif PostgreSQL Railway & Multi-Variables :</strong> E-Schola Pro supporte nativement <strong>PostgreSQL</strong> (en local ou sur cloud via Railway, Supabase, Neon) avec le driver performant <code>psycopg2-binary</code>. Le backend gère automatiquement la normalisation des chaînes de connexion (conversion <code>postgres://</code> en <code>postgresql+psycopg2://</code>), l'expansion automatique des variables de template Railway (ex. <code>postgresql://${{PGUSER}}:${{POSTGRES_PASSWORD}}@${{RAILWAY_PRIVATE_DOMAIN}}:5432/${{PGDATABASE}}</code>) et la détection multi-variables (<code>DATABASE_URL</code>, <code>POSTGRES_URL</code>, <code>DATABASE_PUBLIC_URL</code>, <code>DATABASE_URL_UNPOOLED</code>, <code>RAILWAY_PRIVATE_DOMAIN</code>, <code>PGHOST</code>, <code>POSTGRES_PASSWORD</code>, <code>PGDATABASE</code>).
       </p>
       <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">
-        <strong>Garantie Anti-Dégradation Cloud :</strong> Grâce au détecteur d'environnement cloud (<code>is_in_railway()</code>), la plateforme ne bascule jamais sur le stockage éphémère SQLite en production Railway. Toutes les créations, modifications de profil, réinitialisations de mot de passe, attributions de rôle et suppressions de comptes utilisateurs sont <strong>100% persistées de façon permanente</strong> dans la base PostgreSQL Railway.
+        <strong>Garantie Anti-Dégradation Cloud & Isolation des Déploiements :</strong> Grâce au détecteur d'environnement cloud (<code>is_in_railway()</code>), la plateforme ne bascule jamais sur le stockage éphémère SQLite en production Railway sans volume persistant explicite. Toutes les créations, modifications de profil, réinitialisations de mot de passe, attributions de rôle et suppressions de comptes utilisateurs sont <strong>100% persistées de façon permanente</strong> dans la base PostgreSQL Railway, strictement isolées des mises à jour du code de l'interface frontend Next.js.
+      </p>
+      <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">
+        <strong>Isolation du Seeding en Production (<code>SEED_DEMO_DATA=false</code>) :</strong> Lors des redéploiements déclenchés par GitHub vers Railway, le script d'initialisation (<code>create_admin.py</code>) n'injecte aucun compte de démonstration si un administrateur existe déjà dans la base. Les comptes personnalisés ou supprimés par l'administrateur en production ne sont jamais réinjectés ou écrasés.
+      </p>
+      <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">
+        <strong>Découplage DDL & Cycle de Vie FastAPI :</strong> Les synchronisations de schéma et migrations sont gérées en amont dans <code>start.sh</code> avec une boucle d'attente résiliente (jusqu'à 60 secondes) avant le lancement de Supervisor et Uvicorn. L'import de FastAPI ne bloque plus sur des DDL concurrentes, éliminant tout risque de verrouillage de table (table locking) ou de conflit entre workers.
       </p>
       <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">
         <strong>Synchronisation Complète de la Messagerie (migrate_messages_schema.py) :</strong> Le schéma complet de la boîte de messagerie (réception, envoi, brouillons, corbeille, favoris, diffusions générales, copies CC, signalements et pièces jointes) est synchronisé de façon agnostique au démarrage. Toutes les communications et échanges de la plateforme sont conservés à vie sur la base de données Railway sans risque de perte lors des redéploiements.
@@ -770,11 +776,8 @@ E-Schola Pro/
       <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">
         <strong>Chaîne de Migrations Automatisée :</strong> Le schéma complet des 16 tables relationnelles, contraintes CASCADE, colonnes étendues et index est synchronisé au déploiement via les scripts automatiques de réconciliation (<code>migrate_user_profiles.py</code>, <code>migrate_messages_schema.py</code>, <code>migrate_classrooms.py</code>, <code>migrate_tasks_attachment.py</code>) et Alembic avant le démarrage des serveurs.
       </p>
-      <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">
-        <strong>Idempotence & Intégrité des Données :</strong> L'initialisation automatique (seeder <code>create_admin.py</code>) est strictement non-destructive : la vérification d'existence est insensible à la casse (<code>func.lower(User.email)</code>) et ne réécrit jamais les mots de passe modifiés ni les rôles des comptes existants.
-      </p>
       <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 0;">
-        <strong>Intégrité Référentielle & Suppression en Cascade Sécurisée :</strong> Pour respecter la rigueur transactionnelle de PostgreSQL, le gestionnaire de suppression (<code>DELETE /api/v1/users/{id}</code>) exécute un nettoyage ordonné des tables dépendantes (<code>group_members</code>, <code>event_deliverables</code>, <code>task_submissions</code>, <code>tasks</code>, <code>quiz_attempts</code>, <code>quiz_questions</code>, <code>quizzes</code>, <code>course_videos</code>, <code>courses</code>, <code>attendance</code>, <code>classrooms</code>, <code>messages</code>, <code>enrollments</code>) avant d'effacer le profil utilisateur. Ceci élimine tout risque de <code>ForeignKeyViolation</code> ou d'incohérence entre les environnements local et cloud.
+        <strong>Intégrité Référentielle & Suppression en Cascade Sécurisée :</strong> Pour respecter la rigueur transactionnelle de PostgreSQL, le gestionnaire de suppression (<code>DELETE /api/v1/users/{id}</code>) exécute un nettoyage ordonné des tables dépendantes avant d'effacer le profil utilisateur, éliminant tout risque de <code>ForeignKeyViolation</code> ou d'incohérence.
       </p>
     </div>
 
@@ -1052,6 +1055,7 @@ E-Schola Pro/
     <table>
       <thead><tr><th>Méthode</th><th>Endpoint</th><th>Description</th><th>Accès</th></tr></thead>
       <tbody class="endpoint-row">
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/health</code></td><td>Healthcheck standard pour conteneur Railway / orchestrateurs (code 200 OK, validation de la connectivité DB et statut de production)</td><td>Public</td></tr>
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/health/db-status</code></td><td>Diagnostic en temps réel de la persistance base de données (dialecte actif, vérification write-commit-read canary, latence, métriques du pool et statut des mutations)</td><td>Public</td></tr>
       </tbody>
     </table>
@@ -1829,6 +1833,8 @@ http://localhost:8000/admin
         <tr><td><code>DATABASE_URL</code></td><td>postgresql://postgres:...@postgres.railway.internal:5432/railway</td><td>URL de connexion PostgreSQL centralisée. Sur Railway, pointe vers le service Postgres interne. En local, bascule automatiquement sur SQLite si l'hôte distant n'est pas routable.</td></tr>
         <tr><td><code>DATABASE_PUBLIC_URL</code></td><td>postgresql://postgres:...@roundhouse.proxy.rlwy.net:PORT/railway</td><td>(Optionnel) URL TCP Proxy publique de Railway permettant au backend de dev local de se connecter directement à la base PostgreSQL de production.</td></tr>
         <tr><td><code>ACCESS_TOKEN_EXPIRE_MINUTES</code></td><td>10080 (7 jours)</td><td>Durée de validité des tokens JWT en minutes</td></tr>
+        <tr><td><code>SEED_DEMO_DATA</code></td><td><code>false</code> (Railway) / <code>true</code> (Local)</td><td>Contrôle du peuplement des comptes et groupes de démonstration. Désactivé par défaut en production Railway pour préserver l'intégrité absolue des données et éviter la réapparition de comptes de test.</td></tr>
+        <tr><td><code>ALLOW_EPHEMERAL_SQLITE</code></td><td><code>false</code></td><td>Garde-fou de sécurité cloud. Empêche le basculement silencieux sur une base SQLite temporaire dans les conteneurs Railway sans volume persistant.</td></tr>
         <tr><td><code>CLOUDINARY_CLOUD_NAME</code></td><td>—</td><td>Nom du cloud Cloudinary pour l'upload de médias</td></tr>
         <tr><td><code>CLOUDINARY_API_KEY</code></td><td>—</td><td>Clé API Cloudinary</td></tr>
         <tr><td><code>CLOUDINARY_API_SECRET</code></td><td>—</td><td>Secret API Cloudinary</td></tr>

@@ -7,6 +7,9 @@ from sqladmin import Admin
 from sqladmin.authentication import AuthenticationBackend
 from starlette.requests import Request
 
+from contextlib import asynccontextmanager
+from sqlalchemy import text
+
 from app.admin import (
     AttendanceAdmin,
     ClassroomAdmin,
@@ -24,33 +27,41 @@ from app.admin import (
     UserAdmin,
 )
 from app.api.main import api_router
-from app.core.config import settings
+from app.core.config import is_in_railway, settings
 from app.core.security import verify_password
 from app.db.base import Base
 from app.db.database import engine
 
-# Ensure all tables exist in database (PostgreSQL & SQLite)
-Base.metadata.create_all(bind=engine)
 
-# Seed default admin, demo accounts and initial groups
-try:
-    from create_admin import seed_groups, seed_users
-    from migrate_classrooms import run_migration as run_classrooms_migration
-    from migrate_messages_schema import run_migration as run_messages_schema_migration
-    from migrate_tasks_attachment import run_migration as run_tasks_migration
-    from migrate_user_profiles import run_migration as run_user_profiles_migration
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Non-blocking, non-destructive startup & shutdown lifecycle.
+    Verifies database connectivity without running concurrent or destructive DDL on production.
+    """
+    dialect = engine.dialect.name
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        print(f"[Database Health] Connection established successfully on engine: {dialect}")
+    except Exception as db_err:
+        print(f"[Database Warning] Startup database connectivity check note: {db_err}")
 
-    run_user_profiles_migration()
-    run_messages_schema_migration()
-    run_classrooms_migration()
-    run_tasks_migration()
-    seed_users()
-    seed_groups()
-except Exception as e:
-    print(f"Failed to seed or migrate database: {e}")
+    # In local development only (outside Railway), safely ensure schema exists
+    if not is_in_railway():
+        try:
+            Base.metadata.create_all(bind=engine)
+        except Exception as e:
+            print(f"[Database Notice] Local development metadata init note: {e}")
+
+    yield
+    print("[FastAPI Lifespan] Shutting down application cleanly.")
+
 
 app = FastAPI(
-    title=settings.PROJECT_NAME, openapi_url=f"{settings.API_V1_STR}/openapi.json"
+    title=settings.PROJECT_NAME,
+    openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    lifespan=lifespan,
 )
 
 # Set all CORS enabled origins
