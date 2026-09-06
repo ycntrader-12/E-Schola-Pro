@@ -15,6 +15,7 @@ from app.schemas.quiz import (
 )
 
 router = APIRouter()
+ADMIN_ROLES = ["admin", "admin_manager"]
 
 
 @router.get("/", response_model=list[QuizResponse])
@@ -33,7 +34,7 @@ def get_quizzes(
     )
 
     # Filter by user role if student/intern/employee
-    if current_user.role not in ["admin", "admin_manager", "admin_limited", "formateur"]:
+    if current_user.role not in ["formateur"] + ADMIN_ROLES:
         filtered = []
         for q in quizzes:
             target_list = [r.strip().lower() for r in (q.target_roles or "").split(",")]
@@ -96,7 +97,7 @@ def get_quiz_detail(
     if not quiz:
         raise HTTPException(status_code=404, detail="Quiz introuvable.")
 
-    is_manager = current_user.role in ["formateur", "admin", "admin_manager", "admin_limited"]
+    is_manager = current_user.role in ["formateur"] + ADMIN_ROLES
 
     questions_data = []
     for q in quiz.questions:
@@ -153,8 +154,7 @@ def create_quiz(
     """
     Create a new quiz with questions. Strictly restricted to Formateurs and Admins.
     """
-    admin_roles = ["admin", "admin_manager", "admin_limited"]
-    if current_user.role not in ["formateur"] + admin_roles:
+    if current_user.role not in ["formateur"] + ADMIN_ROLES:
         raise HTTPException(
             status_code=403,
             detail="Seuls les formateurs et les administrateurs ont le droit de créer ou générer des quiz.",
@@ -218,8 +218,7 @@ def delete_quiz(
     """
     Delete a quiz. Strictly restricted to Formateurs and Admins.
     """
-    admin_roles = ["admin", "admin_manager", "admin_limited"]
-    if current_user.role not in ["formateur"] + admin_roles:
+    if current_user.role not in ["formateur"] + ADMIN_ROLES:
         raise HTTPException(
             status_code=403,
             detail="Seuls les formateurs et les administrateurs peuvent supprimer un quiz.",
@@ -313,8 +312,7 @@ def get_quiz_results(
     View all student results/attempts for a specific quiz.
     Strictly restricted to Formateurs and Admins.
     """
-    admin_roles = ["admin", "admin_manager", "admin_limited"]
-    if current_user.role not in ["formateur"] + admin_roles:
+    if current_user.role not in ["formateur"] + ADMIN_ROLES:
         raise HTTPException(
             status_code=403,
             detail="Seuls les formateurs et les administrateurs peuvent consulter la liste des résultats des apprenants.",

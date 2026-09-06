@@ -108,10 +108,10 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
 
   // Permissions:
   // Strictly forbidden for learners: étudiant, etudiant, stagiaire, employer
-  // Authorized for staff: admin, admin_manager, admin_limited, formateur, pedagogique
+  // Authorized for staff: admin, admin_manager, formateur, pedagogique
   const normalizedRole = (userRole || '').trim().toLowerCase();
   const isLearner = ['etudiant', 'étudiant', 'stagiaire', 'employer'].includes(normalizedRole);
-  const isStaff = ['admin', 'admin_manager', 'admin_limited', 'formateur', 'pedagogique'].includes(normalizedRole);
+  const isStaff = ['admin', 'admin_manager', 'formateur', 'pedagogique'].includes(normalizedRole);
   const canViewGroups = isStaff && !isLearner;
 
   const navItems = [

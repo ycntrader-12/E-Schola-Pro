@@ -42,7 +42,7 @@ def get_classrooms(
     return classrooms
 
 
-ADMIN_ROLES = ["admin", "admin_manager", "admin_limited"]
+ADMIN_ROLES = ["admin", "admin_manager"]
 
 
 @router.post("/", response_model=ClassroomResponse)

@@ -26,12 +26,11 @@ from app.services.welcome import send_welcome_message
 router = APIRouter()
 
 
-ADMIN_ROLES = ["admin", "admin_manager", "admin_limited"]
-SUPER_ADMIN_ROLES = ["admin", "admin_limited"]
+ADMIN_ROLES = ["admin", "admin_manager"]
+SUPER_ADMIN_ROLES = ["admin"]
 VALID_ROLES = [
     "admin",
     "admin_manager",
-    "admin_limited",
     "formateur",
     "pedagogique",
     "étudiant",
@@ -480,13 +479,13 @@ def update_user_role(
 
     # Restrictions for ADMIN_MANAGER
     if current_user.role.lower() == "admin_manager":
-        # Cannot assign ADMIN or ADMIN_MANAGER or ADMIN_LIMITED
+        # Cannot assign ADMIN or ADMIN_MANAGER
         if new_role in ADMIN_ROLES:
             raise HTTPException(
                 status_code=403,
-                detail="Un ADMIN_MANAGER ne peut pas donner ou attribuer de rôles administratifs (ADMIN, ADMIN_MANAGER, ADMIN_LIMITED).",
+                detail="Un ADMIN_MANAGER ne peut pas donner ou attribuer de rôles administratifs (ADMIN, ADMIN_MANAGER).",
             )
-        # Cannot modify a user that is already an ADMIN, ADMIN_MANAGER or ADMIN_LIMITED
+        # Cannot modify a user that is already an ADMIN or ADMIN_MANAGER
         if user.role.lower() in ADMIN_ROLES:
             raise HTTPException(
                 status_code=403,
@@ -607,7 +606,7 @@ def admin_create_user(
     if current_user.role.lower() == "admin_manager" and target_role in ADMIN_ROLES:
         raise HTTPException(
             status_code=403,
-            detail="Un ADMIN_MANAGER ne peut pas créer de compte avec un rôle administrateur (ADMIN, ADMIN_MANAGER ou ADMIN_LIMITED).",
+            detail="Un ADMIN_MANAGER ne peut pas créer de compte avec un rôle administrateur (ADMIN ou ADMIN_MANAGER).",
         )
 
     # 1. Resolve username & email
@@ -894,7 +893,7 @@ def admin_update_user(
             "pedagogique": "pedagogique",
             "admin": "admin",
             "admin_manager": "admin_manager",
-            "admin_limited": "admin_limited",
+            "admin_limited": "admin_manager",  # admin_limited is deactivated, mapped to admin_manager
         }
         normalized_role = role_map.get(raw_role, raw_role)
         if current_user.role.lower() == "admin_manager" and normalized_role in ADMIN_ROLES:

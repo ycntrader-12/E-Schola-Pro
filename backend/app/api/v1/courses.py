@@ -13,6 +13,7 @@ from app.schemas.course import (
 )
 
 router = APIRouter()
+ADMIN_ROLES = ["admin", "admin_manager"]
 
 
 @router.get("/", response_model=list[CourseResponse])
@@ -39,8 +40,7 @@ def create_course(
     Create new course.
     """
     # Verify if current_user.role is authorized
-    admin_roles = ["admin", "admin_manager", "admin_limited"]
-    if current_user.role not in ["formateur", "pedagogique"] + admin_roles:
+    if current_user.role not in ["formateur", "pedagogique"] + ADMIN_ROLES:
         raise HTTPException(
             status_code=403, detail="Not enough permissions to upload courses"
         )
@@ -85,8 +85,7 @@ def delete_course(
     if not course:
         raise HTTPException(status_code=404, detail="Course not found")
 
-    admin_roles = ["admin", "admin_manager", "admin_limited"]
-    if current_user.role not in admin_roles and course.instructor_id != current_user.id:
+    if current_user.role not in ADMIN_ROLES and course.instructor_id != current_user.id:
         raise HTTPException(
             status_code=403, detail="Not enough permissions to delete this course"
         )
@@ -110,8 +109,7 @@ def add_course_video(
     if not course:
         raise HTTPException(status_code=404, detail="Course not found")
 
-    admin_roles = ["admin", "admin_manager", "admin_limited"]
-    if current_user.role not in admin_roles and course.instructor_id != current_user.id:
+    if current_user.role not in ADMIN_ROLES and course.instructor_id != current_user.id:
         raise HTTPException(
             status_code=403,
             detail="Not enough permissions to add videos to this course",
@@ -144,8 +142,7 @@ def delete_course_video(
     if not course:
         raise HTTPException(status_code=404, detail="Course not found")
 
-    admin_roles = ["admin", "admin_manager", "admin_limited"]
-    if current_user.role not in admin_roles and course.instructor_id != current_user.id:
+    if current_user.role not in ADMIN_ROLES and course.instructor_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not enough permissions")
 
     video = (

@@ -70,7 +70,7 @@ def get_tasks(
 ):
     seed_default_tasks_if_empty(db, current_user)
 
-    is_manager = current_user.role in ["admin", "admin_manager", "admin_limited", "formateur"]
+    is_manager = current_user.role in ["admin", "admin_manager", "formateur"]
 
     if is_manager:
         tasks = db.query(Task).order_by(Task.created_at.desc()).all()
@@ -85,38 +85,43 @@ def get_tasks(
             .all()
         )
 
-    result = []
+    # Attach submission if any
+    task_responses = []
     for t in tasks:
-        creator = db.query(User).filter(User.id == t.assigned_by_id).first()
-        sub_count = (
+        my_sub = (
+            db.query(TaskSubmission)
+            .filter(
+                TaskSubmission.task_id == t.id,
+                TaskSubmission.user_id == current_user.id,
+            )
+            .first()
+        )
+        total_subs = (
             db.query(TaskSubmission).filter(TaskSubmission.task_id == t.id).count()
         )
-
-        my_sub = None
-        if not is_manager:
-            my_sub_obj = (
-                db.query(TaskSubmission)
-                .filter(
-                    TaskSubmission.task_id == t.id,
-                    TaskSubmission.user_id == current_user.id,
-                )
-                .first()
+        sub_resp = None
+        if my_sub:
+            sub_resp = TaskSubmissionResponse(
+                id=my_sub.id,
+                task_id=my_sub.task_id,
+                user_id=my_sub.user_id,
+                content_link=my_sub.content_link,
+                status=my_sub.status,
+                grade=my_sub.grade,
+                feedback=my_sub.feedback,
+                submitted_at=my_sub.submitted_at,
+                user_email=current_user.email,
+                user_role=current_user.role,
             )
-            if my_sub_obj:
-                my_sub = TaskSubmissionResponse(
-                    id=my_sub_obj.id,
-                    task_id=my_sub_obj.task_id,
-                    user_id=my_sub_obj.user_id,
-                    content_link=my_sub_obj.content_link,
-                    status=my_sub_obj.status,
-                    grade=my_sub_obj.grade,
-                    feedback=my_sub_obj.feedback,
-                    submitted_at=my_sub_obj.submitted_at,
-                    user_email=current_user.email,
-                    user_role=current_user.role,
-                )
 
-        result.append(
+        assigned_by_user = (
+            db.query(User).filter(User.id == t.assigned_by_id).first()
+        )
+        assigned_by_email = (
+            assigned_by_user.email if assigned_by_user else "Administrateur"
+        )
+
+        task_responses.append(
             TaskResponse(
                 id=t.id,
                 title=t.title,
@@ -130,13 +135,13 @@ def get_tasks(
                 priority=t.priority,
                 attachment_url=t.attachment_url,
                 created_at=t.created_at,
-                assigned_by_email=creator.email if creator else "Équipe Pédagogique",
-                my_submission=my_sub,
-                total_submissions=sub_count,
+                assigned_by_email=assigned_by_email,
+                my_submission=sub_resp,
+                total_submissions=total_subs,
             )
         )
 
-    return result
+    return task_responses
 
 
 @router.post("/", response_model=TaskResponse)
@@ -145,7 +150,7 @@ def create_task(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if current_user.role not in ["admin", "admin_manager", "admin_limited", "formateur"]:
+    if current_user.role not in ["admin", "admin_manager", "formateur"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Seuls les formateurs et administrateurs peuvent attribuer des devoirs.",
@@ -192,7 +197,7 @@ def get_task_submissions(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if current_user.role not in ["admin", "admin_manager", "admin_limited", "formateur"]:
+    if current_user.role not in ["admin", "admin_manager", "formateur"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Accès réservé au corps pédagogique.",
@@ -271,7 +276,7 @@ def submit_task_deliverable(
     # Nous récupérons tous les membres du staff (Admin, Formateur, Pédagogique)
     staff_users = (
         db.query(User)
-        .filter(User.role.in_(["admin", "admin_manager", "admin_limited", "formateur", "pedagogique"]))
+        .filter(User.role.in_(["admin", "admin_manager", "formateur", "pedagogique"]))
         .all()
     )
 
@@ -321,7 +326,7 @@ def grade_submission(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if current_user.role not in ["admin", "admin_manager", "admin_limited", "formateur"]:
+    if current_user.role not in ["admin", "admin_manager", "formateur"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Accès réservé au corps pédagogique.",
@@ -361,7 +366,7 @@ def delete_task(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if current_user.role not in ["admin", "admin_manager", "admin_limited", "formateur"]:
+    if current_user.role not in ["admin", "admin_manager", "formateur"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Accès réservé au corps pédagogique.",

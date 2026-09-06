@@ -100,7 +100,7 @@ export default function QuizzesPage() {
   const [inspectQuizResults, setInspectQuizResults] = useState<{ quiz: Quiz; attempts: QuizAttempt[] } | null>(null);
   const [isLoadingResults, setIsLoadingResults] = useState(false);
 
-  const canManage = ['formateur', 'admin', 'admin_manager', 'admin_limited'].includes(currentUser?.role || '');
+  const canManage = ['formateur', 'admin', 'admin_manager'].includes(currentUser?.role || '');
 
   // 1. Fetch User & Quizzes
   const fetchQuizzes = async () => {

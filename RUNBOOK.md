@@ -110,7 +110,7 @@ Si vous modifiez ou ajoutez un modèle SQLAlchemy dans `backend/app/models/` :
 ### D. Accès Direct & Administration (SQLAdmin)
 Le panel d'administration SQLAdmin est accessible sur :
 `http://localhost:8000/admin` (ou `/admin` sur votre domaine Railway).
-Authentification requise avec un compte administrateur (`admin` ou `admin_limited`).
+Authentification requise avec un compte administrateur (`admin` ou `admin_manager`).
 
 ### E. Synchronisation et Migration des Utilisateurs (`sync_users_db.py`)
 Un outil CLI dédié est disponible pour contrôler, inspecter et synchroniser les utilisateurs entre SQLite et PostgreSQL :

@@ -790,7 +790,7 @@ E-Schola Pro/
         <tr><td><code>username</code></td><td>String</td><td>Unique, Indexé, Nullable</td><td>Pseudonyme / identifiant de connexion unique (login)</td></tr>
         <tr><td><code>email</code></td><td>String</td><td>Unique, Indexé, Nullable</td><td>Adresse e-mail (login / contact)</td></tr>
         <tr><td><code>hashed_password</code></td><td>String</td><td>Not Null</td><td>Mot de passe haché (bcrypt)</td></tr>
-        <tr><td><code>role</code></td><td>String</td><td>Default: "étudiant"</td><td>admin | admin_manager | admin_limited | formateur | pedagogique | étudiant | stagiaire | employer</td></tr>
+        <tr><td><code>role</code></td><td>String</td><td>Default: "étudiant"</td><td>admin | admin_manager | formateur | pedagogique | étudiant | stagiaire | employer</td></tr>
         <tr><td><code>nom</code></td><td>String</td><td>Nullable</td><td>Nom de famille de l'utilisateur</td></tr>
         <tr><td><code>prenom</code></td><td>String</td><td>Nullable</td><td>Prénom de l'utilisateur</td></tr>
         <tr><td><code>date_naissance</code></td><td>String</td><td>Nullable</td><td>Date de naissance ISO (calcul dynamique d'âge)</td></tr>
@@ -1238,10 +1238,6 @@ E-Schola Pro/
         <p style="margin-top:8px"><strong>Admin Manager</strong> — Gestion intégrale de la plateforme (cours, quiz, devoirs, présences, calendrier, groupes, messages, gestion des apprenants et formateurs). <em>Strictement interdit d'accès à la BDD/SQLAdmin et interdit d'attribuer ou modifier des rôles administrateurs.</em></p>
       </div>
       <div class="card">
-        <p><span class="role-badge role-admin" style="background: rgba(147,51,234,0.15); color: #9333ea; border-color: rgba(147,51,234,0.3);">ADMIN_LIMITED</span></p>
-        <p style="margin-top:8px"><strong>Admin Délégué</strong> — Co-administrateur disposant des permissions sensibles d'administration et de délégation sécurisée des privilèges.</p>
-      </div>
-      <div class="card">
         <p><span class="role-badge role-formateur">FORMATEUR</span></p>
         <p style="margin-top:8px"><strong>Formateur & Corps Pédagogique</strong> — Création et gestion de cours, quiz, devoirs, émargements, plannings, classes virtuelles et messagerie interne.</p>
       </div>
@@ -1263,8 +1259,8 @@ E-Schola Pro/
     <div class="card" style="border-left: 4px solid var(--primary);">
       <ul style="margin: 0; padding-left: 20px; line-height: 1.8;">
         <li><strong>Rôle ADMIN_MANAGER :</strong> Bénéficie de toutes les fonctionnalités applicatives (cours, quiz, présences, groupes, devoirs, calendrier, messages) mais ne peut <strong>jamais</strong> accéder à SQLAdmin (/admin) ni à l'onglet "Base de Données &amp; Backend".</li>
-        <li><strong>Protection de la hiérarchie des rôles :</strong> Un <code>ADMIN_MANAGER</code> ne peut <strong>pas</strong> créer, promouvoir, rétrograder ou supprimer un compte ayant un rôle administrateur (<code>admin</code>, <code>admin_manager</code>, <code>admin_limited</code>).</li>
-        <li><strong>Gestion des rôles sensibles :</strong> Seuls les rôles <code>ADMIN</code> et <code>ADMIN_LIMITED</code> sont autorisés à attribuer ou manipuler des privilèges administrateurs.</li>
+        <li><strong>Protection de la hiérarchie des rôles :</strong> Un <code>ADMIN_MANAGER</code> ne peut <strong>pas</strong> créer, promouvoir, rétrograder ou supprimer un compte ayant un rôle administrateur (<code>admin</code>, <code>admin_manager</code>).</li>
+        <li><strong>Gestion des rôles sensibles :</strong> Seul le rôle <code>ADMIN</code> (Super-Administrateur) est autorisé à attribuer ou manipuler des privilèges administrateurs. Le rôle obsolète <code>admin_limited</code> a été complètement désactivé et migré vers <code>admin_manager</code>.</li>
       </ul>
     </div>
 
@@ -1273,7 +1269,7 @@ E-Schola Pro/
       <thead>
         <tr>
           <th>Fonctionnalité</th>
-          <th><span class="role-badge role-admin">Admin / Admin Limited</span></th>
+          <th><span class="role-badge role-admin">Super-Admin (admin)</span></th>
           <th><span class="role-badge role-admin" style="background: rgba(59,130,246,0.15); color: #2563eb;">Admin Manager</span></th>
           <th><span class="role-badge role-formateur">Formateur</span></th>
           <th><span class="role-badge role-etudiant">Étudiant / Stagiaire / Employé</span></th>
@@ -1570,7 +1566,7 @@ E-Schola Pro/
       <p><strong>Spécifications et règles métier appliquées :</strong></p>
       <ul>
         <li><strong>Sélecteur de Rôle Unifié :</strong> L'interface d'inscription publique (<code>/register</code>) et le modal d'administration (<code>/profile</code>) partagent le même composant de sélection de rôle via une liste déroulante (<code>select</code>) accompagnée d'un badge explicatif bleu (<code>Profil Standard : Formulaire détaillé...</code>).</li>
-        <li><strong>Règle d'Exception Globale (Admin Exemption) :</strong> Les comptes administrateurs (<code>admin</code>, <code>admin_manager</code>, <code>admin_limited</code>) bénéficient d'un <em>profil allégé minimal</em> ne requérant que l'identifiant (username/email) et le mot de passe, avec basculement d'interface dynamique dans le modal d'administration.</li>
+        <li><strong>Règle d'Exception Globale (Admin Exemption) :</strong> Les comptes administrateurs (<code>admin</code>, <code>admin_manager</code>) bénéficient d'un <em>profil allégé minimal</em> ne requérant que l'identifiant (username/email) et le mot de passe, avec basculement d'interface dynamique dans le modal d'administration.</li>
         <li><strong>Profil Standard Complet (Étudiant, Stagiaire, Employé, Formateur) :</strong>
           <ul>
             <li><code>id</code> : Généré automatiquement par le système (clé primaire, lecture seule).</li>

@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.models.message import Message
 from app.models.user import User
 
-ADMIN_ROLES = ["admin", "admin_manager", "admin_limited"]
+ADMIN_ROLES = ["admin", "admin_manager"]
 
 
 def send_welcome_message(session: Session, new_user: User) -> Message | None:

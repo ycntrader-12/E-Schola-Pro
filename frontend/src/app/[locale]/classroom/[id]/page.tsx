@@ -179,7 +179,7 @@ export default function VirtualClassroomLivePage() {
   const localStreamRef = useRef<MediaStream | null>(null);
   const screenStreamRef = useRef<MediaStream | null>(null);
 
-  const isManager = ['formateur', 'admin', 'admin_manager', 'admin_limited', 'pedagogique'].includes(currentUser?.role || '');
+  const isManager = ['formateur', 'admin', 'admin_manager', 'pedagogique'].includes(currentUser?.role || '');
 
   // Detect mobile screen & browser
   useEffect(() => {
@@ -216,7 +216,7 @@ export default function VirtualClassroomLivePage() {
         setClassroom(roomRes.data);
 
         // Check join approval status for non-host
-        const isHost = userRes.data.id === roomRes.data.instructor_id || ['formateur', 'admin', 'admin_manager', 'admin_limited', 'pedagogique'].includes(userRes.data.role);
+        const isHost = userRes.data.id === roomRes.data.instructor_id || ['formateur', 'admin', 'admin_manager', 'pedagogique'].includes(userRes.data.role);
         
         if (isHost) {
           setJoinStatus('approved');

@@ -17,7 +17,7 @@ from app.schemas.message import MessageCreate, MessageReport, MessageResponse
 
 router = APIRouter()
 
-ADMIN_ROLES = ["admin", "admin_manager", "admin_limited"]
+ADMIN_ROLES = ["admin", "admin_manager"]
 RESTRICTED_BROADCAST_ROLES = ["employer", "employé", "étudiant", "etudiant", "stagiaire"]
 
 
@@ -632,7 +632,7 @@ def report_message(
     # Find all instructors and administrators to receive direct transmitted report
     staff_users = (
         session.query(User)
-        .filter(User.role.in_(["admin", "admin_manager", "admin_limited", "formateur", "pedagogique"]))
+        .filter(User.role.in_(["admin", "admin_manager", "formateur", "pedagogique"]))
         .all()
     )
 

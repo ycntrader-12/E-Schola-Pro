@@ -16,8 +16,8 @@ from app.schemas.group import (
 router = APIRouter()
 
 
-ADMIN_ROLES = ["admin", "admin_manager", "admin_limited"]
-STAFF_ROLES = ["admin", "admin_manager", "admin_limited", "formateur", "pedagogique"]
+ADMIN_ROLES = ["admin", "admin_manager"]
+STAFF_ROLES = ["admin", "admin_manager", "formateur", "pedagogique"]
 LEARNER_ROLES = ["etudiant", "étudiant", "stagiaire", "employer"]
 
 

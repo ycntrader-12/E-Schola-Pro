@@ -132,7 +132,7 @@ def get_my_dashboard_performance(session: SessionDep, current_user: CurrentUser)
     )
 
 
-ADMIN_ROLES = ["admin", "admin_manager", "admin_limited"]
+ADMIN_ROLES = ["admin", "admin_manager"]
 
 
 @router.get("/user-stats/{user_id}", response_model=DashboardPerformanceOut)

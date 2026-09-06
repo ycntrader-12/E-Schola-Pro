@@ -122,7 +122,6 @@ const ALL_ROLES = [
   'employer',
   'pedagogique',
   'admin_manager',
-  'admin_limited',
   'admin'
 ];
 
@@ -134,8 +133,8 @@ const NON_ADMIN_ROLES = [
   'pedagogique'
 ];
 
-const ADMIN_ROLES = ['admin', 'admin_manager', 'admin_limited'];
-const SUPER_ADMIN_ROLES = ['admin', 'admin_limited'];
+const ADMIN_ROLES = ['admin', 'admin_manager'];
+const SUPER_ADMIN_ROLES = ['admin'];
 
 export default function ProfilePage() {
   const router = useRouter();

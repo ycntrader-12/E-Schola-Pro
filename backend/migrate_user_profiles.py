@@ -44,6 +44,12 @@ def run_migration():
                 except Exception as e:
                     print(f"Backfill note: {e}")
 
+                # Migrate legacy 'admin_limited' role to 'admin_manager'
+                try:
+                    conn.execute(text("UPDATE users SET role = 'admin_manager' WHERE role = 'admin_limited'"))
+                except Exception:
+                    pass
+
             print("User profiles schema migration completed successfully.")
     except Exception as e:
         print(f"User profiles migration check note: {e}")

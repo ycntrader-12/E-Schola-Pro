@@ -163,7 +163,7 @@ export default function ClassroomHubPage() {
     }
   };
 
-  const canCreateClass = ['admin', 'admin_manager', 'admin_limited', 'formateur', 'pedagogique'].includes(currentUserRole);
+  const canCreateClass = ['admin', 'admin_manager', 'formateur', 'pedagogique'].includes(currentUserRole);
 
   return (
     <div className="min-h-screen px-4 py-24 max-w-6xl mx-auto space-y-12">

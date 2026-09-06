@@ -13,6 +13,7 @@ from app.schemas.event import (
 )
 
 router = APIRouter()
+ADMIN_ROLES = ["admin", "admin_manager"]
 
 
 @router.get("/", response_model=list[EventResponse])
@@ -46,8 +47,7 @@ def create_event(
     Create a new calendar event / planning.
     Strictly restricted to Formateurs and Admins.
     """
-    admin_roles = ["admin", "admin_manager", "admin_limited"]
-    if current_user.role not in ["formateur"] + admin_roles:
+    if current_user.role not in ["formateur"] + ADMIN_ROLES:
         raise HTTPException(
             status_code=403,
             detail="Seuls les formateurs et l'administrateur ont l'autorisation d'ajouter un planning ou un cours au calendrier.",
@@ -78,8 +78,7 @@ def update_event(
     Update an existing calendar event / planning.
     Strictly restricted to Formateurs and Admins.
     """
-    admin_roles = ["admin", "admin_manager", "admin_limited"]
-    if current_user.role not in ["formateur"] + admin_roles:
+    if current_user.role not in ["formateur"] + ADMIN_ROLES:
         raise HTTPException(
             status_code=403,
             detail="Seuls les formateurs et l'administrateur ont l'autorisation de modifier un cours ou un planning.",
@@ -115,8 +114,7 @@ def delete_event(
     Delete a calendar event / planning.
     Strictly restricted to Formateurs and Admins.
     """
-    admin_roles = ["admin", "admin_manager", "admin_limited"]
-    if current_user.role not in ["formateur"] + admin_roles:
+    if current_user.role not in ["formateur"] + ADMIN_ROLES:
         raise HTTPException(
             status_code=403,
             detail="Seuls les formateurs et l'administrateur ont l'autorisation de supprimer un cours ou un planning.",
@@ -182,8 +180,7 @@ def get_deliverables(
         EventDeliverable.event_id == event_id
     )
 
-    admin_roles = ["admin", "admin_manager", "admin_limited"]
-    if current_user.role not in ["formateur"] + admin_roles:
+    if current_user.role not in ["formateur"] + ADMIN_ROLES:
         query = query.filter(EventDeliverable.user_id == current_user.id)
 
     # Eager load user to satisfy the schema

@@ -12,7 +12,7 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     role = Column(
         String, default="étudiant"
-    )  # "admin", "admin_manager", "admin_limited", "formateur", "pedagogique", "employer", "stagiaire", "étudiant"
+    )  # "admin", "admin_manager", "formateur", "pedagogique", "employer", "stagiaire", "étudiant"
     
     # Profil standard étendu
     nom = Column(String, nullable=True)

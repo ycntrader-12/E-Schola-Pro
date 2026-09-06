@@ -77,7 +77,7 @@ export default function GroupPage() {
     }
   };
 
-  const canManage = ['admin', 'admin_manager', 'admin_limited', 'formateur', 'pedagogique'].includes(
+  const canManage = ['admin', 'admin_manager', 'formateur', 'pedagogique'].includes(
     (currentUser?.role || '').trim().toLowerCase()
   );
 
