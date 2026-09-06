@@ -2,8 +2,7 @@
 
 import { useEffect, useState, useRef, useMemo } from 'react';
 import Image from 'next/image';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { Link, useRouter } from '@/i18n/routing';
 import { 
   User as UserIcon, 
   Mail, 

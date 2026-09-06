@@ -1,12 +1,11 @@
 'use client';
 
 import Image from 'next/image';
-import { Link } from '@/i18n/routing';
+import { Link, useRouter } from '@/i18n/routing';
 import { Bell, MessageSquare, Mail, Plus, X } from 'lucide-react';
 import LanguageSwitcher from '../LanguageSwitcher';
 import { useEffect, useState } from 'react';
 import { apiClient } from '@/lib/api';
-import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 
 interface RightPanelProps {

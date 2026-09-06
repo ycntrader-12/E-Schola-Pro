@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { usePathname } from 'next/navigation';
-import { Link } from '@/i18n/routing';
+import { usePathname, Link } from '@/i18n/routing';
 import { LayoutDashboard, Inbox, BookOpen, CheckSquare, Settings, Video, Award, UserCheck, Calendar, X, GraduationCap, Users } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { apiClient } from '@/lib/api';

@@ -1,8 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { Link, useRouter } from '@/i18n/routing';
 import { apiClient } from '@/lib/api';
 import { Cpu, Eye, EyeOff } from 'lucide-react';
 import { useTranslations } from 'next-intl';
@@ -30,7 +29,8 @@ export default function LoginPage() {
       });
       
       localStorage.setItem('access_token', response.data.access_token);
-      document.cookie = `access_token=${response.data.access_token}; path=/; max-age=86400; SameSite=Lax`;
+      const isHttps = typeof window !== 'undefined' && window.location.protocol === 'https:';
+      document.cookie = `access_token=${response.data.access_token}; path=/; max-age=86400; SameSite=Lax${isHttps ? '; Secure' : ''}`;
       try {
         const parts = response.data.access_token.split('.');
         const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');

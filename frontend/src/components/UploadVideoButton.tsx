@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter } from '@/i18n/routing';
 import { Plus, Video, Loader2, Upload } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 

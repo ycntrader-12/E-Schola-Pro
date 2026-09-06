@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useState, useMemo, useRef } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useParams } from 'next/navigation';
+import { useRouter } from '@/i18n/routing';
 import { useTranslations } from 'next-intl';
 import {
   Inbox as InboxIcon,
@@ -453,7 +454,7 @@ export default function InboxMessagesPage() {
             }
           }}
           onOpenCompose={() => openComposer()}
-          onNavigateCalendar={() => router.push(`/${locale}/calendar`)}
+          onNavigateCalendar={() => router.push('/calendar')}
           onNavigateClassroom={() => {
             setActiveFolder('classroom');
             setSelectedMessage(null);
@@ -719,7 +720,7 @@ export default function InboxMessagesPage() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => router.push(`/${locale}/classroom`)}
+                    onClick={() => router.push('/classroom')}
                     className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl shadow-md shadow-blue-500/25 flex items-center gap-2 shrink-0 transition-colors cursor-pointer"
                   >
                     <span>Ouvrir Classroom</span>

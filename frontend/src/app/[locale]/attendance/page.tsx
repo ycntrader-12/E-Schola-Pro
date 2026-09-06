@@ -23,7 +23,7 @@ import {
   GraduationCap,
   Download
 } from 'lucide-react';
-import Link from 'next/link';
+import { Link } from '@/i18n/routing';
 import { useTranslations, useLocale } from 'next-intl';
 import { apiClient } from '@/lib/api';
 

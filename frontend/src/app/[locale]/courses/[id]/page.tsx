@@ -2,9 +2,9 @@
 
 import { useEffect, useState, useRef } from 'react';
 import Image from "next/image";
-import Link from "next/link";
+import { Link, useRouter } from '@/i18n/routing';
 import { BookOpen, Users, ArrowLeft, Star, Clock, CheckCircle, Loader2, PlayCircle, Plus, Trash2, Upload, Video, Sparkles } from "lucide-react";
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { apiClient } from '@/lib/api';
 import DownloadCourseButton from "@/components/DownloadCourseButton";
 import YoutubePlayer from "@/components/video/YoutubePlayer";

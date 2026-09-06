@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { Link, useRouter } from '@/i18n/routing';
 import { apiClient } from '@/lib/api';
 import { 
   UserPlus, 
@@ -173,7 +172,8 @@ export default function RegisterPage() {
       });
       
       localStorage.setItem('access_token', loginResponse.data.access_token);
-      document.cookie = `access_token=${loginResponse.data.access_token}; path=/; max-age=86400; SameSite=Lax`;
+      const isHttps = typeof window !== 'undefined' && window.location.protocol === 'https:';
+      document.cookie = `access_token=${loginResponse.data.access_token}; path=/; max-age=86400; SameSite=Lax${isHttps ? '; Secure' : ''}`;
       
       try {
         const parts = loginResponse.data.access_token.split('.');

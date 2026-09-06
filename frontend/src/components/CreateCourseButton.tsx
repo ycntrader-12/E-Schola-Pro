@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
+import { Link } from '@/i18n/routing';
 import { Plus } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 
@@ -15,7 +15,7 @@ export default function CreateCourseButton() {
         try {
           const res = await apiClient.get('/users/me');
           if (res.status === 200) {
-            if (['formateur', 'admin', 'pedagogique'].includes(res.data.role)) {
+            if (['formateur', 'admin', 'admin_manager', 'pedagogique'].includes(res.data.role)) {
               setCanCreate(true);
             }
           }

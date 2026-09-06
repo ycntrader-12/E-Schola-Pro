@@ -1649,6 +1649,18 @@ E-Schola Pro/
       </ul>
     </div>
 
+    <h3>Standard de Navigation i18n &amp; Élimination des Boucles de Redirection (RSC Prefetching &amp; Railway)</h3>
+    <div class="card" style="border-left: 4px solid var(--primary);">
+      <p>Afin de prévenir tout risque de boucle de redirection infinie (ex. requêtes 307 en chaîne sur <code>courses</code> et <code>profile</code> lors du préchargement Next.js RSC) et de garantir des performances optimales en production sur Railway :</p>
+      <ul>
+        <li><strong>Règle d'Import Obligatoire :</strong> Tous les composants sans exception doivent importer <code>Link</code>, <code>useRouter</code> et <code>usePathname</code> depuis <code>@/i18n/routing</code> (et <strong>jamais</strong> directement depuis <code>next/link</code> ou <code>next/navigation</code>).</li>
+        <li><strong>Génération Automatique des Préfixes de Langue :</strong> Les balises <code>&lt;Link&gt;</code> génèrent ainsi automatiquement les chemins localisés (ex. <code>/fr/courses</code>, <code>/en/profile</code>), éliminant les allers-retours 307 vers le middleware lors du préchargement par <em>Intersection Observer</em>.</li>
+        <li><strong>Middleware Anti-Loop Résilient :</strong> Le middleware normalise les chemins sans préfixe et intercepte les requêtes RSC (<code>_rsc</code>) déjà localisées pour renvoyer directement <code>NextResponse.next()</code> sans redirection intermédiaire.</li>
+        <li><strong>Stabilité Cloud Railway &amp; Cookies Sécurisés :</strong> Les cookies d'authentification (<code>access_token</code>) intègrent dynamiquement le flag <code>Secure</code> sous protocole HTTPS et <code>SameSite=Lax</code>, garantissant une transmission immédiate aux routes protégées et éliminant la surconsommation de bande passante et de mémoire CPU.</li>
+        <li><strong>Robustesse des Composants Serveur :</strong> Les requêtes API côté serveur (ex. <code>/courses/</code>) intègrent un <code>AbortController</code> avec timeout protecteur de 5 secondes et une normalisation d'URL avec barre oblique finale pour éviter les redirections FastAPI.</li>
+      </ul>
+    </div>
+
     <h3>Design System</h3>
     <div class="card">
       <p><strong>Thème :</strong> Interface épurée et moderne <strong>Mode Clair Exclusif</strong> (Fond blanc pur <code>#FFFFFF</code>, Panneaux &amp; Cartes blanc pur <code>#FFFFFF</code>, Arrière-plan héro haute définition et Colonne Sidebar Bleu Marine / Ciel <code>#16325C</code> avec capsule active <code>#2563EB</code>)</p>

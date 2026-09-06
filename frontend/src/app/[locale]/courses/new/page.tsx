@@ -1,9 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Link, useRouter } from '@/i18n/routing';
 import { Upload, Loader2, ArrowLeft } from 'lucide-react';
-import Link from 'next/link';
 
 export default function CreateCoursePage() {
   const router = useRouter();

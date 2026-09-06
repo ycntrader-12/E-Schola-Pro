@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import Link from "next/link";
+import { Link } from '@/i18n/routing';
 import Image from "next/image";
 import { BookOpen, Star, Users, Search } from "lucide-react";
 import CreateCourseButton from "@/components/CreateCourseButton";
