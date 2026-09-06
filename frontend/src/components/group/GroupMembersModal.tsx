@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Trash2, Plus, Loader2, Users } from 'lucide-react';
+import { X, Trash2, Plus, Loader2, Users, User, ShieldAlert } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 
 interface GroupMembersModalProps {
@@ -73,69 +73,111 @@ export default function GroupMembersModal({ groupId, groupName, onClose }: Group
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="glass-card max-w-lg w-full p-6 rounded-3xl border border-primary/30 space-y-6 animate-fade-in-up max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+      <div className="bg-white max-w-lg w-full p-6 sm:p-7 rounded-3xl border border-slate-200 shadow-2xl space-y-5 animate-fade-in-up max-h-[90vh] flex flex-col text-slate-900">
         
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-border shrink-0">
-          <div className="flex items-center gap-2 text-primary font-bold text-base">
-            <Users size={20} />
-            <h3>Membres de {groupName}</h3>
+        <div className="flex items-center justify-between pb-4 border-b border-slate-100 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200/60 text-[#1877f2] flex items-center justify-center shrink-0">
+              <Users size={20} />
+            </div>
+            <div>
+              <h3 className="text-lg font-extrabold text-slate-900 truncate max-w-[280px] sm:max-w-xs" title={groupName}>
+                {groupName}
+              </h3>
+              <p className="text-xs text-slate-500 font-medium">Gestion et affectation des membres</p>
+            </div>
           </div>
-          <button onClick={onClose} className="text-text-secondary hover:text-text-primary p-2">
+          <button 
+            onClick={onClose} 
+            className="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+            aria-label="Fermer"
+          >
             <X size={20} />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-6">
+        <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 space-y-6">
           
           {/* Add Member Form */}
-          <form onSubmit={handleAddMember} className="flex gap-2">
-            <select 
-              value={selectedUserId}
-              onChange={(e) => setSelectedUserId(Number(e.target.value))}
-              className="flex-1 bg-surface border border-border rounded-xl px-4 py-2 text-sm text-text-primary focus:outline-none focus:border-primary"
-              required
-            >
-              <option value="" disabled>-- Sélectionner un étudiant --</option>
-              {availableUsers.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.email} ({u.role})
-                </option>
-              ))}
-            </select>
-            <button 
-              type="submit" 
-              disabled={isAdding || availableUsers.length === 0}
-              className="btn-primary px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shrink-0"
-            >
-              {isAdding ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
-              Ajouter
-            </button>
-          </form>
+          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-2">
+            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+              Ajouter un apprenant au groupe
+            </label>
+            <form onSubmit={handleAddMember} className="flex flex-col sm:flex-row gap-2">
+              <select 
+                value={selectedUserId}
+                onChange={(e) => setSelectedUserId(Number(e.target.value))}
+                className="flex-1 bg-white border border-slate-300 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 rounded-xl px-3.5 py-2 text-sm text-slate-900 font-medium focus:outline-none transition-all"
+                required
+              >
+                <option value="" disabled>-- Sélectionner un apprenant disponible --</option>
+                {availableUsers.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.email} ({u.role})
+                  </option>
+                ))}
+              </select>
+              <button 
+                type="submit" 
+                disabled={isAdding || availableUsers.length === 0}
+                className="btn-primary px-4 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shrink-0 cursor-pointer disabled:opacity-50"
+              >
+                {isAdding ? <Loader2 size={15} className="animate-spin" /> : <Plus size={15} />}
+                <span>Ajouter</span>
+              </button>
+            </form>
+            {availableUsers.length === 0 && !isLoading && (
+              <p className="text-[11px] text-slate-500 italic">Tous les apprenants enregistrés sont déjà membres de ce groupe.</p>
+            )}
+          </div>
 
           {/* Members List */}
           <div className="space-y-3">
-            <h4 className="text-sm font-bold text-text-secondary uppercase">
-              Membres actuels ({members.length})
-            </h4>
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                Membres actuels ({members.length})
+              </h4>
+              <span className="text-xs font-semibold text-slate-500">
+                {members.length} apprenant{members.length > 1 ? 's' : ''}
+              </span>
+            </div>
             
             {isLoading ? (
-              <div className="flex justify-center p-4"><Loader2 className="animate-spin text-primary" /></div>
+              <div className="flex justify-center py-8">
+                <Loader2 className="animate-spin text-[#1877f2]" size={28} />
+              </div>
             ) : members.length === 0 ? (
-              <p className="text-xs text-text-secondary italic">Aucun membre dans ce groupe.</p>
+              <div className="text-center py-8 px-4 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                <p className="text-sm font-semibold text-slate-600">Aucun apprenant dans ce groupe pour le moment.</p>
+                <p className="text-xs text-slate-400 mt-1">Utilisez le sélecteur ci-dessus pour affecter des étudiants.</p>
+              </div>
             ) : (
               <div className="grid gap-2">
                 {members.map(member => (
-                  <div key={member.id} className="bg-background p-3 rounded-xl border border-border flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-sm font-bold text-text-primary truncate">{member.user_email}</p>
-                      <p className="text-[10px] text-text-secondary uppercase mt-0.5">{member.user_role}</p>
+                  <div 
+                    key={member.id} 
+                    className="bg-slate-50 hover:bg-slate-100/70 p-3 rounded-xl border border-slate-200/80 flex items-center justify-between gap-3 transition-colors"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded-lg bg-blue-100/70 border border-blue-200/70 text-[#1877f2] flex items-center justify-center text-xs font-black shrink-0">
+                        {String(member.user_email || 'U').charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-slate-900 truncate" title={member.user_email}>
+                          {member.user_email}
+                        </p>
+                        <span className="inline-block text-[10px] font-bold text-blue-700 uppercase bg-blue-50 px-2 py-0.5 rounded border border-blue-200/50 mt-0.5">
+                          {member.user_role}
+                        </span>
+                      </div>
                     </div>
                     <button 
                       onClick={() => handleRemoveMember(member.user_id)}
-                      className="text-text-secondary hover:text-rose-400 p-2 rounded-lg hover:bg-rose-500/10 transition-colors shrink-0"
-                      title="Retirer du groupe"
+                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors shrink-0 cursor-pointer"
+                      title="Retirer cet apprenant du groupe"
+                      aria-label="Retirer"
                     >
                       <Trash2 size={16} />
                     </button>

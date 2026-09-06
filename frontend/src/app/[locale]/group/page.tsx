@@ -1,8 +1,20 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from '@/i18n/routing';
-import { Users, Plus, Pencil, Trash2, Loader2, ShieldCheck, GraduationCap } from 'lucide-react';
+import { 
+  Users, 
+  Plus, 
+  Pencil, 
+  Trash2, 
+  Loader2, 
+  ShieldCheck, 
+  GraduationCap, 
+  Search, 
+  X, 
+  Layers, 
+  UserCheck 
+} from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import GroupMembersModal from '@/components/group/GroupMembersModal';
 
@@ -19,6 +31,7 @@ export default function GroupPage() {
   const [currentUser, setCurrentUser] = useState<{ id: number; email: string; role: string } | null>(null);
   const [groups, setGroups] = useState<Group[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
   
   // Modals
   const [showFormModal, setShowFormModal] = useState(false);
@@ -133,10 +146,26 @@ export default function GroupPage() {
     }
   };
 
+  // Filtered groups by search query
+  const filteredGroups = useMemo(() => {
+    if (!searchQuery.trim()) return groups;
+    const query = searchQuery.toLowerCase().trim();
+    return groups.filter(g => 
+      g.name.toLowerCase().includes(query) ||
+      (g.level && g.level.toLowerCase().includes(query)) ||
+      (g.description && g.description.toLowerCase().includes(query))
+    );
+  }, [groups, searchQuery]);
+
+  // Aggregate stats
+  const totalMembers = useMemo(() => {
+    return groups.reduce((acc, g) => acc + (g.members_count || 0), 0);
+  }, [groups]);
+
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 size={32} className="animate-spin text-primary" />
+      <div className="min-h-screen flex items-center justify-center pt-20">
+        <Loader2 size={36} className="animate-spin text-[#1877f2]" />
       </div>
     );
   }
@@ -146,15 +175,15 @@ export default function GroupPage() {
 
   if (!isLoading && isLearner) {
     return (
-      <div className="min-h-[70vh] flex flex-col items-center justify-center text-center px-4 space-y-4 animate-fade-in">
-        <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-500 flex items-center justify-center shadow-lg">
+      <div className="min-h-screen pt-28 pb-16 flex flex-col items-center justify-center text-center px-4 space-y-4 animate-fade-in">
+        <div className="w-16 h-16 rounded-2xl bg-red-50 border border-red-200 text-red-600 flex items-center justify-center shadow-xs">
           <ShieldCheck size={32} />
         </div>
-        <h2 className="text-2xl font-bold text-text-primary">Accès Non Autorisé</h2>
-        <p className="text-text-secondary text-sm max-w-md">
-          Ce module est strictement réservé aux formateurs et à l&apos;administration. Les rôles apprenants (étudiants, stagiaires, employés) ne sont pas autorisés à accéder aux groupes ni à les afficher.
+        <h2 className="text-2xl font-bold text-slate-900">Accès Réservé</h2>
+        <p className="text-slate-600 text-sm max-w-md leading-relaxed">
+          Ce module est réservé aux formateurs et à l&apos;administration pédagogique. Vos affectations de groupes sont gérées automatiquement par votre établissement.
         </p>
-        <Link href="/dashboard" className="btn-primary px-6 py-2.5 rounded-xl text-sm font-semibold">
+        <Link href="/dashboard" className="btn-primary px-6 py-2.5 rounded-xl text-sm font-semibold shadow-sm hover:shadow-md transition-all">
           Retour au tableau de bord
         </Link>
       </div>
@@ -162,84 +191,181 @@ export default function GroupPage() {
   }
 
   return (
-    <div className="px-4 sm:px-8 py-8 lg:py-12 max-w-7xl mx-auto space-y-8 animate-fade-in-up">
+    <div className="min-h-screen px-4 sm:px-8 pt-24 sm:pt-28 pb-16 max-w-7xl mx-auto space-y-8 animate-fade-in-up">
       
-      {/* HEADER */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-text-primary flex items-center gap-3">
-            <Users size={36} className="text-primary" />
-            Groupes & Classes
-          </h1>
-          <p className="text-sm text-text-secondary mt-2">
-            Gérez les classes, les niveaux et affectez les étudiants à leurs groupes respectifs.
-          </p>
+      {/* 1. HEADER CARD (Haute lisibilité avec marge sous Navbar fixe) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 sm:p-8 rounded-3xl border border-slate-200/90 shadow-sm">
+        <div className="flex items-start sm:items-center gap-4">
+          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-blue-50 border border-blue-200/60 text-[#1877f2] flex items-center justify-center shrink-0 shadow-xs">
+            <Users size={28} className="sm:size-[32px]" />
+          </div>
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+              Groupes & Classes
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-600 font-medium mt-1">
+              Gérez les classes, organisez les promotions et affectez les étudiants à leurs groupes respectifs.
+            </p>
+          </div>
         </div>
 
         {canManage && (
           <button
             onClick={handleOpenAdd}
-            className="btn-primary px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 shadow-lg shadow-primary/25"
+            className="btn-primary px-5 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 shadow-sm hover:shadow-md shadow-blue-500/20 active:scale-95 transition-all cursor-pointer shrink-0"
           >
-            <Plus size={18} /> Créer un groupe
+            <Plus size={18} />
+            <span>Créer un groupe</span>
           </button>
         )}
       </div>
 
-      {/* GROUPS GRID */}
+      {/* 2. STATS & RECHERCHE (Barre de contrôle lisible) */}
+      {groups.length > 0 && (
+        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+          {/* Stats Chips */}
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+            <div className="flex items-center gap-2 px-3.5 py-2 bg-white rounded-xl border border-slate-200/80 text-xs font-bold text-slate-700 shadow-2xs">
+              <Layers size={16} className="text-[#1877f2]" />
+              <span>{groups.length} Classe{groups.length > 1 ? 's' : ''} / Groupe{groups.length > 1 ? 's' : ''}</span>
+            </div>
+            <div className="flex items-center gap-2 px-3.5 py-2 bg-white rounded-xl border border-slate-200/80 text-xs font-bold text-slate-700 shadow-2xs">
+              <UserCheck size={16} className="text-emerald-600" />
+              <span>{totalMembers} Apprenant{totalMembers > 1 ? 's' : ''} affecté{totalMembers > 1 ? 's' : ''}</span>
+            </div>
+          </div>
+
+          {/* Search Box */}
+          <div className="relative flex-1 max-w-md">
+            <Search size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Rechercher par nom, niveau ou mot-clé..."
+              className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-white border border-slate-200 hover:border-slate-300 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-sm text-slate-900 font-medium placeholder:text-slate-400 shadow-2xs outline-none transition-all"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                title="Effacer la recherche"
+              >
+                <X size={15} />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 3. CONTENU PRINCIPAL (EMPTY STATE OU GRILLE) */}
       {groups.length === 0 ? (
-        <div className="glass-card p-12 text-center rounded-3xl border border-border">
-          <GraduationCap size={48} className="text-border mx-auto mb-4" />
-          <p className="text-lg font-bold text-text-secondary">Aucun groupe créé pour le moment</p>
-          {canManage && <p className="text-sm text-text-secondary mt-1">Commencez par créer une classe ou un niveau.</p>}
+        /* Empty State Global (Aucun groupe dans la base) */
+        <div className="bg-white p-10 sm:p-14 text-center rounded-3xl border border-slate-200/90 shadow-sm flex flex-col items-center max-w-xl mx-auto space-y-3">
+          <div className="w-16 h-16 rounded-2xl bg-blue-50 border border-blue-200/60 flex items-center justify-center text-[#1877f2] shadow-xs mb-2">
+            <GraduationCap size={34} />
+          </div>
+          <h2 className="text-xl font-extrabold text-slate-900">
+            Aucun groupe créé pour le moment
+          </h2>
+          <p className="text-sm text-slate-600 leading-relaxed max-w-md">
+            Commencez par créer une classe ou une promotion pour regrouper vos apprenants et simplifier le suivi pédagogique.
+          </p>
+          {canManage && (
+            <div className="pt-3">
+              <button
+                onClick={handleOpenAdd}
+                className="btn-primary px-6 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 shadow-sm hover:shadow-md shadow-blue-500/20 active:scale-95 transition-all cursor-pointer"
+              >
+                <Plus size={18} />
+                <span>Créer un premier groupe</span>
+              </button>
+            </div>
+          )}
+        </div>
+      ) : filteredGroups.length === 0 ? (
+        /* Empty State Recherche (Aucun groupe correspondant) */
+        <div className="bg-white p-10 text-center rounded-3xl border border-slate-200 shadow-xs max-w-md mx-auto space-y-3">
+          <p className="text-base font-bold text-slate-900">
+            Aucun groupe trouvé pour « {searchQuery} »
+          </p>
+          <p className="text-xs text-slate-500">
+            Vérifiez l&apos;orthographe ou tentez une autre recherche.
+          </p>
+          <button
+            onClick={() => setSearchQuery('')}
+            className="text-xs font-bold text-[#1877f2] hover:underline pt-2 cursor-pointer"
+          >
+            Réinitialiser la recherche
+          </button>
         </div>
       ) : (
+        /* Grille des Groupes */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {groups.map(group => (
-            <div key={group.id} className="glass-card rounded-2xl border border-border hover:border-primary/40 transition-all flex flex-col overflow-hidden group">
+          {filteredGroups.map(group => (
+            <div 
+              key={group.id} 
+              className="bg-white rounded-2xl border border-slate-200/90 hover:border-blue-300 hover:shadow-md transition-all duration-200 flex flex-col justify-between overflow-hidden group shadow-xs"
+            >
               
-              <div className="p-5 flex-1 space-y-4">
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <h3 className="text-xl font-bold text-text-primary group-hover:text-primary transition-colors">
+              {/* Corps de la carte */}
+              <div className="p-6 flex-1 space-y-3.5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-lg font-bold text-slate-900 group-hover:text-[#1877f2] transition-colors truncate" title={group.name}>
                       {group.name}
                     </h3>
-                    {group.level && (
-                      <span className="inline-block px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-primary/10 text-primary uppercase tracking-wider mt-2 border border-primary/20">
+                    {group.level ? (
+                      <span className="inline-block mt-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-blue-50 text-[#1877f2] border border-blue-200/70 tracking-wide uppercase">
                         {group.level}
+                      </span>
+                    ) : (
+                      <span className="inline-block mt-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-500">
+                        Niveau non spécifié
                       </span>
                     )}
                   </div>
                   
                   {canManage && (
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => handleOpenEdit(group)} className="p-1.5 text-text-secondary hover:text-primary rounded-lg hover:bg-primary/10">
-                        <Pencil size={14} />
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button 
+                        onClick={() => handleOpenEdit(group)} 
+                        className="p-1.5 text-slate-400 hover:text-[#1877f2] hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                        title="Modifier les détails du groupe"
+                        aria-label="Modifier"
+                      >
+                        <Pencil size={15} />
                       </button>
-                      <button onClick={() => handleDelete(group.id)} className="p-1.5 text-text-secondary hover:text-rose-400 rounded-lg hover:bg-rose-500/10">
-                        <Trash2 size={14} />
+                      <button 
+                        onClick={() => handleDelete(group.id)} 
+                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                        title="Supprimer ce groupe"
+                        aria-label="Supprimer"
+                      >
+                        <Trash2 size={15} />
                       </button>
                     </div>
                   )}
                 </div>
 
-                <p className="text-sm text-text-secondary line-clamp-3">
+                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed line-clamp-3 min-h-[2.75rem]">
                   {group.description || "Aucune description fournie pour ce groupe."}
                 </p>
               </div>
 
-              <div className="bg-surface/50 p-4 border-t border-border flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs font-bold text-text-secondary">
-                  <Users size={16} />
-                  {group.members_count} membre{group.members_count > 1 ? 's' : ''}
+              {/* Pied de carte avec effectif et bouton d'affectation */}
+              <div className="bg-slate-50/80 px-5 py-3.5 border-t border-slate-100 flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-700 bg-white px-3 py-1.5 rounded-xl border border-slate-200/80 shadow-2xs">
+                  <Users size={15} className="text-[#1877f2]" />
+                  <span>{group.members_count} membre{group.members_count > 1 ? 's' : ''}</span>
                 </div>
                 
                 {canManage && (
                   <button
                     onClick={() => setManagingGroupId({ id: group.id, name: group.name })}
-                    className="text-xs font-bold text-primary hover:text-white transition-colors flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-primary/30 hover:bg-primary hover:border-primary"
+                    className="btn-primary px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-2xs active:scale-95 transition-all cursor-pointer"
                   >
-                    Gérer
+                    <span>Gérer les membres</span>
                   </button>
                 )}
               </div>
@@ -249,63 +375,87 @@ export default function GroupPage() {
         </div>
       )}
 
-      {/* FORM MODAL (Add/Edit) */}
+      {/* 4. MODAL AJOUTER / MODIFIER UN GROUPE */}
       {showFormModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="glass-card max-w-md w-full p-6 rounded-3xl border border-primary/30 space-y-6 animate-fade-in-up">
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white max-w-md w-full p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-2xl space-y-6 animate-fade-in-up text-slate-900">
             
-            <h3 className="text-xl font-bold text-text-primary flex items-center gap-2">
-              {editingGroupId ? "Modifier le groupe" : "Créer un groupe"}
-            </h3>
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h3 className="text-xl font-extrabold text-slate-900 flex items-center gap-2.5">
+                <Users size={22} className="text-[#1877f2]" />
+                <span>{editingGroupId ? "Modifier le groupe" : "Créer un nouveau groupe"}</span>
+              </h3>
+              <button 
+                onClick={() => setShowFormModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                aria-label="Fermer"
+              >
+                <X size={20} />
+              </button>
+            </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-text-secondary uppercase mb-2">Nom du groupe *</label>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Nom du groupe / classe <span className="text-rose-500">*</span>
+                </label>
                 <input
                   type="text"
                   required
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
-                  placeholder="Ex: Groupe A, Classe 1, Dev Web..."
-                  className="w-full px-4 py-2.5 rounded-xl bg-surface border border-border text-sm text-text-primary focus:border-primary outline-none"
+                  placeholder="Ex : Master 1 - Informatique, Groupe B, Promotion 2026..."
+                  className="w-full px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-white focus:bg-white border border-slate-300 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-sm text-slate-900 font-medium placeholder:text-slate-400 transition-all outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-text-secondary uppercase mb-2">Niveau (Optionnel)</label>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Niveau académique (Optionnel)
+                </label>
                 <input
                   type="text"
                   value={newLevel}
                   onChange={(e) => setNewLevel(e.target.value)}
-                  placeholder="Ex: Master 1, L3, Débutant..."
-                  className="w-full px-4 py-2.5 rounded-xl bg-surface border border-border text-sm text-text-primary focus:border-primary outline-none"
+                  placeholder="Ex : M1, L3, Débutant, Avancé, Année 2..."
+                  className="w-full px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-white focus:bg-white border border-slate-300 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-sm text-slate-900 font-medium placeholder:text-slate-400 transition-all outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-text-secondary uppercase mb-2">Description (Optionnel)</label>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Description détaillée (Optionnel)
+                </label>
                 <textarea
                   rows={3}
                   value={newDescription}
                   onChange={(e) => setNewDescription(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl bg-surface border border-border text-sm text-text-primary focus:border-primary outline-none resize-none"
+                  placeholder="Objectifs de la classe, spécialité ou détails utiles pour l'affectation..."
+                  className="w-full px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-white focus:bg-white border border-slate-300 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-sm text-slate-900 font-medium placeholder:text-slate-400 transition-all outline-none resize-none"
                 />
               </div>
 
-              <div className="flex items-center gap-3 pt-2">
+              <div className="flex items-center gap-3 pt-3">
                 <button
                   type="button"
                   onClick={() => setShowFormModal(false)}
-                  className="flex-1 py-2.5 bg-surface hover:bg-surface-hover rounded-xl font-bold border border-border text-text-secondary"
+                  className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 rounded-xl font-bold text-slate-700 text-sm transition-colors cursor-pointer"
                 >
                   Annuler
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-1 btn-primary py-2.5 rounded-xl font-bold flex items-center justify-center gap-2"
+                  className="flex-1 btn-primary py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 cursor-pointer"
                 >
-                  {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : "Enregistrer"}
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      <span>Enregistrement...</span>
+                    </>
+                  ) : (
+                    <span>Enregistrer</span>
+                  )}
                 </button>
               </div>
             </form>
@@ -313,14 +463,14 @@ export default function GroupPage() {
         </div>
       )}
 
-      {/* MEMBERS MANAGEMENT MODAL */}
+      {/* 5. MODAL DE GESTION DES MEMBRES */}
       {managingGroupId && (
         <GroupMembersModal
           groupId={managingGroupId.id}
           groupName={managingGroupId.name}
           onClose={() => {
             setManagingGroupId(null);
-            fetchGroups(); // Refresh counts
+            fetchGroups(); // Rafraîchissement des effectifs
           }}
         />
       )}
