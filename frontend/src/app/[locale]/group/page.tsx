@@ -13,7 +13,8 @@ import {
   Search, 
   X, 
   Layers, 
-  UserCheck 
+  UserCheck,
+  AlertCircle 
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import GroupMembersModal from '@/components/group/GroupMembersModal';
@@ -42,6 +43,7 @@ export default function GroupPage() {
   const [newName, setNewName] = useState('');
   const [newLevel, setNewLevel] = useState('');
   const [newDescription, setNewDescription] = useState('');
+  const [formError, setFormError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -99,6 +101,7 @@ export default function GroupPage() {
     setNewName('');
     setNewLevel('');
     setNewDescription('');
+    setFormError('');
     setShowFormModal(true);
   };
 
@@ -107,18 +110,27 @@ export default function GroupPage() {
     setNewName(g.name);
     setNewLevel(g.level || '');
     setNewDescription(g.description || '');
+    setFormError('');
     setShowFormModal(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError('');
+
+    const trimmedName = newName.trim();
+    if (!trimmedName) {
+      setFormError("Le nom du groupe / classe est obligatoire.");
+      return;
+    }
+
     setIsSubmitting(true);
     
     try {
       const payload = {
-        name: newName,
-        level: newLevel || null,
-        description: newDescription || null
+        name: trimmedName,
+        level: newLevel.trim() || null,
+        description: newDescription.trim() || null
       };
       
       if (editingGroupId) {
@@ -128,9 +140,10 @@ export default function GroupPage() {
       }
       
       setShowFormModal(false);
+      setFormError('');
       await fetchGroups();
     } catch (err: any) {
-      alert(err?.response?.data?.detail || "Erreur lors de la sauvegarde.");
+      setFormError(err?.response?.data?.detail || "Erreur lors de la sauvegarde du groupe.");
     } finally {
       setIsSubmitting(false);
     }
@@ -378,26 +391,35 @@ export default function GroupPage() {
       {/* 4. MODAL AJOUTER / MODIFIER UN GROUPE */}
       {showFormModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white max-w-md w-full p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-2xl space-y-6 animate-fade-in-up text-slate-900">
+          <div className="bg-white max-w-md w-full p-6 sm:p-7 rounded-3xl border border-slate-200 shadow-2xl space-y-5 animate-zoom-in text-slate-900">
             
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h3 className="text-xl font-extrabold text-slate-900 flex items-center gap-2.5">
-                <Users size={22} className="text-[#1877f2]" />
+              <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-blue-50 border border-blue-200/60 text-[#1877f2] flex items-center justify-center font-bold shrink-0">
+                  <Users size={18} />
+                </div>
                 <span>{editingGroupId ? "Modifier le groupe" : "Créer un nouveau groupe"}</span>
               </h3>
               <button 
-                onClick={() => setShowFormModal(false)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                onClick={() => { setShowFormModal(false); setFormError(''); }}
+                className="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
                 aria-label="Fermer"
               >
                 <X size={20} />
               </button>
             </div>
 
+            {formError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 p-3.5 rounded-xl font-semibold text-xs flex items-center gap-2">
+                <AlertCircle size={16} className="shrink-0 text-red-600" />
+                <span>{formError}</span>
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Nom du groupe / classe <span className="text-rose-500">*</span>
+                  NOM DU GROUPE / CLASSE <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -405,52 +427,52 @@ export default function GroupPage() {
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   placeholder="Ex : Master 1 - Informatique, Groupe B, Promotion 2026..."
-                  className="w-full px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-white focus:bg-white border border-slate-300 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-sm text-slate-900 font-medium placeholder:text-slate-400 transition-all outline-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 hover:bg-white focus:bg-white border border-slate-300 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-xs text-slate-900 font-medium placeholder:text-slate-400 transition-all outline-none"
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Niveau académique (Optionnel)
+                  NIVEAU ACADÉMIQUE (OPTIONNEL)
                 </label>
                 <input
                   type="text"
                   value={newLevel}
                   onChange={(e) => setNewLevel(e.target.value)}
                   placeholder="Ex : M1, L3, Débutant, Avancé, Année 2..."
-                  className="w-full px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-white focus:bg-white border border-slate-300 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-sm text-slate-900 font-medium placeholder:text-slate-400 transition-all outline-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 hover:bg-white focus:bg-white border border-slate-300 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-xs text-slate-900 font-medium placeholder:text-slate-400 transition-all outline-none"
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Description détaillée (Optionnel)
+                  DESCRIPTION DÉTAILLÉE (OPTIONNEL)
                 </label>
                 <textarea
                   rows={3}
                   value={newDescription}
                   onChange={(e) => setNewDescription(e.target.value)}
                   placeholder="Objectifs de la classe, spécialité ou détails utiles pour l'affectation..."
-                  className="w-full px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-white focus:bg-white border border-slate-300 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-sm text-slate-900 font-medium placeholder:text-slate-400 transition-all outline-none resize-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 hover:bg-white focus:bg-white border border-slate-300 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-xs text-slate-900 font-medium placeholder:text-slate-400 transition-all outline-none resize-none"
                 />
               </div>
 
-              <div className="flex items-center gap-3 pt-3">
+              <div className="flex items-center gap-3 pt-3 border-t border-slate-100">
                 <button
                   type="button"
-                  onClick={() => setShowFormModal(false)}
-                  className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 rounded-xl font-bold text-slate-700 text-sm transition-colors cursor-pointer"
+                  onClick={() => { setShowFormModal(false); setFormError(''); }}
+                  className="w-1/2 py-2.5 bg-slate-100 hover:bg-slate-200 rounded-xl font-bold text-slate-700 text-xs transition-colors cursor-pointer border border-slate-300"
                 >
                   Annuler
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-1 btn-primary py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-1/2 btn-primary py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-blue-500/20 disabled:opacity-50"
                 >
                   {isSubmitting ? (
                     <>
-                      <Loader2 size={16} className="animate-spin" />
+                      <Loader2 size={15} className="animate-spin" />
                       <span>Enregistrement...</span>
                     </>
                   ) : (

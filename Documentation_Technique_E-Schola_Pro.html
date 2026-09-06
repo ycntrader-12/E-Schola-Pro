@@ -1494,12 +1494,12 @@ E-Schola Pro/
       <p><strong>Contrôle d'accès & Sécurité :</strong> Strictement réservé aux rôles <strong>Formateur</strong> et <strong>Administrateur</strong>. Le bouton de navigation est automatiquement masqué pour les étudiants, stagiaires et employés dans la barre latérale, et tout accès direct est bloqué par un écran de refus d'accès et une erreur HTTP 403 côté API.</p>
       <p><strong>Options et propriétés :</strong></p>
       <ul>
-        <li><strong>Design &amp; Ergonomie Modernisée :</strong> Interface épurée avec cartes de groupes neumorphiques, indicateurs visuels du nombre d'apprenants, boutons d'action rapide (<em>Gérer les membres</em>, <em>Modifier</em>, <em>Supprimer</em>) et fenêtres modales haute précision (<code>GroupMembersModal.tsx</code>).</li>
-        <li><strong>Création &amp; Édition de Promotion :</strong> Formulaire modal avec validation en temps réel pour le nom de la classe (ex: <em>Master 1 - Informatique</em>), le niveau académique (<em>M1, L3, Débutant</em>) et la description détaillée.</li>
+        <li><strong>Design &amp; Ergonomie Modernisée (Fidélité Pixel-Perfect image_04ec85.png) :</strong> Interface épurée avec cartes de groupes neumorphiques, modale de création conformée à l'image modèle (icône bleue 👥 encadrée, libellés exacts <code>NOM DU GROUPE / CLASSE *</code>, <code>NIVEAU ACADÉMIQUE (OPTIONNEL)</code>, <code>DESCRIPTION DÉTAILLÉE (OPTIONNEL)</code> et boutons d'action <em>Annuler</em> / <em>Enregistrer</em>).</li>
+        <li><strong>Création &amp; Édition de Promotion avec Validation Pydantic v2 :</strong> Formulaire modal avec validation en temps réel, désinfection des espaces (<code>strip()</code>), alertes d'erreur in-modal et blocage des noms de groupe vides ou doublons (HTTP 400 <em>"Un groupe ou une classe portant ce nom existe déjà"</em>).</li>
         <li><strong>Suppression &amp; Cascade Sécurisée :</strong> Suppression de groupe avec dissociation automatique de tous les membres sans altération des comptes utilisateurs.</li>
         <li><strong>Gestion Dynamique des Membres (GroupMembersModal) :</strong> Modale dédiée d'affectation avec sélecteur d'apprenants disponibles dédupliqué (exclusion automatique des utilisateurs déjà membres), indicateurs d'initiales colorés, badges de rôle (<em>étudiant, stagiaire, employer</em>) et retrait individuel en 1 clic.</li>
         <li><strong>Rafraîchissement &amp; Synchronisation Instantanée :</strong> Mise à jour synchrone et réactive des effectifs totaux de membres affichés sur les cartes de groupes dès la fermeture de la modale de gestion.</li>
-        <li><strong>Protection Anti-Doublon :</strong> Vérification systématique d'unicité empêchant d'ajouter un même apprenant plusieurs fois dans la même classe.</li>
+        <li><strong>Protection Anti-Doublon &amp; Intégrité multi-tenant :</strong> Vérification systématique d'unicité insensible à la casse et persistance garantie dans PostgreSQL Railway sans altération des données de production.</li>
       </ul>
       <div class="screenshot-container">
         <div class="screenshot-header">

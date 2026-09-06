@@ -1,6 +1,7 @@
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
+from sqlalchemy import func
 
 from app.api.deps import CurrentUser, SessionDep
 from app.models.group import Group, GroupMember
@@ -73,13 +74,25 @@ def create_group(
     """
     Create a new group. Admin and formateur only.
     """
-    if current_user.role.lower() not in STAFF_ROLES:
-        raise HTTPException(status_code=403, detail="Non autorisé.")
+    user_role = (current_user.role or "").strip().lower()
+    if user_role not in STAFF_ROLES:
+        raise HTTPException(status_code=403, detail="Accès non autorisé pour la création de groupe.")
+
+    clean_name = group_in.name.strip()
+    if not clean_name:
+        raise HTTPException(status_code=400, detail="Le nom du groupe ne peut pas être vide.")
+
+    existing = session.query(Group).filter(func.lower(Group.name) == clean_name.lower()).first()
+    if existing:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Un groupe ou une classe portant le nom '{clean_name}' existe déjà."
+        )
 
     group = Group(
-        name=group_in.name.strip(),
-        level=group_in.level.strip() if group_in.level else None,
-        description=group_in.description.strip() if group_in.description else None,
+        name=clean_name,
+        level=group_in.level.strip() if group_in.level and group_in.level.strip() else None,
+        description=group_in.description.strip() if group_in.description and group_in.description.strip() else None,
     )
     session.add(group)
     session.commit()
