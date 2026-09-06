@@ -657,9 +657,7 @@ export default function ProfilePage() {
   const isStaffUser = isAdminUser || user.role === 'formateur';
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 p-6 md:p-12 space-y-8 max-w-5xl mx-auto">
-      <BackButton label="Retour au tableau de bord" />
-      
+    <div className="min-h-screen bg-white text-slate-900 px-4 sm:px-8 pt-24 sm:pt-28 pb-16 space-y-8 max-w-5xl mx-auto animate-fade-in-up">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -667,7 +665,7 @@ export default function ProfilePage() {
           <p className="text-slate-500 mt-1">Gérez vos informations personnelles et vos préférences.</p>
         </div>
         {isAdminUser && (
-          <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 text-[#1877f2] border border-blue-200 text-xs font-bold w-fit">
+          <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 text-[#1877f2] border border-blue-200 text-xs font-bold w-fit shadow-2xs">
             <Shield size={16} /> {isSuperAdmin ? 'Mode Super-Administrateur Actif' : isAdminManager ? 'Mode Admin Manager Actif' : 'Mode Administrateur Actif'}
           </span>
         )}
