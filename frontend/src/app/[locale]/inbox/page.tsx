@@ -586,6 +586,29 @@ export default function InboxMessagesPage() {
                 {selectedMessage.body}
               </div>
 
+              {/* Virtual Classroom Invitation Action Banner */}
+              {(selectedMessage.subject?.toLowerCase().includes('invitation classe virtuelle') ||
+                selectedMessage.body?.toLowerCase().includes('code de la salle')) && (
+                <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 space-y-3">
+                  <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs">
+                    <Video size={16} />
+                    <span>Invitation Directe à la Classe Virtuelle</span>
+                  </div>
+                  <p className="text-xs text-text-secondary">
+                    Vous pouvez accepter cette invitation et rejoindre la session de visioconférence immédiatement depuis le Hub des Classes Virtuelles.
+                  </p>
+                  <div className="flex items-center gap-3 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => router.push('/classroom')}
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow-md flex items-center gap-1.5 transition-colors"
+                    >
+                      <CheckCircle2 size={14} /> Accepter &amp; Accéder au Hub Visioconférence
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Attachments */}
               {selectedMessage.attachment_url && (
                 <div className="space-y-2 pt-2 border-t border-border">

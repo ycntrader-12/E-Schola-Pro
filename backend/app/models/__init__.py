@@ -1,5 +1,6 @@
 from app.models.attendance import Attendance
 from app.models.classroom import Classroom
+from app.models.classroom_invitation import ClassroomInvitation
 from app.models.course import Course
 from app.models.course_video import CourseVideo
 from app.models.enrollment import Enrollment

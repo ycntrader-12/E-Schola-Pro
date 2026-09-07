@@ -32,3 +32,23 @@ class ClassroomResponse(ClassroomBase):
     class Config:
         from_attributes = True
 
+
+class ClassroomInviteCreate(BaseModel):
+    user_ids: list[int] | None = None
+    group_ids: list[int] | None = None
+
+
+class ClassroomInvitationResponse(BaseModel):
+    id: int
+    classroom_id: int
+    inviter_id: int
+    invitee_id: int
+    status: str
+    created_at: datetime
+    classroom: ClassroomResponse | None = None
+    inviter: UserResponse | None = None
+
+    class Config:
+        from_attributes = True
+
+

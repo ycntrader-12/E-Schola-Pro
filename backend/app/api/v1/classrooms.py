@@ -5,11 +5,17 @@ from fastapi import APIRouter, HTTPException
 
 from app.api.deps import CurrentUser, SessionDep
 from app.models.classroom import Classroom
+from app.models.classroom_invitation import ClassroomInvitation
 from app.models.user import User
 from app.models.group import Group, GroupMember
 from app.models.attendance import Attendance
 from app.models.message import Message
-from app.schemas.classroom import ClassroomCreate, ClassroomResponse
+from app.schemas.classroom import (
+    ClassroomCreate,
+    ClassroomResponse,
+    ClassroomInviteCreate,
+    ClassroomInvitationResponse,
+)
 from datetime import datetime, date
 
 router = APIRouter()
@@ -21,6 +27,10 @@ def generate_room_code() -> str:
     return f"{raw[:3]}-{raw[3:7]}-{raw[7:]}"
 
 
+ADMIN_ROLES = ["admin", "admin_manager"]
+STAFF_ROLES = ["admin", "admin_manager", "formateur", "pedagogique"]
+
+
 @router.get("/", response_model=list[ClassroomResponse])
 def get_classrooms(
     session: SessionDep,
@@ -29,20 +39,75 @@ def get_classrooms(
     limit: int = 50,
 ) -> Any:
     """
-    Retrieve all active virtual classrooms.
+    Retrieve active virtual classrooms filtered by user permissions.
+    Formateurs & Admins see all active classrooms.
+    Learners (étudiants, stagiaires, employés) see public classrooms or classrooms targeting their role/group.
     """
-    classrooms = (
-        session.query(Classroom)
-        .filter(Classroom.is_active == True)
-        .order_by(Classroom.created_at.desc())
-        .offset(skip)
-        .limit(limit)
-        .all()
-    )
+    query = session.query(Classroom).filter(Classroom.is_active == True)
+
+    user_role = (current_user.role or "").strip().lower()
+    if user_role not in STAFF_ROLES:
+        # Collect user group IDs & name
+        user_group_ids = []
+        user_group_memberships = (
+            session.query(GroupMember)
+            .filter(GroupMember.user_id == current_user.id)
+            .all()
+        )
+        if user_group_memberships:
+            user_group_ids = [str(m.group_id) for m in user_group_memberships]
+
+        user_group_name = (current_user.group_name or "").strip()
+        user_email = (current_user.email or "").strip().lower()
+
+        # Fetch all active classrooms and filter in Python for complex string list matching
+        all_active = query.order_by(Classroom.created_at.desc()).all()
+        accessible = []
+        for room in all_active:
+            # 1. Instructor of the room
+            if room.instructor_id == current_user.id:
+                accessible.append(room)
+                continue
+
+            # 2. Public rooms
+            if not room.is_private:
+                accessible.append(room)
+                continue
+
+            # 3. Target roles match
+            if room.target_roles:
+                roles = [r.strip().lower() for r in room.target_roles.split(",") if r.strip()]
+                if user_role in roles:
+                    accessible.append(room)
+                    continue
+
+            # 4. Target groups match
+            if room.target_groups:
+                groups_target = [g.strip() for g in room.target_groups.split(",") if g.strip()]
+                if user_group_name and user_group_name in groups_target:
+                    accessible.append(room)
+                    continue
+                if any(gid in groups_target for gid in user_group_ids):
+                    accessible.append(room)
+                    continue
+
+            # 5. Allowed users match
+            if room.allowed_users:
+                allowed = [a.strip().lower() for a in room.allowed_users.split(",") if a.strip()]
+                if user_email in allowed or str(current_user.id) in allowed:
+                    accessible.append(room)
+                    continue
+
+            # 6. Fallback: if no target roles/groups/allowed_users were explicitly defined, permit learners
+            if not room.target_roles and not room.target_groups and not room.allowed_users:
+                accessible.append(room)
+                continue
+
+        return accessible[skip : skip + limit]
+
+    classrooms = query.order_by(Classroom.created_at.desc()).offset(skip).limit(limit).all()
     return classrooms
 
-
-ADMIN_ROLES = ["admin", "admin_manager"]
 
 
 @router.post("/", response_model=ClassroomResponse)
@@ -606,4 +671,181 @@ def update_room_settings(room_id: str, payload: dict, session: SessionDep, curre
     session.commit()
     session.refresh(classroom)
     return classroom
+
+
+@router.get("/invitations/my-invitations", response_model=list[ClassroomInvitationResponse])
+def get_my_invitations(session: SessionDep, current_user: CurrentUser) -> Any:
+    """
+    Get all pending virtual classroom invitations for the current user.
+    """
+    invitations = (
+        session.query(ClassroomInvitation)
+        .filter(
+            ClassroomInvitation.invitee_id == current_user.id,
+            ClassroomInvitation.status == "pending"
+        )
+        .order_by(ClassroomInvitation.created_at.desc())
+        .all()
+    )
+    return invitations
+
+
+@router.post("/{room_id}/invite")
+def invite_users_to_classroom(
+    room_id: str,
+    payload: ClassroomInviteCreate,
+    session: SessionDep,
+    current_user: CurrentUser,
+) -> Any:
+    """
+    Send invitations to users or groups for a virtual classroom. Restricted to Formateurs & Admins.
+    """
+    user_role = (current_user.role or "").strip().lower()
+    if user_role not in STAFF_ROLES:
+        raise HTTPException(
+            status_code=403,
+            detail="Seuls les formateurs et administrateurs peuvent envoyer des invitations.",
+        )
+
+    cleaned_id = room_id.strip().lower()
+    classroom = session.query(Classroom).filter(Classroom.room_id == cleaned_id).first()
+    if not classroom:
+        raise HTTPException(status_code=404, detail="Classe virtuelle introuvable.")
+
+    targeted_user_ids = set()
+
+    if payload.user_ids:
+        for uid in payload.user_ids:
+            targeted_user_ids.add(uid)
+
+    if payload.group_ids:
+        group_members = session.query(GroupMember).filter(GroupMember.group_id.in_(payload.group_ids)).all()
+        for gm in group_members:
+            targeted_user_ids.add(gm.user_id)
+
+    targeted_user_ids.discard(current_user.id)
+
+    if not targeted_user_ids:
+        return {"message": "Aucun participant à inviter sélectionné.", "invited_count": 0}
+
+    invited_users = session.query(User).filter(User.id.in_(targeted_user_ids)).all()
+    count = 0
+    for target_user in invited_users:
+        # Check if pending invitation exists
+        existing_inv = session.query(ClassroomInvitation).filter(
+            ClassroomInvitation.classroom_id == classroom.id,
+            ClassroomInvitation.invitee_id == target_user.id,
+            ClassroomInvitation.status == "pending"
+        ).first()
+
+        if not existing_inv:
+            inv = ClassroomInvitation(
+                classroom_id=classroom.id,
+                inviter_id=current_user.id,
+                invitee_id=target_user.id,
+                status="pending"
+            )
+            session.add(inv)
+
+        # Ensure attendance record
+        att = session.query(Attendance).filter(
+            Attendance.user_id == target_user.id,
+            Attendance.date == date.today(),
+            Attendance.session_name == classroom.title
+        ).first()
+        if not att:
+            session.add(Attendance(
+                user_id=target_user.id,
+                date=date.today(),
+                status="absent",
+                session_name=classroom.title,
+                remarks=f"Invitation classe virtuelle : {classroom.title}"
+            ))
+
+        # Send invitation Message
+        invitation_body = (
+            f"Bonjour {target_user.email.split('@')[0]},\n\n"
+            f"Vous êtes invité(e) par **{current_user.email}** à rejoindre la classe virtuelle en direct : **{classroom.title}**.\n\n"
+            f"📌 **Code de la salle :** `{classroom.room_id}`\n\n"
+            f"👉 Cliquez sur le bouton **Accepter l'invitation** sur la page des Classes Virtuelles ou ci-dessous pour intégrer la session immédiatement."
+        )
+        msg = Message(
+            sender_id=current_user.id,
+            recipient_id=target_user.id,
+            subject=f"🎓 Invitation classe virtuelle : {classroom.title}",
+            body=invitation_body,
+        )
+        session.add(msg)
+        count += 1
+
+    session.commit()
+    return {"message": f"{count} invitation(s) envoyée(s) avec succès.", "invited_count": count}
+
+
+@router.post("/invitations/{invitation_id}/accept")
+def accept_classroom_invitation(
+    invitation_id: int,
+    session: SessionDep,
+    current_user: CurrentUser,
+) -> Any:
+    """
+    Accept a virtual classroom invitation.
+    """
+    inv = session.query(ClassroomInvitation).filter(
+        ClassroomInvitation.id == invitation_id,
+        ClassroomInvitation.invitee_id == current_user.id
+    ).first()
+
+    if not inv:
+        raise HTTPException(status_code=404, detail="Invitation introuvable.")
+
+    inv.status = "accepted"
+
+    # Automatically add to allowed_users if room is private
+    classroom = inv.classroom
+    if classroom:
+        allowed = [a.strip() for a in (classroom.allowed_users or "").split(",") if a.strip()]
+        if str(current_user.id) not in allowed and current_user.email not in allowed:
+            allowed.append(current_user.email)
+            classroom.allowed_users = ",".join(allowed)
+
+        # Mark attendance
+        att = session.query(Attendance).filter(
+            Attendance.user_id == current_user.id,
+            Attendance.date == date.today(),
+            Attendance.session_name == classroom.title
+        ).first()
+        if att:
+            att.status = "present"
+            att.remarks = f"Invitation acceptée le {datetime.now().strftime('%H:%M')}"
+
+    session.commit()
+    return {
+        "message": "Invitation acceptée avec succès !",
+        "status": "accepted",
+        "room_id": classroom.room_id if classroom else None
+    }
+
+
+@router.post("/invitations/{invitation_id}/decline")
+def decline_classroom_invitation(
+    invitation_id: int,
+    session: SessionDep,
+    current_user: CurrentUser,
+) -> Any:
+    """
+    Decline a virtual classroom invitation.
+    """
+    inv = session.query(ClassroomInvitation).filter(
+        ClassroomInvitation.id == invitation_id,
+        ClassroomInvitation.invitee_id == current_user.id
+    ).first()
+
+    if not inv:
+        raise HTTPException(status_code=404, detail="Invitation introuvable.")
+
+    inv.status = "declined"
+    session.commit()
+    return {"message": "Invitation déclinée.", "status": "declined"}
+
 

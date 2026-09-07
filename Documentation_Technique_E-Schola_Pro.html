@@ -984,6 +984,20 @@ E-Schola Pro/
       </tbody>
     </table>
 
+    <!-- CLASSROOM INVITATION -->
+    <h3>ClassroomInvitation (Invitations aux Classes Virtuelles)</h3>
+    <table>
+      <thead><tr><th>Colonne</th><th>Type</th><th>Contraintes</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code></td><td>Integer</td><td>PK</td><td>Identifiant unique de l'invitation</td></tr>
+        <tr><td><code>classroom_id</code></td><td>Integer</td><td>FK → classrooms.id</td><td>Classe virtuelle associée</td></tr>
+        <tr><td><code>inviter_id</code></td><td>Integer</td><td>FK → users.id</td><td>Formateur / Admin ayant envoyé l'invitation</td></tr>
+        <tr><td><code>invitee_id</code></td><td>Integer</td><td>FK → users.id</td><td>Apprenant destinataire invité</td></tr>
+        <tr><td><code>status</code></td><td>String</td><td>Default: "pending"</td><td>Statut de l'invitation (<code>pending</code>, <code>accepted</code>, <code>declined</code>)</td></tr>
+        <tr><td><code>created_at</code></td><td>DateTime</td><td>Auto</td><td>Horodatage d'envoi</td></tr>
+      </tbody>
+    </table>
+
     <!-- GROUP -->
     <h3>Group (Groupe / Classe)</h3>
     <table>
@@ -1171,7 +1185,7 @@ E-Schola Pro/
     <table>
       <thead><tr><th>Méthode</th><th>Endpoint</th><th>Description</th><th>Accès</th></tr></thead>
       <tbody class="endpoint-row">
-        <tr><td><span class="badge badge-get">GET</span></td><td><code>/classrooms/</code></td><td>Lister les salles virtuelles actives</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/classrooms/</code></td><td>Lister les salles virtuelles actives (filtrage intelligent par rôle/groupe pour apprenants et accès complet pour formateurs/admins)</td><td>Authentifié</td></tr>
         <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/</code></td><td>Créer une salle avec configuration avancée (salle privée, sans invitations auto par défaut, écran désactivé, approbation d'accès)</td><td>Admin, Formateur</td></tr>
         <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/{room_id}/join</code></td><td>Rejoindre et tracker l'assiduité (retards et présences)</td><td>Authentifié</td></tr>
         <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/{room_id}/join-request</code></td><td>Soumettre une demande pour rejoindre la salle d'attente</td><td>Authentifié</td></tr>
@@ -1181,6 +1195,10 @@ E-Schola Pro/
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/classrooms/{room_id}/join-status</code></td><td>Vérifier le statut d'approbation pour rejoindre la salle</td><td>Authentifié</td></tr>
         <tr><td><span class="badge badge-patch">PATCH</span></td><td><code>/classrooms/{room_id}/settings</code></td><td>Modifier les paramètres en direct de la salle (écran, salle d'attente, confidentialité)</td><td>Formateur, Admin</td></tr>
         <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/{room_id}/stop</code></td><td>Arrêter/clôturer la classe virtuelle en direct pour tous les participants (Strictement interdit aux étudiants, stagiaires et employés)</td><td>Admin, Formateur, Pédagogique</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/classrooms/invitations/my-invitations</code></td><td>Lister les invitations en attente reçues par l'utilisateur connecté</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/{room_id}/invite</code></td><td>Inviter des apprenants ou des groupes spécifiques à une classe virtuelle en direct</td><td>Admin, Formateur, Pédagogique</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/invitations/{id}/accept</code></td><td>Accepter l'invitation, enregistrer la présence et obtenir le code de salle</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/invitations/{id}/decline</code></td><td>Refuser l'invitation à une classe virtuelle</td><td>Authentifié</td></tr>
         <tr><td><span class="badge badge-delete">DELETE</span></td><td><code>/classrooms/{id}</code></td><td>Supprimer une salle</td><td>Admin, Formateur</td></tr>
       </tbody>
     </table>
@@ -1471,6 +1489,9 @@ E-Schola Pro/
       <p><strong>Route Frontend :</strong> <code>/classroom</code> · <code>/classroom/{id}</code></p>
       <p><strong>Options et propriétés :</strong></p>
       <ul>
+        <li><strong>Communication Temps Réel &amp; Flux Médias WebRTC (Zéro Démo) :</strong> Transmission audio, vidéo et partage d'écran PC/mobile en direct avec grille dynamique de visioconférence et gestion intelligente des pistes médias.</li>
+        <li><strong>Système d'Invitations Interactif avec Options Accepter / Décliner :</strong> Possibilité pour les Formateurs, Administrateurs et Responsables Pédagogiques d'inviter des apprenants ou groupes ciblés. Les apprenants reçoivent un bandeau d'action interactif sur le hub (<code>/classroom</code>) et la messagerie (<code>/inbox</code>) avec les options 🟢 <strong>Accepter l'invitation</strong> (redirection immédiate en direct) et 🔴 <strong>Décliner</strong>.</li>
+        <li><strong>Filtrage Intelligent &amp; Résilience du Hub Visioconférence (/classroom) :</strong> Chargement découplé et tolérant aux pannes avec extraction automatique des messages d'erreur FastAPI. Visibilité basée sur les rôles et groupes (salles publiques ou ciblées pour les apprenants, toutes les salles pour l'équipe pédagogique et admins).</li>
         <li><strong>Création & Confidentialité (Oscola) :</strong> Titre, description, identifiant unique et salle privée par défaut.</li>
         <li><strong>Gestion des Invitations :</strong> Désactivation des invitations automatiques par défaut. Ajout manuel de participants ou par groupe sélectionné.</li>
         <li><strong>Contrôle du Partage d'Écran :</strong> Désactivé par défaut. Activable/désactivable en direct par le formateur depuis le panneau de configuration.</li>

@@ -41,12 +41,27 @@ interface GroupItem {
   members_count?: number;
 }
 
+interface ClassroomInvitationItem {
+  id: number;
+  classroom_id: number;
+  inviter_id: number;
+  invitee_id: number;
+  status: string;
+  created_at: string;
+  classroom?: Classroom;
+  inviter?: { email: string; role: string };
+}
+
 export default function ClassroomHubPage() {
   const router = useRouter();
   const [classrooms, setClassrooms] = useState<Classroom[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentUserRole, setCurrentUserRole] = useState<string>('');
   
+  // Pending Invitations
+  const [myInvitations, setMyInvitations] = useState<ClassroomInvitationItem[]>([]);
+  const [processingInvId, setProcessingInvId] = useState<number | null>(null);
+
   // Groups for invitations
   const [availableGroups, setAvailableGroups] = useState<GroupItem[]>([]);
   const [selectedGroupIds, setSelectedGroupIds] = useState<number[]>([]);
@@ -78,32 +93,99 @@ export default function ClassroomHubPage() {
     fetchData();
   }, []);
 
+  const extractErrorMessage = (err: any, fallback: string): string => {
+    if (err?.response?.status === 401) return 'Session expirée. Veuillez vous reconnecter.';
+    if (err?.message === 'Network Error' || !err?.response) {
+      return 'Impossible de contacter le serveur backend. Vérifiez que le serveur FastAPI est démarré sur http://127.0.0.1:8000.';
+    }
+    const detail = err?.response?.data?.detail;
+    if (typeof detail === 'string') return detail;
+    if (Array.isArray(detail) && detail.length > 0) {
+      const msgs = detail.map((d: any) => typeof d === 'string' ? d : d?.msg || JSON.stringify(d));
+      return msgs.join(', ');
+    }
+    if (typeof detail === 'object' && detail !== null) {
+      return detail.message || JSON.stringify(detail);
+    }
+    return fallback;
+  };
+
   const fetchData = async () => {
     setIsLoading(true);
     setFetchError('');
+
+    // 1. Get Current User
     try {
-      const [userRes, roomsRes, groupsRes] = await Promise.all([
-        apiClient.get('/users/me'),
-        apiClient.get('/classrooms/'),
-        apiClient.get('/groups/').catch(() => ({ data: [] }))
-      ]);
-      setCurrentUserRole(userRes.data.role);
-      setClassrooms(roomsRes.data);
-      if (groupsRes.data && Array.isArray(groupsRes.data)) {
-        setAvailableGroups(groupsRes.data);
+      const userRes = await apiClient.get('/users/me');
+      if (userRes.data?.role) {
+        setCurrentUserRole(userRes.data.role);
       }
     } catch (err: any) {
       if (err?.response?.status === 401) {
         router.push('/login');
         return;
       }
-      const msg = err?.response?.data?.detail 
-        || (err?.message === 'Network Error' || !err?.response
-          ? 'Impossible de contacter le serveur backend. Vérifiez que le serveur FastAPI est bien démarré sur http://127.0.0.1:8000.'
-          : 'Erreur lors du chargement des classes virtuelles.');
-      setFetchError(msg);
+    }
+
+    // 2. Get Classrooms
+    try {
+      const roomsRes = await apiClient.get('/classrooms/');
+      if (Array.isArray(roomsRes.data)) {
+        setClassrooms(roomsRes.data);
+      }
+    } catch (err: any) {
+      setFetchError(extractErrorMessage(err, 'Erreur lors du chargement des classes virtuelles.'));
+    }
+
+    // 3. Get My Invitations
+    try {
+      const invRes = await apiClient.get('/classrooms/invitations/my-invitations');
+      if (Array.isArray(invRes.data)) {
+        setMyInvitations(invRes.data);
+      }
+    } catch {
+      setMyInvitations([]);
+    }
+
+    // 4. Get Groups (silently handle if forbidden for non-admins)
+    try {
+      const groupsRes = await apiClient.get('/groups/');
+      if (groupsRes.data && Array.isArray(groupsRes.data)) {
+        setAvailableGroups(groupsRes.data);
+      }
+    } catch {
+      setAvailableGroups([]);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleAcceptInvitation = async (invId: number, roomId?: string) => {
+    setProcessingInvId(invId);
+    try {
+      const res = await apiClient.post(`/classrooms/invitations/${invId}/accept`);
+      const targetRoomCode = res.data?.room_id || roomId;
+      if (targetRoomCode) {
+        router.push(`/classroom/${targetRoomCode}`);
+      } else {
+        fetchData();
+      }
+    } catch (err: any) {
+      alert(extractErrorMessage(err, "Erreur lors de l'acceptation de l'invitation."));
+    } finally {
+      setProcessingInvId(null);
+    }
+  };
+
+  const handleDeclineInvitation = async (invId: number) => {
+    setProcessingInvId(invId);
+    try {
+      await apiClient.post(`/classrooms/invitations/${invId}/decline`);
+      setMyInvitations((prev) => prev.filter((i) => i.id !== invId));
+    } catch (err: any) {
+      alert(extractErrorMessage(err, "Erreur lors du refus de l'invitation."));
+    } finally {
+      setProcessingInvId(null);
     }
   };
 
@@ -243,6 +325,63 @@ export default function ClassroomHubPage() {
         {/* Decorative blur circle */}
         <div className="absolute right-0 top-0 w-80 h-80 rounded-full bg-primary/10 blur-[100px] pointer-events-none" />
       </div>
+
+      {/* Pending Invitations Section */}
+      {myInvitations.length > 0 && (
+        <div className="space-y-4 bg-emerald-500/10 border border-emerald-500/30 p-6 rounded-2xl shadow-xl">
+          <div className="flex items-center gap-2 text-emerald-400 font-bold text-lg">
+            <Sparkles size={20} className="animate-bounce" />
+            <span>Vos Invitations aux Classes Virtuelles ({myInvitations.length})</span>
+          </div>
+          <p className="text-xs text-text-secondary">
+            Vous avez été invité(e) à participer à une classe virtuelle en direct. Choisissez d'accepter pour rejoindre le cours immédiatement ou de décliner.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+            {myInvitations.map((inv) => {
+              const roomTitle = inv.classroom?.title || "Classe Virtuelle";
+              const inviterName = inv.inviter?.email ? inv.inviter.email.split('@')[0] : `Formateur #${inv.inviter_id}`;
+              const isProcessing = processingInvId === inv.id;
+
+              return (
+                <div key={inv.id} className="bg-surface p-4 rounded-xl border border-border flex flex-col justify-between gap-4 shadow-md">
+                  <div>
+                    <div className="flex items-center justify-between text-xs text-text-secondary mb-1">
+                      <span className="font-semibold text-primary">Invitation Directe</span>
+                      <span>{new Date(inv.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                    <h4 className="text-base font-bold text-text-primary">{roomTitle}</h4>
+                    <p className="text-xs text-text-secondary mt-1">
+                      Formateur hôte : <span className="font-medium text-text-primary">{inviterName}</span>
+                    </p>
+                    {inv.classroom?.room_id && (
+                      <span className="inline-block mt-2 font-mono text-[11px] bg-surface-hover px-2 py-0.5 rounded text-text-secondary border border-border">
+                        Code : {inv.classroom.room_id}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 pt-2 border-t border-border/50">
+                    <button
+                      onClick={() => handleAcceptInvitation(inv.id, inv.classroom?.room_id)}
+                      disabled={isProcessing}
+                      className="flex-1 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5"
+                    >
+                      {isProcessing ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
+                      Accepter l'invitation
+                    </button>
+                    <button
+                      onClick={() => handleDeclineInvitation(inv.id)}
+                      disabled={isProcessing}
+                      className="px-3.5 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 font-semibold text-xs rounded-xl border border-red-500/20 transition-all flex items-center justify-center gap-1"
+                    >
+                      <Trash2 size={14} /> Décliner
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Active Classes List */}
       <div className="space-y-6">
@@ -386,37 +525,42 @@ export default function ClassroomHubPage() {
       </div>
 
       {/* Modal Créer une Classe (Formateurs & Admin) */}
-      {/* Create Room Modal */}
+      {/* Create Room Modal - Light Mode UX Strict Rectangular Box */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="glass-card max-w-2xl w-full p-6 sm:p-8 rounded-2xl border border-border space-y-5 relative animate-fade-in-up max-h-[92vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-border/60">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold">
-                  <Video size={18} />
+        <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+          <div className="bg-white border-2 border-slate-300 shadow-2xl max-w-2xl w-full my-auto flex flex-col max-h-[88vh] relative animate-fade-in-up overflow-hidden rounded-none text-slate-900">
+            
+            {/* Modal Header - Rectangular Light Mode */}
+            <div className="px-6 py-4 border-b-2 border-slate-200 flex items-center justify-between bg-white shrink-0 rounded-none">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-50 text-blue-600 flex items-center justify-center font-bold rounded-none border border-blue-200">
+                  <Video size={20} />
                 </div>
                 <div>
-                  <h3 className="text-lg sm:text-xl font-bold">Nouvelle Classe Virtuelle</h3>
-                  <p className="text-xs text-text-secondary">Configurez et lancez une session en direct avec vos apprenants.</p>
+                  <h3 className="text-lg font-bold text-slate-900 tracking-tight">Nouvelle Classe Virtuelle</h3>
+                  <p className="text-xs text-slate-500">Configurez et lancez une session en direct avec vos apprenants.</p>
                 </div>
               </div>
               <button 
+                type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="text-text-secondary hover:text-text-primary w-8 h-8 rounded-lg bg-surface hover:bg-surface-hover flex items-center justify-center text-sm font-bold transition-colors"
+                className="text-slate-600 hover:text-slate-900 w-8 h-8 bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-base font-bold transition-colors cursor-pointer rounded-none border border-slate-300"
               >
                 ✕
               </button>
             </div>
 
-            {createError && (
-              <div className="p-3.5 bg-red-500/10 border border-red-500/30 text-red-400 rounded-xl text-xs flex items-center gap-2">
-                <AlertCircle size={16} className="shrink-0" /> {createError}
-              </div>
-            )}
+            {/* Modal Form Body (Scrollable Rectangular Sections - Light Mode) */}
+            <form onSubmit={handleCreateRoom} className="flex-1 overflow-y-auto p-6 space-y-5 bg-white text-slate-900">
+              {createError && (
+                <div className="p-3.5 bg-red-50 border border-red-300 text-red-700 text-xs font-medium flex items-center gap-2 rounded-none">
+                  <AlertCircle size={16} className="shrink-0 text-red-600" /> {createError}
+                </div>
+              )}
 
-            <form onSubmit={handleCreateRoom} className="space-y-4">
+              {/* Title Input */}
               <div>
-                <label className="block text-xs font-semibold uppercase text-text-secondary mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
                   Titre de la session *
                 </label>
                 <input
@@ -425,13 +569,14 @@ export default function ClassroomHubPage() {
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
                   placeholder="Ex: Mathématiques - Intégrales & Algèbre"
-                  className="w-full px-4 py-3 rounded-xl bg-surface border border-border focus:border-primary outline-none text-sm"
+                  className="w-full px-4 py-2.5 bg-white border border-slate-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none text-sm text-slate-900 placeholder:text-slate-400 rounded-none"
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="sm:col-span-2">
-                  <label className="block text-xs font-semibold uppercase text-text-secondary mb-1.5">
+              {/* Description & Room Code Inputs */}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
                     Description / Ordre du jour (optionnel)
                   </label>
                   <textarea
@@ -439,99 +584,99 @@ export default function ClassroomHubPage() {
                     value={newDescription}
                     onChange={(e) => setNewDescription(e.target.value)}
                     placeholder="Ex: Révision du chapitre 4 et exercices pratiques..."
-                    className="w-full px-4 py-2.5 rounded-xl bg-surface border border-border focus:border-primary outline-none text-sm resize-y"
+                    className="w-full px-4 py-2.5 bg-white border border-slate-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none text-sm text-slate-900 placeholder:text-slate-400 resize-y rounded-none"
                   />
                 </div>
 
-                <div className="sm:col-span-2">
-                  <label className="block text-xs font-semibold uppercase text-text-secondary mb-1.5">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
                     Code de salle personnalisé (optionnel)
                   </label>
                   <input
                     type="text"
                     value={customRoomId}
                     onChange={(e) => setCustomRoomId(e.target.value)}
-                    placeholder="Laisser vide pour génération automatique"
-                    className="w-full px-4 py-2.5 rounded-xl bg-surface border border-border focus:border-primary outline-none text-sm font-mono"
+                    placeholder="Laisser vide pour génération automatique (ex: abc-defg-hij)"
+                    className="w-full px-4 py-2.5 bg-white border border-slate-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none text-sm font-mono text-slate-900 placeholder:text-slate-400 rounded-none"
                   />
                 </div>
               </div>
 
-              {/* Options de Configuration de la Classe Virtuelle */}
-              <div className="pt-2 border-t border-border/60 space-y-3">
-                <label className="block text-xs font-bold uppercase tracking-wider text-text-primary">
+              {/* Configuration Section */}
+              <div className="pt-3 border-t-2 border-slate-200 space-y-3">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-900">
                   Configuration de la salle
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                   {/* Salle Privée */}
-                  <label className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${isPrivate ? 'bg-primary/10 border-primary/50 text-text-primary' : 'bg-surface border-border text-text-secondary'}`}>
+                  <label className={`p-3.5 border flex items-center justify-between cursor-pointer transition-all rounded-none ${isPrivate ? 'bg-blue-50 border-2 border-blue-600 text-blue-950 font-semibold' : 'bg-slate-50 border border-slate-300 text-slate-700 hover:bg-slate-100'}`}>
                     <div className="space-y-0.5">
-                      <span className="font-semibold block text-text-primary">🔒 Salle privée</span>
-                      <span className="text-[10px] text-text-secondary">Accessibilité restreinte par défaut</span>
+                      <span className="font-bold block text-slate-900">🔒 Salle privée</span>
+                      <span className="text-[10px] text-slate-500">Accessibilité restreinte par défaut</span>
                     </div>
                     <input
                       type="checkbox"
                       checked={isPrivate}
                       onChange={(e) => setIsPrivate(e.target.checked)}
-                      className="accent-primary w-4 h-4 cursor-pointer"
+                      className="accent-blue-600 w-4 h-4 cursor-pointer"
                     />
                   </label>
 
                   {/* Invitations Automatiques */}
-                  <label className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${autoInvitations ? 'bg-primary/10 border-primary/50 text-text-primary' : 'bg-surface border-border text-text-secondary'}`}>
+                  <label className={`p-3.5 border flex items-center justify-between cursor-pointer transition-all rounded-none ${autoInvitations ? 'bg-blue-50 border-2 border-blue-600 text-blue-950 font-semibold' : 'bg-slate-50 border border-slate-300 text-slate-700 hover:bg-slate-100'}`}>
                     <div className="space-y-0.5">
-                      <span className="font-semibold block text-text-primary">📩 Invitations automatiques</span>
-                      <span className="text-[10px] text-text-secondary">Notifier les groupes à la création</span>
+                      <span className="font-bold block text-slate-900">📩 Invitations automatiques</span>
+                      <span className="text-[10px] text-slate-500">Notifier les groupes à la création</span>
                     </div>
                     <input
                       type="checkbox"
                       checked={autoInvitations}
                       onChange={(e) => setAutoInvitations(e.target.checked)}
-                      className="accent-primary w-4 h-4 cursor-pointer"
+                      className="accent-blue-600 w-4 h-4 cursor-pointer"
                     />
                   </label>
 
                   {/* Partage d'écran */}
-                  <label className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${allowScreenSharing ? 'bg-cyan-500/10 border-cyan-500/50 text-text-primary' : 'bg-surface border-border text-text-secondary'}`}>
+                  <label className={`p-3.5 border flex items-center justify-between cursor-pointer transition-all rounded-none ${allowScreenSharing ? 'bg-cyan-50 border-2 border-cyan-600 text-cyan-950 font-semibold' : 'bg-slate-50 border border-slate-300 text-slate-700 hover:bg-slate-100'}`}>
                     <div className="space-y-0.5">
-                      <span className="font-semibold block text-text-primary">🖥️ Partage d'écran</span>
-                      <span className="text-[10px] text-text-secondary">Autoriser le partage d'écran</span>
+                      <span className="font-bold block text-slate-900">🖥️ Partage d'écran</span>
+                      <span className="text-[10px] text-slate-500">Autoriser le partage d'écran</span>
                     </div>
                     <input
                       type="checkbox"
                       checked={allowScreenSharing}
                       onChange={(e) => setAllowScreenSharing(e.target.checked)}
-                      className="accent-primary w-4 h-4 cursor-pointer"
+                      className="accent-blue-600 w-4 h-4 cursor-pointer"
                     />
                   </label>
 
-                  {/* Approbation pour rejoindre */}
-                  <label className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${requiresApproval ? 'bg-purple-500/10 border-purple-500/50 text-text-primary' : 'bg-surface border-border text-text-secondary'}`}>
+                  {/* Salle d'attente */}
+                  <label className={`p-3.5 border flex items-center justify-between cursor-pointer transition-all rounded-none ${requiresApproval ? 'bg-purple-50 border-2 border-purple-600 text-purple-950 font-semibold' : 'bg-slate-50 border border-slate-300 text-slate-700 hover:bg-slate-100'}`}>
                     <div className="space-y-0.5">
-                      <span className="font-semibold block text-text-primary">🛡️ Salle d'attente (Approbation)</span>
-                      <span className="text-[10px] text-text-secondary">Approuver/Rejeter chaque participant</span>
+                      <span className="font-bold block text-slate-900">🛡️ Salle d'attente (Approbation)</span>
+                      <span className="text-[10px] text-slate-500">Approuver/Rejeter chaque participant</span>
                     </div>
                     <input
                       type="checkbox"
                       checked={requiresApproval}
                       onChange={(e) => setRequiresApproval(e.target.checked)}
-                      className="accent-primary w-4 h-4 cursor-pointer"
+                      className="accent-blue-600 w-4 h-4 cursor-pointer"
                     />
                   </label>
                 </div>
               </div>
 
-
-              <div className="pt-2 border-t border-border/60 space-y-3">
+              {/* Group Invitations Section */}
+              <div className="pt-3 border-t-2 border-slate-200 space-y-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-                      <Users size={13} />
+                    <div className="w-5 h-5 bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-200 rounded-none">
+                      <Users size={12} />
                     </div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-text-primary">
-                      Invitations aux classes
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-900">
+                      Invitations aux groupes
                     </label>
-                    <span className="text-[11px] text-text-secondary font-normal">
+                    <span className="text-[11px] text-slate-500 font-normal">
                       ({availableGroups.length} groupe{availableGroups.length > 1 ? 's' : ''})
                     </span>
                   </div>
@@ -545,23 +690,20 @@ export default function ClassroomHubPage() {
                           setSelectedGroupIds(availableGroups.map((g) => g.id));
                         }
                       }}
-                      className="text-xs text-primary hover:text-primary-hover font-semibold transition-colors px-2 py-1 rounded-lg hover:bg-primary/10 self-start sm:self-auto"
+                      className="text-xs text-blue-600 hover:text-blue-700 font-semibold transition-colors px-2 py-0.5 hover:bg-blue-50 self-start sm:self-auto cursor-pointer rounded-none border border-blue-200"
                     >
                       {selectedGroupIds.length === availableGroups.length ? 'Tout désélectionner' : 'Tout sélectionner'}
                     </button>
                   )}
                 </div>
-                <p className="text-xs text-text-secondary leading-relaxed">
-                  Sélectionnez les groupes destinataires. Les membres recevront automatiquement une notification par messagerie interne et seront inscrits sur la feuille d'assiduité.
-                </p>
 
                 {availableGroups.length === 0 ? (
-                  <div className="p-4 rounded-xl border border-dashed border-border text-center text-xs text-text-secondary bg-surface/50 space-y-1">
-                    <p className="font-semibold text-text-primary">Aucun groupe disponible</p>
-                    <p>Créez des groupes dans le module <Link href="/group" className="text-primary underline">Groupes & Promotions</Link> pour inviter vos promotions en un clic.</p>
+                  <div className="p-3.5 border border-dashed border-slate-300 text-center text-xs text-slate-500 bg-slate-50 space-y-1 rounded-none">
+                    <p className="font-semibold text-slate-800">Aucun groupe disponible</p>
+                    <p>Créez des groupes dans le module <Link href="/group" className="text-blue-600 underline">Groupes & Promotions</Link> pour inviter vos apprenants.</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-60 overflow-y-auto pr-1">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-48 overflow-y-auto pr-1">
                     {availableGroups.map((group) => {
                       const isSelected = selectedGroupIds.includes(group.id);
                       return (
@@ -574,25 +716,25 @@ export default function ClassroomHubPage() {
                               setSelectedGroupIds((prev) => [...prev, group.id]);
                             }
                           }}
-                          className={`p-3.5 sm:p-4 rounded-xl border cursor-pointer transition-all duration-150 flex items-start justify-between gap-3 select-none ${
+                          className={`p-3 border cursor-pointer transition-all flex items-start justify-between gap-2.5 select-none rounded-none ${
                             isSelected
-                              ? 'bg-primary/10 border-primary shadow-sm ring-1 ring-primary/40'
-                              : 'bg-surface hover:bg-surface-hover border-border'
+                              ? 'bg-blue-50 border-2 border-blue-600 text-blue-950 font-semibold shadow-sm'
+                              : 'bg-slate-50 border border-slate-300 text-slate-800 hover:bg-slate-100'
                           }`}
                         >
-                          <div className="min-w-0 flex-1 space-y-1.5">
+                          <div className="min-w-0 flex-1 space-y-1">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-xs sm:text-sm font-semibold text-text-primary leading-snug">
+                              <span className="text-xs font-bold text-slate-900 truncate">
                                 {group.name}
                               </span>
                               {group.level && (
-                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/15 text-primary font-medium border border-primary/20 shrink-0">
+                                <span className="text-[10px] px-1.5 py-0.5 bg-blue-100 text-blue-800 font-bold border border-blue-200 shrink-0 rounded-none">
                                   {group.level}
                                 </span>
                               )}
                             </div>
-                            <div className="flex items-center gap-1.5 text-xs text-text-secondary">
-                              <Users size={13} className="shrink-0 text-primary/80" />
+                            <div className="flex items-center gap-1 text-[11px] text-slate-600">
+                              <Users size={12} className="shrink-0 text-blue-600" />
                               <span>{group.members_count || 0} apprenant{(group.members_count || 0) > 1 ? 's' : ''}</span>
                             </div>
                           </div>
@@ -600,49 +742,35 @@ export default function ClassroomHubPage() {
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => {}}
-                            className="accent-primary w-4 h-4 sm:w-5 sm:h-5 mt-0.5 pointer-events-none shrink-0 cursor-pointer"
+                            className="accent-blue-600 w-4 h-4 mt-0.5 pointer-events-none shrink-0"
                           />
                         </div>
                       );
                     })}
                   </div>
                 )}
-                {selectedGroupIds.length > 0 ? (
-                  <div className="p-2.5 px-3.5 rounded-xl bg-primary/10 border border-primary/30 flex items-center justify-between text-xs">
-                    <span className="text-primary font-semibold flex items-center gap-1.5">
-                      <CheckCircle2 size={15} /> {selectedGroupIds.length} groupe{selectedGroupIds.length > 1 ? 's sélectionnés' : ' sélectionné'}
-                    </span>
-                    <span className="text-text-secondary text-[11px]">
-                      {availableGroups
-                        .filter((g) => selectedGroupIds.includes(g.id))
-                        .reduce((acc, curr) => acc + (curr.members_count || 0), 0)}{' '}
-                      apprenant(s) invité(s)
-                    </span>
-                  </div>
-                ) : (
-                  <p className="text-[11px] text-text-secondary italic">
-                    Aucun groupe sélectionné (la session sera accessible librement par code de salle).
-                  </p>
-                )}
               </div>
 
-              <div className="pt-2 flex gap-3">
+              {/* Modal Footer Actions (Fixed inside form bottom - Light Mode UX) */}
+              <div className="pt-4 border-t-2 border-slate-200 flex items-center justify-end gap-3 shrink-0 bg-slate-50 p-4 -mx-6 -mb-6">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="w-1/2 py-3 bg-surface hover:bg-surface-hover rounded-xl text-sm font-semibold border border-border"
+                  className="px-5 py-2.5 bg-white hover:bg-slate-100 text-xs font-bold border border-slate-300 text-slate-700 transition-colors cursor-pointer rounded-none"
                 >
                   Annuler
                 </button>
                 <button
                   type="submit"
                   disabled={isCreating}
-                  className="w-1/2 btn-primary py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2"
+                  className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer rounded-none"
                 >
-                  {isCreating ? <Loader2 size={16} className="animate-spin" /> : 'Lancer le direct'}
+                  {isCreating ? <Loader2 size={15} className="animate-spin" /> : <Plus size={16} />}
+                  <span>{isCreating ? 'Création...' : 'Lancer la Classe Virtuelle'}</span>
                 </button>
               </div>
             </form>
+
           </div>
         </div>
       )}

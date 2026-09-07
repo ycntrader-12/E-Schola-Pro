@@ -2,9 +2,16 @@ from sqlalchemy import inspect, text
 from app.db.database import engine
 
 
+from app.db.base import Base
+from app.models.classroom_invitation import ClassroomInvitation  # noqa: F401
+
+
 def run_migration():
-    """Database-agnostic schema sync for classrooms (PostgreSQL & SQLite)."""
+    """Database-agnostic schema sync for classrooms & invitations (PostgreSQL & SQLite)."""
     try:
+        # 1. Create missing tables (e.g. classroom_invitations)
+        Base.metadata.create_all(bind=engine)
+
         inspector = inspect(engine)
         tables = inspector.get_table_names()
         if "classrooms" in tables:
