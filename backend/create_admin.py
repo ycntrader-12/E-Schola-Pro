@@ -5,6 +5,41 @@ from app.db.database import SessionLocal
 from app.models.user import User
 
 
+def ensure_root_admin_first(db):
+    """
+    Creates and guarantees the protected immutable root administrator 'admin_first'
+    with password 'Admin@1212' across both development and production.
+    """
+    admin_first = (
+        db.query(User)
+        .filter(
+            (func.lower(User.username) == "admin_first")
+            | (func.lower(User.email) == "admin_first@eschola.pro")
+        )
+        .first()
+    )
+    if not admin_first:
+        admin_first = User(
+            email="admin_first@eschola.pro",
+            username="admin_first",
+            hashed_password=get_password_hash("Admin@1212"),
+            role="admin",
+            nom="Root",
+            prenom="Admin First",
+        )
+        db.add(admin_first)
+        db.commit()
+        db.refresh(admin_first)
+        print("[Root Seed] Compte administrateur racine intouchable 'admin_first' créé avec succès.")
+    else:
+        # Guarantee correct role and password
+        admin_first.role = "admin"
+        admin_first.hashed_password = get_password_hash("Admin@1212")
+        db.commit()
+        print("[Root Seed] Compte administrateur racine intouchable 'admin_first' vérifié et synchronisé.")
+    return admin_first
+
+
 def seed_users():
     """
     Ensures that the application has an active administrator account while strictly preserving
@@ -12,6 +47,10 @@ def seed_users():
     demo accounts are never injected or re-created if removed.
     """
     db = SessionLocal()
+
+    # Always ensure the untouchable root admin 'admin_first' is present
+    ensure_root_admin_first(db)
+
     existing_admin = db.query(User).filter(User.role == "admin").first()
 
     # In Production (or if SEED_DEMO_DATA is False):

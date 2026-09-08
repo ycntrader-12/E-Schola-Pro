@@ -1329,10 +1329,26 @@ E-Schola Pro/
         <tr><td><strong>Gérer les apprenants &amp; formateurs (Création/Rôle)</strong></td><td>✅</td><td>✅</td><td>❌</td><td>❌</td></tr>
         <tr><td><strong>Attribuer les rôles Admin / Admin Manager</strong></td><td>✅</td><td>❌ <em>(Interdit)</em></td><td>❌</td><td>❌</td></tr>
         <tr><td><strong>Modifier/Supprimer un compte Admin existant</strong></td><td>✅</td><td>❌ <em>(Interdit)</em></td><td>❌</td><td>❌</td></tr>
+        <tr><td><strong>Modifier / Supprimer le compte racine <code>admin_first</code></strong></td><td>❌ <em>(Intouchable)</em></td><td>❌ <em>(Interdit &amp; HTTP 403)</em></td><td>❌</td><td>❌</td></tr>
         <tr><td><strong>Accès Panel SQLAdmin (/admin)</strong></td><td>✅</td><td>❌ <em>(Interdit)</em></td><td>❌</td><td>❌</td></tr>
         <tr><td><strong>Portail Backend &amp; BDD (Paramètres / Système)</strong></td><td>✅</td><td>❌ <em>(Interdit)</em></td><td>❌</td><td>❌</td></tr>
       </tbody>
     </table>
+
+    <h3>Compte Administrateur Racine Intouchable (admin_first)</h3>
+    <div class="card" style="border-left: 4px solid #ef4444; background: rgba(239, 68, 68, 0.05); margin-top: 20px;">
+      <h4 style="color: #ef4444; margin-bottom: 8px;">👑 Protection Absolue du Super-Administrateur Racine (admin_first)</h4>
+      <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">
+        Un compte d'administration racine intouchable nommé <code>admin_first</code> (email: <code>admin_first@eschola.pro</code>) est configuré et garanti de façon permanente dans le système.
+      </p>
+      <ul style="font-size: 13px; color: var(--text-secondary); padding-left: 20px; line-height: 1.8;">
+        <li><strong>Inaltérable par <code>admin_manager</code> :</strong> Le rôle <code>admin_manager</code> (et tout autre gestionnaire) ne peut en aucun cas modifier les informations, le nom, l'email ou les coordonnées du compte <code>admin_first</code> (rejet strict HTTP 403 Forbidden).</li>
+        <li><strong>Protection contre la réinitialisation de mot de passe :</strong> Aucun <code>admin_manager</code> ni tiers ne peut réinitialiser ou forcer le mot de passe de <code>admin_first</code>. Seul <code>admin_first</code> lui-même peut mettre à jour ses identifiants via son profil personnel (<code>/profile</code>).</li>
+        <li><strong>Immunité contre la rétrogradation de rôle :</strong> Le rôle de <code>admin_first</code> est verrouillé sur <code>admin</code>. Toute tentative de modification de rôle (<code>PUT /api/v1/users/{id}/role</code>) est immédiatement bloquée.</li>
+        <li><strong>Suppression Strictement Impossible :</strong> Le compte <code>admin_first</code> bénéficie d'une immunité totale contre la suppression (<code>DELETE /api/v1/users/{id}</code>), y compris par d'autres administrateurs.</li>
+        <li><strong>Pérennité &amp; Auto-Guérison :</strong> Le script d'amorce <code>create_admin.py</code> vérifie et garantit le compte <code>admin_first</code> lors de chaque démarrage de l'infrastructure locale ou Railway.</li>
+      </ul>
+    </div>
   </section>
 
   <!-- ═══════════════════════════════════════════════════════════════ -->

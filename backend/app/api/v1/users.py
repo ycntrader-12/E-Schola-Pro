@@ -28,6 +28,17 @@ router = APIRouter()
 
 ADMIN_ROLES = ["admin", "admin_manager"]
 SUPER_ADMIN_ROLES = ["admin"]
+PROTECTED_ROOT_USERNAMES = ["admin_first"]
+PROTECTED_ROOT_EMAILS = ["admin_first@eschola.pro"]
+
+
+def is_protected_root_admin(user: User | None) -> bool:
+    """Detects whether a user is the untouchable root administrator 'admin_first'."""
+    if not user:
+        return False
+    u_name = (user.username or "").strip().lower()
+    u_email = (user.email or "").strip().lower()
+    return u_name in PROTECTED_ROOT_USERNAMES or u_email in PROTECTED_ROOT_EMAILS
 VALID_ROLES = [
     "admin",
     "admin_manager",
@@ -477,6 +488,13 @@ def update_user_role(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    # Untouchable protection for root administrator 'admin_first'
+    if is_protected_root_admin(user) and current_user.id != user.id and not is_protected_root_admin(current_user):
+        raise HTTPException(
+            status_code=403,
+            detail="Le rôle du compte administrateur racine 'admin_first' est intouchable et ne peut pas être modifié.",
+        )
+
     # Restrictions for ADMIN_MANAGER
     if current_user.role.lower() == "admin_manager":
         # Cannot assign ADMIN or ADMIN_MANAGER
@@ -521,6 +539,13 @@ def delete_user(
     user = session.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+
+    # Untouchable protection: 'admin_first' can NEVER be deleted by anyone
+    if is_protected_root_admin(user):
+        raise HTTPException(
+            status_code=403,
+            detail="Le compte administrateur racine 'admin_first' est intouchable et ne peut en aucun cas être supprimé.",
+        )
 
     if current_user.role.lower() == "admin_manager" and user.role.lower() in ADMIN_ROLES:
         raise HTTPException(
@@ -723,6 +748,13 @@ def admin_reset_password(
     if not user:
         raise HTTPException(status_code=404, detail="Utilisateur introuvable.")
 
+    # Untouchable protection for root administrator 'admin_first'
+    if is_protected_root_admin(user) and current_user.id != user.id and not is_protected_root_admin(current_user):
+        raise HTTPException(
+            status_code=403,
+            detail="Le mot de passe du compte administrateur racine 'admin_first' est intouchable. Seul 'admin_first' peut modifier son mot de passe.",
+        )
+
     if current_user.role.lower() == "admin_manager" and user.role.lower() in SUPER_ADMIN_ROLES and current_user.id != user.id:
         raise HTTPException(
             status_code=403,
@@ -840,6 +872,13 @@ def admin_update_user(
     user = session.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Utilisateur introuvable.")
+
+    # Untouchable protection for root administrator 'admin_first'
+    if is_protected_root_admin(user) and current_user.id != user.id and not is_protected_root_admin(current_user):
+        raise HTTPException(
+            status_code=403,
+            detail="Le compte administrateur racine 'admin_first' est intouchable et ne peut pas être modifié par un autre gestionnaire ou administrateur.",
+        )
 
     if current_user.role.lower() == "admin_manager" and user.role.lower() in ADMIN_ROLES and current_user.id != user.id:
         raise HTTPException(
