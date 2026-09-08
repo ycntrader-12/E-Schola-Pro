@@ -1,6 +1,7 @@
 import os
 import socket
 from pathlib import Path
+from typing import Any
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -140,6 +141,17 @@ class Settings(BaseSettings):
     CLOUDINARY_API_KEY: str = ""
     CLOUDINARY_API_SECRET: str = ""
 
+    # Email / SMTP Configuration
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM_EMAIL: str = ""
+    SMTP_FROM_NAME: str = "E-Schola Pro"
+    SMTP_TLS: bool = True
+    SMTP_SSL: bool = False
+    EMAILS_ENABLED: bool = False
+
     model_config = SettingsConfigDict(
         env_file=[str(BACKEND_DIR / ".env"), ".env"],
         extra="ignore",
@@ -157,7 +169,7 @@ class Settings(BaseSettings):
             print("[Database Notice] 'postgres.railway.internal' est un réseau privé Railway inaccessible hors du cloud.")
             print("                 Pour le dev local : configurez le TCP Proxy Railway (DATABASE_PUBLIC_URL) ou utilisez la base SQLite.")
             print("                 Basculement automatique sur la base SQLite locale pour garantir la stabilité.")
-            canonical_db = BACKEND_DIR / "eschola.db"
+            canonical_db = (BACKEND_DIR / "eschola.db").resolve()
             return f"sqlite:///{canonical_db.as_posix()}"
 
         # Fix Railway / Supabase postgres:// prefix for SQLAlchemy
@@ -165,12 +177,35 @@ class Settings(BaseSettings):
             v = v.replace("postgres://", "postgresql+psycopg2://", 1)
         elif v.startswith("postgresql://") and not v.startswith("postgresql+"):
             v = v.replace("postgresql://", "postgresql+psycopg2://", 1)
-        # Normalize relative sqlite:///./ to canonical backend directory
+        # Normalize relative sqlite paths to canonical backend directory
         elif v.startswith("sqlite:///./"):
             relative_filename = v[len("sqlite:///./") :]
-            v = f"sqlite:///{(BACKEND_DIR / relative_filename).as_posix()}"
+            v = f"sqlite:///{(BACKEND_DIR / relative_filename).resolve().as_posix()}"
+        elif v.startswith("sqlite:///") and not v.startswith("sqlite:////") and ":" not in v[10:14] and not v[10:].startswith("/"):
+            # Relative sqlite:///eschola.db without drive letter or root
+            relative_filename = v[len("sqlite:///") :]
+            v = f"sqlite:///{(BACKEND_DIR / relative_filename).resolve().as_posix()}"
         return v
+
+    @field_validator("EMAILS_ENABLED", mode="before")
+    @classmethod
+    def validate_emails_enabled(cls, v: Any, info: Any) -> bool:
+        if v is not None and str(v).strip() != "":
+            return str(v).strip().lower() in ("true", "1", "yes", "on")
+        return False
+
+    @field_validator("SMTP_FROM_EMAIL", mode="before")
+    @classmethod
+    def default_from_email(cls, v: str, info: Any) -> str:
+        if v and str(v).strip():
+            return str(v).strip()
+        # Fallback to SMTP_USER if user looks like an email
+        return ""
 
 
 settings = Settings()
+
+# Automatically enable EMAILS_ENABLED if SMTP_HOST and SMTP_FROM_EMAIL or SMTP_USER are provided and EMAILS_ENABLED wasn't explicitly disabled
+if not settings.EMAILS_ENABLED and settings.SMTP_HOST and (settings.SMTP_USER or settings.SMTP_FROM_EMAIL):
+    settings.EMAILS_ENABLED = True
 

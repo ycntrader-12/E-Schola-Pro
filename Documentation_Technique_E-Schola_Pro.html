@@ -534,7 +534,7 @@
 
     <div class="card-grid">
       <div class="stat-card">
-        <div class="stat-value">11</div>
+        <div class="stat-value">12</div>
         <div class="stat-label">Modules API</div>
       </div>
       <div class="stat-card">
@@ -760,12 +760,15 @@ E-Schola Pro/
     <p>Schéma complet de toutes les tables et leurs relations.</p>
 
     <div class="card" style="margin-bottom: 24px;">
-      <h4 style="margin-bottom: 8px; color: var(--text-primary);">🛡️ Persistance Permanente & Haute Disponibilité Railway (PostgreSQL & SQLite)</h4>
+      <h4 style="margin-bottom: 8px; color: var(--text-primary);">🛡️ Persistance Permanente & Haute Disponibilité (PostgreSQL Railway & SQLite Local)</h4>
       <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">
         <strong>Support Natif PostgreSQL Railway & Multi-Variables :</strong> E-Schola Pro supporte nativement <strong>PostgreSQL</strong> (en local ou sur cloud via Railway, Supabase, Neon) avec le driver performant <code>psycopg2-binary</code>. Le backend gère automatiquement la normalisation des chaînes de connexion (conversion <code>postgres://</code> en <code>postgresql+psycopg2://</code>), l'expansion automatique des variables de template Railway (ex. <code>postgresql://${{PGUSER}}:${{POSTGRES_PASSWORD}}@${{RAILWAY_PRIVATE_DOMAIN}}:5432/${{PGDATABASE}}</code>) et la détection multi-variables (<code>DATABASE_URL</code>, <code>POSTGRES_URL</code>, <code>DATABASE_PUBLIC_URL</code>, <code>DATABASE_URL_UNPOOLED</code>, <code>RAILWAY_PRIVATE_DOMAIN</code>, <code>PGHOST</code>, <code>POSTGRES_PASSWORD</code>, <code>PGDATABASE</code>).
       </p>
       <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">
-        <strong>Garantie Anti-Dégradation Cloud & Isolation des Déploiements :</strong> Grâce au détecteur d'environnement cloud (<code>is_in_railway()</code>), la plateforme ne bascule jamais sur le stockage éphémère SQLite en production Railway sans volume persistant explicite. Toutes les créations, modifications de profil, réinitialisations de mot de passe, attributions de rôle et suppressions de comptes utilisateurs sont <strong>100% persistées de façon permanente</strong> dans la base PostgreSQL Railway, strictement isolées des mises à jour du code de l'interface frontend Next.js.
+        <strong>Garantie Anti-Dégradation Cloud & Isolation des Déploiements :</strong> Grâce au détecteur d'environnement cloud (<code>is_in_railway()</code>), la plateforme ne bascule jamais sur le stockage éphémère SQLite en production Railway sans volume persistant explicite. Pour garantir la persistance permanente sur Railway lors de chaque mise à jour GitHub, la variable de référence <code>DATABASE_URL="${{Postgres.DATABASE_URL}}"</code> est liée au conteneur. Toutes les créations, modifications de profil, réinitialisations de mot de passe, attributions de rôle et suppressions de comptes utilisateurs sont <strong>100% persistées de façon permanente</strong> dans la base PostgreSQL Railway, strictement isolées des reconstructions de conteneurs.
+      </p>
+      <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">
+        <strong>Ancrage Canonique Absolu SQLite en Local :</strong> Pour éliminer tout risque d'effacement ou de duplication lors des démarrages locaux depuis des répertoires de travail distincts, toute URL SQLite relative (ex: <code>sqlite:///./eschola.db</code>) est automatiquement résolue de manière absolue et invariable vers <code>backend/eschola.db</code>. Le moteur SQLite est configuré en mode <code>WAL</code> (Write-Ahead Logging) avec <code>PRAGMA synchronous=NORMAL</code> et <code>PRAGMA foreign_keys=ON</code> pour une durabilité maximale contre les arrêts brutaux.
       </p>
       <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">
         <strong>Isolation du Seeding en Production (<code>SEED_DEMO_DATA=false</code>) :</strong> Lors des redéploiements déclenchés par GitHub vers Railway, le script d'initialisation (<code>create_admin.py</code>) n'injecte aucun compte de démonstration si un administrateur existe déjà dans la base. Les comptes personnalisés ou supprimés par l'administrateur en production ne sont jamais réinjectés ou écrasés.
@@ -1239,6 +1242,15 @@ E-Schola Pro/
         <tr><td><span class="badge badge-post">POST</span></td><td><code>/upload/video</code></td><td>Upload de vidéo de cours (Cloudinary / Stockage local)</td><td>Authentifié</td></tr>
       </tbody>
     </table>
+
+    <h3>Service Email & Diagnostic SMTP (/email)</h3>
+    <table>
+      <thead><tr><th>Méthode</th><th>Endpoint</th><th>Description</th><th>Accès</th></tr></thead>
+      <tbody class="endpoint-row">
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/email/status</code></td><td>Consulter le statut du service email, hôte SMTP configuré, ports TLS/SSL et mode actif (Production vs Dev Mock)</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/email/test</code></td><td>Diagnostiquer en direct la connectivité SMTP (DNS, poignée de main TCP, STARTTLS/SSL, authentification) et envoyer un email de test optionnel</td><td>Admin, Admin Manager</td></tr>
+      </tbody>
+    </table>
   </section>
 
   <!-- ═══════════════════════════════════════════════════════════════ -->
@@ -1465,6 +1477,15 @@ E-Schola Pro/
         <li><strong>Standardisation REST &amp; Traitement Trailing Slash (Fix 405 Method Not Allowed) :</strong> Résolution définitive des conflits de routage HTTP grâce à l'enregistrement dual des décorateurs FastAPI (<code>@router.post("")</code> et <code>@router.post("/")</code>) et l'alignement des clients frontend (<code>MessageComposerView</code> et <code>MessageComposerModal</code>) vers <code>/messages/</code>. Prévention totale des redirections 307/405 sur les reverse-proxies de production (Railway/Nginx).</li>
         <li><strong>Téléversement Universel de Fichiers &amp; Pièces Jointes :</strong> Prise en charge sans faille des pièces jointes (documents PDF, Office, archives, images, audio, vidéo) avec routage unifié vers <code>/api/v1/upload/file</code> et alias <code>/upload</code>, normalisation des retours JSON (<code>file_url</code> et <code>url</code>) et gestion des erreurs de téléversement contextuelles.</li>
         <li><strong>Persistance Base de Données des Favoris (⭐) &amp; Mise à Jour Optimiste :</strong> Ajout du champ <code>is_starred</code> dans le modèle <code>Message</code>, script de migration automatique <code>migrate_messages_star.py</code> appliqué au démarrage, endpoint <code>PUT /messages/{id}/star</code>, et réactivité immédiate de l'interface avec filtrage cohérent du dossier Favoris (y compris brouillons favoris).</li>
+        <li><strong>Service d'Emails Transactionnels SMTP &amp; Welcome Dispatcher :</strong> Système d'envoi d'e-mails professionnels externes intégrant :
+          <ul>
+            <li><em>Dispatcher Universel Sécurisé (<code>email_service.py</code>) :</em> Support natif des connexions chiffrées STARTTLS (port 587) et SSL direct (port 465) avec authentification SMTP.</li>
+            <li><em>Templates HTML Responsifs &amp; Branding E-Schola Pro :</em> Emails au design soigné (dégradé indigo/violet, badge de rôle attribué, identifiants, bouton d'appel à l'action et pied de page institutionnel) avec fallback texte brut multipart.</li>
+            <li><em>Notification Automatique de Bienvenue :</em> Déclenchement automatique d'un email de bienvenue lors de toute inscription publique ou création d'utilisateur par un administrateur.</li>
+            <li><em>Résilience Zéro Blocage (Dev Mock Fallback) :</em> Si les clés SMTP ne sont pas configurées en local, le système journalise l'email dans la console sans bloquer l'enregistrement ni renvoyer d'erreur 500.</li>
+            <li><em>Diagnostic Live Administrateur :</em> Endpoint <code>POST /api/v1/email/test</code> permettant de tester la chaîne complète (DNS, socket, TLS, authentification et test d'envoi réel).</li>
+          </ul>
+        </li>
         <li><strong>Résolution et Tolérance des Destinataires :</strong> Moteur de résolution avancé acceptant à la fois les identifiants numériques (<code>recipient_ids</code>) et textuels (<code>recipient_emails</code>), recherche insensible à la casse (<code>func.lower</code>) sur les e-mails et noms d'utilisateurs, gestion multi-destinataires principaux et copie carbone (CC) dédupliquée.</li>
         <li><strong>Sécurité Avancée &amp; Protection Anti-Menaces (Local &amp; Railway) :</strong> Blindage complet de la boîte de messagerie contre les attaques OWASP :
           <ul>
@@ -1910,6 +1931,15 @@ http://localhost:8000/admin
         <tr><td><code>ACCESS_TOKEN_EXPIRE_MINUTES</code></td><td>10080 (7 jours)</td><td>Durée de validité des tokens JWT en minutes</td></tr>
         <tr><td><code>SEED_DEMO_DATA</code></td><td><code>false</code> (Railway) / <code>true</code> (Local)</td><td>Contrôle du peuplement des comptes et groupes de démonstration. Désactivé par défaut en production Railway pour préserver l'intégrité absolue des données et éviter la réapparition de comptes de test.</td></tr>
         <tr><td><code>ALLOW_EPHEMERAL_SQLITE</code></td><td><code>false</code></td><td>Garde-fou de sécurité cloud. Empêche le basculement silencieux sur une base SQLite temporaire dans les conteneurs Railway sans volume persistant.</td></tr>
+        <tr><td><code>SMTP_HOST</code></td><td>—</td><td>Hôte du serveur SMTP (ex: <code>smtp.gmail.com</code>, <code>smtp-relay.brevo.com</code>, <code>smtp.sendgrid.net</code>). Si vide, le système bascule automatiquement en mode Mock / Dev sans erreur.</td></tr>
+        <tr><td><code>SMTP_PORT</code></td><td>587</td><td>Port SMTP (587 pour STARTTLS, 465 pour SSL direct)</td></tr>
+        <tr><td><code>SMTP_USER</code></td><td>—</td><td>Identifiant ou adresse e-mail d'authentification SMTP</td></tr>
+        <tr><td><code>SMTP_PASSWORD</code></td><td>—</td><td>Mot de passe SMTP ou mot de passe d'application sécurisé</td></tr>
+        <tr><td><code>SMTP_FROM_EMAIL</code></td><td>contact@eschola.pro</td><td>Adresse d'expédition des e-mails du système</td></tr>
+        <tr><td><code>SMTP_FROM_NAME</code></td><td>E-Schola Pro</td><td>Nom affiché de l'expéditeur dans les boîtes de réception</td></tr>
+        <tr><td><code>SMTP_TLS</code></td><td><code>true</code></td><td>Activation du chiffrement STARTTLS</td></tr>
+        <tr><td><code>SMTP_SSL</code></td><td><code>false</code></td><td>Activation du chiffrement direct SSL (port 465)</td></tr>
+        <tr><td><code>EMAILS_ENABLED</code></td><td><code>false</code> (Auto: <code>true</code> si SMTP configuré)</td><td>Activation globale de l'envoi d'e-mails réels</td></tr>
         <tr><td><code>CLOUDINARY_CLOUD_NAME</code></td><td>—</td><td>Nom du cloud Cloudinary pour l'upload de médias</td></tr>
         <tr><td><code>CLOUDINARY_API_KEY</code></td><td>—</td><td>Clé API Cloudinary</td></tr>
         <tr><td><code>CLOUDINARY_API_SECRET</code></td><td>—</td><td>Secret API Cloudinary</td></tr>

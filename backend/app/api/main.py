@@ -4,16 +4,17 @@ from app.api.v1 import (
     attendance,
     classrooms,
     courses,
+    email,
     enrollments,
     events,
     groups,
+    health,
     login,
     messages,
     quizzes,
     tasks,
     upload,
     users,
-    health,
 )
 
 api_router = APIRouter()
@@ -32,3 +33,4 @@ api_router.include_router(quizzes.router, prefix="/quizzes", tags=["quizzes"])
 api_router.include_router(attendance.router, prefix="/attendance", tags=["attendance"])
 api_router.include_router(groups.router, prefix="/groups", tags=["groups"])
 api_router.include_router(tasks.router, prefix="/tasks", tags=["tasks"])
+api_router.include_router(email.router, prefix="/email", tags=["email"])

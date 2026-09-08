@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 
 from app.models.message import Message
 from app.models.user import User
+from app.services.email_service import send_welcome_email
 
 ADMIN_ROLES = ["admin", "admin_manager"]
 
@@ -9,8 +10,14 @@ ADMIN_ROLES = ["admin", "admin_manager"]
 def send_welcome_message(session: Session, new_user: User) -> Message | None:
     """
     Sends an automatic welcome message to a newly created user account
-    (whether self-registered or created by an administrator).
+    (both in-app message and via SMTP email when configured).
     """
+    welcome_msg = None
+    user_name = f"{new_user.prenom or ''} {new_user.nom or ''}".strip()
+    if not user_name:
+        user_name = new_user.username or new_user.email.split("@")[0]
+
+    # 1. Dispatch in-app message
     try:
         # Find a primary administrator to act as the sender
         admin_sender = (
@@ -21,10 +28,6 @@ def send_welcome_message(session: Session, new_user: User) -> Message | None:
         )
 
         sender_id = admin_sender.id if admin_sender else new_user.id
-
-        user_name = f"{new_user.prenom or ''} {new_user.nom or ''}".strip()
-        if not user_name:
-            user_name = new_user.username or new_user.email.split("@")[0]
 
         welcome_subject = "Bienvenue sur la plateforme Oskula (E-Schola Pro) !"
         welcome_body = (
@@ -58,9 +61,20 @@ def send_welcome_message(session: Session, new_user: User) -> Message | None:
             session.add(welcome_msg)
         session.commit()
         session.refresh(welcome_msg)
-        return welcome_msg
     except Exception as e:
         session.rollback()
-        # Log error gracefully so user creation is not aborted if welcome message fails
-        print(f"[WARN] Failed to send automatic welcome message: {e}")
-        return None
+        # Log error gracefully so user creation is not aborted if in-app welcome message fails
+        print(f"[WARN] Failed to send automatic in-app welcome message: {e}")
+
+    # 2. Dispatch real SMTP welcome email (or dev mock log)
+    try:
+        if new_user.email and "@" in new_user.email:
+            send_welcome_email(
+                to_email=new_user.email,
+                user_name=user_name,
+                role=new_user.role or "étudiant",
+            )
+    except Exception as mail_err:
+        print(f"[WARN] Failed to dispatch welcome email: {mail_err}")
+
+    return welcome_msg
