@@ -153,6 +153,16 @@ def create_user(
         else:
             resolved_username = f"user.{uuid.uuid4().hex[:8]}"
 
+    # Reservation check for untouchable root admin 'admin_first'
+    if (
+        resolved_username in PROTECTED_ROOT_USERNAMES
+        or (user_in.email and user_in.email.strip().lower() in PROTECTED_ROOT_EMAILS)
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Cet identifiant et cette adresse email sont réservés exclusivement au super-administrateur racine 'admin_first'.",
+        )
+
     # Check username uniqueness
     existing_username = (
         session.query(User)
@@ -488,11 +498,11 @@ def update_user_role(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Untouchable protection for root administrator 'admin_first'
-    if is_protected_root_admin(user) and current_user.id != user.id and not is_protected_root_admin(current_user):
+    # Untouchable protection for root administrator 'admin_first': role is strictly immutable
+    if is_protected_root_admin(user):
         raise HTTPException(
             status_code=403,
-            detail="Le rôle du compte administrateur racine 'admin_first' est intouchable et ne peut pas être modifié.",
+            detail="Le rôle du compte administrateur racine 'admin_first' est intouchable et verrouillé de façon permanente sur 'admin'.",
         )
 
     # Restrictions for ADMIN_MANAGER
@@ -647,6 +657,16 @@ def admin_create_user(
     resolved_email = (user_in.email or "").strip().lower()
     if not resolved_email:
         resolved_email = f"{resolved_username}@eschola.pro"
+
+    # Reservation check for untouchable root admin 'admin_first'
+    if (
+        resolved_username in PROTECTED_ROOT_USERNAMES
+        or resolved_email in PROTECTED_ROOT_EMAILS
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Cet identifiant et cette adresse email sont réservés exclusivement au super-administrateur racine 'admin_first'.",
+        )
 
     # Check uniqueness
     existing = session.query(User).filter(

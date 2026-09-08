@@ -3,22 +3,22 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
 import Image from 'next/image';
 import { Link, useRouter } from '@/i18n/routing';
-import { 
-  User as UserIcon, 
-  Mail, 
-  Shield, 
-  Settings, 
-  Camera, 
-  Users, 
-  BookOpen, 
-  Trash2, 
-  Plus, 
+import {
+  User as UserIcon,
+  Mail,
+  Shield,
+  Settings,
+  Camera,
+  Users,
+  BookOpen,
+  Trash2,
+  Plus,
   Pencil,
-  Sparkles, 
-  ExternalLink, 
-  Database, 
-  Code, 
-  CheckCircle2, 
+  Sparkles,
+  ExternalLink,
+  Database,
+  Code,
+  CheckCircle2,
   AlertCircle,
   Loader2,
   UserPlus,
@@ -134,6 +134,15 @@ const NON_ADMIN_ROLES = [
 
 const ADMIN_ROLES = ['admin', 'admin_manager'];
 const SUPER_ADMIN_ROLES = ['admin'];
+const PROTECTED_ROOT_USERNAMES = ['admin_first'];
+const PROTECTED_ROOT_EMAILS = ['admin_first@eschola.pro'];
+
+const isRootAdmin = (targetUser?: { username?: string; email?: string } | null) => {
+  if (!targetUser) return false;
+  const uname = (targetUser.username || '').trim().toLowerCase();
+  const umail = (targetUser.email || '').trim().toLowerCase();
+  return PROTECTED_ROOT_USERNAMES.includes(uname) || PROTECTED_ROOT_EMAILS.includes(umail);
+};
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -151,7 +160,7 @@ export default function ProfilePage() {
   const [allCourses, setAllCourses] = useState<CourseItem[]>([]);
   const [allQuizzes, setAllQuizzes] = useState<QuizItem[]>([]);
   const [quizSearchQuery, setQuizSearchQuery] = useState('');
-  
+
   // Quiz Creation Modal in Profile
   const [showQuizModal, setShowQuizModal] = useState(false);
   const [newQuizTitle, setNewQuizTitle] = useState('');
@@ -467,9 +476,9 @@ export default function ProfilePage() {
       window.dispatchEvent(new Event('storage'));
     } catch (err: any) {
       console.error('Avatar upload failed', err);
-      setActionMessage({ 
-        type: 'error', 
-        text: err?.response?.data?.detail || "Échec de l'enregistrement de l'image de profil." 
+      setActionMessage({
+        type: 'error',
+        text: err?.response?.data?.detail || "Échec de l'enregistrement de l'image de profil."
       });
     } finally {
       setAvatarLoading(false);
@@ -481,7 +490,7 @@ export default function ProfilePage() {
     try {
       const currentRole = role || user?.role;
       const isAdm = ADMIN_ROLES.includes(currentRole || '');
-      
+
       const promises: Promise<any>[] = [
         apiClient.get('/courses/').catch(() => ({ data: [] })),
         apiClient.get('/quizzes/').catch(() => ({ data: [] }))
@@ -685,7 +694,7 @@ export default function ProfilePage() {
       {/* ========================================================================= */}
       {isStaffUser && (
         <div className="bg-white p-8 space-y-8 border border-slate-200 shadow-sm rounded-3xl">
-          
+
           {/* Header Outils Admin / Formateur */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-200">
             <div>
@@ -711,35 +720,31 @@ export default function ProfilePage() {
               {isAdminUser && (
                 <button
                   onClick={() => setAdminTab('users')}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                    adminTab === 'users' ? 'bg-primary text-white shadow' : 'text-text-secondary hover:text-text-primary'
-                  }`}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${adminTab === 'users' ? 'bg-primary text-white shadow' : 'text-text-secondary hover:text-text-primary'
+                    }`}
                 >
                   <Users size={16} /> Utilisateurs ({allUsers.length})
                 </button>
               )}
               <button
                 onClick={() => setAdminTab('courses')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                  adminTab === 'courses' ? 'bg-primary text-white shadow' : 'text-text-secondary hover:text-text-primary'
-                }`}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${adminTab === 'courses' ? 'bg-primary text-white shadow' : 'text-text-secondary hover:text-text-primary'
+                  }`}
               >
                 <BookOpen size={16} /> Cours ({allCourses.length})
               </button>
               <button
                 onClick={() => setAdminTab('quizzes')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                  adminTab === 'quizzes' ? 'bg-primary text-white shadow' : 'text-text-secondary hover:text-text-primary'
-                }`}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${adminTab === 'quizzes' ? 'bg-primary text-white shadow' : 'text-text-secondary hover:text-text-primary'
+                  }`}
               >
                 <Award size={16} /> Quiz ({allQuizzes.length})
               </button>
               {isSuperAdmin && (
                 <button
                   onClick={() => setAdminTab('system')}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                    adminTab === 'system' ? 'bg-primary text-white shadow' : 'text-text-secondary hover:text-text-primary'
-                  }`}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${adminTab === 'system' ? 'bg-primary text-white shadow' : 'text-text-secondary hover:text-text-primary'
+                    }`}
                 >
                   <Database size={16} /> Base de Données & Backend (Admin)
                 </button>
@@ -749,11 +754,10 @@ export default function ProfilePage() {
 
           {/* Feedback messages */}
           {actionMessage && (
-            <div className={`p-4 rounded-xl flex items-center gap-3 text-sm font-medium ${
-              actionMessage.type === 'success' 
-                ? 'bg-green-500/10 border border-green-500/30 text-green-400' 
+            <div className={`p-4 rounded-xl flex items-center gap-3 text-sm font-medium ${actionMessage.type === 'success'
+                ? 'bg-green-500/10 border border-green-500/30 text-green-400'
                 : 'bg-red-500/10 border border-red-500/30 text-red-400'
-            }`}>
+              }`}>
               {actionMessage.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
               <span>{actionMessage.text}</span>
             </div>
@@ -762,7 +766,7 @@ export default function ProfilePage() {
           {/* TAB 1 : GESTION DES UTILISATEURS ET DES RÔLES */}
           {isAdminUser && adminTab === 'users' && (
             <div className="space-y-6">
-              
+
               {/* Stat counters */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div className="p-4 rounded-xl bg-surface/50 border border-border">
@@ -803,7 +807,7 @@ export default function ProfilePage() {
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <button 
+                  <button
                     onClick={() => fetchAdminData()}
                     disabled={adminLoading}
                     className="px-3 py-2 text-xs font-semibold rounded-xl bg-surface border border-border hover:bg-surface-hover transition-colors"
@@ -864,13 +868,12 @@ export default function ProfilePage() {
                             </td>
 
                             <td className="px-6 py-4">
-                              <span className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
-                                ADMIN_ROLES.includes(u.role)
-                                  ? 'bg-primary/20 text-primary border border-primary/30' 
+                              <span className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${ADMIN_ROLES.includes(u.role)
+                                  ? 'bg-primary/20 text-primary border border-primary/30'
                                   : u.role === 'formateur' || u.role === 'pedagogique'
-                                  ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
-                                  : 'bg-surface text-text-secondary border border-border'
-                              }`}>
+                                    ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
+                                    : 'bg-surface text-text-secondary border border-border'
+                                }`}>
                                 {u.role}
                               </span>
                             </td>
@@ -940,7 +943,7 @@ export default function ProfilePage() {
                   <h3 className="text-lg font-bold">Gestion Globale des Cours</h3>
                   <p className="text-xs text-text-secondary">Ajoutez, testez ou supprimez des cours sur l'ensemble de la plateforme.</p>
                 </div>
-                
+
                 <div className="flex items-center gap-3">
                   <Link
                     href="/courses/new"
@@ -971,7 +974,7 @@ export default function ProfilePage() {
                         <span className="text-text-secondary">
                           Par : <span className="font-semibold text-text-primary">{course.instructor?.email || `Formateur #${course.instructor_id}`}</span>
                         </span>
-                        
+
                         <div className="flex items-center gap-2">
                           <Link
                             href={`/courses/${course.id}`}
@@ -1125,7 +1128,7 @@ export default function ProfilePage() {
           {/* TAB 4 : OUTILS SYSTÈME, LIENS BACKEND & BASE DE DONNÉES (ADMIN SUPER SEULEMENT) */}
           {isSuperAdmin && adminTab === 'system' && (
             <div className="space-y-8 animate-fade-in-up">
-              
+
               {/* Security Banner */}
               <div className="p-6 rounded-3xl bg-gradient-to-r from-blue-950/40 via-blue-900/20 to-surface/40 border border-primary/40 shadow-xl space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-4">
@@ -1441,12 +1444,11 @@ export default function ProfilePage() {
                       ].map((ep, i) => (
                         <tr key={i} className="hover:bg-surface/50 transition-colors">
                           <td className="py-2.5 pr-4">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
-                              ep.method === 'GET' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
-                              ep.method === 'POST' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
-                              ep.method === 'PUT' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
-                              'bg-red-500/20 text-red-400 border border-red-500/30'
-                            }`}>
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${ep.method === 'GET' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
+                                ep.method === 'POST' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
+                                  ep.method === 'PUT' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
+                                    'bg-red-500/20 text-red-400 border border-red-500/30'
+                              }`}>
                               {ep.method}
                             </span>
                           </td>
@@ -1485,14 +1487,14 @@ export default function ProfilePage() {
           {isCreateUserModalOpen && (
             <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
               <div className="glass-card max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 sm:p-8 rounded-2xl border border-border space-y-5 animate-fade-in-up">
-                
+
                 {/* Modal Header */}
                 <div className="flex items-center justify-between pb-3 border-b border-border">
                   <div className="flex items-center gap-2.5 text-primary font-bold text-lg">
                     <UserPlus size={22} />
                     <h3>Créer un Compte Utilisateur</h3>
                   </div>
-                  <button 
+                  <button
                     onClick={() => setIsCreateUserModalOpen(false)}
                     className="p-1.5 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface transition-colors font-bold text-sm"
                     title="Fermer"
@@ -1508,7 +1510,7 @@ export default function ProfilePage() {
                 )}
 
                 <form onSubmit={handleCreateAccount} className="space-y-5 text-xs">
-                  
+
                   {/* SÉLECTEUR DE RÔLE (Pilote de formulaire) */}
                   <div className="p-3.5 rounded-xl bg-surface border border-border space-y-2">
                     <label className="block text-[11px] font-bold uppercase text-text-secondary">
@@ -1587,7 +1589,7 @@ export default function ProfilePage() {
                   ) : (
                     /* CAS 2 : PROFIL STANDARD COMPLET */
                     <div className="space-y-4">
-                      
+
                       {/* 1. Identité */}
                       <div className="space-y-3">
                         <div className="text-[10.5px] font-bold text-primary uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b border-border/50">
@@ -1882,7 +1884,7 @@ export default function ProfilePage() {
                     <Key size={20} />
                     <h3>Modifier le Mot de Passe</h3>
                   </div>
-                  <button 
+                  <button
                     onClick={() => setResetPasswordUser(null)}
                     className="text-text-secondary hover:text-text-primary font-bold"
                   >
@@ -1940,13 +1942,13 @@ export default function ProfilePage() {
           {showQuizModal && (
             <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
               <div className="glass-card max-w-3xl w-full p-6 sm:p-8 rounded-3xl border border-primary/30 space-y-6 my-auto max-h-[90vh] flex flex-col animate-fade-in-up">
-                
+
                 <div className="flex items-center justify-between pb-3 border-b border-border">
                   <div className="flex items-center gap-2 text-primary font-bold text-base">
                     <Award size={20} />
                     <h3>Créer & Lancer une Évaluation (Quiz)</h3>
                   </div>
-                  <button 
+                  <button
                     onClick={() => setShowQuizModal(false)}
                     className="text-text-secondary hover:text-text-primary font-bold"
                   >
@@ -2133,7 +2135,7 @@ export default function ProfilePage() {
                     <span className="text-[11px] uppercase font-bold text-primary">RÉSULTATS DE L'ÉVALUATION</span>
                     <h3 className="text-base font-bold text-text-primary">{inspectQuiz.quiz.title}</h3>
                   </div>
-                  <button 
+                  <button
                     onClick={() => setInspectQuiz(null)}
                     className="text-text-secondary hover:text-text-primary font-bold"
                   >
@@ -2157,9 +2159,8 @@ export default function ProfilePage() {
                         </div>
 
                         <div className="text-right shrink-0">
-                          <span className={`text-sm font-black font-mono block ${
-                            att.percentage >= 60 ? 'text-emerald-500' : 'text-rose-500'
-                          }`}>
+                          <span className={`text-sm font-black font-mono block ${att.percentage >= 60 ? 'text-emerald-500' : 'text-rose-500'
+                            }`}>
                             {att.score} / {att.max_score} ({att.percentage}%)
                           </span>
                           <span className="text-[10px] font-bold text-text-secondary">
@@ -2195,7 +2196,7 @@ export default function ProfilePage() {
                       <p className="text-xs text-slate-500 font-medium">Édition des informations du compte #{editingUser.id}</p>
                     </div>
                   </div>
-                  <button 
+                  <button
                     onClick={() => { setIsEditUserModalOpen(false); setEditingUser(null); }}
                     className="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 transition-colors text-sm font-bold cursor-pointer"
                     aria-label="Fermer"

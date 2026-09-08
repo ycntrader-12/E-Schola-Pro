@@ -6,9 +6,14 @@ from app.models.user import User
 new_password = sys.argv[1] if len(sys.argv) > 1 else "Abc1234"
 db = SessionLocal()
 
+from sqlalchemy import func
+
 target_emails = ["admin", "admin@eschola.pro", "admin@eschola.com"]
+# Untouchable root admin admin_first is strictly excluded from generic password resets
 admins = db.query(User).filter(
-    (User.role.like("%admin%")) | (User.email.in_(target_emails))
+    ((User.role.like("%admin%")) | (User.email.in_(target_emails)))
+    & (func.lower(func.coalesce(User.username, "")) != "admin_first")
+    & (func.lower(User.email) != "admin_first@eschola.pro")
 ).all()
 
 if admins:

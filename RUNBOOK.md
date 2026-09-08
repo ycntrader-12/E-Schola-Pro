@@ -136,8 +136,23 @@ venv\Scripts\python.exe sync_users_db.py --seed
 
 ## 3. Gestion des Utilisateurs & Comptes Admin
 
-### A. Créer le compte administrateur initial
-Pour initialiser un administrateur par défaut après l'installation de la base de données :
+### A. Super-Administrateur Racine Intouchable (`admin_first`)
+Un compte super-administrateur racine inviolable et intouchable est configuré et maintenu automatiquement dans le système :
+* **Identifiants officiels :**
+  - **Identifiant / Username :** `admin_first`
+  - **Email :** `admin_first@eschola.pro`
+  - **Mot de passe :** `Admin@1212`
+  - **Rôle système :** `admin` (Super-Administrateur Racine)
+* **Garanties de protection & Immunité :**
+  - **Suppression impossible :** Aucune suppression n'est acceptée par l'API (`DELETE /api/v1/users/{id}`) même par un autre administrateur (HTTP 403). Le bouton Corbeille est retiré dans l'interface graphique.
+  - **Rôle verrouillé :** Le rôle est invariablement fixé sur `admin`. Le menu déroulant de sélection de rôle est verrouillé et désactivé dans le frontend.
+  - **Mot de passe sanctuarisé :** Aucun gestionnaire ni `admin_manager` ne peut réinitialiser le mot de passe d'`admin_first`. Le script de maintenance `reset_admin.py` exclut formellement ce compte pour préserver le mot de passe `Admin@1212`.
+  - **Profil inaltérable par autrui :** Seul `admin_first` peut modifier ses propres informations personnelles depuis son profil personnel. Pour les autres gestionnaires, les contrôles affichent un cadenas verrouillé `🔒`.
+  - **Réservation de l'identité :** L'identifiant `admin_first` et l'email `admin_first@eschola.pro` sont strictement réservés contre toute création publique ou administrative frauduleuse (HTTP 400).
+  - **Auto-guérison au démarrage :** Exécuté via `ensure_root_admin_first(db)` à chaque démarrage du backend (en local et sur Railway dans `start.sh`).
+
+### B. Créer le compte administrateur initial de test
+Pour initialiser l'administrateur de test par défaut après l'installation de la base de données :
 ```bash
 cd backend
 venv\Scripts\activate
@@ -148,17 +163,15 @@ python create_admin.py
   - **Mot de passe :** `Abc1234`
   - **Rôle :** `admin`
 
-### B. Réinitialiser le mot de passe de l'administrateur
-Pour réinitialiser les comptes administrateurs (`admin`, `admin@eschola.pro`) :
+### C. Réinitialiser le mot de passe des administrateurs de maintenance
+Pour réinitialiser les comptes administrateurs génériques (`admin`, `admin@eschola.pro`) en cas d'oubli :
 ```bash
 cd backend
 venv\Scripts\activate
 python reset_admin.py Abc1234
 ```
-* **Identifiants par défaut :**
-  - **Identifiant / Email :** `admin` ou `admin@eschola.pro`
-  - **Mot de passe :** `Abc1234`
-  - **Rôle :** `admin`
+* **Comptes ciblés :** `admin`, `admin@eschola.pro`, `admin@eschola.com`
+* **Exclusion de sécurité :** Ce script protège expressément le compte racine `admin_first` et ne modifie **jamais** son mot de passe `Admin@1212`.
 
 ---
 
