@@ -122,6 +122,27 @@ export default function QuizzesPage() {
     fetchQuizzes();
   }, []);
 
+  const submitQuizAnswers = async () => {
+    if (!activeQuizDetail) return;
+    setIsSubmittingQuiz(true);
+    try {
+      const res = await apiClient.post(`/quizzes/${activeQuizDetail.id}/submit`, {
+        answers: selectedAnswers
+      });
+      setQuizResult(res.data);
+      fetchQuizzes(); // Refresh scores on main list
+    } catch (err: any) {
+      alert(err?.response?.data?.detail || 'Erreur lors de la soumission du quiz.');
+    } finally {
+      setIsSubmittingQuiz(false);
+    }
+  };
+
+  const handleAutoSubmit = async () => {
+    if (!activeQuizDetail || isSubmittingQuiz) return;
+    submitQuizAnswers();
+  };
+
   // 2. Timer for active quiz
   useEffect(() => {
     if (!activeQuizDetail || quizResult) return;
@@ -149,28 +170,6 @@ export default function QuizzesPage() {
       alert(err?.response?.data?.detail || 'Erreur lors du chargement du quiz.');
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  // 4. Submit Quiz
-  const handleAutoSubmit = async () => {
-    if (!activeQuizDetail || isSubmittingQuiz) return;
-    submitQuizAnswers();
-  };
-
-  const submitQuizAnswers = async () => {
-    if (!activeQuizDetail) return;
-    setIsSubmittingQuiz(true);
-    try {
-      const res = await apiClient.post(`/quizzes/${activeQuizDetail.id}/submit`, {
-        answers: selectedAnswers
-      });
-      setQuizResult(res.data);
-      fetchQuizzes(); // Refresh scores on main list
-    } catch (err: any) {
-      alert(err?.response?.data?.detail || 'Erreur lors de la soumission du quiz.');
-    } finally {
-      setIsSubmittingQuiz(false);
     }
   };
 

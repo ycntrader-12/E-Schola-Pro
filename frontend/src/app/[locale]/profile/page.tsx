@@ -476,29 +476,6 @@ export default function ProfilePage() {
     }
   };
 
-  useEffect(() => {
-    const fetchUser = async () => {
-      const token = localStorage.getItem('access_token');
-      if (!token) {
-        router.push('/login');
-        return;
-      }
-      try {
-        const res = await apiClient.get('/users/me');
-        setUser(res.data);
-        if (ADMIN_ROLES.includes(res.data.role) || res.data.role === 'formateur') {
-          fetchAdminData(res.data.role);
-        }
-      } catch (error) {
-        console.error('Failed to fetch user', error);
-        router.push('/login');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchUser();
-  }, [router]);
-
   const fetchAdminData = async (role?: string) => {
     setAdminLoading(true);
     try {
@@ -529,6 +506,29 @@ export default function ProfilePage() {
       setAdminLoading(false);
     }
   };
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        router.push('/login');
+        return;
+      }
+      try {
+        const res = await apiClient.get('/users/me');
+        setUser(res.data);
+        if (ADMIN_ROLES.includes(res.data.role) || res.data.role === 'formateur') {
+          fetchAdminData(res.data.role);
+        }
+      } catch (error) {
+        console.error('Failed to fetch user', error);
+        router.push('/login');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchUser();
+  }, [router]);
 
   const handleDeleteQuizInProfile = async (quizId: number) => {
     if (!confirm('Voulez-vous vraiment supprimer ce quiz ?')) return;

@@ -16,6 +16,11 @@ export interface RecipientInputProps {
   className?: string;
 }
 
+// Helper for Axios cancel check
+function axiosIsCancel(err: any): boolean {
+  return err?.name === 'CanceledError' || err?.code === 'ERR_CANCELED';
+}
+
 export const RecipientInput: React.FC<RecipientInputProps> = ({
   label,
   placeholder = 'Rechercher par nom, email ou prénom...',
@@ -92,10 +97,6 @@ export const RecipientInput: React.FC<RecipientInputProps> = ({
     };
   }, [queryText]);
 
-  // Helper for Axios cancel check
-  function axiosIsCancel(err: any): boolean {
-    return err?.name === 'CanceledError' || err?.code === 'ERR_CANCELED';
-  }
 
   // Deduplicate against all already selected recipients (To + CC)
   const filteredSuggestions = useMemo(() => {

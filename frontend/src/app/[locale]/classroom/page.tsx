@@ -84,15 +84,6 @@ export default function ClassroomHubPage() {
   const [isPurging, setIsPurging] = useState(false);
   const [fetchError, setFetchError] = useState('');
 
-  useEffect(() => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
-    if (!token) {
-      router.push('/login');
-      return;
-    }
-    fetchData();
-  }, []);
-
   const extractErrorMessage = (err: any, fallback: string): string => {
     if (err?.response?.status === 401) return 'Session expirée. Veuillez vous reconnecter.';
     if (err?.message === 'Network Error' || !err?.response) {
@@ -159,6 +150,15 @@ export default function ClassroomHubPage() {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+    if (!token) {
+      router.push('/login');
+      return;
+    }
+    fetchData();
+  }, []);
 
   const handleAcceptInvitation = async (invId: number, roomId?: string) => {
     setProcessingInvId(invId);

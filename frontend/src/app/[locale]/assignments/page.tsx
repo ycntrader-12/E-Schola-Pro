@@ -97,10 +97,6 @@ export default function AssignmentsPage() {
   const [gradeInput, setGradeInput] = useState<number>(18);
   const [feedbackInput, setFeedbackInput] = useState('');
 
-  useEffect(() => {
-    fetchInitialData();
-  }, []);
-
   const fetchInitialData = async () => {
     setIsLoading(true);
     try {
@@ -115,6 +111,10 @@ export default function AssignmentsPage() {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchInitialData();
+  }, []);
 
   const isManager = ['admin', 'admin_manager', 'formateur'].includes(currentUser?.role || '');
 

@@ -283,6 +283,17 @@ export default function VirtualClassroomLivePage() {
     if (roomId) init();
   }, [roomId]);
 
+  const stopAllMedia = () => {
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach(track => track.stop());
+      localStreamRef.current = null;
+    }
+    if (screenStreamRef.current) {
+      screenStreamRef.current.getTracks().forEach(track => track.stop());
+      screenStreamRef.current = null;
+    }
+  };
+
   // Periodic poll for subgroups, messages, and join status / requests
   useEffect(() => {
     if (!roomId || !currentUser) return;
@@ -430,17 +441,6 @@ export default function VirtualClassroomLivePage() {
       } else {
         setPermissionError("Périphériques en attente. Appuyez sur 'Activer' pour autoriser l'accès.");
       }
-    }
-  };
-
-  const stopAllMedia = () => {
-    if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach(track => track.stop());
-      localStreamRef.current = null;
-    }
-    if (screenStreamRef.current) {
-      screenStreamRef.current.getTracks().forEach(track => track.stop());
-      screenStreamRef.current = null;
     }
   };
 

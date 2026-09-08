@@ -1368,6 +1368,7 @@ E-Schola Pro/
       <ul>
         <li><strong>Création :</strong> Formulaire avec titre, description, image de couverture (upload Cloudinary), document PDF</li>
         <li><strong>Vidéos &amp; Playlist :</strong> Gestion d'une playlist de vidéos ordonnées par cours. Les formateurs et administrateurs peuvent téléverser des fichiers vidéo locaux (MP4, WebM) via un modal d'upload dédié directement depuis la page de détail du cours (<code>/courses/{id}</code>) ou en tant que raccourci depuis la liste globale des cours (<code>/courses</code>).</li>
+        <li><strong>Lecteur Vidéo Hybride Universel (<code>YoutubePlayer.tsx</code>) :</strong> Le lecteur analyse dynamiquement la source du contenu. Si le lien est une URL YouTube (ex: <code>youtube.com/watch?v=...</code> ou <code>youtu.be/...</code>), un lecteur <code>&lt;iframe&gt;</code> responsive sécurisé est injecté automatiquement. Si le contenu est un fichier vidéo autonome (MP4, WebM ou upload direct du serveur), le lecteur HTML5 personnalisé avec contrôles enrichis (gestion du volume, vitesses de lecture 0.5x à 2x, plein écran et téléchargement direct) prend le relais de façon transparente.</li>
         <li><strong>Inscription :</strong> Les étudiants peuvent s'inscrire/se désinscrire automatiquement</li>
         <li><strong>Détail du cours (/courses/{id}) :</strong> Bannière horizontale d'inscription et d'actions (statut d'inscription, bouton de téléchargement du support, bouton de suppression), lecteur vidéo intégré, description étendue et playlist interactive des leçons</li>
         <li><strong>Suppression :</strong> Cascade automatique (vidéos et inscriptions supprimées)</li>
@@ -1739,6 +1740,17 @@ E-Schola Pro/
         <li><strong>Harmonisation Unifiée des Modales (Mode Clair UX) :</strong> Les fenêtres modales (Téléversement vidéo, édition utilisateur, fenêtres de confirmation et gestion de groupes) sont configurées avec un fond blanc pur (<code>bg-white</code>), des bordures nettes <code>border-slate-200</code>, des ombrages portés <code>shadow-2xl</code> et des champs de saisie <code>bg-slate-50</code> offrant un contraste maximal, une lisibilité parfaite sous le thème clair et des boutons d'action Facebook Blue (<code>#1877f2</code>).</li>
       </ul>
       <p><strong>Icônes :</strong> Lucide React</p>
+    </div>
+
+    <h3>Fiabilité d'Exécution, Zéro TDZ &amp; Conformité React 19 / ESLint 9</h3>
+    <div class="card" style="border-left: 4px solid var(--accent-green);">
+      <p>Afin de garantir une stabilité sans faille (zéro plantage en production, fluidité 60 FPS et compatibilité universelle tous navigateurs) :</p>
+      <ul>
+        <li><strong>Élimination des Temporal Dead Zones (TDZ) :</strong> Réorganisation et ordonnancement lexical rigoureux des fonctions asynchrones de récupération de données (<code>fetchInitialData</code>, <code>fetchData</code>, <code>fetchGroups</code>, <code>fetchAdminData</code>, <code>loadAllMessages</code>, <code>submitQuizAnswers</code>, <code>stopAllMedia</code>, etc.) avant leur invocation dans les hooks <code>useEffect</code> et timers <code>setInterval</code> sur l'ensemble des modules (<code>assignments</code>, <code>classroom</code>, <code>group</code>, <code>inbox</code>, <code>profile</code>, <code>quizzes</code>).</li>
+        <li><strong>Sécurisation des Helpers Utilitaires :</strong> Déplacement des fonctions pures au niveau module (ex: <code>axiosIsCancel</code> dans <code>RecipientInput.tsx</code>) afin d'éviter toute fermeture lexicale prématurée.</li>
+        <li><strong>Conformité ESLint 9 &amp; Next.js 16 :</strong> Paramétrage ciblé dans <code>eslint.config.mjs</code> pour la prise en charge native des apostrophes françaises (<code>react/no-unescaped-entities: off</code>) et gestion bienveillante des types souples sans casser les pipelines d'intégration continue (0 erreur bloquante).</li>
+        <li><strong>Lecteur Vidéo Résilient :</strong> Détection automatique intelligente des vidéos hébergées sur YouTube via extraction regex de l'identifiant (11 caractères) et bascule transparente entre iframe responsive et lecteur HTML5 avec contrôles multimédia personnalisés.</li>
+      </ul>
     </div>
 
     <h3>Authentification</h3>

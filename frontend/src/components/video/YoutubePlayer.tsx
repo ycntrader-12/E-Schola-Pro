@@ -11,7 +11,19 @@ interface YoutubePlayerProps {
   title: string;
 }
 
+function getYoutubeEmbedUrl(url: string): string | null {
+  if (!url) return null;
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+  const match = url.match(regExp);
+  if (match && match[2] && match[2].length === 11) {
+    return `https://www.youtube.com/embed/${match[2]}?autoplay=1&enablejsapi=1&rel=0`;
+  }
+  return null;
+}
+
 export default function YoutubePlayer({ src, title }: YoutubePlayerProps) {
+  const youtubeEmbedUrl = getYoutubeEmbedUrl(src);
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -126,6 +138,20 @@ export default function YoutubePlayer({ src, title }: YoutubePlayerProps) {
     document.body.removeChild(a);
   };
 
+  if (youtubeEmbedUrl) {
+    return (
+      <div className="relative w-full rounded-2xl overflow-hidden aspect-video shadow-2xl bg-black border border-slate-800">
+        <iframe
+          src={youtubeEmbedUrl}
+          title={title || 'Vidéo YouTube'}
+          className="w-full h-full border-0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowFullScreen
+        />
+      </div>
+    );
+  }
+
   return (
     <div 
       ref={containerRef} 
@@ -233,7 +259,11 @@ export default function YoutubePlayer({ src, title }: YoutubePlayerProps) {
               )}
             </div>
 
-            <button onClick={toggleFullscreen} className="text-white hover:text-primary transition-colors">
+            <button 
+              onClick={toggleFullscreen} 
+              className={`transition-colors ${isFullscreen ? 'text-primary' : 'text-white hover:text-primary'}`}
+              title={isFullscreen ? 'Quitter le plein écran' : 'Plein écran'}
+            >
               <Maximize size={20} />
             </button>
           </div>

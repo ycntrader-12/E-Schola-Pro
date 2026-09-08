@@ -46,6 +46,17 @@ export default function GroupPage() {
   const [formError, setFormError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const fetchGroups = async () => {
+    try {
+      const res = await apiClient.get('/groups');
+      setGroups(res.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
     const initPage = async () => {
       const token = localStorage.getItem('access_token');
@@ -59,7 +70,9 @@ export default function GroupPage() {
         const payload = JSON.parse(atob(token.split('.')[1]));
         userRole = String(payload.role || '').toLowerCase();
         setCurrentUser({ id: payload.sub, email: payload.email, role: userRole });
-      } catch (e) {}
+      } catch {
+        // Token parsing fallback
+      }
 
       try {
         const userRes = await apiClient.get('/users/me');
@@ -67,7 +80,9 @@ export default function GroupPage() {
           userRole = String(userRes.data.role || '').toLowerCase();
           setCurrentUser(userRes.data);
         }
-      } catch (err) {}
+      } catch {
+        // User fetch fallback
+      }
 
       // If learner, do not fetch groups
       if (['etudiant', 'étudiant', 'stagiaire', 'employer'].includes(userRole)) {
@@ -80,17 +95,6 @@ export default function GroupPage() {
 
     initPage();
   }, []);
-
-  const fetchGroups = async () => {
-    try {
-      const res = await apiClient.get('/groups');
-      setGroups(res.data);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const canManage = ['admin', 'admin_manager', 'formateur', 'pedagogique'].includes(
     (currentUser?.role || '').trim().toLowerCase()

@@ -172,24 +172,6 @@ export default function InboxMessagesPage() {
 
   const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // Load current user and initial messages
-  useEffect(() => {
-    fetchInitialData();
-  }, []);
-
-  const fetchInitialData = async () => {
-    setIsLoading(true);
-    try {
-      const userRes = await apiClient.get('/users/me');
-      setCurrentUser(userRes.data);
-      await loadAllMessages();
-    } catch (err) {
-      console.error('Error fetching initial inbox data:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const loadAllMessages = async () => {
     setIsRefreshing(true);
     try {
@@ -210,6 +192,24 @@ export default function InboxMessagesPage() {
       setIsRefreshing(false);
     }
   };
+
+  const fetchInitialData = async () => {
+    setIsLoading(true);
+    try {
+      const userRes = await apiClient.get('/users/me');
+      setCurrentUser(userRes.data);
+      await loadAllMessages();
+    } catch (err) {
+      console.error('Error fetching initial inbox data:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Load current user and initial messages
+  useEffect(() => {
+    fetchInitialData();
+  }, []);
 
   const unreadCount = useMemo(() => {
     return inboxMessages.filter((m) => !m.is_read).length;
