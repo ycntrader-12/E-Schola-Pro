@@ -2,7 +2,7 @@ import os
 import socket
 from pathlib import Path
 from typing import Any
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
@@ -132,6 +132,8 @@ class Settings(BaseSettings):
     # Seed demo accounts only in local development by default; NEVER overwrite or reseed demo data in production
     SEED_DEMO_DATA: bool = False if is_in_railway() else True
     ALLOW_EPHEMERAL_SQLITE: bool = False
+    # Disable automatic ORM schema synchronization in production (Railway or explicit production env)
+    AUTO_SYNC_SCHEMA: bool = False if (is_in_railway() or is_production()) else True
 
     # Canonical default pointing to PostgreSQL or eschola.db
     DATABASE_URL: str = get_default_database_url()
@@ -186,6 +188,19 @@ class Settings(BaseSettings):
             relative_filename = v[len("sqlite:///") :]
             v = f"sqlite:///{(BACKEND_DIR / relative_filename).resolve().as_posix()}"
         return v
+
+    @model_validator(mode="after")
+    def compute_environment_defaults(self) -> "Settings":
+        env = (self.ENVIRONMENT or os.getenv("ENVIRONMENT") or os.getenv("APP_ENV") or "").strip().lower()
+        is_prod = is_in_railway() or env in ["production", "prod"]
+
+        # If running in production mode, auto-sync schema is disabled by default
+        explicit_sync_env = os.getenv("AUTO_SYNC_SCHEMA") or os.getenv("DB_AUTO_SYNC")
+        if explicit_sync_env is not None and explicit_sync_env.strip() != "":
+            self.AUTO_SYNC_SCHEMA = explicit_sync_env.strip().lower() in ("true", "1", "yes", "on")
+        elif is_prod:
+            self.AUTO_SYNC_SCHEMA = False
+        return self
 
     @field_validator("EMAILS_ENABLED", mode="before")
     @classmethod

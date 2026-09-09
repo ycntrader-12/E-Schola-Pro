@@ -76,16 +76,21 @@ E-Schola Pro supporte nativement **PostgreSQL** et **SQLite** :
 - **En Production / Railway :** Utilisation recommandée de **PostgreSQL** (provisionné via un plugin Railway ou un service externe comme Supabase/Neon).
 - **En Développement Local :** Vous pouvez connecter une instance **PostgreSQL** locale (ex: `postgresql+psycopg2://postgres:postgres@localhost:5432/eschola_pro`) ou utiliser la base **SQLite** persistante [`backend/eschola.db`](file:///d:/my%20projet/E-Schola%20Pro/backend/eschola.db).
 
-> [!NOTE]
-> Au démarrage du backend, FastAPI exécute automatiquement les vérifications de schéma et `Base.metadata.create_all(bind=engine)`. Pour le versionnement propre et la reproductibilité en équipe ou en production, l'utilisation de la chaîne de migration Alembic est activée et recommandée.
+> [!IMPORTANT]
+> **Désactivation de la synchronisation automatique en production :**
+> En mode production (`ENVIRONMENT=production` ou Railway), la synchronisation automatique du schéma par l'ORM (`Base.metadata.create_all`) est **strictement désactivée** (`AUTO_SYNC_SCHEMA=false`) pour empêcher toute altération concurrente ou dégradation de données. Toutes les migrations de base de données PostgreSQL doivent être appliquées **explicitement** via Alembic. En développement local, la synchronisation automatique reste disponible mais l'application explicite des migrations est recommandée.
 
-### A. Appliquer les migrations de base de données
-Lorsque vous téléchargez des modifications de code ou basculez vers une nouvelle base de données :
+### A. Appliquer les migrations de base de données (Local & Railway)
+Pour appliquer explicitement l'ensemble des migrations jusqu'à `head` :
 ```bash
 cd backend
-# Sur Windows :
-venv\Scripts\python.exe -m alembic.config upgrade head
-# Ou avec alembic directement :
+# Via le script unifié (avec test de connectivité) :
+# Windows :
+venv\Scripts\python.exe run_migrations.py
+# Linux/macOS :
+python run_migrations.py
+
+# Ou directement via la CLI Alembic :
 alembic upgrade head
 ```
 
@@ -224,11 +229,12 @@ Si vous ajoutez une clé de traduction dans un fichier JSON, **veillez à l'ajou
 
 ### 🛡️ Garantie d'Intégrité de la Base de Données lors des Déploiements UI
 Chaque mise à jour de l'interface utilisateur (composants React, CSS, landing page, traductions i18n) poussée sur GitHub déclenche une reconstruction de l'image Docker sur Railway. L'architecture garantit l'isolation absolue des données :
-1. **Zéro Écrasement Utilisateur (`SEED_DEMO_DATA=false`) :** Le script de démarrage n'injecte aucun compte de démonstration en production si un administrateur existe déjà. Les comptes, rôles, profils et mots de passe modifiés par les utilisateurs ne sont **jamais réinitialisés**.
-2. **Garde-fou Anti-SQLite Éphémère :** Si l'environnement Railway est détecté sans `DATABASE_URL` PostgreSQL ni volume persistant, le backend avertit immédiatement pour empêcher toute utilisation d'une base SQLite temporaire qui disparaîtrait au prochain commit GitHub.
-3. **Boucle d'Attente Résiliente (`start.sh`) :** Avant de démarrer Supervisor, le script attend jusqu'à 60 secondes la disponibilité effective de PostgreSQL (`postgres.railway.internal`).
-4. **Découplage DDL de FastAPI :** L'import de l'application FastAPI n'exécute aucune modification concurrente de schéma, éliminant tout blocage de table au démarrage des workers.
-5. **Healthcheck Natif Railway :** Railway surveille l'endpoint `GET /api/v1/health` configuré dans `railway.json` avant de basculer le trafic sur le nouveau conteneur.
+1. **Désactivation Stricte de l'Auto-Sync ORM (`AUTO_SYNC_SCHEMA=false`) :** En production sur Railway, l'ORM SQLAlchemy/FastAPI n'exécute aucun `Base.metadata.create_all` implicite. Le schéma n'est jamais modifié à la volée par les requêtes ou le cycle de vie de l'app.
+2. **Application Explicite des Migrations PostgreSQL (`start.sh` -> `run_migrations.py`) :** Avant de lancer les serveurs web, le conteneur exécute `python run_migrations.py` qui applique explicitement `alembic upgrade head`. Si une migration échoue, le démarrage s'interrompt pour protéger l'intégrité de la base.
+3. **Zéro Écrasement Utilisateur (`SEED_DEMO_DATA=false`) :** Le script de démarrage n'injecte aucun compte de démonstration en production si un administrateur existe déjà. Les comptes, rôles, profils et mots de passe modifiés par les utilisateurs ne sont **jamais réinitialisés**.
+4. **Garde-fou Anti-SQLite Éphémère :** Si l'environnement Railway est détecté sans `DATABASE_URL` PostgreSQL ni volume persistant, le backend avertit immédiatement pour empêcher toute utilisation d'une base SQLite temporaire qui disparaîtrait au prochain commit GitHub.
+5. **Boucle d'Attente Résiliente (`run_migrations.py`) :** Avant d'appliquer les migrations, le script attend jusqu'à 60 secondes la disponibilité effective de PostgreSQL (`postgres.railway.internal`).
+6. **Healthcheck Natif Railway :** Railway surveille l'endpoint `GET /api/v1/health` configuré dans `railway.json` avant de basculer le trafic sur le nouveau conteneur.
 
 ### Étape 1 : Lancer le Déploiement
 1. Connectez-vous à votre compte Railway.

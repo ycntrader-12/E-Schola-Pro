@@ -13,50 +13,15 @@ if [ -n "$RAILWAY_VOLUME_MOUNT_PATH" ]; then
     mkdir -p "$RAILWAY_VOLUME_MOUNT_PATH"
 fi
 
-# Application des migrations de base de données (PostgreSQL & SQLite)
-echo "Checking database availability & running migrations..."
+# Application explicite des migrations de base de donnees (PostgreSQL & Alembic)
+echo "Executing explicit database migrations for production deployment..."
 cd /app/backend
 
-python -c "
-import time, sys
-from app.db.database import engine
-from sqlalchemy import text
+# Desactivation stricte de la synchronisation automatique ORM en production
+export AUTO_SYNC_SCHEMA=false
+export ENVIRONMENT=${ENVIRONMENT:-production}
 
-max_retries = 30
-connected = False
-for i in range(max_retries):
-    try:
-        with engine.connect() as conn:
-            conn.execute(text('SELECT 1'))
-            print(f'Database connection established successfully ({engine.dialect.name}).')
-            connected = True
-            break
-    except Exception as e:
-        print(f'Database connection pending ({i+1}/{max_retries}): {e}')
-        time.sleep(2)
-
-if not connected:
-    print('[CRITICAL] Database unreachable after 60 seconds. Halting to protect integrity.')
-    sys.exit(1)
-"
-
-echo "Applying schema migrations..."
-python migrate_user_profiles.py || true
-python migrate_messages_schema.py || true
-python migrate_classrooms.py || true
-python migrate_tasks_attachment.py || true
-
-alembic upgrade head || {
-    echo "Alembic upgrade note: attempting safe reconciliation..."
-    python -c "
-import alembic.config
-try:
-    alembic.config.main(argv=['stamp', 'head'])
-    print('Stamped database head successfully.')
-except Exception as e:
-    print('Stamp note:', e)
-"
-}
+python run_migrations.py
 
 # Seeding des comptes administratifs (idempotent, ne reset jamais les comptes modifiés)
 echo "Ensuring administrative access (strictly non-destructive)..."

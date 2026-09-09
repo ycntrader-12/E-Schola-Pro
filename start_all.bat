@@ -7,7 +7,7 @@ echo =======================================
 cd /d "%~dp0"
 
 echo Demarrage du Backend...
-start "Backend E-Schola Pro" cmd /k "cd backend && venv\Scripts\activate && uvicorn app.main:app --reload"
+start "Backend E-Schola Pro" cmd /k "cd backend && venv\Scripts\activate && python run_migrations.py && uvicorn app.main:app --reload"
 
 echo Demarrage du Frontend...
 start "Frontend E-Schola Pro" cmd /k "cd frontend && npm run dev"

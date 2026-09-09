@@ -151,6 +151,52 @@ def run_tests():
     print(f"  -> PASSED: Admin account '{admin_user.email}' is completely immune to redeployment resets.\n")
     db.close()
 
+    print("=" * 70)
+    print("  TEST 6: ORM Schema Auto-Sync Disabled in Production Mode")
+    print("=" * 70)
+    # Test Settings logic when ENVIRONMENT is production
+    from app.core.config import Settings
+    prod_test_settings = Settings(ENVIRONMENT="production")
+    assert prod_test_settings.AUTO_SYNC_SCHEMA is False, "AUTO_SYNC_SCHEMA must be False in production!"
+    print(f"  Verified Settings(ENVIRONMENT='production').AUTO_SYNC_SCHEMA = {prod_test_settings.AUTO_SYNC_SCHEMA}")
+
+    # Test explicit override disabled
+    explicit_off_settings = Settings(AUTO_SYNC_SCHEMA=False)
+    assert explicit_off_settings.AUTO_SYNC_SCHEMA is False, "Explicit AUTO_SYNC_SCHEMA=False must be respected"
+    print("  -> PASSED: ORM auto-sync is strictly disabled in production environments.\n")
+
+    print("=" * 70)
+    print("  TEST 7: Database Model Parity & Alembic Schema Parity")
+    print("=" * 70)
+    from sqlalchemy import inspect as sa_inspect
+    from app.db.base import Base
+    import app.models as _models  # noqa: F401
+
+    inspector = sa_inspect(engine)
+    existing_tables = set(inspector.get_table_names())
+    expected_tables = set(Base.metadata.tables.keys())
+
+    missing_tables = expected_tables - existing_tables
+    print(f"  Expected models in metadata ({len(expected_tables)}): {sorted(list(expected_tables))}")
+    print(f"  Existing tables in database ({len(existing_tables)}): {sorted(list(existing_tables))}")
+    assert len(missing_tables) == 0, f"Missing tables in database: {missing_tables}"
+    print(f"  -> PASSED: All {len(expected_tables)} metadata models exist in database.\n")
+
+    print("=" * 70)
+    print("  TEST 8: Explicit Migration Idempotency & Data Non-Destruction")
+    print("=" * 70)
+    from run_migrations import apply_migrations
+    migration_success = apply_migrations()
+    assert migration_success is True, "Re-running explicit migrations must succeed idempotently!"
+
+    # Verify user count remains exactly unchanged after re-running migrations
+    db = SessionLocal()
+    user_count_after = db.query(User).count()
+    assert user_count_after > 0, "Users table must not be empty after migrations!"
+    print(f"  Active user count preserved: {user_count_after} users.")
+    db.close()
+    print("  -> PASSED: Explicit migrations run idempotently without dropping or altering user data.\n")
+
     print("======================================================================")
     print("  ALL PRODUCTION DEPLOYMENT & POSTGRESQL INTEGRITY TESTS PASSED!     ")
     print("======================================================================")

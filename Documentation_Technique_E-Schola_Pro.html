@@ -774,16 +774,16 @@ E-Schola Pro/
         <strong>Isolation du Seeding en Production (<code>SEED_DEMO_DATA=false</code>) :</strong> Lors des redéploiements déclenchés par GitHub vers Railway, le script d'initialisation (<code>create_admin.py</code>) n'injecte aucun compte de démonstration si un administrateur existe déjà dans la base. Les comptes personnalisés ou supprimés par l'administrateur en production ne sont jamais réinjectés ou écrasés.
       </p>
       <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">
-        <strong>Découplage DDL & Cycle de Vie FastAPI :</strong> Les synchronisations de schéma et migrations sont gérées en amont dans <code>start.sh</code> avec une boucle d'attente résiliente (jusqu'à 60 secondes) avant le lancement de Supervisor et Uvicorn. L'import de FastAPI ne bloque plus sur des DDL concurrentes, éliminant tout risque de verrouillage de table (table locking) ou de conflit entre workers.
+        <strong>Désactivation Totale de la Synchronisation Automatique ORM en Production (<code>AUTO_SYNC_SCHEMA=false</code>) :</strong> Pour garantir l'intégrité absolue des données existantes et empêcher tout verrouillage concurrent de tables (table locking) lors des déploiements, l'ORM SQLAlchemy/FastAPI a sa synchronisation automatique de schéma (<code>Base.metadata.create_all</code>) <strong>strictement désactivée en production</strong> (détecté via <code>is_in_railway()</code> ou <code>ENVIRONMENT=production</code>). L'importation de l'application et le démarrage des workers Uvicorn n'exécutent aucune altération implicite de structure.
       </p>
       <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">
-        <strong>Synchronisation Complète de la Messagerie (migrate_messages_schema.py) :</strong> Le schéma complet de la boîte de messagerie (réception, envoi, brouillons, corbeille, favoris, diffusions générales, copies CC, signalements et pièces jointes) est synchronisé de façon agnostique au démarrage. Toutes les communications et échanges de la plateforme sont conservés à vie sur la base de données Railway sans risque de perte lors des redéploiements.
+        <strong>Application Explicite et Idempotente des Migrations PostgreSQL (<code>backend/run_migrations.py</code>) :</strong> Toutes les 17 tables relationnelles, contraintes CASCADE, colonnes étendues et index sont régis de façon centralisée et vérifiable par la chaîne de migrations Alembic (jusqu'à la révision <code>f8a1b2c3d4e5_tasks_classrooms_and_invitations</code>). Lors de chaque déploiement sur Railway (<code>start.sh</code>), le script <code>run_migrations.py</code> applique explicitement et de manière bloquante <code>alembic upgrade head</code> après validation de la connectivité PostgreSQL (boucle résiliente 60s). En cas d'erreur DDL, le déploiement s'interrompt immédiatement sans altérer les données, éliminant tout risque de désynchronisation.
       </p>
       <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">
-        <strong>Chaîne de Migrations Automatisée :</strong> Le schéma complet des 16 tables relationnelles, contraintes CASCADE, colonnes étendues et index est synchronisé au déploiement via les scripts automatiques de réconciliation (<code>migrate_user_profiles.py</code>, <code>migrate_messages_schema.py</code>, <code>migrate_classrooms.py</code>, <code>migrate_tasks_attachment.py</code>) et Alembic avant le démarrage des serveurs.
+        <strong>Synchronisation Complète de la Messagerie &amp; Modules Étendus :</strong> Le schéma complet de la boîte de messagerie (réception, envoi, brouillons, corbeille, favoris ⭐, diffusions générales, copies CC, signalements et pièces jointes), ainsi que les devoirs (<code>tasks</code>, <code>task_submissions</code>) et classes virtuelles (<code>classrooms</code>, <code>classroom_invitations</code>) sont consolidés dans la chaîne de migrations officielle.
       </p>
       <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 0;">
-        <strong>Intégrité Référentielle & Suppression en Cascade Sécurisée :</strong> Pour respecter la rigueur transactionnelle de PostgreSQL, le gestionnaire de suppression (<code>DELETE /api/v1/users/{id}</code>) exécute un nettoyage ordonné des tables dépendantes avant d'effacer le profil utilisateur, éliminant tout risque de <code>ForeignKeyViolation</code> ou d'incohérence.
+        <strong>Intégrité Référentielle &amp; Suppression en Cascade Sécurisée :</strong> Pour respecter la rigueur transactionnelle de PostgreSQL, le gestionnaire de suppression (<code>DELETE /api/v1/users/{id}</code>) exécute un nettoyage ordonné des tables dépendantes avant d'effacer le profil utilisateur, éliminant tout risque de <code>ForeignKeyViolation</code> ou d'incohérence.
       </p>
     </div>
 
@@ -1874,8 +1874,9 @@ pip install -r requirements.txt
 # 5. Configurer les variables d'environnement
 # Copier le fichier .env.example vers .env et renseigner les valeurs
 
-# 6. Appliquer les migrations de base de données
-alembic upgrade head
+# 6. Appliquer explicitement les migrations de base de données (PostgreSQL ou SQLite)
+python run_migrations.py
+# (ou directement via la CLI Alembic : alembic upgrade head)
 
 # 7. (Optionnel) Créer un compte administrateur
 python create_admin.py
@@ -1950,6 +1951,7 @@ http://localhost:8000/admin
         <tr><td><code>ACCESS_TOKEN_EXPIRE_MINUTES</code></td><td>10080 (7 jours)</td><td>Durée de validité des tokens JWT en minutes</td></tr>
         <tr><td><code>SEED_DEMO_DATA</code></td><td><code>false</code> (Railway) / <code>true</code> (Local)</td><td>Contrôle du peuplement des comptes et groupes de démonstration. Désactivé par défaut en production Railway pour préserver l'intégrité absolue des données et éviter la réapparition de comptes de test.</td></tr>
         <tr><td><code>ALLOW_EPHEMERAL_SQLITE</code></td><td><code>false</code></td><td>Garde-fou de sécurité cloud. Empêche le basculement silencieux sur une base SQLite temporaire dans les conteneurs Railway sans volume persistant.</td></tr>
+        <tr><td><code>AUTO_SYNC_SCHEMA</code></td><td><code>false</code> (Production/Railway) / <code>true</code> (Dev Local)</td><td>Contrôle la synchronisation automatique du schéma par l'ORM (<code>Base.metadata.create_all</code>). <strong>Strictement désactivé en production</strong> pour forcer l'application explicite des migrations PostgreSQL via Alembic et protéger les données existantes.</td></tr>
         <tr><td><code>SMTP_HOST</code></td><td>—</td><td>Hôte du serveur SMTP (ex: <code>smtp.gmail.com</code>, <code>smtp-relay.brevo.com</code>, <code>smtp.sendgrid.net</code>). Si vide, le système bascule automatiquement en mode Mock / Dev sans erreur.</td></tr>
         <tr><td><code>SMTP_PORT</code></td><td>587</td><td>Port SMTP (587 pour STARTTLS, 465 pour SSL direct)</td></tr>
         <tr><td><code>SMTP_USER</code></td><td>—</td><td>Identifiant ou adresse e-mail d'authentification SMTP</td></tr>

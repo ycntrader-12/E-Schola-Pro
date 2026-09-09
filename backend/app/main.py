@@ -27,7 +27,7 @@ from app.admin import (
     UserAdmin,
 )
 from app.api.main import api_router
-from app.core.config import is_in_railway, settings
+from app.core.config import is_in_railway, is_production, settings
 from app.core.security import verify_password
 from app.db.base import Base
 from app.db.database import engine
@@ -38,6 +38,8 @@ async def lifespan(app: FastAPI):
     """
     Non-blocking, non-destructive startup & shutdown lifecycle.
     Verifies database connectivity without running concurrent or destructive DDL on production.
+    In production, automatic ORM schema synchronization is strictly disabled;
+    schema updates must be executed explicitly via migrations.
     """
     dialect = engine.dialect.name
     try:
@@ -47,12 +49,19 @@ async def lifespan(app: FastAPI):
     except Exception as db_err:
         print(f"[Database Warning] Startup database connectivity check note: {db_err}")
 
-    # In local development only (outside Railway), safely ensure schema exists
-    if not is_in_railway():
+    # Schema Synchronization Control:
+    # Strictly disabled in production to protect data integrity and avoid concurrent DDL locks.
+    if settings.AUTO_SYNC_SCHEMA and not is_production():
         try:
             Base.metadata.create_all(bind=engine)
+            print(f"[Database] Local schema synchronization completed (engine: {dialect}).")
         except Exception as e:
             print(f"[Database Notice] Local development metadata init note: {e}")
+    else:
+        print(
+            f"[Database] Automatic schema synchronization is DISABLED (engine: {dialect}, env: {settings.ENVIRONMENT}). "
+            "Database migrations must be applied explicitly via Alembic."
+        )
 
     yield
     print("[FastAPI Lifespan] Shutting down application cleanly.")
