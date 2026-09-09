@@ -298,13 +298,16 @@ export default function InboxMessagesPage() {
 
   // Reply and Forward handlers
   const handleReply = (msg: MessageItem) => {
+    const senderEmail = msg.sender?.email || '';
     const replyRecipient: UserMinimalRead[] = msg.sender
       ? [
           {
             id: String(msg.sender.id),
-            email: msg.sender.email,
-            full_name: msg.sender.email.split('@')[0],
-            role: msg.sender.role,
+            email: senderEmail || undefined,
+            full_name: senderEmail && senderEmail.includes('@')
+              ? senderEmail.split('@')[0]
+              : senderEmail || `Utilisateur #${msg.sender.id}`,
+            role: msg.sender.role || 'utilisateur',
             avatar_url: msg.sender.avatar_url,
           },
         ]

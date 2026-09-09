@@ -176,15 +176,29 @@ def send_or_save_message(
 
     # 3. Anti-Spam: Recipient Count Limitation for Non-Staff Users
     if user_role in RESTRICTED_BROADCAST_ROLES:
-        total_recipients_count = (
-            len(msg_in.recipient_ids or [])
-            + (1 if msg_in.recipient_id and msg_in.recipient_id > 0 else 0)
-            + len(msg_in.recipient_emails or [])
-            + (1 if msg_in.recipient_email else 0)
-            + len(msg_in.cc_recipient_ids or [])
-            + len(msg_in.cc_emails or [])
-        )
-        if total_recipients_count > 10:
+        unique_targets = set()
+        for rid in (msg_in.recipient_ids or []):
+            if rid and rid > 0:
+                unique_targets.add(f"id:{rid}")
+        if msg_in.recipient_id and msg_in.recipient_id > 0:
+            unique_targets.add(f"id:{msg_in.recipient_id}")
+        for remail in (msg_in.recipient_emails or []):
+            clean_em = (remail or "").strip().lower()
+            if clean_em:
+                unique_targets.add(f"email:{clean_em}")
+        if msg_in.recipient_email:
+            clean_em = msg_in.recipient_email.strip().lower()
+            if clean_em:
+                unique_targets.add(f"email:{clean_em}")
+        for cc_id in (msg_in.cc_recipient_ids or []):
+            if cc_id and cc_id > 0:
+                unique_targets.add(f"id:{cc_id}")
+        for cc_em in (msg_in.cc_emails or []):
+            clean_em = (cc_em or "").strip().lower()
+            if clean_em:
+                unique_targets.add(f"email:{clean_em}")
+
+        if len(unique_targets) > 10:
             raise HTTPException(
                 status_code=403,
                 detail="Protection anti-spam : les étudiants et employés ne peuvent pas dépasser 10 destinataires par message.",
@@ -208,9 +222,14 @@ def send_or_save_message(
                 attachment_name=clean_attachment_name,
                 attachment_type=clean_attachment_type,
                 is_read=False,
+                is_starred=False,
                 is_draft=True,
                 is_trash=False,
+                is_reported=False,
                 is_broadcast=True,
+                is_welcome_msg=False,
+                is_relay=False,
+                cc_emails=None,
             )
             session.add(new_msg)
             session.commit()
@@ -235,9 +254,14 @@ def send_or_save_message(
                 attachment_name=clean_attachment_name,
                 attachment_type=clean_attachment_type,
                 is_read=False,
+                is_starred=False,
                 is_draft=False,
                 is_trash=False,
+                is_reported=False,
                 is_broadcast=True,
+                is_welcome_msg=False,
+                is_relay=False,
+                cc_emails=None,
             )
             session.add(msg_item)
             if not sent_broadcast_msg:
@@ -254,9 +278,14 @@ def send_or_save_message(
                 attachment_name=clean_attachment_name,
                 attachment_type=clean_attachment_type,
                 is_read=True,
+                is_starred=False,
                 is_draft=False,
                 is_trash=False,
+                is_reported=False,
                 is_broadcast=True,
+                is_welcome_msg=False,
+                is_relay=False,
+                cc_emails=None,
             )
             session.add(sent_broadcast_msg)
 
@@ -287,10 +316,10 @@ def send_or_save_message(
     for r_email in (msg_in.recipient_emails or []):
         clean_email = sanitize_text(r_email, max_length=255).lower().strip()
         if clean_email:
-            u = session.query(User).filter(
-                (func.lower(User.email) == clean_email)
-                | (func.lower(User.username) == clean_email)
-            ).first()
+            query_filter = (func.lower(User.email) == clean_email) | (func.lower(User.username) == clean_email)
+            if clean_email.isdigit():
+                query_filter = query_filter | (User.id == int(clean_email))
+            u = session.query(User).filter(query_filter).first()
             if u and u.id not in seen_ids:
                 primary_users.append(u)
                 seen_ids.add(u.id)
@@ -299,22 +328,34 @@ def send_or_save_message(
     if msg_in.recipient_email:
         clean_email = sanitize_text(msg_in.recipient_email, max_length=255).lower().strip()
         if clean_email:
-            u = session.query(User).filter(
-                (func.lower(User.email) == clean_email)
-                | (func.lower(User.username) == clean_email)
-            ).first()
+            query_filter = (func.lower(User.email) == clean_email) | (func.lower(User.username) == clean_email)
+            if clean_email.isdigit():
+                query_filter = query_filter | (User.id == int(clean_email))
+            u = session.query(User).filter(query_filter).first()
             if u and u.id not in seen_ids:
                 primary_users.append(u)
                 seen_ids.add(u.id)
 
     # Fallback to external email string if non-registered recipient
-    external_recipient_email = sanitize_text(msg_in.recipient_email, max_length=255).strip() if msg_in.recipient_email else None
+    external_recipient_email = None
+    if msg_in.recipient_email and msg_in.recipient_email.strip():
+        external_recipient_email = sanitize_text(msg_in.recipient_email, max_length=255).strip()
+    elif msg_in.recipient_emails and len(msg_in.recipient_emails) > 0:
+        for em in msg_in.recipient_emails:
+            clean_em = sanitize_text(em, max_length=255).strip()
+            if clean_em:
+                external_recipient_email = clean_em
+                break
+
     if not primary_users and external_recipient_email:
         # If email looks valid, allow relay send
         if "@" in external_recipient_email:
             pass
         else:
-            raise HTTPException(status_code=404, detail="Destinataire principal introuvable.")
+            raise HTTPException(
+                status_code=404,
+                detail=f"Destinataire '{external_recipient_email}' introuvable. Veuillez vérifier le nom d'utilisateur ou indiquer une adresse email valide avec '@'.",
+            )
 
     if not msg_in.is_draft and not primary_users and not external_recipient_email:
         raise HTTPException(status_code=400, detail="Veuillez sélectionner au moins un destinataire valide.")
@@ -339,9 +380,12 @@ def send_or_save_message(
             attachment_name=clean_attachment_name,
             attachment_type=clean_attachment_type,
             is_read=False,
+            is_starred=False,
             is_draft=True,
             is_trash=False,
+            is_reported=False,
             is_broadcast=False,
+            is_welcome_msg=False,
             is_relay=has_relay,
             cc_emails=cc_summary_str,
         )
@@ -363,9 +407,12 @@ def send_or_save_message(
                 attachment_name=clean_attachment_name,
                 attachment_type=clean_attachment_type,
                 is_read=False,
+                is_starred=False,
                 is_draft=False,
                 is_trash=False,
+                is_reported=False,
                 is_broadcast=False,
+                is_welcome_msg=False,
                 is_relay=has_relay,
                 cc_emails=cc_summary_str,
             )
@@ -382,9 +429,12 @@ def send_or_save_message(
             attachment_name=clean_attachment_name,
             attachment_type=clean_attachment_type,
             is_read=False,
+            is_starred=False,
             is_draft=False,
             is_trash=False,
+            is_reported=False,
             is_broadcast=False,
+            is_welcome_msg=False,
             is_relay=True,
             cc_emails=f"{external_recipient_email}, {cc_summary_str}" if cc_summary_str else external_recipient_email,
         )
@@ -410,9 +460,12 @@ def send_or_save_message(
                     attachment_name=clean_attachment_name,
                     attachment_type=clean_attachment_type,
                     is_read=False,
+                    is_starred=False,
                     is_draft=False,
                     is_trash=False,
+                    is_reported=False,
                     is_broadcast=False,
+                    is_welcome_msg=False,
                     is_relay=False,
                     cc_emails=cc_summary_str,
                 )
@@ -434,9 +487,12 @@ def send_or_save_message(
                 attachment_name=clean_attachment_name,
                 attachment_type=clean_attachment_type,
                 is_read=False,
+                is_starred=False,
                 is_draft=False,
                 is_trash=False,
+                is_reported=False,
                 is_broadcast=False,
+                is_welcome_msg=False,
                 is_relay=True,
                 cc_emails=cc_summary_str,
             )

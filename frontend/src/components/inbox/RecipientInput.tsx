@@ -120,6 +120,48 @@ export const RecipientInput: React.FC<RecipientInputProps> = ({
     [selectedRecipients, onChange]
   );
 
+  const addCustomEmailRecipient = useCallback(
+    (rawInput: string) => {
+      const text = rawInput.trim().replace(/^[;,]+|[;,]+$/g, '');
+      if (!text) return false;
+
+      const lower = text.toLowerCase();
+      const alreadyAdded = selectedRecipients.some(
+        (r) => (r.email && r.email.toLowerCase() === lower) || r.full_name.toLowerCase() === lower
+      );
+      if (alreadyAdded) {
+        setQueryText('');
+        setIsDropdownOpen(false);
+        return true;
+      }
+
+      const matched = suggestions.find(
+        (s) => (s.email && s.email.toLowerCase() === lower) || s.full_name.toLowerCase() === lower
+      );
+      if (matched) {
+        addRecipient(matched);
+        return true;
+      }
+
+      const isEmail = text.includes('@');
+      const isNumericId = !isNaN(Number(text)) && Number(text) > 0;
+      const customRecipient: UserMinimalRead = {
+        id: isNumericId ? Number(text) : `ext_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        full_name: isEmail ? text.split('@')[0] : text,
+        email: text,
+        role: isEmail ? 'externe' : isNumericId ? 'utilisateur' : 'destinataire',
+        avatar_url: undefined,
+      };
+      onChange([...selectedRecipients, customRecipient]);
+      setQueryText('');
+      setSuggestions([]);
+      setIsDropdownOpen(false);
+      inputRef.current?.focus();
+      return true;
+    },
+    [selectedRecipients, suggestions, addRecipient, onChange]
+  );
+
   const removeRecipient = useCallback(
     (id: number | string) => {
       onChange(selectedRecipients.filter((r) => String(r.id) !== String(id)));
@@ -144,10 +186,13 @@ export const RecipientInput: React.FC<RecipientInputProps> = ({
           prev > 0 ? prev - 1 : filteredSuggestions.length - 1
         );
       }
-    } else if (e.key === 'Enter' || e.key === 'Tab') {
-      if (isDropdownOpen && filteredSuggestions.length > 0 && highlightedIndex >= 0) {
+    } else if (e.key === 'Enter' || e.key === 'Tab' || e.key === ',') {
+      if (isDropdownOpen && filteredSuggestions.length > 0 && highlightedIndex >= 0 && highlightedIndex < filteredSuggestions.length) {
         e.preventDefault();
         addRecipient(filteredSuggestions[highlightedIndex]);
+      } else if (queryText.trim()) {
+        e.preventDefault();
+        addCustomEmailRecipient(queryText);
       }
     } else if (e.key === 'Escape') {
       e.preventDefault();
@@ -164,6 +209,7 @@ export const RecipientInput: React.FC<RecipientInputProps> = ({
     if (lower.includes('pedagog')) return 'bg-indigo-500/15 text-indigo-400 border-indigo-500/30';
     if (lower.includes('stagiaire')) return 'bg-amber-500/15 text-amber-400 border-amber-500/30';
     if (lower.includes('employer') || lower.includes('employe')) return 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30';
+    if (lower.includes('externe')) return 'bg-sky-500/15 text-sky-400 border-sky-500/30';
     return 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30';
   };
 
@@ -232,7 +278,15 @@ export const RecipientInput: React.FC<RecipientInputProps> = ({
               disabled={disabled}
               onChange={(e) => setQueryText(e.target.value)}
               onFocus={() => {
-                if (filteredSuggestions.length > 0) setIsDropdownOpen(true);
+                if (filteredSuggestions.length > 0 || queryText.trim()) setIsDropdownOpen(true);
+              }}
+              onBlur={() => {
+                // Short timeout to allow click on dropdown items to fire first
+                setTimeout(() => {
+                  if (queryText.trim()) {
+                    addCustomEmailRecipient(queryText);
+                  }
+                }, 200);
               }}
               onKeyDown={handleKeyDown}
               placeholder={selectedRecipients.length === 0 ? placeholder : ''}
@@ -301,6 +355,21 @@ export const RecipientInput: React.FC<RecipientInputProps> = ({
                   </div>
                 );
               })
+            ) : queryText.trim() ? (
+              <div
+                onClick={() => addCustomEmailRecipient(queryText)}
+                className="p-3 cursor-pointer flex items-center justify-between hover:bg-primary/10 transition-colors"
+              >
+                <div className="text-xs text-text-primary font-medium flex items-center gap-2">
+                  <UserIcon size={14} className="text-primary shrink-0" />
+                  <span>
+                    Ajouter <strong className="text-primary">{queryText.trim()}</strong> comme destinataire
+                  </span>
+                </div>
+                <span className="text-[10px] font-semibold text-primary px-2 py-0.5 rounded bg-primary/10">
+                  Entrée
+                </span>
+              </div>
             ) : (
               <div className="p-4 text-xs text-text-secondary text-center">
                 {isLoading ? 'Recherche des destinataires...' : 'Aucun destinataire correspondant trouvé'}

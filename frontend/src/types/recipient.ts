@@ -1,7 +1,7 @@
 export interface UserMinimalRead {
   id: number | string;
   full_name: string;
-  email: string;
+  email?: string;
   role: string;
   avatar_url?: string;
 }

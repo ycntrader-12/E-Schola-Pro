@@ -179,19 +179,32 @@ export const MessageComposerModal: React.FC<MessageComposerModalProps> = ({
     }
 
     try {
-      const ccIds = (values.cc || []).map((u) => Number(u.id)).filter(Boolean);
-      const ccEmails = (values.cc || []).map((u) => u.email).filter(Boolean);
+      const validTo = values.to || [];
+      const validCc = values.cc || [];
 
-      const recipientIds = (values.to || []).map((u) => Number(u.id)).filter(Boolean);
-      const recipientEmails = (values.to || []).map((u) => u.email).filter(Boolean);
+      const recipientIds = validTo
+        .map((u) => (typeof u.id === 'number' ? u.id : !isNaN(Number(u.id)) ? Number(u.id) : null))
+        .filter((id): id is number => id !== null && id > 0);
+
+      const recipientEmails = validTo
+        .map((u) => u.email)
+        .filter((e): e is string => Boolean(e && e.trim()));
+
+      const ccIds = validCc
+        .map((u) => (typeof u.id === 'number' ? u.id : !isNaN(Number(u.id)) ? Number(u.id) : null))
+        .filter((id): id is number => id !== null && id > 0);
+
+      const ccEmails = validCc
+        .map((u) => u.email)
+        .filter((e): e is string => Boolean(e && e.trim()));
 
       const payload = {
         recipient_id: recipientIds[0] || null,
         recipient_email: recipientEmails[0] || null,
-        recipient_ids: recipientIds,
-        recipient_emails: recipientEmails,
-        cc_recipient_ids: ccIds,
-        cc_emails: ccEmails,
+        recipient_ids: Array.from(new Set(recipientIds)),
+        recipient_emails: Array.from(new Set(recipientEmails)),
+        cc_recipient_ids: Array.from(new Set(ccIds)),
+        cc_emails: Array.from(new Set(ccEmails)),
         subject: values.subject ? values.subject.trim() : '',
         body: values.body ? values.body.trim() : '',
         attachment_url: fileData?.url || null,
@@ -208,15 +221,46 @@ export const MessageComposerModal: React.FC<MessageComposerModalProps> = ({
       onClose();
     } catch (err: any) {
       console.error('Error submitting message:', err);
-      const detail = err?.response?.data?.detail;
-      let displayMessage = 'Une erreur est survenue lors de l\'envoi du message.';
-      if (typeof detail === 'string') {
-        displayMessage = detail;
-      } else if (Array.isArray(detail)) {
-        displayMessage = detail.map((d: any) => d.msg || JSON.stringify(d)).join(', ');
-      } else if (detail?.message) {
-        displayMessage = detail.message;
+      let displayMessage = "Une erreur inattendue est survenue lors de l'envoi.";
+
+      if (err?.response) {
+        const status = err.response.status;
+        const data = err.response.data;
+
+        if (status === 401) {
+          displayMessage = "Votre session a expiré. Veuillez vous reconnecter.";
+        } else if (status === 403) {
+          const detail = data?.detail || data?.message;
+          displayMessage = typeof detail === 'string' ? detail : "Action non autorisée ou quota d'envoi dépassé.";
+        } else if (status === 404) {
+          const detail = data?.detail || data?.message;
+          displayMessage = typeof detail === 'string' ? detail : "Destinataire introuvable.";
+        } else if (status === 413) {
+          displayMessage = "La pièce jointe dépasse la taille maximale autorisée.";
+        } else if (status === 429) {
+          const detail = data?.detail || data?.message;
+          displayMessage = typeof detail === 'string' ? detail : "Protection anti-spam : veuillez patienter un instant avant de renvoyer un message.";
+        } else if (typeof data?.detail === 'string') {
+          displayMessage = data.detail;
+        } else if (Array.isArray(data?.detail)) {
+          displayMessage = data.detail.map((d: any) => d.msg || JSON.stringify(d)).join(', ');
+        } else if (data?.detail?.message) {
+          displayMessage = data.detail.message;
+        } else if (typeof data?.message === 'string') {
+          displayMessage = data.message;
+        } else if (typeof data?.error === 'string') {
+          displayMessage = data.error;
+        } else if (err.response.statusText) {
+          displayMessage = `Erreur ${err.response.status}: ${err.response.statusText}`;
+        }
+      } else if (err?.code === 'ERR_NETWORK' || err?.message?.includes('Network Error')) {
+        displayMessage = "Connexion au serveur impossible. Vérifiez votre réseau ou si le backend est démarré.";
+      } else if (err?.code === 'ECONNABORTED' || err?.message?.includes('timeout')) {
+        displayMessage = "Le délai d'attente du serveur a expiré. Veuillez réessayer.";
+      } else if (err?.message && typeof err.message === 'string' && !err.message.includes('[object')) {
+        displayMessage = err.message;
       }
+
       setError('root', {
         type: 'manual',
         message: displayMessage,

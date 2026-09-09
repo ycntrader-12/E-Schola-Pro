@@ -165,6 +165,60 @@ export const MessageComposerView: React.FC<MessageComposerViewProps> = ({
     }
   };
 
+const extractErrorMessage = (err: any): string => {
+  if (!err) return "Une erreur inattendue est survenue lors de l'envoi.";
+
+  if (err.response) {
+    const status = err.response.status;
+    const data = err.response.data;
+
+    if (status === 401) {
+      return "Votre session a expiré. Veuillez vous reconnecter.";
+    }
+    if (status === 403) {
+      const detail = data?.detail || data?.message;
+      return typeof detail === 'string' ? detail : "Action non autorisée ou quota d'envoi dépassé.";
+    }
+    if (status === 404) {
+      const detail = data?.detail || data?.message;
+      return typeof detail === 'string' ? detail : "Destinataire introuvable.";
+    }
+    if (status === 413) {
+      return "La pièce jointe dépasse la taille maximale autorisée.";
+    }
+    if (status === 429) {
+      const detail = data?.detail || data?.message;
+      return typeof detail === 'string' ? detail : "Protection anti-spam : veuillez patienter un instant avant de renvoyer un message.";
+    }
+
+    if (typeof data?.detail === 'string') return data.detail;
+    if (Array.isArray(data?.detail)) {
+      return data.detail.map((d: any) => d.msg || JSON.stringify(d)).join(', ');
+    }
+    if (data?.detail?.message) return data.detail.message;
+    if (typeof data?.message === 'string') return data.message;
+    if (typeof data?.error === 'string') return data.error;
+    if (typeof data === 'string' && data.length < 200 && !data.includes('<!DOCTYPE')) {
+      return data;
+    }
+    if (err.response.statusText) {
+      return `Erreur ${err.response.status}: ${err.response.statusText}`;
+    }
+  }
+
+  if (err.code === 'ERR_NETWORK' || err.message?.includes('Network Error')) {
+    return "Connexion au serveur impossible. Vérifiez votre réseau ou vérifiez si le serveur backend est démarré.";
+  }
+  if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
+    return "Le délai d'attente du serveur a expiré. Veuillez réessayer.";
+  }
+  if (err.message && typeof err.message === 'string' && !err.message.includes('[object')) {
+    return err.message;
+  }
+
+  return "Une erreur est survenue lors de l'envoi du message.";
+};
+
   const handleFormSubmit = async (values: ComposerFormValues, isDraft = false) => {
     if (!isDraft && (!values.to || values.to.length === 0)) {
       setError('to', {
@@ -181,19 +235,32 @@ export const MessageComposerView: React.FC<MessageComposerViewProps> = ({
     }
 
     try {
-      const ccIds = (values.cc || []).map((u) => Number(u.id)).filter(Boolean);
-      const ccEmails = (values.cc || []).map((u) => u.email).filter(Boolean);
+      const validTo = values.to || [];
+      const validCc = values.cc || [];
 
-      const recipientIds = (values.to || []).map((u) => Number(u.id)).filter(Boolean);
-      const recipientEmails = (values.to || []).map((u) => u.email).filter(Boolean);
+      const recipientIds = validTo
+        .map((u) => (typeof u.id === 'number' ? u.id : !isNaN(Number(u.id)) ? Number(u.id) : null))
+        .filter((id): id is number => id !== null && id > 0);
+
+      const recipientEmails = validTo
+        .map((u) => u.email)
+        .filter((e): e is string => Boolean(e && e.trim()));
+
+      const ccIds = validCc
+        .map((u) => (typeof u.id === 'number' ? u.id : !isNaN(Number(u.id)) ? Number(u.id) : null))
+        .filter((id): id is number => id !== null && id > 0);
+
+      const ccEmails = validCc
+        .map((u) => u.email)
+        .filter((e): e is string => Boolean(e && e.trim()));
 
       const payload = {
         recipient_id: recipientIds[0] || null,
         recipient_email: recipientEmails[0] || null,
-        recipient_ids: recipientIds,
-        recipient_emails: recipientEmails,
-        cc_recipient_ids: ccIds,
-        cc_emails: ccEmails,
+        recipient_ids: Array.from(new Set(recipientIds)),
+        recipient_emails: Array.from(new Set(recipientEmails)),
+        cc_recipient_ids: Array.from(new Set(ccIds)),
+        cc_emails: Array.from(new Set(ccEmails)),
         subject: values.subject ? values.subject.trim() : '',
         body: values.body ? values.body.trim() : '',
         attachment_url: fileData?.url || null,
@@ -218,15 +285,7 @@ export const MessageComposerView: React.FC<MessageComposerViewProps> = ({
       if (onSuccess) onSuccess();
     } catch (err: any) {
       console.error('Error submitting message:', err);
-      const detail = err?.response?.data?.detail;
-      let displayMessage = 'Une erreur est survenue lors de l\'envoi du message.';
-      if (typeof detail === 'string') {
-        displayMessage = detail;
-      } else if (Array.isArray(detail)) {
-        displayMessage = detail.map((d: any) => d.msg || JSON.stringify(d)).join(', ');
-      } else if (detail?.message) {
-        displayMessage = detail.message;
-      }
+      const displayMessage = extractErrorMessage(err);
       setError('root', {
         type: 'manual',
         message: displayMessage,

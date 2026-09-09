@@ -60,12 +60,21 @@ def expand_railway_template_variables(url: str) -> str:
 def is_postgres_url_resolvable(url: str) -> bool:
     if not url or ("postgresql" not in url and "postgres" not in url):
         return True
+    # Fast path: railway.internal is private cloud networking and NEVER resolvable outside Railway
+    if not is_in_railway() and "railway.internal" in url:
+        return False
     try:
         if "@" in url:
             host_port_part = url.split("@")[-1].split("/")[0].split("?")[0]
             host = host_port_part.split(":")[0]
-            socket.gethostbyname(host)
-            return True
+            # Fast 1.0s timeout to prevent freezing the server/requests on DNS failures
+            orig_timeout = socket.getdefaulttimeout()
+            socket.setdefaulttimeout(1.0)
+            try:
+                socket.gethostbyname(host)
+                return True
+            finally:
+                socket.setdefaulttimeout(orig_timeout)
     except Exception:
         return False
     return True
