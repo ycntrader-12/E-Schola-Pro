@@ -16,7 +16,11 @@ import {
   Loader2,
   Clock,
   Trash2,
-  Square
+  Square,
+  VideoOff,
+  Info,
+  Check,
+  X
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import BackButton from '@/components/BackButton';
@@ -240,33 +244,56 @@ export default function ClassroomHubPage() {
   };
 
 
-  const handlePurgeHistory = async () => {
-    if (!window.confirm("Êtes-vous sûr de vouloir supprimer DÉFINITIVEMENT tout l'historique des salles fermées ?")) return;
+  const [stopConfirmRoomId, setStopConfirmRoomId] = useState<string | null>(null);
+  const [purgeConfirmOpen, setPurgeConfirmOpen] = useState(false);
+  const [stoppingRoomId, setStoppingRoomId] = useState<string | null>(null);
+  const [feedbackModal, setFeedbackModal] = useState<{ isOpen: boolean; title: string; message: string; type: 'info' | 'error' | 'success' }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info'
+  });
+
+  const showNotification = (title: string, message: string, type: 'info' | 'error' | 'success' = 'info') => {
+    setFeedbackModal({ isOpen: true, title, message, type });
+  };
+
+  const handlePurgeHistory = () => {
+    setPurgeConfirmOpen(true);
+  };
+
+  const handleConfirmPurgeHistory = async () => {
+    setPurgeConfirmOpen(false);
     setIsPurging(true);
     try {
       const res = await apiClient.delete('/classrooms/history/purge');
-      alert(res.data.message || "Historique purgé avec succès.");
+      showNotification("Historique purgé", res.data.message || "Historique des salles fermées purgé avec succès.", "success");
       fetchData();
     } catch (err: any) {
-      alert(err.response?.data?.detail || "Erreur lors de la purge.");
+      showNotification("Erreur", err.response?.data?.detail || "Erreur lors de la purge.", "error");
     } finally {
       setIsPurging(false);
     }
   };
 
-  const [stoppingRoomId, setStoppingRoomId] = useState<string | null>(null);
+  const handleStopClassroom = (roomId: string) => {
+    setStopConfirmRoomId(roomId);
+  };
 
-  const handleStopClassroom = async (roomId: string) => {
-    if (!window.confirm("Êtes-vous sûr de vouloir ARRÊTER cette salle vidéo conférence pour tous les participants ?")) return;
-    setStoppingRoomId(roomId);
+  const handleConfirmStopClassroom = async () => {
+    if (!stopConfirmRoomId) return;
+    const targetRoomId = stopConfirmRoomId;
+    setStoppingRoomId(targetRoomId);
     try {
-      await apiClient.post(`/classrooms/${roomId}/stop`);
+      await apiClient.post(`/classrooms/${targetRoomId}/stop`);
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('classroom_updated'));
       }
+      setStopConfirmRoomId(null);
       fetchData();
+      showNotification("Salle clôturée", "La salle vidéo conférence a été arrêtée avec succès pour tous les participants.", "success");
     } catch (err: any) {
-      alert(err?.response?.data?.detail || "Erreur lors de l'arrêt de la salle vidéo conférence.");
+      showNotification("Erreur", err?.response?.data?.detail || "Erreur lors de l'arrêt de la salle vidéo conférence.", "error");
     } finally {
       setStoppingRoomId(null);
     }
@@ -783,6 +810,126 @@ export default function ClassroomHubPage() {
               </div>
             </form>
 
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL CENTRÉE : CONFIRMATION ARRÊT DE CLASSE                              */}
+      {/* ========================================================================= */}
+      {stopConfirmRoomId && (
+        <div className="fixed inset-0 z-[9999] bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white max-w-md w-full p-6 sm:p-7 rounded-3xl border border-slate-200 shadow-2xl space-y-5 text-slate-900 animate-zoom-in my-auto">
+            <div className="flex items-center gap-3 text-red-600">
+              <div className="w-12 h-12 rounded-2xl bg-red-50 border border-red-200 flex items-center justify-center text-red-600 shrink-0">
+                <Square size={24} fill="currentColor" />
+              </div>
+              <div>
+                <h3 className="text-lg font-extrabold text-slate-900">Arrêter la Salle Vidéo Conférence ?</h3>
+                <p className="text-xs text-slate-500">Code salle : <span className="font-mono font-bold text-slate-700">{stopConfirmRoomId}</span></p>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-red-50/80 border border-red-200 text-xs text-red-800 space-y-1.5">
+              <p className="font-bold">Attention :</p>
+              <p>• La session sera immédiatement clôturée pour tous les apprenants et participants.</p>
+              <p>• Tous les flux vidéo, audio et partages d'écran seront arrêtés.</p>
+            </div>
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setStopConfirmRoomId(null)}
+                disabled={stoppingRoomId !== null}
+                className="flex-1 py-3 rounded-xl border border-slate-300 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition-all text-xs cursor-pointer"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmStopClassroom}
+                disabled={stoppingRoomId !== null}
+                className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-all text-xs flex items-center justify-center gap-2 shadow-lg shadow-red-600/30 cursor-pointer"
+              >
+                {stoppingRoomId !== null ? <Loader2 size={16} className="animate-spin" /> : <Square size={16} fill="currentColor" />}
+                <span>Confirmer l'arrêt</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL CENTRÉE : CONFIRMATION PURGE HISTORIQUE                             */}
+      {/* ========================================================================= */}
+      {purgeConfirmOpen && (
+        <div className="fixed inset-0 z-[9999] bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white max-w-md w-full p-6 sm:p-7 rounded-3xl border border-slate-200 shadow-2xl space-y-5 text-slate-900 animate-zoom-in my-auto">
+            <div className="flex items-center gap-3 text-red-600">
+              <div className="w-12 h-12 rounded-2xl bg-red-50 border border-red-200 flex items-center justify-center text-red-600 shrink-0">
+                <Trash2 size={24} />
+              </div>
+              <div>
+                <h3 className="text-lg font-extrabold text-slate-900">Purger l'historique des salles ?</h3>
+                <p className="text-xs text-slate-500">Suppression définitive des sessions terminées</p>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 space-y-1">
+              <p className="font-bold">Cette action est irréversible :</p>
+              <p>Toutes les salles inactives et leurs données associées seront définitivement supprimées.</p>
+            </div>
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setPurgeConfirmOpen(false)}
+                disabled={isPurging}
+                className="flex-1 py-3 rounded-xl border border-slate-300 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition-all text-xs cursor-pointer"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmPurgeHistory}
+                disabled={isPurging}
+                className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-all text-xs flex items-center justify-center gap-2 shadow-lg shadow-red-600/30 cursor-pointer"
+              >
+                {isPurging ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                <span>Supprimer l'historique</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL CENTRÉE : NOTIFICATIONS & ALERTES                                    */}
+      {/* ========================================================================= */}
+      {feedbackModal.isOpen && (
+        <div className="fixed inset-0 z-[10000] bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white max-w-sm sm:max-w-md w-full p-6 rounded-3xl border border-slate-200 shadow-2xl space-y-4 text-slate-900 text-center animate-zoom-in my-auto">
+            <div className={`w-14 h-14 mx-auto rounded-2xl flex items-center justify-center ${
+              feedbackModal.type === 'error' ? 'bg-red-50 text-red-600 border border-red-200' :
+              feedbackModal.type === 'success' ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' :
+              'bg-blue-50 text-[#1877f2] border border-blue-200'
+            }`}>
+              {feedbackModal.type === 'error' ? <AlertCircle size={28} /> :
+               feedbackModal.type === 'success' ? <CheckCircle2 size={28} /> :
+               <Info size={28} />}
+            </div>
+
+            <div className="space-y-1.5">
+              <h3 className="text-lg font-extrabold text-slate-900">{feedbackModal.title}</h3>
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">{feedbackModal.message}</p>
+            </div>
+
+            <button
+              onClick={() => setFeedbackModal(prev => ({ ...prev, isOpen: false }))}
+              className="btn-primary w-full py-2.5 rounded-xl font-bold text-xs sm:text-sm cursor-pointer shadow-md shadow-blue-500/20"
+            >
+              Compris
+            </button>
           </div>
         </div>
       )}

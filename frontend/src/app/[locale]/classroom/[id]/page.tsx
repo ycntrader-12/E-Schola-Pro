@@ -127,6 +127,37 @@ export default function VirtualClassroomLivePage() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showStopModal, setShowStopModal] = useState(false);
   const [isStoppingRoom, setIsStoppingRoom] = useState(false);
+  const [isRoomStopped, setIsRoomStopped] = useState(false);
+  const [redirectCountdown, setRedirectCountdown] = useState(5);
+  const [feedbackModal, setFeedbackModal] = useState<{ isOpen: boolean; title: string; message: string; type: 'info' | 'error' | 'success' }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info'
+  });
+  const prevPendingCountRef = useRef(0);
+
+  const showNotification = (title: string, message: string, type: 'info' | 'error' | 'success' = 'info') => {
+    setFeedbackModal({ isOpen: true, title, message, type });
+  };
+
+  const playKnockSound = () => {
+    try {
+      const AudioCtxClass = typeof window !== 'undefined' ? (window.AudioContext || (window as any).webkitAudioContext) : null;
+      if (!AudioCtxClass) return;
+      const audioCtx = new AudioCtxClass();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
+      osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.12); // A5
+      gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.35);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.35);
+    } catch {}
+  };
 
   // Emojis state
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -185,7 +216,24 @@ export default function VirtualClassroomLivePage() {
   const userRole = (currentUser?.role || '').toLowerCase();
   const isLearner = ['etudiant', 'étudiant', 'stagiaire', 'employer'].includes(userRole);
   const isManager = ['formateur', 'admin', 'admin_manager', 'pedagogique', 'dg_rh', 'dg/rh'].includes(userRole);
-  const canStopClassroom = !isLearner && isManager;
+  const isHost = isManager || (!!currentUser?.id && !!classroom?.instructor_id && currentUser.id === classroom.instructor_id) || (!!currentUser?.email && !!classroom?.instructor?.email && currentUser.email.toLowerCase() === classroom.instructor.email.toLowerCase());
+  const canStopClassroom = !isLearner && isHost;
+
+  // Countdown timer for centered room-stopped dialog
+  useEffect(() => {
+    if (!isRoomStopped) return;
+    const timer = setInterval(() => {
+      setRedirectCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          router.push('/classroom');
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [isRoomStopped, router]);
 
   // Detect mobile screen & browser
   useEffect(() => {
@@ -299,12 +347,15 @@ export default function VirtualClassroomLivePage() {
     if (!roomId || !currentUser) return;
     const interval = setInterval(async () => {
       try {
-        const isHost = isManager || currentUser.email.toLowerCase() === classroom?.instructor?.email?.toLowerCase();
-
         if (isHost) {
           const reqsRes = await apiClient.get(`/classrooms/${roomId}/join-requests`).catch(() => ({ data: [] }));
           if (Array.isArray(reqsRes.data)) {
-            setPendingRequests(reqsRes.data.filter((r: JoinRequestItem) => r.status === 'pending'));
+            const pending = reqsRes.data.filter((r: JoinRequestItem) => r.status === 'pending');
+            if (pending.length > prevPendingCountRef.current) {
+              playKnockSound();
+            }
+            prevPendingCountRef.current = pending.length;
+            setPendingRequests(pending);
           }
         } else if (joinStatus === 'pending') {
           const statusRes = await apiClient.get(`/classrooms/${roomId}/join-status`).catch(() => ({ data: { status: 'pending' } }));
@@ -323,8 +374,7 @@ export default function VirtualClassroomLivePage() {
 
         if (roomRes?.data && roomRes.data.is_active === false) {
           stopAllMedia();
-          alert("La salle vidéo conférence a été arrêtée.");
-          router.push('/classroom');
+          setIsRoomStopped(true);
           return;
         }
 
@@ -355,16 +405,16 @@ export default function VirtualClassroomLivePage() {
           });
         }
       } catch { }
-    }, 3000);
+    }, 2500);
     return () => clearInterval(interval);
-  }, [roomId, currentUser, currentActiveSubgroupId, isManager, classroom, joinStatus]);
+  }, [roomId, currentUser, currentActiveSubgroupId, isHost, classroom, joinStatus]);
 
   const handleApproveRequest = async (userId: number) => {
     try {
       await apiClient.post(`/classrooms/${roomId}/join-requests/${userId}/approve`);
       setPendingRequests((prev) => prev.filter((r) => r.user_id !== userId));
     } catch {
-      alert("Erreur lors de l'approbation.");
+      showNotification("Erreur", "Impossible d'approuver la demande. Veuillez réessayer.", "error");
     }
   };
 
@@ -373,7 +423,16 @@ export default function VirtualClassroomLivePage() {
       await apiClient.post(`/classrooms/${roomId}/join-requests/${userId}/reject`);
       setPendingRequests((prev) => prev.filter((r) => r.user_id !== userId));
     } catch {
-      alert("Erreur lors du rejet.");
+      showNotification("Erreur", "Impossible de rejeter la demande. Veuillez réessayer.", "error");
+    }
+  };
+
+  const handleApproveAllRequests = async () => {
+    try {
+      await apiClient.post(`/classrooms/${roomId}/join-requests/approve-all`);
+      setPendingRequests([]);
+    } catch {
+      showNotification("Erreur", "Impossible d'approuver l'ensemble des demandes.", "error");
     }
   };
 
@@ -382,7 +441,7 @@ export default function VirtualClassroomLivePage() {
       const res = await apiClient.patch(`/classrooms/${roomId}/settings`, { [key]: value });
       setClassroom(res.data);
     } catch {
-      alert("Erreur lors de la mise à jour des paramètres.");
+      showNotification("Erreur", "Impossible de mettre à jour les paramètres de la salle.", "error");
     }
   };
 
@@ -533,15 +592,17 @@ export default function VirtualClassroomLivePage() {
     }
 
     if (!isManager && classroom && classroom.allow_screen_sharing === false) {
-      alert("Le partage d'écran est désactivé par le formateur dans cette salle vidéo conférence.");
+      showNotification("Partage d'écran désactivé", "Le partage d'écran est désactivé par le formateur dans cette salle vidéo conférence.", "info");
       return;
     }
 
     try {
 
       if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
-        alert(
-          "Le partage d'écran sur mobile est pris en charge sur Android (Chrome 107+) et iOS 15.1+ (Safari). Si votre navigateur ne l'autorise pas, vous pouvez envoyer vos documents directement dans le chat."
+        showNotification(
+          "Partage d'écran",
+          "Le partage d'écran sur mobile est pris en charge sur Android (Chrome 107+) et iOS 15.1+ (Safari). Si votre navigateur ne l'autorise pas, vous pouvez envoyer vos documents directement dans le chat.",
+          "info"
         );
         return;
       }
@@ -568,7 +629,7 @@ export default function VirtualClassroomLivePage() {
       setIsScreenSharing(false);
       const errorObj = err as { name?: string };
       if (errorObj?.name !== 'NotAllowedError') {
-        alert("Impossible de démarrer le partage d'écran sur ce terminal mobile. Vérifiez les autorisations de capture d'écran de votre système.");
+        showNotification("Partage d'écran", "Impossible de démarrer le partage d'écran sur ce terminal mobile. Vérifiez les autorisations de capture d'écran de votre système.", "error");
       }
     }
   };
@@ -595,7 +656,7 @@ export default function VirtualClassroomLivePage() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 250 * 1024 * 1024) {
-      alert("Le fichier est trop volumineux (taille maximale : 250 Mo).");
+      showNotification("Fichier volumineux", "Le fichier sélectionné dépasse la taille maximale autorisée (250 Mo).", "error");
       return;
     }
     setSelectedFile(file);
@@ -624,7 +685,7 @@ export default function VirtualClassroomLivePage() {
         };
       } catch (err) {
         console.error("Upload error:", err);
-        alert("Erreur lors de l'envoi de la pièce jointe.");
+        showNotification("Erreur de transfert", "Erreur lors de l'envoi de la pièce jointe.", "error");
         setIsUploadingFile(false);
         return;
       } finally {
@@ -724,23 +785,22 @@ export default function VirtualClassroomLivePage() {
       const res = await apiClient.post(`/classrooms/${roomId}/subgroups`, payload);
       setSubgroupsState(res.data);
       setShowSubgroupModal(false);
-      alert("Sous-groupes lancés ! Les apprenants ont été notifiés sur leur mobile et ordinateur.");
+      showNotification("Sous-groupes lancés", "Les ateliers en sous-groupes sont ouverts ! Les apprenants ont été notifiés.", "success");
     } catch (err: unknown) {
       const errorMsg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || "Erreur lors du lancement des sous-groupes.";
-      alert(errorMsg);
+      showNotification("Erreur", errorMsg, "error");
     }
   };
 
   const handleCloseSubgroups = async () => {
-    if (!confirm("Clôturer tous les sous-groupes et rappeler tout le monde dans la salle principale ?")) return;
     try {
       await apiClient.delete(`/classrooms/${roomId}/subgroups`);
       setSubgroupsState({ is_active: false, timer_minutes: 15, subgroups: [] });
       setCurrentActiveSubgroupId(null);
-      alert("Tous les sous-groupes ont été clôturés. Retour à la salle principale.");
+      showNotification("Sous-groupes clôturés", "Tous les sous-groupes ont été clôturés. Retour à la salle principale.", "info");
     } catch (err: unknown) {
       const errorMsg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || "Erreur lors de la clôture des sous-groupes.";
-      alert(errorMsg);
+      showNotification("Erreur", errorMsg, "error");
     }
   };
 
@@ -759,7 +819,7 @@ export default function VirtualClassroomLivePage() {
       stopAllMedia();
       router.push('/classroom');
     } catch (err: any) {
-      alert(err?.response?.data?.detail || "Erreur lors de l'arrêt de la classe.");
+      showNotification("Erreur", err?.response?.data?.detail || "Erreur lors de l'arrêt de la classe.", "error");
     } finally {
       setIsStoppingRoom(false);
       setShowStopModal(false);
@@ -879,7 +939,7 @@ export default function VirtualClassroomLivePage() {
 
         <div className="flex items-center gap-2 shrink-0">
           {/* Host Pending Requests Badge */}
-          {isManager && (
+          {isHost && (
             <button
               onClick={() => setShowRequestsModal(true)}
               className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-bold border transition-all ${pendingRequests.length > 0
@@ -899,7 +959,7 @@ export default function VirtualClassroomLivePage() {
           )}
 
           {/* Host Settings button */}
-          {isManager && (
+          {isHost && (
             <button
               onClick={() => setShowSettingsModal(true)}
               className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 border border-white/10 transition-all"
@@ -928,6 +988,74 @@ export default function VirtualClassroomLivePage() {
           </button>
         </div>
       </header>
+
+      {/* ========================================================================= */}
+      {/* BANNIÈRE FLOTTANTE D'ACCEPTATION EN DIRECT (Créateur / Hôte de Salle)    */}
+      {/* ========================================================================= */}
+      {isHost && pendingRequests.length > 0 && (
+        <aside
+          aria-label="Demandes d'accès à la salle"
+          className="fixed top-16 left-1/2 -translate-x-1/2 z-[80] w-[95%] max-w-xl animate-fade-in-up"
+        >
+          <div className="bg-slate-900/95 backdrop-blur-md border-2 border-[#1877f2]/60 rounded-2xl p-3 sm:p-4 shadow-2xl text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-blue-500/20 text-[#1877f2] border border-blue-500/30 flex items-center justify-center shrink-0 animate-pulse">
+                <UsersIcon size={20} />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 text-[10px] font-extrabold uppercase tracking-wide">
+                    Demande d'accès
+                  </span>
+                  <span className="text-[10px] text-slate-400">
+                    {pendingRequests.length === 1 ? '1 participant en attente' : `${pendingRequests.length} participants en attente`}
+                  </span>
+                </div>
+                <p className="text-xs sm:text-sm font-bold truncate text-white mt-0.5">
+                  {pendingRequests.length === 1
+                    ? `${pendingRequests[0].user_name} (${pendingRequests[0].user_role}) demande à entrer`
+                    : `${pendingRequests[0].user_name} et ${pendingRequests.length - 1} autre(s) demandent à entrer`
+                  }
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 justify-end">
+              {pendingRequests.length > 1 ? (
+                <>
+                  <button
+                    onClick={() => setShowRequestsModal(true)}
+                    className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 text-xs font-bold transition-colors cursor-pointer"
+                  >
+                    Voir ({pendingRequests.length})
+                  </button>
+                  <button
+                    onClick={handleApproveAllRequests}
+                    className="btn-primary px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-blue-500/30 cursor-pointer"
+                  >
+                    <Check size={14} /> Tout accepter
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => handleRejectRequest(pendingRequests[0].user_id)}
+                    className="px-3 py-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/30 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1"
+                  >
+                    <X size={14} /> Refuser
+                  </button>
+                  <button
+                    onClick={() => handleApproveRequest(pendingRequests[0].user_id)}
+                    className="btn-primary px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-blue-500/30 cursor-pointer"
+                  >
+                    <Check size={14} /> Accepter l'accès
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </aside>
+      )}
 
       {/* 2. MAIN STAGE & VIDEO TILES (Mobile Responsive Layout) */}
       <div className="flex-1 flex overflow-hidden relative">
@@ -1148,16 +1276,17 @@ export default function VirtualClassroomLivePage() {
                       <select
                         value={targetRecipient}
                         onChange={(e) => setTargetRecipient(e.target.value)}
-                        className="w-full px-2.5 py-1.5 bg-black/60 border border-purple-500/40 rounded-lg text-xs text-white outline-none focus:border-purple-400 cursor-pointer"
+                        className="w-full px-2.5 py-2 bg-slate-800 border border-purple-500/50 rounded-lg text-xs !text-white outline-none focus:border-purple-400 cursor-pointer transition-colors"
+                        style={{ color: '#ffffff', backgroundColor: '#1e293b' }}
                       >
-                        <option value="everyone" disabled>Sélectionner un participant...</option>
-                        <option value={classroom.instructor?.email || 'formateur@eschola.pro'}>
+                        <option value="everyone" disabled className="bg-slate-900 text-white">Sélectionner un participant...</option>
+                        <option value={classroom.instructor?.email || 'formateur@eschola.pro'} className="bg-slate-900 text-white">
                           👨‍🏫 {instructorName} (Formateur)
                         </option>
                         {participantsList
                           .filter(p => p.email.toLowerCase() !== currentUser?.email.toLowerCase())
                           .map(p => (
-                            <option key={p.email} value={p.email}>
+                            <option key={p.email} value={p.email} className="bg-slate-900 text-white">
                               👤 {p.email.split('@')[0]} ({p.role})
                             </option>
                           ))
@@ -1347,7 +1476,8 @@ export default function VirtualClassroomLivePage() {
                           : `Message privé à ${targetRecipient.split('@')[0]}...`
                     }
                     disabled={isUploadingFile}
-                    className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-xs text-white placeholder-gray-500 outline-none focus:border-primary"
+                    className="classroom-chat-input flex-1 px-3.5 py-2.5 bg-slate-800/90 hover:bg-slate-800 focus:bg-slate-800 border border-slate-700/80 focus:border-primary rounded-xl text-xs !text-white placeholder:!text-slate-400 caret-white outline-none transition-all shadow-inner"
+                    style={{ color: '#ffffff', backgroundColor: '#1e293b' }}
                   />
 
                   <button
@@ -1364,6 +1494,52 @@ export default function VirtualClassroomLivePage() {
             {/* Content : PARTICIPANTS */}
             {activeSidePanel === 'participants' && (
               <div className="p-3 sm:p-4 space-y-2.5 overflow-y-auto">
+
+                {/* Demandes en attente d'approbation (Hôte / Créateur de Salle) */}
+                {isHost && pendingRequests.length > 0 && (
+                  <div className="p-3 rounded-2xl bg-purple-950/40 border border-purple-500/40 space-y-2.5 mb-3 animate-fade-in-up">
+                    <div className="flex items-center justify-between text-xs font-bold text-purple-300">
+                      <span className="flex items-center gap-1.5">
+                        <Clock size={13} className="text-purple-400" /> En attente d'accès ({pendingRequests.length})
+                      </span>
+                      {pendingRequests.length > 1 && (
+                        <button
+                          onClick={handleApproveAllRequests}
+                          className="text-[10px] text-purple-300 hover:text-white underline cursor-pointer"
+                        >
+                          Tout accepter
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="space-y-1.5">
+                      {pendingRequests.map(req => (
+                        <div key={req.user_id} className="flex items-center justify-between gap-2 p-2 bg-black/40 rounded-xl border border-purple-500/25">
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-white truncate">{req.user_name}</p>
+                            <p className="text-[9px] text-gray-400 truncate">{req.user_email.split('@')[0]} · {req.user_role}</p>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button
+                              onClick={() => handleRejectRequest(req.user_id)}
+                              className="p-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-400 transition-colors cursor-pointer"
+                              title="Refuser"
+                            >
+                              <X size={13} />
+                            </button>
+                            <button
+                              onClick={() => handleApproveRequest(req.user_id)}
+                              className="px-2.5 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-white text-[10px] font-bold flex items-center gap-1 shadow-xs transition-colors cursor-pointer"
+                              title="Accepter l'accès"
+                            >
+                              <Check size={12} /> Accepter
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Formateur */}
                 <div className="flex items-center justify-between p-2.5 sm:p-3 rounded-xl bg-white/5 border border-white/5">
@@ -1755,13 +1931,23 @@ export default function VirtualClassroomLivePage() {
                 </div>
                 <h3 className="text-base font-extrabold text-slate-900">Demandes d'accès à la classe ({pendingRequests.length})</h3>
               </div>
-              <button
-                onClick={() => setShowRequestsModal(false)}
-                className="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 transition-colors text-sm font-bold cursor-pointer"
-                aria-label="Fermer"
-              >
-                ✕
-              </button>
+              <div className="flex items-center gap-2">
+                {pendingRequests.length > 1 && (
+                  <button
+                    onClick={handleApproveAllRequests}
+                    className="btn-primary px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1 shadow-xs cursor-pointer"
+                  >
+                    <Check size={13} /> Tout accepter
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowRequestsModal(false)}
+                  className="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 transition-colors text-sm font-bold cursor-pointer"
+                  aria-label="Fermer"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
 
             {pendingRequests.length === 0 ? (
@@ -1924,6 +2110,74 @@ export default function VirtualClassroomLivePage() {
                 <span>Confirmer l'arrêt</span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL CENTRÉE : SALLE ARRÊTÉE PAR L'HÔTE (Design Professionnel Centré)     */}
+      {/* ========================================================================= */}
+      {isRoomStopped && (
+        <div className="fixed inset-0 z-[300] bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white max-w-md w-full p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-2xl space-y-6 text-slate-900 text-center animate-zoom-in my-auto">
+            <div className="w-20 h-20 mx-auto rounded-3xl bg-red-50 border border-red-200 flex items-center justify-center text-red-600 shadow-xl shadow-red-500/10">
+              <VideoOff size={38} />
+            </div>
+
+            <div className="space-y-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-100 text-red-700 text-xs font-bold uppercase tracking-wider">
+                Session terminée
+              </span>
+              <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900">
+                La salle vidéo conférence a été arrêtée
+              </h2>
+              <p className="text-slate-600 text-xs sm:text-sm leading-relaxed">
+                Le formateur ou l'animateur a clôturé cette session en direct. L'ensemble des flux vidéo, audio et partages ont été fermés.
+              </p>
+            </div>
+
+            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs text-slate-500 font-medium">
+              Redirection automatique vers l'accueil dans <strong className="text-[#1877f2] font-bold">{redirectCountdown}s</strong>...
+            </div>
+
+            <button
+              onClick={() => router.push('/classroom')}
+              className="btn-primary w-full py-3.5 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 cursor-pointer"
+            >
+              <ArrowRight size={16} />
+              <span>Retourner aux Salles Vidéo Conférence</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL CENTRÉE : NOTIFICATIONS & ALERTES SYSTÈME                            */}
+      {/* ========================================================================= */}
+      {feedbackModal.isOpen && (
+        <div className="fixed inset-0 z-[250] bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white max-w-sm sm:max-w-md w-full p-6 rounded-3xl border border-slate-200 shadow-2xl space-y-4 text-slate-900 text-center animate-zoom-in my-auto">
+            <div className={`w-14 h-14 mx-auto rounded-2xl flex items-center justify-center ${
+              feedbackModal.type === 'error' ? 'bg-red-50 text-red-600 border border-red-200' :
+              feedbackModal.type === 'success' ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' :
+              'bg-blue-50 text-[#1877f2] border border-blue-200'
+            }`}>
+              {feedbackModal.type === 'error' ? <AlertCircle size={28} /> :
+               feedbackModal.type === 'success' ? <CheckCircle2 size={28} /> :
+               <Info size={28} />}
+            </div>
+
+            <div className="space-y-1.5">
+              <h3 className="text-lg font-extrabold text-slate-900">{feedbackModal.title}</h3>
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">{feedbackModal.message}</p>
+            </div>
+
+            <button
+              onClick={() => setFeedbackModal(prev => ({ ...prev, isOpen: false }))}
+              className="btn-primary w-full py-2.5 rounded-xl font-bold text-xs sm:text-sm cursor-pointer shadow-md shadow-blue-500/20"
+            >
+              Compris
+            </button>
           </div>
         </div>
       )}

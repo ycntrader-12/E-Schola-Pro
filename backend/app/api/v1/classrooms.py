@@ -558,7 +558,7 @@ def get_join_requests(room_id: str, session: SessionDep, current_user: CurrentUs
     classroom = session.query(Classroom).filter(Classroom.room_id == cleaned_id).first()
     if not classroom:
         raise HTTPException(status_code=404, detail="Salle vidéo conférence introuvable.")
-    if current_user.id != classroom.instructor_id and current_user.role not in ADMIN_ROLES:
+    if current_user.id != classroom.instructor_id and current_user.role not in ADMIN_ROLES + ["formateur", "pedagogique", "dg_rh", "dg/rh"]:
         raise HTTPException(status_code=403, detail="Seul le formateur peut consulter les demandes d'accès.")
     
     return ROOM_JOIN_REQUESTS.get(cleaned_id, [])
@@ -616,7 +616,7 @@ def approve_join_request(room_id: str, user_id: int, session: SessionDep, curren
     classroom = session.query(Classroom).filter(Classroom.room_id == cleaned_id).first()
     if not classroom:
         raise HTTPException(status_code=404, detail="Salle vidéo conférence introuvable.")
-    if current_user.id != classroom.instructor_id and current_user.role not in ADMIN_ROLES:
+    if current_user.id != classroom.instructor_id and current_user.role not in ADMIN_ROLES + ["formateur", "pedagogique", "dg_rh", "dg/rh"]:
         raise HTTPException(status_code=403, detail="Seul le formateur peut approuver les demandes.")
 
     reqs = ROOM_JOIN_REQUESTS.get(cleaned_id, [])
@@ -634,6 +634,36 @@ def approve_join_request(room_id: str, user_id: int, session: SessionDep, curren
     return {"message": "Participant approuvé avec succès.", "user_id": user_id}
 
 
+@router.post("/{room_id}/join-requests/approve-all")
+def approve_all_join_requests(room_id: str, session: SessionDep, current_user: CurrentUser):
+    """
+    Approve all pending join requests for a virtual classroom (Host / Admin).
+    """
+    cleaned_id = room_id.strip().lower()
+    classroom = session.query(Classroom).filter(Classroom.room_id == cleaned_id).first()
+    if not classroom:
+        raise HTTPException(status_code=404, detail="Salle vidéo conférence introuvable.")
+    if current_user.id != classroom.instructor_id and current_user.role not in ADMIN_ROLES + ["formateur", "pedagogique", "dg_rh", "dg/rh"]:
+        raise HTTPException(status_code=403, detail="Seul le formateur peut approuver les demandes.")
+
+    reqs = ROOM_JOIN_REQUESTS.get(cleaned_id, [])
+    approved_ids = []
+    current_allowed = [u.strip() for u in (classroom.allowed_users or "").split(",") if u.strip()]
+
+    for req in reqs:
+        if req.get("status") == "pending":
+            req["status"] = "approved"
+            uid = str(req.get("user_id"))
+            if uid and uid not in current_allowed:
+                current_allowed.append(uid)
+            approved_ids.append(req.get("user_id"))
+
+    classroom.allowed_users = ",".join(current_allowed)
+    session.commit()
+
+    return {"message": f"{len(approved_ids)} participants approuvés.", "approved_user_ids": approved_ids}
+
+
 @router.post("/{room_id}/join-requests/{user_id}/reject")
 def reject_join_request(room_id: str, user_id: int, session: SessionDep, current_user: CurrentUser):
     """
@@ -643,7 +673,7 @@ def reject_join_request(room_id: str, user_id: int, session: SessionDep, current
     classroom = session.query(Classroom).filter(Classroom.room_id == cleaned_id).first()
     if not classroom:
         raise HTTPException(status_code=404, detail="Salle vidéo conférence introuvable.")
-    if current_user.id != classroom.instructor_id and current_user.role not in ADMIN_ROLES:
+    if current_user.id != classroom.instructor_id and current_user.role not in ADMIN_ROLES + ["formateur", "pedagogique", "dg_rh", "dg/rh"]:
         raise HTTPException(status_code=403, detail="Seul le formateur peut rejeter les demandes.")
 
     reqs = ROOM_JOIN_REQUESTS.get(cleaned_id, [])

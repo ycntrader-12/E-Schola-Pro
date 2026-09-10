@@ -61,13 +61,43 @@
   }
 
   input, textarea, select {
-    color: var(--color-text-primary) !important;
+    color: var(--color-text-primary);
     background-color: var(--color-surface);
   }
 
   input::placeholder, textarea::placeholder {
-    color: var(--color-text-secondary) !important;
+    color: var(--color-text-secondary);
     opacity: 0.75;
+  }
+
+  /* Haute lisibilité garantie sur interfaces sombres, vidéo/chat ou éléments text-white */
+  input.text-white,
+  textarea.text-white,
+  select.text-white,
+  input[class*="text-white"],
+  textarea[class*="text-white"],
+  select[class*="text-white"],
+  input[class*="!text-white"],
+  textarea[class*="!text-white"],
+  select[class*="!text-white"],
+  .classroom-chat-input,
+  .dark input,
+  .dark textarea,
+  .dark select {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+  }
+
+  input[class*="text-white"]::placeholder,
+  textarea[class*="text-white"]::placeholder,
+  input[class*="placeholder-gray-"]::placeholder,
+  input[class*="placeholder:text-gray-"]::placeholder,
+  input[class*="placeholder-slate-"]::placeholder,
+  input[class*="placeholder:text-slate-"]::placeholder,
+  .classroom-chat-input::placeholder {
+    color: #94a3b8 !important;
+    -webkit-text-fill-color: #94a3b8 !important;
+    opacity: 0.85;
   }
 
   /* Sécurité anti-texte blanc accidentel sur cartes et panneaux clairs */
