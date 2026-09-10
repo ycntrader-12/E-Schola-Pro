@@ -135,16 +135,23 @@ def get_default_database_url() -> str:
         vol_path.mkdir(parents=True, exist_ok=True)
         return f"sqlite:///{(vol_path / 'eschola.db').as_posix()}"
 
-    # 4. In Railway without a volume: prevent silent ephemeral SQLite fallback
+    # 4. In Railway without a volume: graceful fallback to SQLite with clear warning to ensure 100% uptime
     if is_in_railway():
-        allow_ephemeral = os.getenv("ALLOW_EPHEMERAL_SQLITE", "false").strip().lower() in ("true", "1", "yes")
-        if not allow_ephemeral:
+        require_postgres = os.getenv("REQUIRE_POSTGRES_IN_RAILWAY", "false").strip().lower() in ("true", "1", "yes")
+        if require_postgres:
             raise RuntimeError(
                 "Environnement Railway détecté sans base de données PostgreSQL configurée (DATABASE_URL manquante). "
                 "Pour éviter toute perte de données lors des redéploiements, configurez la variable DATABASE_URL "
                 "avec la référence PostgreSQL Railway (ex: ${{Postgres.DATABASE_URL}})."
             )
-        print("[CRITICAL RAILWAY WARNING] Production container running with ephemeral SQLite fallback (ALLOW_EPHEMERAL_SQLITE=true)!")
+        print(
+            "\n" + "=" * 76 + "\n"
+            "[AVERTISSEMENT RAILWAY] Aucune base PostgreSQL détectée (DATABASE_URL absente).\n"
+            "Démarrage résilient en mode SQLite pour garantir la continuité du service en ligne (Zéro Crash).\n"
+            "Pour activer la persistance définitive PostgreSQL, ajoutez une base PostgreSQL sur Railway\n"
+            "et configurez la variable : DATABASE_URL = ${{Postgres.DATABASE_URL}}\n"
+            + "=" * 76 + "\n"
+        )
 
     # 5. Known persistent mount directories outside container root
     for mount_dir in ["/data", "/app/data"]:

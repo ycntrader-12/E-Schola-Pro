@@ -60,9 +60,10 @@ class TestRailwayPostgreSQLPersistence(unittest.TestCase):
             self.assertEqual(expanded, "postgresql://postgres:secret@db.railway.internal:5432/railway")
 
     def test_railway_safe_non_fallback(self):
-        """In Railway, missing database URL MUST raise RuntimeError, not fall back to ephemeral SQLite."""
+        """In Railway, missing database URL raises RuntimeError if REQUIRE_POSTGRES_IN_RAILWAY is set."""
         with patch.dict(os.environ, {
             "RAILWAY_ENVIRONMENT": "production",
+            "REQUIRE_POSTGRES_IN_RAILWAY": "true",
             "DATABASE_URL": "",
             "POSTGRES_URL": "",
             "DATABASE_PUBLIC_URL": "",
@@ -75,6 +76,23 @@ class TestRailwayPostgreSQLPersistence(unittest.TestCase):
             with self.assertRaises(RuntimeError) as ctx:
                 get_default_database_url()
             self.assertIn("Environnement Railway détecté", str(ctx.exception))
+
+    def test_railway_resilient_default_fallback(self):
+        """In Railway by default, missing database URL gracefully falls back to SQLite to prevent downtime."""
+        with patch.dict(os.environ, {
+            "RAILWAY_ENVIRONMENT": "production",
+            "REQUIRE_POSTGRES_IN_RAILWAY": "false",
+            "DATABASE_URL": "",
+            "POSTGRES_URL": "",
+            "DATABASE_PUBLIC_URL": "",
+            "DATABASE_URL_UNPOOLED": "",
+            "RAILWAY_PRIVATE_DOMAIN": "",
+            "PGHOST": "",
+            "POSTGRES_PASSWORD": "",
+            "PGDATABASE": "",
+        }, clear=False):
+            url = get_default_database_url()
+            self.assertTrue(url.startswith("sqlite:///"))
 
     def test_postgres_url_normalization(self):
         normalized = Settings.normalize_database_url("postgres://user:pass@host:5432/db")
