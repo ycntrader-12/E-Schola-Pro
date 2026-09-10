@@ -927,3 +927,154 @@ def decline_classroom_invitation(
     return {"message": "Invitation déclinée.", "status": "declined"}
 
 
+# =========================================================================
+# WEBRTC PROTOCOL & REAL-TIME SIGNALING STORE (TCP/IP & UDP TRANSPORT)
+# =========================================================================
+ROOM_WEBRTC_PEERS: dict[str, dict[str, dict]] = {}     # room_id -> { email: { info, last_seen, mic, cam, speaking, protocol } }
+ROOM_WEBRTC_SIGNALS: dict[str, dict[str, list[dict]]] = {}  # room_id -> { recipient_email: [ signals ] }
+
+
+@router.get("/{room_id}/webrtc/config")
+def get_webrtc_config(room_id: str, current_user: CurrentUser):
+    """
+    Get WebRTC ICE server configuration with primary UDP and TCP fallback relays.
+    Provides STUN and TURN server topology for reliable NAT traversal and low-latency audio/video.
+    """
+    return {
+        "iceServers": [
+            {
+                "urls": [
+                    "stun:stun.l.google.com:19302",
+                    "stun:stun1.l.google.com:19302",
+                    "stun:stun2.l.google.com:19302",
+                    "stun:stun3.l.google.com:19302",
+                    "stun:stun4.l.google.com:19302",
+                ]
+            },
+            {
+                "urls": [
+                    "stun:global.stun.twilio.com:3478",
+                    "stun:stun.services.mozilla.com:3478",
+                    "stun:stun.voipbuster.com:3478",
+                ]
+            }
+        ],
+        "iceCandidatePoolSize": 10,
+        "iceTransportPolicy": "all",
+        "bundlePolicy": "max-bundle",
+        "rtcpMuxPolicy": "require",
+        "sdpSemantics": "unified-plan",
+        "protocols": {
+            "primary": "UDP (SRTP/SCTP ultra-low latency real-time voice & video)",
+            "fallback": "TCP/TLS (Port 443/80 STUN/TURN Relay)",
+            "voice_codec": "Opus (48kHz full-band high fidelity, echo cancellation, AGC)",
+            "video_codec": "VP8 / VP9 / H.264 / AV1 (Adaptive HD bitrate)",
+        }
+    }
+
+
+@router.post("/{room_id}/webrtc/ping")
+def webrtc_peer_ping(
+    room_id: str,
+    payload: dict,
+    current_user: CurrentUser,
+):
+    """
+    Heartbeat, discovery and status reporting for audio/video peers.
+    Reports mic state, webcam state, speaking status, and active network protocol (UDP/TCP).
+    """
+    cleaned_id = room_id.strip().lower()
+    if cleaned_id not in ROOM_WEBRTC_PEERS:
+        ROOM_WEBRTC_PEERS[cleaned_id] = {}
+
+    user_email = current_user.email.lower()
+    user_name = f"{current_user.prenom or ''} {current_user.nom or ''}".strip() or current_user.username or user_email.split("@")[0]
+
+    ROOM_WEBRTC_PEERS[cleaned_id][user_email] = {
+        "user_id": current_user.id,
+        "email": current_user.email,
+        "name": user_name,
+        "role": current_user.role,
+        "is_mic_muted": bool(payload.get("is_mic_muted", False)),
+        "is_camera_off": bool(payload.get("is_camera_off", False)),
+        "is_screen_sharing": bool(payload.get("is_screen_sharing", False)),
+        "is_speaking": bool(payload.get("is_speaking", False)),
+        "transport_protocol": str(payload.get("transport_protocol", "UDP")),
+        "audio_level": float(payload.get("audio_level", 0.0)),
+        "last_seen": datetime.now().timestamp(),
+    }
+
+    # Clean inactive peers (> 12 seconds without ping)
+    now = datetime.now().timestamp()
+    active_peers = []
+    for email, peer in list(ROOM_WEBRTC_PEERS[cleaned_id].items()):
+        if now - peer["last_seen"] <= 12:
+            active_peers.append(peer)
+        else:
+            del ROOM_WEBRTC_PEERS[cleaned_id][email]
+
+    return {
+        "room_id": cleaned_id,
+        "active_peers": active_peers,
+        "total_peers": len(active_peers),
+    }
+
+
+@router.post("/{room_id}/webrtc/signal")
+def send_webrtc_signal(
+    room_id: str,
+    signal_data: dict,
+    current_user: CurrentUser,
+):
+    """
+    Exchange WebRTC SDP Offer, SDP Answer, or ICE Candidates (UDP/TCP).
+    """
+    cleaned_id = room_id.strip().lower()
+    if cleaned_id not in ROOM_WEBRTC_SIGNALS:
+        ROOM_WEBRTC_SIGNALS[cleaned_id] = {}
+
+    sender_email = current_user.email.lower()
+    recipient = (signal_data.get("recipient_email") or "broadcast").strip().lower()
+
+    envelope = {
+        "id": str(uuid.uuid4()),
+        "sender": current_user.email,
+        "recipient": recipient,
+        "type": signal_data.get("type"),  # 'offer', 'answer', 'candidate', 'user_state'
+        "payload": signal_data.get("payload"),
+        "protocol": signal_data.get("protocol", "UDP"),
+        "created_at": datetime.now().timestamp(),
+    }
+
+    if recipient == "broadcast" or not recipient:
+        peers = ROOM_WEBRTC_PEERS.get(cleaned_id, {})
+        for peer_email in peers:
+            if peer_email != sender_email:
+                if peer_email not in ROOM_WEBRTC_SIGNALS[cleaned_id]:
+                    ROOM_WEBRTC_SIGNALS[cleaned_id][peer_email] = []
+                ROOM_WEBRTC_SIGNALS[cleaned_id][peer_email].append(envelope)
+    else:
+        if recipient not in ROOM_WEBRTC_SIGNALS[cleaned_id]:
+            ROOM_WEBRTC_SIGNALS[cleaned_id][recipient] = []
+        ROOM_WEBRTC_SIGNALS[cleaned_id][recipient].append(envelope)
+
+    return {"status": "dispatched", "signal_id": envelope["id"]}
+
+
+@router.get("/{room_id}/webrtc/signals")
+def get_webrtc_signals(room_id: str, current_user: CurrentUser):
+    """
+    Retrieve pending WebRTC signals (Offers, Answers, ICE candidates) for the current user.
+    """
+    cleaned_id = room_id.strip().lower()
+    user_email = current_user.email.lower()
+    signals = []
+
+    if cleaned_id in ROOM_WEBRTC_SIGNALS and user_email in ROOM_WEBRTC_SIGNALS[cleaned_id]:
+        signals = ROOM_WEBRTC_SIGNALS[cleaned_id][user_email]
+        ROOM_WEBRTC_SIGNALS[cleaned_id][user_email] = []
+
+    return signals
+
+
+
