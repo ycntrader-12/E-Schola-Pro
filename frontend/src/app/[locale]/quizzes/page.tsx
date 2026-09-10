@@ -668,11 +668,11 @@ export default function QuizzesPage() {
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL : PASSER LE QUIZ EN DIRECT                                         */}
+      {/* MODAL : PASSER LE QUIZ EN DIRECT (Vue Panoramique Confortable)             */}
       {/* ========================================================================= */}
       {activeQuizDetail && (
-        <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
-          <div className="glass-card max-w-2xl w-full p-6 sm:p-8 rounded-3xl border border-primary/40 shadow-2xl animate-fade-in-up my-auto max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+          <div className="glass-card max-w-4xl w-full p-6 sm:p-8 rounded-3xl border border-primary/40 shadow-2xl animate-fade-in-up my-auto max-h-[92vh] flex flex-col">
             
             {/* Quiz Result View */}
             {quizResult ? (
@@ -694,39 +694,39 @@ export default function QuizzesPage() {
                   </p>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-surface border border-border flex items-center justify-around max-w-sm mx-auto">
+                <div className="p-4 rounded-2xl bg-surface border border-border flex items-center justify-around max-w-md mx-auto shadow-sm">
                   <div>
                     <span className="text-xs text-text-secondary block">Score Obtenu</span>
-                    <span className="text-xl font-black text-primary font-mono">{quizResult.score} / {quizResult.max_score}</span>
+                    <span className="text-2xl font-black text-primary font-mono">{quizResult.score} / {quizResult.max_score} pts</span>
                   </div>
-                  <div className="w-px h-8 bg-border" />
+                  <div className="w-px h-10 bg-border" />
                   <div>
                     <span className="text-xs text-text-secondary block">Pourcentage</span>
-                    <span className={`text-xl font-black font-mono ${quizResult.passed ? 'text-emerald-500' : 'text-rose-500'}`}>
+                    <span className={`text-2xl font-black font-mono ${quizResult.passed ? 'text-emerald-500' : 'text-rose-500'}`}>
                       {quizResult.percentage}%
                     </span>
                   </div>
                 </div>
 
                 {/* Question Review */}
-                <div className="max-h-56 overflow-y-auto space-y-3 text-left p-2">
+                <div className="max-h-64 overflow-y-auto space-y-3 text-left p-2">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-text-secondary">Correction des questions :</h4>
                   {quizResult.review?.map((rev: any, idx: number) => (
-                    <div key={idx} className="p-3 rounded-xl bg-surface border border-border text-xs space-y-1">
+                    <div key={idx} className="p-3.5 rounded-xl bg-surface border border-border text-xs space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <span className="font-bold text-text-primary">Q{idx + 1}. {rev.question_text}</span>
-                        <span className={rev.is_correct ? 'text-emerald-500 font-bold' : 'text-rose-500 font-bold'}>
+                        <span className="font-bold text-text-primary text-sm">Q{idx + 1}. {rev.question_text}</span>
+                        <span className={`px-2 py-0.5 rounded-md font-bold text-[10px] ${rev.is_correct ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'bg-rose-50 text-rose-600 border border-rose-200'}`}>
                           {rev.is_correct ? `+${rev.points} pts` : '0 pt'}
                         </span>
                       </div>
                       <p className="text-text-secondary">
-                        Votre choix : <span className={rev.is_correct ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>
+                        Votre choix : <span className={rev.is_correct ? 'text-emerald-500 font-bold' : 'text-rose-500 font-bold'}>
                           {rev.options[rev.selected_index] || 'Aucune réponse'}
                         </span>
                       </p>
                       {!rev.is_correct && (
-                        <p className="text-emerald-500 font-semibold">
-                          Bonne réponse : {rev.options[rev.correct_index]}
+                        <p className="text-emerald-600 font-semibold">
+                          ✓ Bonne réponse : {rev.options[rev.correct_index]}
                         </p>
                       )}
                     </div>
@@ -739,7 +739,7 @@ export default function QuizzesPage() {
                     type="button"
                     onClick={() => handleExportAttemptPDF(quizResult.attempt_id)}
                     disabled={isExportingPdf === quizResult.attempt_id}
-                    className="w-full sm:w-1/2 py-3 rounded-xl font-bold text-xs bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/25 transition-all cursor-pointer"
+                    className="w-full sm:w-1/2 py-3.5 rounded-xl font-bold text-xs bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/25 transition-all cursor-pointer"
                   >
                     {isExportingPdf === quizResult.attempt_id ? (
                       <Loader2 size={16} className="animate-spin" />
@@ -755,7 +755,7 @@ export default function QuizzesPage() {
                       setActiveQuizDetail(null);
                       setQuizResult(null);
                     }}
-                    className="w-full sm:w-1/2 btn-primary py-3 rounded-xl font-bold text-xs cursor-pointer"
+                    className="w-full sm:w-1/2 btn-primary py-3.5 rounded-xl font-bold text-xs cursor-pointer"
                   >
                     Terminer & Retourner aux Quiz
                   </button>
@@ -774,7 +774,7 @@ export default function QuizzesPage() {
                   </div>
 
                   <div className="flex items-center gap-3 shrink-0">
-                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-primary/10 border border-primary/20 text-primary font-mono text-sm font-bold">
+                    <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-primary/10 border border-primary/20 text-primary font-mono text-sm font-bold shadow-sm">
                       <Clock size={16} />
                       <span>{formatTimer(timeLeftSeconds)}</span>
                     </div>
@@ -795,7 +795,7 @@ export default function QuizzesPage() {
                 </div>
 
                 {/* Progress bar */}
-                <div className="w-full bg-surface rounded-full h-1.5 overflow-hidden shrink-0">
+                <div className="w-full bg-surface rounded-full h-2 overflow-hidden shrink-0">
                   <div 
                     className="bg-primary h-full transition-all duration-300"
                     style={{ width: `${((currentQuestionIndex + 1) / activeQuizDetail.questions.length) * 100}%` }}
@@ -804,12 +804,12 @@ export default function QuizzesPage() {
 
                 {/* Current Question - Scrollable */}
                 {activeQuizDetail.questions[currentQuestionIndex] && (
-                  <div className="space-y-4 overflow-y-auto flex-1 pr-1">
-                    <h4 className="text-base sm:text-lg font-bold text-text-primary">
+                  <div className="space-y-5 overflow-y-auto flex-1 pr-1 py-1">
+                    <h4 className="text-base sm:text-xl font-bold text-text-primary leading-relaxed">
                       {activeQuizDetail.questions[currentQuestionIndex].question_text}
                     </h4>
 
-                    <div className="space-y-2.5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {activeQuizDetail.questions[currentQuestionIndex].options.map((opt, optIdx) => {
                         const currentQId = activeQuizDetail.questions[currentQuestionIndex].id;
                         const isSelected = selectedAnswers[currentQId] === optIdx;
@@ -819,13 +819,13 @@ export default function QuizzesPage() {
                             key={optIdx}
                             type="button"
                             onClick={() => setSelectedAnswers(prev => ({ ...prev, [currentQId]: optIdx }))}
-                            className={`w-full p-3.5 sm:p-4 rounded-2xl border text-left transition-all flex items-center justify-between cursor-pointer ${
+                            className={`w-full p-4 rounded-2xl border text-left transition-all flex items-center justify-between cursor-pointer ${
                               isSelected
-                                ? 'bg-primary/15 border-primary text-text-primary shadow-md shadow-primary/10'
+                                ? 'bg-primary/15 border-primary text-text-primary shadow-md shadow-primary/10 ring-1 ring-primary/30 font-semibold'
                                 : 'bg-surface border-border hover:bg-surface-hover text-text-secondary'
                             }`}
                           >
-                            <span className="text-xs sm:text-sm font-medium pr-4">{opt}</span>
+                            <span className="text-xs sm:text-sm pr-3">{opt}</span>
                             <div className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 ${
                               isSelected ? 'border-primary bg-primary text-white' : 'border-border'
                             }`}>
@@ -843,7 +843,7 @@ export default function QuizzesPage() {
                   <button
                     onClick={() => setCurrentQuestionIndex(prev => Math.max(0, prev - 1))}
                     disabled={currentQuestionIndex === 0}
-                    className="px-4 py-2 rounded-xl bg-surface border border-border text-xs font-bold text-text-secondary hover:text-text-primary disabled:opacity-30 flex items-center gap-1.5 cursor-pointer"
+                    className="px-4 py-2.5 rounded-xl bg-surface border border-border text-xs font-bold text-text-secondary hover:text-text-primary disabled:opacity-30 flex items-center gap-1.5 cursor-pointer"
                   >
                     <ArrowLeft size={14} /> Précédent
                   </button>
@@ -851,7 +851,7 @@ export default function QuizzesPage() {
                   {currentQuestionIndex < activeQuizDetail.questions.length - 1 ? (
                     <button
                       onClick={() => setCurrentQuestionIndex(prev => prev + 1)}
-                      className="px-5 py-2 rounded-xl bg-primary text-white text-xs font-bold flex items-center gap-1.5 hover:bg-primary-hover transition-colors cursor-pointer"
+                      className="px-6 py-2.5 rounded-xl bg-primary text-white text-xs font-bold flex items-center gap-1.5 hover:bg-primary-hover transition-colors cursor-pointer shadow-md shadow-primary/20"
                     >
                       <span>Suivant</span>
                       <ArrowRight size={14} />
@@ -860,7 +860,7 @@ export default function QuizzesPage() {
                     <button
                       onClick={submitQuizAnswers}
                       disabled={isSubmittingQuiz}
-                      className="btn-primary px-6 py-2 rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer"
+                      className="btn-primary px-6 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer shadow-lg shadow-primary/25"
                     >
                       {isSubmittingQuiz ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
                       <span>Valider & Obtenir Ma Note</span>
@@ -875,22 +875,22 @@ export default function QuizzesPage() {
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL : CONSULTER LES RÉSULTATS DES ÉTUDIANTS (Formateur / Admin)        */}
+      {/* MODAL : CONSULTER LES RÉSULTATS DES ÉTUDIANTS (Vue Panoramique)          */}
       {/* ========================================================================= */}
       {inspectQuizResults && (
-        <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
-          <div className="glass-card max-w-2xl w-full p-6 rounded-3xl border border-primary/30 space-y-4 max-h-[85vh] flex flex-col animate-fade-in-up my-auto">
+        <div className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+          <div className="glass-card max-w-5xl w-full p-6 sm:p-7 rounded-3xl border border-primary/30 space-y-4 max-h-[88vh] flex flex-col animate-fade-in-up my-auto">
             <div className="flex items-center justify-between pb-3 border-b border-border">
               <div>
                 <span className="text-[11px] uppercase font-bold text-primary">RÉSULTATS DE L'ÉVALUATION</span>
-                <h3 className="text-base font-bold text-text-primary">{inspectQuizResults.quiz.title}</h3>
+                <h3 className="text-base sm:text-lg font-bold text-text-primary">{inspectQuizResults.quiz.title}</h3>
               </div>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => handleExportGlobalReportPDF(inspectQuizResults.quiz.id)}
                   disabled={isExportingPdf === inspectQuizResults.quiz.id}
-                  className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-indigo-600/20 cursor-pointer transition-all"
+                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-indigo-600/20 cursor-pointer transition-all"
                   title="Exporter le Procès-Verbal Global en PDF"
                 >
                   {isExportingPdf === inspectQuizResults.quiz.id ? (
@@ -910,14 +910,14 @@ export default function QuizzesPage() {
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto divide-y divide-border">
+            <div className="flex-1 overflow-y-auto divide-y divide-border border border-border/80 rounded-2xl bg-white/50">
               {inspectQuizResults.attempts.length === 0 ? (
-                <div className="p-8 text-center text-text-secondary text-xs">
+                <div className="p-12 text-center text-text-secondary text-xs">
                   Aucun apprenant n'a encore passé cette évaluation.
                 </div>
               ) : (
                 inspectQuizResults.attempts.map((att) => (
-                  <div key={att.id} className="py-3 flex items-center justify-between gap-4">
+                  <div key={att.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-surface/80 transition-colors">
                     <div>
                       <p className="text-xs font-bold text-text-primary">{att.user_email}</p>
                       <span className="text-[10px] text-text-secondary uppercase">
@@ -925,10 +925,10 @@ export default function QuizzesPage() {
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-3 shrink-0">
+                    <div className="flex items-center gap-4 shrink-0">
                       <div className="text-right">
                         <span className={`text-sm font-black font-mono block ${
-                          att.percentage >= 60 ? 'text-emerald-500' : 'text-rose-500'
+                          att.percentage >= 60 ? 'text-emerald-600' : 'text-rose-600'
                         }`}>
                           {att.score} / {att.max_score} ({att.percentage}%)
                         </span>
@@ -941,7 +941,7 @@ export default function QuizzesPage() {
                         type="button"
                         onClick={() => handleExportAttemptPDF(att.id)}
                         disabled={isExportingPdf === att.id}
-                        className="p-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                        className="px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors"
                         title="Exporter le relevé individuel de cet apprenant en PDF"
                       >
                         {isExportingPdf === att.id ? (
@@ -968,190 +968,326 @@ export default function QuizzesPage() {
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL : CRÉER UN QUIZ AVEC QUESTIONS (Formateur / Admin)                 */}
+      {/* MODAL : STUDIO PANORAMIQUE CRÉER UN QUIZ (Vision Rectangle Panoramique)   */}
       {/* ========================================================================= */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
-          <div className="glass-card max-w-3xl w-full p-6 sm:p-8 rounded-3xl border border-primary/30 space-y-6 my-auto max-h-[90vh] flex flex-col animate-fade-in-up">
+        <div className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 overflow-hidden">
+          <div className="glass-card max-w-7xl w-full h-[90vh] max-h-[920px] p-5 sm:p-7 rounded-3xl border border-primary/30 shadow-2xl flex flex-col animate-fade-in-up my-auto overflow-hidden">
             
-            <div className="flex items-center justify-between pb-3 border-b border-border">
-              <div className="flex items-center gap-2 text-primary font-bold text-base">
-                <HelpCircle size={20} />
-                <h3>Créer & Générer une Évaluation (Quiz)</h3>
+            {/* 1. Header Panoramique */}
+            <div className="flex items-center justify-between pb-3 border-b border-border shrink-0 gap-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-2xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center shrink-0 shadow-sm">
+                  <Sparkles size={20} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-primary/15 text-primary">
+                      Studio Pédagogique Panoramique
+                    </span>
+                    <span className="text-xs text-text-secondary hidden sm:inline">•</span>
+                    <span className="text-xs font-semibold text-text-secondary hidden sm:inline">Création & Génération d'Évaluation</span>
+                  </div>
+                  <h3 className="text-base sm:text-lg font-extrabold text-text-primary truncate">
+                    {newTitle || "Nouvelle Évaluation / Quiz"}
+                  </h3>
+                </div>
               </div>
-              <button 
-                onClick={() => setShowCreateModal(false)}
-                className="text-text-secondary hover:text-text-primary font-bold p-1 rounded-lg"
-              >
-                ✕
-              </button>
+
+              {/* Live Metrics Header Badges & Close Button */}
+              <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                <div className="hidden md:flex items-center gap-2 bg-surface px-3 py-1.5 rounded-xl border border-border text-xs font-bold font-mono">
+                  <span className="text-primary">{newQuestions.length} Questions</span>
+                  <span className="text-border">|</span>
+                  <span className="text-emerald-600 font-bold">
+                    {newQuestions.reduce((acc, q) => acc + (Number(q.points) || 1), 0)} Pts Total
+                  </span>
+                  <span className="text-border">|</span>
+                  <span className="text-amber-600">{newTimeLimit} min</span>
+                </div>
+
+                <button 
+                  type="button"
+                  onClick={() => setShowCreateModal(false)}
+                  className="text-text-secondary hover:text-text-primary p-2 rounded-xl hover:bg-surface border border-transparent hover:border-border transition-colors cursor-pointer"
+                  title="Fermer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
             </div>
 
-            <form onSubmit={handleCreateQuizSubmit} className="space-y-5 text-xs">
-              {/* Titre */}
-              <div>
-                <label className="block uppercase font-bold text-text-secondary mb-1">
-                  Titre du Quiz *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ex: Évaluation Chapitre 3 - Algorithmes & Bases de Données"
-                  value={newTitle}
-                  onChange={(e) => setNewTitle(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-border text-xs outline-none focus:border-primary text-text-primary"
-                />
-              </div>
+            {/* 2. Main Panoramic 2-Column Grid */}
+            <form onSubmit={handleCreateQuizSubmit} className="flex flex-col lg:flex-row gap-5 flex-1 min-h-0 pt-4 overflow-hidden">
+              
+              {/* Left Column: General Configuration & Actions (40% / lg:w-5/12) */}
+              <div className="lg:w-5/12 flex flex-col justify-between space-y-4 overflow-y-auto pr-1">
+                <div className="space-y-4">
+                  
+                  {/* Title */}
+                  <div>
+                    <label className="block text-[11px] font-bold text-text-secondary uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                      <span>Titre de l'Évaluation *</span>
+                      <span className="text-[10px] text-text-secondary font-normal">Obligatoire</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Ex: Évaluation Chapitre 3 - Algorithmes & Bases de Données"
+                      value={newTitle}
+                      onChange={(e) => setNewTitle(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-border text-xs font-semibold outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 text-text-primary transition-all shadow-sm"
+                    />
+                  </div>
 
-              {/* Description */}
-              <div>
-                <label className="block uppercase font-bold text-text-secondary mb-1">
-                  Instructions / Description
-                </label>
-                <textarea
-                  rows={2}
-                  placeholder="Consignes particulières pour les étudiants, stagiaires ou employés..."
-                  value={newDescription}
-                  onChange={(e) => setNewDescription(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl bg-surface border border-border text-xs outline-none focus:border-primary text-text-primary resize-none"
-                />
-              </div>
+                  {/* Description */}
+                  <div>
+                    <label className="block text-[11px] font-bold text-text-secondary uppercase tracking-wider mb-1.5">
+                      Instructions & Consignes Pédagogiques
+                    </label>
+                    <textarea
+                      rows={3}
+                      placeholder="Indiquez les consignes particulières, les notions abordées ou les conseils pour les apprenants..."
+                      value={newDescription}
+                      onChange={(e) => setNewDescription(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-border text-xs outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 text-text-primary resize-none transition-all shadow-sm"
+                    />
+                  </div>
 
-              {/* Paramètres : Durée & Public */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block uppercase font-bold text-text-secondary mb-1">
-                    Limite de Temps (Minutes) *
-                  </label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={180}
-                    required
-                    value={newTimeLimit}
-                    onChange={(e) => setNewTimeLimit(parseInt(e.target.value) || 15)}
-                    className="w-full px-3 py-2 rounded-xl bg-surface border border-border text-xs outline-none focus:border-primary text-text-primary"
-                  />
+                  {/* Time limit & Target audience */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-text-secondary uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                        <Clock size={12} className="text-primary" />
+                        <span>Durée (Minutes) *</span>
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={180}
+                        required
+                        value={newTimeLimit}
+                        onChange={(e) => setNewTimeLimit(parseInt(e.target.value) || 15)}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-border text-xs font-bold font-mono outline-none focus:border-primary text-text-primary transition-all shadow-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-text-secondary uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                        <Users size={12} className="text-primary" />
+                        <span>Public Concerné *</span>
+                      </label>
+                      <select
+                        value={newRoles}
+                        onChange={(e) => setNewRoles(e.target.value)}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-border text-xs font-medium outline-none focus:border-primary text-text-primary transition-all shadow-sm cursor-pointer"
+                      >
+                        <option value="étudiant,stagiaire,employer">Tous (Étudiants, Stagiaires, Employés)</option>
+                        <option value="étudiant">Étudiants uniquement</option>
+                        <option value="stagiaire">Stagiaires uniquement</option>
+                        <option value="employer">Employés uniquement</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Panoramic Live Summary Card */}
+                  <div className="p-4 rounded-2xl bg-gradient-to-br from-primary/5 via-surface to-surface border border-border/80 space-y-2.5 shadow-sm">
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-primary flex items-center gap-1.5">
+                      <ShieldCheck size={14} />
+                      <span>Synthèse de l'Évaluation</span>
+                    </span>
+                    <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                      <div className="p-2 rounded-xl bg-surface border border-border/50">
+                        <span className="text-[10px] text-text-secondary block">Questions</span>
+                        <span className="font-extrabold font-mono text-primary text-sm">{newQuestions.length}</span>
+                      </div>
+                      <div className="p-2 rounded-xl bg-surface border border-border/50">
+                        <span className="text-[10px] text-text-secondary block">Barème Total</span>
+                        <span className="font-extrabold font-mono text-emerald-600 text-sm">
+                          {newQuestions.reduce((acc, q) => acc + (Number(q.points) || 1), 0)} pts
+                        </span>
+                      </div>
+                      <div className="p-2 rounded-xl bg-surface border border-border/50">
+                        <span className="text-[10px] text-text-secondary block">Temps Estimé</span>
+                        <span className="font-extrabold font-mono text-amber-600 text-sm">{newTimeLimit}m</span>
+                      </div>
+                    </div>
+                  </div>
+
                 </div>
 
-                <div>
-                  <label className="block uppercase font-bold text-text-secondary mb-1">
-                    Public Concerné *
-                  </label>
-                  <select
-                    value={newRoles}
-                    onChange={(e) => setNewRoles(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-surface border border-border text-xs outline-none focus:border-primary text-text-primary cursor-pointer"
+                {/* Form Actions Footer in Left Column */}
+                <div className="pt-3 border-t border-border flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowCreateModal(false)}
+                    className="w-1/3 py-3 rounded-xl bg-surface hover:bg-surface-hover font-semibold border border-border text-text-secondary text-xs transition-colors cursor-pointer"
                   >
-                    <option value="étudiant,stagiaire,employer">Tous (Étudiants, Stagiaires, Employés)</option>
-                    <option value="étudiant">Étudiants uniquement</option>
-                    <option value="stagiaire">Stagiaires uniquement</option>
-                    <option value="employer">Employés uniquement</option>
-                  </select>
+                    Annuler
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isCreatingQuiz}
+                    className="w-2/3 btn-primary py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-primary/25 cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-all"
+                  >
+                    {isCreatingQuiz ? (
+                      <><Loader2 size={15} className="animate-spin" /> Publication...</>
+                    ) : (
+                      <><Sparkles size={15} /> Publier l'Évaluation</>
+                    )}
+                  </button>
                 </div>
               </div>
 
-              {/* Questions Builder */}
-              <div className="space-y-4 pt-2 border-t border-border">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs uppercase font-extrabold text-primary">
-                    Questions du Quiz ({newQuestions.length})
-                  </h4>
+              {/* Right Column: Questions Builder Studio (60% / lg:w-7/12) */}
+              <div className="lg:w-7/12 flex flex-col rounded-2xl bg-surface/40 border border-border/80 p-4 space-y-3 overflow-hidden shadow-inner">
+                
+                {/* Right Header: Questions list header & add button */}
+                <div className="flex items-center justify-between pb-2 border-b border-border/60 shrink-0">
+                  <div className="flex items-center gap-2">
+                    <FileQuestion size={16} className="text-primary" />
+                    <h4 className="text-xs uppercase font-extrabold text-text-primary tracking-wider">
+                      Constructeur de Questions ({newQuestions.length})
+                    </h4>
+                  </div>
+
                   <button
                     type="button"
                     onClick={handleAddQuestionToBuilder}
-                    className="px-3 py-1 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer"
+                    className="px-3.5 py-1.5 rounded-xl bg-primary text-white hover:bg-primary-hover font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm shadow-primary/20 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
                   >
-                    <Plus size={14} /> Ajouter une question
+                    <Plus size={14} />
+                    <span>Ajouter une question</span>
                   </button>
                 </div>
 
-                <div className="space-y-4 max-h-[40vh] overflow-y-auto pr-1">
+                {/* Questions Scroll Area */}
+                <div className="flex-1 overflow-y-auto space-y-4 pr-1">
                   {newQuestions.map((q, qIndex) => (
-                    <div key={qIndex} className="p-4 rounded-2xl bg-surface border border-border space-y-3 relative">
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-text-primary text-xs">Question #{qIndex + 1}</span>
-                        {newQuestions.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => setNewQuestions(prev => prev.filter((_, idx) => idx !== qIndex))}
-                            className="text-text-secondary hover:text-rose-500 transition-colors cursor-pointer"
-                            title="Supprimer cette question"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        )}
-                      </div>
+                    <div 
+                      key={qIndex} 
+                      className="p-4 sm:p-5 rounded-2xl bg-white border border-border/80 shadow-sm space-y-3 relative group transition-all hover:border-primary/40"
+                    >
+                      {/* Question Top Bar */}
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                          <span className="w-6 h-6 rounded-full bg-primary/10 text-primary font-bold text-xs flex items-center justify-center">
+                            {qIndex + 1}
+                          </span>
+                          <span className="font-extrabold text-text-primary text-xs">Question #{qIndex + 1}</span>
+                        </div>
 
-                      <input
-                        type="text"
-                        required
-                        placeholder="Intitulé de la question..."
-                        value={q.question_text}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setNewQuestions(prev => prev.map((item, idx) => idx === qIndex ? { ...item, question_text: val } : item));
-                        }}
-                        className="w-full px-3 py-2 rounded-xl bg-background border border-border text-xs outline-none focus:border-primary text-text-primary"
-                      />
-
-                      <div className="space-y-2">
-                        <span className="text-[10px] uppercase font-bold text-text-secondary">
-                          Options de réponse (Cochez la bonne réponse) :
-                        </span>
-                        {q.options.map((opt, optIndex) => (
-                          <div key={optIndex} className="flex items-center gap-2">
+                        <div className="flex items-center gap-3">
+                          {/* Points selector */}
+                          <div className="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1 rounded-lg border border-border/60">
+                            <span className="text-[10px] font-bold text-text-secondary uppercase">Barème :</span>
                             <input
-                              type="radio"
-                              name={`correct_${qIndex}`}
-                              checked={q.correct_option_index === optIndex}
-                              onChange={() => {
-                                setNewQuestions(prev => prev.map((item, idx) => idx === qIndex ? { ...item, correct_option_index: optIndex } : item));
-                              }}
-                              className="cursor-pointer accent-primary"
-                            />
-                            <input
-                              type="text"
-                              required
-                              placeholder={`Option ${optIndex + 1}`}
-                              value={opt}
+                              type="number"
+                              min={1}
+                              max={100}
+                              value={q.points}
                               onChange={(e) => {
-                                const val = e.target.value;
-                                setNewQuestions(prev => prev.map((item, idx) => {
-                                  if (idx !== qIndex) return item;
-                                  const updatedOpts = [...item.options];
-                                  updatedOpts[optIndex] = val;
-                                  return { ...item, options: updatedOpts };
-                                }));
+                                const p = parseInt(e.target.value) || 1;
+                                setNewQuestions(prev => prev.map((item, idx) => idx === qIndex ? { ...item, points: p } : item));
                               }}
-                              className="flex-1 px-3 py-1.5 rounded-xl bg-background border border-border text-xs outline-none focus:border-primary text-text-primary"
+                              className="w-10 text-xs font-mono font-bold text-center bg-white border border-border rounded px-1 py-0.5 outline-none focus:border-primary text-primary"
                             />
+                            <span className="text-[10px] font-bold text-text-secondary">pts</span>
                           </div>
-                        ))}
+
+                          {/* Delete Question button */}
+                          {newQuestions.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => setNewQuestions(prev => prev.filter((_, idx) => idx !== qIndex))}
+                              className="p-1 rounded-lg text-text-secondary hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                              title="Supprimer cette question"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
+                        </div>
                       </div>
+
+                      {/* Question Text Input */}
+                      <div>
+                        <input
+                          type="text"
+                          required
+                          placeholder={`Intitulé de la question #${qIndex + 1} (ex: Quelle est la fonction principale d'un index en base de données ?)...`}
+                          value={q.question_text}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setNewQuestions(prev => prev.map((item, idx) => idx === qIndex ? { ...item, question_text: val } : item));
+                          }}
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50/70 border border-border text-xs font-semibold outline-none focus:border-primary focus:bg-white text-text-primary transition-all shadow-inner"
+                        />
+                      </div>
+
+                      {/* Options 2x2 Grid */}
+                      <div className="space-y-1.5 pt-1">
+                        <div className="flex items-center justify-between text-[10px] uppercase font-bold text-text-secondary">
+                          <span>Options de réponse :</span>
+                          <span className="text-emerald-600 font-extrabold flex items-center gap-1">
+                            <Check size={11} /> Cochez le bouton radio de la BONNE réponse
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                          {q.options.map((opt, optIndex) => {
+                            const isCorrect = q.correct_option_index === optIndex;
+                            return (
+                              <div 
+                                key={optIndex} 
+                                className={`flex items-center gap-2 p-2 rounded-xl border transition-all ${
+                                  isCorrect 
+                                    ? 'bg-emerald-50/70 border-emerald-300 ring-1 ring-emerald-400/20' 
+                                    : 'bg-slate-50/50 border-border/70 hover:border-slate-300'
+                                }`}
+                              >
+                                <label className="flex items-center cursor-pointer pl-1">
+                                  <input
+                                    type="radio"
+                                    name={`correct_${qIndex}`}
+                                    checked={isCorrect}
+                                    onChange={() => {
+                                      setNewQuestions(prev => prev.map((item, idx) => idx === qIndex ? { ...item, correct_option_index: optIndex } : item));
+                                    }}
+                                    className="cursor-pointer accent-emerald-600 w-4 h-4"
+                                    title="Définir comme la bonne réponse"
+                                  />
+                                </label>
+
+                                <input
+                                  type="text"
+                                  required
+                                  placeholder={`Option ${String.fromCharCode(65 + optIndex)}...`}
+                                  value={opt}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setNewQuestions(prev => prev.map((item, idx) => {
+                                      if (idx !== qIndex) return item;
+                                      const updatedOpts = [...item.options];
+                                      updatedOpts[optIndex] = val;
+                                      return { ...item, options: updatedOpts };
+                                    }));
+                                  }}
+                                  className={`flex-1 px-2.5 py-1.5 rounded-lg text-xs outline-none transition-colors ${
+                                    isCorrect ? 'bg-white font-bold text-emerald-950 border border-emerald-200' : 'bg-white text-text-primary border border-border/60'
+                                  }`}
+                                />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
                     </div>
                   ))}
                 </div>
+
               </div>
 
-              {/* Actions */}
-              <div className="flex items-center gap-3 pt-3 border-t border-border">
-                <button
-                  type="button"
-                  onClick={() => setShowCreateModal(false)}
-                  className="w-1/2 py-2.5 bg-surface hover:bg-surface-hover rounded-xl font-semibold border border-border text-text-secondary cursor-pointer"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  disabled={isCreatingQuiz}
-                  className="w-1/2 btn-primary py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-primary/25 cursor-pointer"
-                >
-                  {isCreatingQuiz ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
-                  <span>Publier l'Évaluation</span>
-                </button>
-              </div>
             </form>
 
           </div>
@@ -1161,3 +1297,4 @@ export default function QuizzesPage() {
     </div>
   );
 }
+
