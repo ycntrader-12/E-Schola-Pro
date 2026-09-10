@@ -19,8 +19,19 @@ router = APIRouter()
 
 
 ADMIN_ROLES = ["admin", "admin_manager"]
-STAFF_ROLES = ["admin", "admin_manager", "formateur", "pedagogique", "dg_rh"]
+STAFF_ROLES = ["admin", "admin_manager", "formateur", "pedagogique", "dg_rh", "dg/rh", "dgrh"]
 LEARNER_ROLES = ["etudiant", "étudiant", "stagiaire", "employer"]
+
+
+def is_staff_role(role: str | None) -> bool:
+    if not role:
+        return False
+    r = role.strip().lower()
+    return (
+        r in STAFF_ROLES 
+        or r.replace(" ", "_") in STAFF_ROLES 
+        or r.replace("/", "_") in STAFF_ROLES
+    )
 
 
 @router.get("", response_model=list[GroupResponse])
@@ -35,8 +46,7 @@ def read_groups(
     Retrieve all groups. Formateur, Pédagogique and Admin only.
     Strictly forbidden for learners (étudiant, stagiaire, employer).
     """
-    user_role = (current_user.role or "").strip().lower()
-    if user_role in LEARNER_ROLES or user_role not in STAFF_ROLES:
+    if not is_staff_role(current_user.role):
         raise HTTPException(
             status_code=403,
             detail="Accès interdit : les étudiants, stagiaires et employés ne sont pas autorisés à consulter les groupes.",
@@ -78,8 +88,7 @@ def create_group(
     Create a new group. Admin and formateur only.
     Allows immediately assigning members via group_in.member_ids.
     """
-    user_role = (current_user.role or "").strip().lower()
-    if user_role not in STAFF_ROLES:
+    if not is_staff_role(current_user.role):
         raise HTTPException(status_code=403, detail="Accès non autorisé pour la création de groupe.")
 
     clean_name = group_in.name.strip()
@@ -136,7 +145,7 @@ def update_group(
     """
     Update a group. Admin and formateur only.
     """
-    if current_user.role.lower() not in STAFF_ROLES:
+    if not is_staff_role(current_user.role):
         raise HTTPException(status_code=403, detail="Non autorisé.")
 
     group = session.query(Group).filter(Group.id == group_id).first()
@@ -175,7 +184,7 @@ def delete_group(
     """
     Delete a group. Admin and formateur only.
     """
-    if current_user.role.lower() not in STAFF_ROLES:
+    if not is_staff_role(current_user.role):
         raise HTTPException(status_code=403, detail="Non autorisé.")
 
     group = session.query(Group).filter(Group.id == group_id).first()
@@ -199,7 +208,7 @@ def get_group_members(
     """
     Get members of a group. Formateur and Admin only.
     """
-    if current_user.role.lower() in ["etudiant", "étudiant", "stagiaire", "employer"]:
+    if not is_staff_role(current_user.role):
         raise HTTPException(
             status_code=403,
             detail="Accès interdit : les étudiants, stagiaires et employés ne sont pas autorisés à consulter les membres d'un groupe.",
@@ -242,7 +251,7 @@ def add_group_member(
     """
     Add a member to a group. Admin and formateur only.
     """
-    if current_user.role.lower() not in STAFF_ROLES:
+    if not is_staff_role(current_user.role):
         raise HTTPException(status_code=403, detail="Non autorisé.")
 
     group = session.query(Group).filter(Group.id == group_id).first()
@@ -299,7 +308,7 @@ def add_group_members_batch(
     Add multiple members to a group simultaneously.
     Admin, formateur and staff only.
     """
-    if current_user.role.lower() not in STAFF_ROLES:
+    if not is_staff_role(current_user.role):
         raise HTTPException(status_code=403, detail="Non autorisé.")
 
     group = session.query(Group).filter(Group.id == group_id).first()
@@ -352,7 +361,7 @@ def remove_group_member(
     """
     Remove a member from a group. Admin and formateur only.
     """
-    if current_user.role.lower() not in STAFF_ROLES:
+    if not is_staff_role(current_user.role):
         raise HTTPException(status_code=403, detail="Non autorisé.")
 
     member = (
@@ -379,7 +388,7 @@ def get_available_users(
     """
     Get users that can be added to a group with rich profile metadata.
     """
-    if current_user.role.lower() not in STAFF_ROLES:
+    if not is_staff_role(current_user.role):
         raise HTTPException(status_code=403, detail="Non autorisé.")
 
     query = session.query(User).order_by(User.email.asc())

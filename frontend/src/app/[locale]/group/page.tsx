@@ -261,13 +261,20 @@ export default function GroupPage() {
         fetchPanoramicMembers(editingGroupId);
       }
     } catch (err: any) {
+      console.error("Erreur sauvegarde groupe:", err);
       const detail = err?.response?.data?.detail;
       if (typeof detail === 'string') {
         setFormError(detail);
       } else if (Array.isArray(detail)) {
         setFormError(detail.map((d: any) => d.msg || d.message).join(', '));
+      } else if (err?.response?.status === 401) {
+        setFormError("Session expirée. Veuillez vous reconnecter.");
+      } else if (err?.response?.status === 403) {
+        setFormError("Accès refusé : vos droits ne permettent pas de créer ou modifier un groupe.");
+      } else if (err?.response?.status === 400 && typeof err?.response?.data === 'string') {
+        setFormError(err.response.data);
       } else {
-        setFormError("Erreur lors de la sauvegarde du groupe.");
+        setFormError(err?.message || "Erreur lors de la sauvegarde du groupe.");
       }
     } finally {
       setIsSubmitting(false);
