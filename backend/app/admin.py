@@ -2,6 +2,7 @@ from sqladmin import ModelView
 
 from app.models.attendance import Attendance
 from app.models.classroom import Classroom
+from app.models.classroom_invitation import ClassroomInvitation
 from app.models.course import Course
 from app.models.course_video import CourseVideo
 from app.models.enrollment import Enrollment
@@ -9,6 +10,7 @@ from app.models.event import Event, EventDeliverable
 from app.models.group import Group, GroupMember
 from app.models.message import Message
 from app.models.quiz import Quiz, QuizAttempt, QuizQuestion
+from app.models.task import Task, TaskSubmission
 from app.models.user import User
 
 
@@ -187,3 +189,53 @@ class GroupMemberAdmin(ModelView, model=GroupMember):
     name = "Membre de Groupe"
     name_plural = "Membres de Groupes"
     icon = "fa-solid fa-user-plus"
+
+
+class ClassroomInvitationAdmin(ModelView, model=ClassroomInvitation):
+    column_list = [
+        ClassroomInvitation.id,
+        ClassroomInvitation.classroom_id,
+        ClassroomInvitation.inviter_id,
+        ClassroomInvitation.invitee_id,
+        ClassroomInvitation.status,
+        ClassroomInvitation.created_at,
+    ]
+    column_searchable_list = [ClassroomInvitation.status]
+    name = "Invitation Classe Virtuelle"
+    name_plural = "Invitations Classes Virtuelles"
+    icon = "fa-solid fa-envelope-open-text"
+
+
+class TaskAdmin(ModelView, model=Task):
+    column_list = [
+        Task.id,
+        Task.title,
+        Task.course_name,
+        Task.target_role,
+        Task.target_group,
+        Task.due_date,
+        Task.points,
+        Task.priority,
+        Task.created_at,
+    ]
+    column_searchable_list = [Task.title, Task.course_name]
+    column_sortable_list = [Task.id, Task.due_date, Task.created_at]
+    name = "Devoir / Tâche"
+    name_plural = "Devoirs / Tâches"
+    icon = "fa-solid fa-list-check"
+
+
+class TaskSubmissionAdmin(ModelView, model=TaskSubmission):
+    column_list = [
+        TaskSubmission.id,
+        TaskSubmission.task_id,
+        TaskSubmission.user_id,
+        TaskSubmission.status,
+        TaskSubmission.grade,
+        TaskSubmission.submitted_at,
+    ]
+    column_searchable_list = [TaskSubmission.status]
+    column_sortable_list = [TaskSubmission.id, TaskSubmission.submitted_at, TaskSubmission.grade]
+    name = "Soumission de Devoir"
+    name_plural = "Soumissions de Devoirs"
+    icon = "fa-solid fa-file-circle-check"

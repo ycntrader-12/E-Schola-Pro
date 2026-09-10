@@ -96,7 +96,7 @@ export default function GroupPage() {
     initPage();
   }, []);
 
-  const canManage = ['admin', 'admin_manager', 'formateur', 'pedagogique'].includes(
+  const canManage = ['admin', 'admin_manager', 'formateur', 'pedagogique', 'dg_rh', 'dg/rh'].includes(
     (currentUser?.role || '').trim().toLowerCase()
   );
 

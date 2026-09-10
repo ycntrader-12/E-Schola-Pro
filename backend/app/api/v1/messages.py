@@ -688,7 +688,7 @@ def report_message(
     # Find all instructors and administrators to receive direct transmitted report
     staff_users = (
         session.query(User)
-        .filter(User.role.in_(["admin", "admin_manager", "formateur", "pedagogique"]))
+        .filter(User.role.in_(["admin", "admin_manager", "formateur", "pedagogique", "dg_rh"]))
         .all()
     )
 

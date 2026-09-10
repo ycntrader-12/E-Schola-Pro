@@ -53,6 +53,7 @@ export const UserProfileCard: React.FC<UserProfileCardProps> = ({
   const getRoleBadgeStyle = (role: string) => {
     const lower = (role || '').toLowerCase();
     if (lower.includes('admin')) return 'bg-rose-500/15 text-rose-400 border-rose-500/30';
+    if (lower.includes('dg_rh') || lower.includes('dg/rh') || lower.includes('dgrh')) return 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30';
     if (lower.includes('formateur') || lower.includes('prof')) return 'bg-purple-500/15 text-purple-400 border-purple-500/30';
     if (lower.includes('pedagog')) return 'bg-indigo-500/15 text-indigo-400 border-indigo-500/30';
     if (lower.includes('stagiaire')) return 'bg-amber-500/15 text-amber-400 border-amber-500/30';
@@ -285,7 +286,7 @@ export const UserProfileCard: React.FC<UserProfileCardProps> = ({
                     user.role
                   )}`}
                 >
-                  {user.role}
+                  {user.role === 'dg_rh' || user.role === 'dg/rh' ? 'DG / RH' : user.role}
                 </span>
               </div>
 

@@ -382,7 +382,7 @@ export default function AttendancePage() {
           </div>
 
           <div className="flex items-center gap-3">
-            {['admin', 'admin_manager', 'formateur', 'pedagogique'].includes(currentUser?.role || '') && (
+            {['admin', 'admin_manager', 'formateur', 'pedagogique', 'dg_rh', 'dg/rh'].includes(currentUser?.role || '') && (
               <button
                 onClick={() => window.print()}
                 className="px-4 py-2.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 text-xs font-bold flex items-center gap-2 shadow-xs transition-all cursor-pointer"

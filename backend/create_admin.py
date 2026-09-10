@@ -83,6 +83,7 @@ def seed_users():
         {"email": "admin@eschola.pro", "password": "Abc1234", "role": "admin"},
         {"email": "admin_manager@eschola.pro", "password": "Abc1234", "role": "admin_manager"},
         {"email": "formateur@eschola.pro", "password": "password", "role": "formateur"},
+        {"email": "dgrh@eschola.pro", "password": "password", "role": "dg_rh"},
         {"email": "imane.prof@eshola.com", "password": "password", "role": "formateur"},
         {"email": "etudiant@eschola.pro", "password": "password", "role": "étudiant"},
     ]

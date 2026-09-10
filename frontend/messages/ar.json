@@ -252,7 +252,10 @@
   },
   "Roles": {
     "admin": "مسؤول النظام (Admin)",
+    "admin_manager": "المدير الإداري",
     "formateur": "أستاذ / مدرب",
+    "pedagogique": "المسؤول التربوي",
+    "dg_rh": "المدير العام / الموارد البشرية (DG/RH)",
     "etudiant": "طالب",
     "stagiaire": "متدرب",
     "employer": "موظف"

@@ -111,7 +111,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
   // Authorized for staff: admin, admin_manager, formateur, pedagogique
   const normalizedRole = (userRole || '').trim().toLowerCase();
   const isLearner = ['etudiant', 'étudiant', 'stagiaire', 'employer'].includes(normalizedRole);
-  const isStaff = ['admin', 'admin_manager', 'formateur', 'pedagogique'].includes(normalizedRole);
+  const isStaff = ['admin', 'admin_manager', 'formateur', 'pedagogique', 'dg_rh', 'dg/rh', 'dgrh'].includes(normalizedRole);
   const canViewGroups = isStaff && !isLearner;
 
   const navItems = [

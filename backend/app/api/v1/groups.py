@@ -18,7 +18,7 @@ router = APIRouter()
 
 
 ADMIN_ROLES = ["admin", "admin_manager"]
-STAFF_ROLES = ["admin", "admin_manager", "formateur", "pedagogique"]
+STAFF_ROLES = ["admin", "admin_manager", "formateur", "pedagogique", "dg_rh"]
 LEARNER_ROLES = ["etudiant", "étudiant", "stagiaire", "employer"]
 
 

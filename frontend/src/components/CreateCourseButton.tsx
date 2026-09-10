@@ -15,7 +15,7 @@ export default function CreateCourseButton() {
         try {
           const res = await apiClient.get('/users/me');
           if (res.status === 200) {
-            if (['formateur', 'admin', 'admin_manager', 'pedagogique'].includes(res.data.role)) {
+            if (['formateur', 'admin', 'admin_manager', 'pedagogique', 'dg_rh', 'dg/rh'].includes(res.data.role)) {
               setCanCreate(true);
             }
           }

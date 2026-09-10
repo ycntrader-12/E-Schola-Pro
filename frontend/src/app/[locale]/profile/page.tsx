@@ -120,6 +120,7 @@ const ALL_ROLES = [
   'stagiaire',
   'employer',
   'pedagogique',
+  'dg_rh',
   'admin_manager',
   'admin'
 ];
@@ -129,7 +130,8 @@ const NON_ADMIN_ROLES = [
   'formateur',
   'stagiaire',
   'employer',
-  'pedagogique'
+  'pedagogique',
+  'dg_rh'
 ];
 
 const ADMIN_ROLES = ['admin', 'admin_manager'];
@@ -526,7 +528,7 @@ export default function ProfilePage() {
       try {
         const res = await apiClient.get('/users/me');
         setUser(res.data);
-        if (ADMIN_ROLES.includes(res.data.role) || res.data.role === 'formateur') {
+        if (ADMIN_ROLES.includes(res.data.role) || ['formateur', 'pedagogique', 'dg_rh', 'dg/rh'].includes(res.data.role)) {
           fetchAdminData(res.data.role);
         }
       } catch (error) {
@@ -663,7 +665,7 @@ export default function ProfilePage() {
   const isSuperAdmin = SUPER_ADMIN_ROLES.includes(user.role);
   const isAdminManager = user.role === 'admin_manager';
   const isAdminUser = ADMIN_ROLES.includes(user.role);
-  const isStaffUser = isAdminUser || user.role === 'formateur';
+  const isStaffUser = isAdminUser || ['formateur', 'pedagogique', 'dg_rh', 'dg/rh'].includes(user.role);
 
   return (
     <div className="min-h-screen bg-white text-slate-900 px-4 sm:px-8 pt-24 sm:pt-28 pb-16 space-y-8 max-w-5xl mx-auto animate-fade-in-up">
@@ -704,12 +706,14 @@ export default function ProfilePage() {
                 </div>
                 <div>
                   <h2 className="text-2xl font-bold">
-                    {isAdminUser ? 'Outils Administrateur' : 'Espace Formateur & Évaluations'}
+                    {isAdminUser ? 'Outils Administrateur' : user.role === 'dg_rh' || user.role === 'dg/rh' ? 'Espace DG / RH & Supervision' : 'Espace Formateur & Évaluations'}
                   </h2>
                   <p className="text-sm text-text-secondary">
                     {isAdminUser
                       ? "Espace réservé à l'administration pour piloter les utilisateurs, cours et évaluations."
-                      : "Espace exclusif réservé aux formateurs pour gérer les cours et les quiz."}
+                      : user.role === 'dg_rh' || user.role === 'dg/rh'
+                        ? "Espace dédié DG / RH pour la supervision pédagogique, la gestion des cours et les évaluations."
+                        : "Espace exclusif réservé aux formateurs pour gérer les cours et les quiz."}
                   </p>
                 </div>
               </div>
@@ -780,9 +784,9 @@ export default function ProfilePage() {
                   </p>
                 </div>
                 <div className="p-4 rounded-xl bg-surface/50 border border-border">
-                  <p className="text-xs text-text-secondary font-semibold uppercase">Formateurs</p>
+                  <p className="text-xs text-text-secondary font-semibold uppercase">Formateurs & DG/RH</p>
                   <p className="text-2xl font-black mt-1 text-cyan-400">
-                    {allUsers.filter(u => ['formateur', 'pedagogique'].includes(u.role)).length}
+                    {allUsers.filter(u => ['formateur', 'pedagogique', 'dg_rh', 'dg/rh'].includes(u.role)).length}
                   </p>
                 </div>
                 <div className="p-4 rounded-xl bg-surface/50 border border-border">
@@ -870,11 +874,13 @@ export default function ProfilePage() {
                             <td className="px-6 py-4">
                               <span className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${ADMIN_ROLES.includes(u.role)
                                   ? 'bg-primary/20 text-primary border border-primary/30'
-                                  : u.role === 'formateur' || u.role === 'pedagogique'
-                                    ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
-                                    : 'bg-surface text-text-secondary border border-border'
+                                  : u.role === 'dg_rh' || u.role === 'dg/rh'
+                                    ? 'bg-emerald-500/20 text-emerald-600 border border-emerald-500/30'
+                                    : u.role === 'formateur' || u.role === 'pedagogique'
+                                      ? 'bg-cyan-500/20 text-cyan-500 border border-cyan-500/30'
+                                      : 'bg-surface text-text-secondary border border-border'
                                 }`}>
-                                {u.role}
+                                {u.role === 'dg_rh' || u.role === 'dg/rh' ? 'DG / RH' : u.role}
                               </span>
                             </td>
 
@@ -887,7 +893,7 @@ export default function ProfilePage() {
                               >
                                 {selectableRoles.map((roleOpt) => (
                                   <option key={roleOpt} value={roleOpt} className="bg-background">
-                                    {roleOpt.charAt(0).toUpperCase() + roleOpt.slice(1)}
+                                    {roleOpt === 'dg_rh' ? 'DG / RH' : roleOpt.charAt(0).toUpperCase() + roleOpt.slice(1)}
                                   </option>
                                 ))}
                               </select>
@@ -1523,7 +1529,7 @@ export default function ProfilePage() {
                     >
                       {(isSuperAdmin ? ALL_ROLES : NON_ADMIN_ROLES).map((roleOpt) => (
                         <option key={roleOpt} value={roleOpt} className="bg-background">
-                          {roleOpt.charAt(0).toUpperCase() + roleOpt.slice(1)}
+                          {roleOpt === 'dg_rh' ? 'DG / RH' : roleOpt.charAt(0).toUpperCase() + roleOpt.slice(1)}
                         </option>
                       ))}
                     </select>
@@ -2221,7 +2227,7 @@ export default function ProfilePage() {
                         className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 focus:bg-white focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 outline-none transition-all font-semibold cursor-pointer"
                       >
                         {ALL_ROLES.map((r) => (
-                          <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>
+                          <option key={r} value={r}>{r === 'dg_rh' ? 'DG / RH' : r.charAt(0).toUpperCase() + r.slice(1)}</option>
                         ))}
                       </select>
                     </div>

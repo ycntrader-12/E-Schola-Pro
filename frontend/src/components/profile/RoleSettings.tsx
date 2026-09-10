@@ -268,7 +268,7 @@ export default function RoleSettings({ role }: RoleSettingsProps) {
 
       <div className="p-6 sm:p-8 rounded-3xl bg-white border border-slate-200 shadow-sm">
         {['étudiant', 'stagiaire', 'employer'].includes(role) && renderLearnerSettings()}
-        {['formateur', 'pedagogique'].includes(role) && renderTrainerSettings()}
+        {['formateur', 'pedagogique', 'dg_rh', 'dg/rh'].includes(role) && renderTrainerSettings()}
         {['admin', 'admin_manager'].includes(role) && renderAdminSettings()}
       </div>
     </div>

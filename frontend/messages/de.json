@@ -252,7 +252,10 @@
   },
   "Roles": {
     "admin": "Administrator",
+    "admin_manager": "Verwaltungsleiter",
     "formateur": "Dozent / Ausbilder",
+    "pedagogique": "Pädagogischer Leiter",
+    "dg_rh": "GL / Personalabteilung (DG/RH)",
     "etudiant": "Student",
     "stagiaire": "Praktikant",
     "employer": "Mitarbeiter"

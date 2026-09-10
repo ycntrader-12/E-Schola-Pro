@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { X, Search, Loader2, User as UserIcon, Check } from 'lucide-react';
+import { X, Loader2, User as UserIcon } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { UserMinimalRead } from '@/types/recipient';
 
@@ -17,8 +17,13 @@ export interface RecipientInputProps {
 }
 
 // Helper for Axios cancel check
-function axiosIsCancel(err: any): boolean {
-  return err?.name === 'CanceledError' || err?.code === 'ERR_CANCELED';
+function axiosIsCancel(err: unknown): boolean {
+  return (
+    typeof err === 'object' &&
+    err !== null &&
+    (('name' in err && (err as { name: string }).name === 'CanceledError') ||
+      ('code' in err && (err as { code: string }).code === 'ERR_CANCELED'))
+  );
 }
 
 export const RecipientInput: React.FC<RecipientInputProps> = ({
@@ -40,6 +45,7 @@ export const RecipientInput: React.FC<RecipientInputProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const blurTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -49,7 +55,13 @@ export const RecipientInput: React.FC<RecipientInputProps> = ({
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      if (blurTimeoutRef.current) {
+        clearTimeout(blurTimeoutRef.current);
+        blurTimeoutRef.current = null;
+      }
+    };
   }, []);
 
   // 300ms Debounced search with AbortController cancellation
@@ -80,8 +92,8 @@ export const RecipientInput: React.FC<RecipientInputProps> = ({
         setSuggestions(response.data || []);
         setHighlightedIndex(0);
         setIsDropdownOpen(true);
-      } catch (err: any) {
-        if (err?.name !== 'CanceledError' && err?.code !== 'ERR_CANCELED' && !axiosIsCancel(err)) {
+      } catch (err: unknown) {
+        if (!axiosIsCancel(err)) {
           console.error('Error fetching recipient suggestions:', err);
         }
       } finally {
@@ -108,6 +120,10 @@ export const RecipientInput: React.FC<RecipientInputProps> = ({
 
   const addRecipient = useCallback(
     (user: UserMinimalRead) => {
+      if (blurTimeoutRef.current) {
+        clearTimeout(blurTimeoutRef.current);
+        blurTimeoutRef.current = null;
+      }
       const exists = selectedRecipients.some((r) => String(r.id) === String(user.id));
       if (!exists) {
         onChange([...selectedRecipients, user]);
@@ -122,6 +138,10 @@ export const RecipientInput: React.FC<RecipientInputProps> = ({
 
   const addCustomEmailRecipient = useCallback(
     (rawInput: string) => {
+      if (blurTimeoutRef.current) {
+        clearTimeout(blurTimeoutRef.current);
+        blurTimeoutRef.current = null;
+      }
       const text = rawInput.trim().replace(/^[;,]+|[;,]+$/g, '');
       if (!text) return false;
 
@@ -205,6 +225,7 @@ export const RecipientInput: React.FC<RecipientInputProps> = ({
   const getRoleBadgeClass = (role: string) => {
     const lower = (role || '').toLowerCase();
     if (lower.includes('admin')) return 'bg-rose-500/15 text-rose-400 border-rose-500/30';
+    if (lower.includes('dg_rh') || lower.includes('dg/rh') || lower.includes('dgrh')) return 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30';
     if (lower.includes('formateur') || lower.includes('prof')) return 'bg-purple-500/15 text-purple-400 border-purple-500/30';
     if (lower.includes('pedagog')) return 'bg-indigo-500/15 text-indigo-400 border-indigo-500/30';
     if (lower.includes('stagiaire')) return 'bg-amber-500/15 text-amber-400 border-amber-500/30';
@@ -281,12 +302,16 @@ export const RecipientInput: React.FC<RecipientInputProps> = ({
                 if (filteredSuggestions.length > 0 || queryText.trim()) setIsDropdownOpen(true);
               }}
               onBlur={() => {
-                // Short timeout to allow click on dropdown items to fire first
-                setTimeout(() => {
-                  if (queryText.trim()) {
-                    addCustomEmailRecipient(queryText);
+                if (blurTimeoutRef.current) {
+                  clearTimeout(blurTimeoutRef.current);
+                }
+                blurTimeoutRef.current = setTimeout(() => {
+                  const trimmed = queryText.trim();
+                  // Only auto-commit on blur if user typed an explicit email address
+                  if (trimmed && trimmed.includes('@') && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+                    addCustomEmailRecipient(trimmed);
                   }
-                }, 200);
+                }, 150);
               }}
               onKeyDown={handleKeyDown}
               placeholder={selectedRecipients.length === 0 ? placeholder : ''}
@@ -308,6 +333,7 @@ export const RecipientInput: React.FC<RecipientInputProps> = ({
                 return (
                   <div
                     key={String(user.id)}
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={() => addRecipient(user)}
                     onMouseEnter={() => setHighlightedIndex(idx)}
                     className={`p-2.5 cursor-pointer flex items-center justify-between transition-colors ${
@@ -338,7 +364,7 @@ export const RecipientInput: React.FC<RecipientInputProps> = ({
                               user.role
                             )}`}
                           >
-                            {user.role}
+                            {user.role === 'dg_rh' || user.role === 'dg/rh' ? 'DG / RH' : user.role}
                           </span>
                         </div>
                         {user.email && (
@@ -357,6 +383,7 @@ export const RecipientInput: React.FC<RecipientInputProps> = ({
               })
             ) : queryText.trim() ? (
               <div
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={() => addCustomEmailRecipient(queryText)}
                 className="p-3 cursor-pointer flex items-center justify-between hover:bg-primary/10 transition-colors"
               >

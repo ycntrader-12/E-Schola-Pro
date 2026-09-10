@@ -20,7 +20,7 @@ export default function DownloadCourseButton({ documentUrl }: Props) {
         try {
           const res = await apiClient.get('/users/me');
           if (res.status === 200) {
-            if (['étudiant', 'stagiaire', 'employer', 'admin', 'formateur', 'pedagogique'].includes(res.data.role)) {
+            if (['étudiant', 'stagiaire', 'employer', 'admin', 'formateur', 'pedagogique', 'dg_rh', 'dg/rh'].includes(res.data.role)) {
               setCanDownload(true);
             }
           }

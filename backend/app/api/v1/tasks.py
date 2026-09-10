@@ -16,6 +16,7 @@ from app.schemas.task import (
 )
 
 router = APIRouter()
+STAFF_ROLES = ["admin", "admin_manager", "formateur", "pedagogique", "dg_rh"]
 
 
 def seed_default_tasks_if_empty(db: Session, current_user: User):
@@ -70,7 +71,7 @@ def get_tasks(
 ):
     seed_default_tasks_if_empty(db, current_user)
 
-    is_manager = current_user.role in ["admin", "admin_manager", "formateur"]
+    is_manager = current_user.role in STAFF_ROLES
 
     if is_manager:
         tasks = db.query(Task).order_by(Task.created_at.desc()).all()
@@ -150,7 +151,7 @@ def create_task(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if current_user.role not in ["admin", "admin_manager", "formateur"]:
+    if current_user.role not in STAFF_ROLES:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Seuls les formateurs et administrateurs peuvent attribuer des devoirs.",
@@ -197,7 +198,7 @@ def get_task_submissions(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if current_user.role not in ["admin", "admin_manager", "formateur"]:
+    if current_user.role not in STAFF_ROLES:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Accès réservé au corps pédagogique.",
@@ -276,7 +277,7 @@ def submit_task_deliverable(
     # Nous récupérons tous les membres du staff (Admin, Formateur, Pédagogique)
     staff_users = (
         db.query(User)
-        .filter(User.role.in_(["admin", "admin_manager", "formateur", "pedagogique"]))
+        .filter(User.role.in_(STAFF_ROLES))
         .all()
     )
 
@@ -326,7 +327,7 @@ def grade_submission(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if current_user.role not in ["admin", "admin_manager", "formateur"]:
+    if current_user.role not in STAFF_ROLES:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Accès réservé au corps pédagogique.",
@@ -366,7 +367,7 @@ def delete_task(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if current_user.role not in ["admin", "admin_manager", "formateur"]:
+    if current_user.role not in STAFF_ROLES:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Accès réservé au corps pédagogique.",

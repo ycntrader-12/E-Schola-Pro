@@ -261,8 +261,8 @@ export default function ClassroomHubPage() {
   };
 
   const isLearner = ['etudiant', 'étudiant', 'stagiaire', 'employer'].includes((currentUserRole || '').toLowerCase());
-  const canCreateClass = !isLearner && ['admin', 'admin_manager', 'formateur', 'pedagogique'].includes((currentUserRole || '').toLowerCase());
-  const canStopClassroom = !isLearner && ['admin', 'admin_manager', 'formateur', 'pedagogique'].includes((currentUserRole || '').toLowerCase());
+  const canCreateClass = !isLearner && ['admin', 'admin_manager', 'formateur', 'pedagogique', 'dg_rh', 'dg/rh'].includes((currentUserRole || '').toLowerCase());
+  const canStopClassroom = !isLearner && ['admin', 'admin_manager', 'formateur', 'pedagogique', 'dg_rh', 'dg/rh'].includes((currentUserRole || '').toLowerCase());
 
   return (
     <div className="min-h-screen px-4 py-24 max-w-6xl mx-auto space-y-12">

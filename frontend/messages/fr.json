@@ -252,7 +252,10 @@
   },
   "Roles": {
     "admin": "Administrateur",
+    "admin_manager": "Gestionnaire Administratif",
     "formateur": "Formateur / Enseignant",
+    "pedagogique": "Responsable Pédagogique",
+    "dg_rh": "DG / RH",
     "etudiant": "Étudiant",
     "stagiaire": "Stagiaire",
     "employer": "Employé"

@@ -40,7 +40,7 @@ def create_course(
     Create new course.
     """
     # Verify if current_user.role is authorized
-    if current_user.role not in ["formateur", "pedagogique"] + ADMIN_ROLES:
+    if current_user.role not in ["formateur", "pedagogique", "dg_rh"] + ADMIN_ROLES:
         raise HTTPException(
             status_code=403, detail="Not enough permissions to upload courses"
         )

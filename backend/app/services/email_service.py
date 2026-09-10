@@ -215,6 +215,8 @@ def send_welcome_email(
         "admin": "Administrateur Système",
         "admin_manager": "Gestionnaire Administratif",
         "formateur": "Formateur / Enseignant",
+        "pedagogique": "Responsable Pédagogique",
+        "dg_rh": "DG / RH (Direction Générale / Ressources Humaines)",
         "étudiant": "Étudiant",
         "stagiaire": "Stagiaire",
         "employer": "Partenaire Employeur",

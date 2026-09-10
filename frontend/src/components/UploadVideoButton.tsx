@@ -67,7 +67,7 @@ export default function UploadVideoButton({ courses }: UploadVideoButtonProps) {
           const res = await apiClient.get('/users/me');
           if (res.status === 200) {
             setCurrentUser(res.data);
-            if (['formateur', 'admin', 'admin_manager', 'pedagogique'].includes(res.data.role)) {
+            if (['formateur', 'admin', 'admin_manager', 'pedagogique', 'dg_rh', 'dg/rh'].includes(res.data.role)) {
               setCanUpload(true);
             }
           }

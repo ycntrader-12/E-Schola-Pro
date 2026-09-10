@@ -28,7 +28,7 @@ def generate_room_code() -> str:
 
 
 ADMIN_ROLES = ["admin", "admin_manager"]
-STAFF_ROLES = ["admin", "admin_manager", "formateur", "pedagogique"]
+STAFF_ROLES = ["admin", "admin_manager", "formateur", "pedagogique", "dg_rh"]
 
 
 @router.get("/", response_model=list[ClassroomResponse])
@@ -120,7 +120,7 @@ def create_classroom(
     """
     Create a new virtual classroom. Restricted to formateurs, pedagogique, and admins.
     """
-    if current_user.role not in ["formateur", "pedagogique"] + ADMIN_ROLES:
+    if current_user.role not in ["formateur", "pedagogique", "dg_rh"] + ADMIN_ROLES:
         raise HTTPException(
             status_code=403,
             detail="Seuls les formateurs et administrateurs peuvent créer une classe virtuelle.",
@@ -285,7 +285,7 @@ def join_classroom(
         raise HTTPException(status_code=404, detail="Classe virtuelle introuvable.")
 
     # We only track attendance for non-instructors
-    if current_user.id != classroom.instructor_id and current_user.role not in ["formateur", "pedagogique"] + ADMIN_ROLES:
+    if current_user.id != classroom.instructor_id and current_user.role not in ["formateur", "pedagogique", "dg_rh"] + ADMIN_ROLES:
         # Find today's attendance record for this session
         att = session.query(Attendance).filter(
             Attendance.user_id == current_user.id,
@@ -321,7 +321,7 @@ def stop_classroom(
     """
     user_role = (current_user.role or "").strip().lower()
     LEARNER_ROLES = ["etudiant", "étudiant", "stagiaire", "employer"]
-    STAFF_ROLES = ["admin", "admin_manager", "formateur", "pedagogique"]
+    STAFF_ROLES = ["admin", "admin_manager", "formateur", "pedagogique", "dg_rh"]
 
     if user_role in LEARNER_ROLES or user_role not in STAFF_ROLES:
         raise HTTPException(
@@ -360,7 +360,7 @@ def delete_classroom(
     """
     user_role = (current_user.role or "").strip().lower()
     LEARNER_ROLES = ["etudiant", "étudiant", "stagiaire", "employer"]
-    STAFF_ROLES = ["admin", "admin_manager", "formateur", "pedagogique"]
+    STAFF_ROLES = ["admin", "admin_manager", "formateur", "pedagogique", "dg_rh"]
 
     if user_role in LEARNER_ROLES or user_role not in STAFF_ROLES:
         raise HTTPException(
@@ -425,7 +425,7 @@ def create_or_update_subgroups(room_id: str, payload: dict, current_user: Curren
     """
     Create and launch breakout rooms. Strictly Formateurs and Admins.
     """
-    if current_user.role not in ["formateur", "pedagogique"] + ADMIN_ROLES:
+    if current_user.role not in ["formateur", "pedagogique", "dg_rh"] + ADMIN_ROLES:
         raise HTTPException(
             status_code=403,
             detail="Seuls les formateurs et administrateurs peuvent créer et lancer des sous-groupes.",
@@ -446,7 +446,7 @@ def close_room_subgroups(room_id: str, current_user: CurrentUser):
     """
     Close all breakout rooms and recall all participants to main room. Strictly Formateurs and Admins.
     """
-    if current_user.role not in ["formateur", "pedagogique"] + ADMIN_ROLES:
+    if current_user.role not in ["formateur", "pedagogique", "dg_rh"] + ADMIN_ROLES:
         raise HTTPException(
             status_code=403,
             detail="Seuls les formateurs et administrateurs peuvent clôturer les sous-groupes.",
@@ -543,7 +543,7 @@ def submit_join_request(room_id: str, session: SessionDep, current_user: Current
         raise HTTPException(status_code=404, detail="Classe virtuelle introuvable.")
 
     # Instructor and admins are automatically approved
-    if current_user.id == classroom.instructor_id or current_user.role in ADMIN_ROLES + ["formateur", "pedagogique"]:
+    if current_user.id == classroom.instructor_id or current_user.role in ADMIN_ROLES + ["formateur", "pedagogique", "dg_rh"]:
         return {"status": "approved", "message": "Accès formateur direct."}
 
     # Check if user is in allowed_users list
@@ -632,7 +632,7 @@ def get_join_status(room_id: str, session: SessionDep, current_user: CurrentUser
     if not classroom:
         raise HTTPException(status_code=404, detail="Classe virtuelle introuvable.")
 
-    if current_user.id == classroom.instructor_id or current_user.role in ADMIN_ROLES + ["formateur", "pedagogique"]:
+    if current_user.id == classroom.instructor_id or current_user.role in ADMIN_ROLES + ["formateur", "pedagogique", "dg_rh"]:
         return {"status": "approved"}
 
     allowed_list = [u.strip().lower() for u in (classroom.allowed_users or "").split(",") if u.strip()]

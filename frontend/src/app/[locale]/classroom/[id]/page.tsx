@@ -184,7 +184,7 @@ export default function VirtualClassroomLivePage() {
 
   const userRole = (currentUser?.role || '').toLowerCase();
   const isLearner = ['etudiant', 'étudiant', 'stagiaire', 'employer'].includes(userRole);
-  const isManager = ['formateur', 'admin', 'admin_manager', 'pedagogique'].includes(userRole);
+  const isManager = ['formateur', 'admin', 'admin_manager', 'pedagogique', 'dg_rh', 'dg/rh'].includes(userRole);
   const canStopClassroom = !isLearner && isManager;
 
   // Detect mobile screen & browser
@@ -222,7 +222,7 @@ export default function VirtualClassroomLivePage() {
         setClassroom(roomRes.data);
 
         // Check join approval status for non-host
-        const isHost = userRes.data.id === roomRes.data.instructor_id || ['formateur', 'admin', 'admin_manager', 'pedagogique'].includes(userRes.data.role);
+        const isHost = userRes.data.id === roomRes.data.instructor_id || ['formateur', 'admin', 'admin_manager', 'pedagogique', 'dg_rh', 'dg/rh'].includes(userRes.data.role);
         
         if (isHost) {
           setJoinStatus('approved');

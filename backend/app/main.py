@@ -13,6 +13,7 @@ from sqlalchemy import text
 from app.admin import (
     AttendanceAdmin,
     ClassroomAdmin,
+    ClassroomInvitationAdmin,
     CourseAdmin,
     CourseVideoAdmin,
     EnrollmentAdmin,
@@ -24,6 +25,8 @@ from app.admin import (
     QuizAdmin,
     QuizAttemptAdmin,
     QuizQuestionAdmin,
+    TaskAdmin,
+    TaskSubmissionAdmin,
     UserAdmin,
 )
 from app.api.main import api_router
@@ -162,6 +165,7 @@ admin.add_view(CourseAdmin)
 admin.add_view(CourseVideoAdmin)
 admin.add_view(EnrollmentAdmin)
 admin.add_view(ClassroomAdmin)
+admin.add_view(ClassroomInvitationAdmin)
 admin.add_view(MessageAdmin)
 admin.add_view(EventAdmin)
 admin.add_view(EventDeliverableAdmin)
@@ -171,6 +175,8 @@ admin.add_view(QuizAttemptAdmin)
 admin.add_view(AttendanceAdmin)
 admin.add_view(GroupAdmin)
 admin.add_view(GroupMemberAdmin)
+admin.add_view(TaskAdmin)
+admin.add_view(TaskSubmissionAdmin)
 
 
 @app.get("/api/v1/debug-users")

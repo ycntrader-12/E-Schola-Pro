@@ -44,6 +44,7 @@ VALID_ROLES = [
     "admin_manager",
     "formateur",
     "pedagogique",
+    "dg_rh",
     "étudiant",
     "stagiaire",
     "employer",
@@ -136,11 +137,13 @@ def create_user(
     """
     Create new user via public registration.
     """
-    requested_role = user_in.role.lower()
-    if requested_role in ADMIN_ROLES or requested_role in ["formateur", "pedagogique"]:
+    requested_role = user_in.role.lower().strip()
+    if requested_role in ["dg/rh", "dgrh", "dg-rh"]:
+        requested_role = "dg_rh"
+    if requested_role in ADMIN_ROLES or requested_role in ["formateur", "pedagogique", "dg_rh"]:
         raise HTTPException(
             status_code=403,
-            detail="Le rôle de formateur ou d'administrateur ne peut pas être choisi publiquement. Il doit être attribué par un administrateur.",
+            detail="Le rôle de formateur, DG/RH ou d'administrateur ne peut pas être choisi publiquement. Il doit être attribué par un administrateur.",
         )
 
     # 1. Resolve username
@@ -488,7 +491,12 @@ def update_user_role(
             status_code=403, detail="Not enough permissions. Admin only."
         )
 
-    new_role = role_in.role.lower()
+    raw_role = role_in.role.strip().lower()
+    if raw_role in ["dg/rh", "dgrh", "dg-rh"]:
+        new_role = "dg_rh"
+    else:
+        new_role = raw_role
+
     if new_role not in [r.lower() for r in VALID_ROLES]:
         raise HTTPException(
             status_code=400, detail=f"Invalid role. Must be one of: {VALID_ROLES}"
@@ -520,7 +528,7 @@ def update_user_role(
                 detail="Un ADMIN_MANAGER ne peut pas modifier les permissions ou le rôle d'un compte administrateur.",
             )
 
-    user.role = role_in.role
+    user.role = new_role
     session.add(user)
     session.commit()
     session.refresh(user)
@@ -953,6 +961,10 @@ def admin_update_user(
             "admin": "admin",
             "admin_manager": "admin_manager",
             "admin_limited": "admin_manager",  # admin_limited is deactivated, mapped to admin_manager
+            "dg_rh": "dg_rh",
+            "dg/rh": "dg_rh",
+            "dgrh": "dg_rh",
+            "dg-rh": "dg_rh",
         }
         normalized_role = role_map.get(raw_role, raw_role)
         if current_user.role.lower() == "admin_manager" and normalized_role in ADMIN_ROLES:

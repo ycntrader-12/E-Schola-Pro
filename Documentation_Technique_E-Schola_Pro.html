@@ -641,10 +641,11 @@
 │                                                             │
 │   PostgreSQL 15+ (Production Railway & Synchronisation)     │
 │   SQLite WAL (Développement local autonome de secours)       │
-│   16 Tables : users, courses, enrollments, events,          │
-│   classrooms, messages, quizzes, quiz_questions,            │
-│   quiz_attempts, attendance, course_videos,                 │
-│   event_deliverables, groups, group_members, tasks...       │
+│   17 Tables : users, courses, enrollments, events,          │
+│   classrooms, classroom_invitations, messages, quizzes,      │
+│   quiz_questions, quiz_attempts, attendance, course_videos, │
+│   event_deliverables, groups, group_members, tasks,         │
+│   task_submissions                                          │
 │   Connexion unifiée : <strong style="color: var(--primary);">DATABASE_URL / DATABASE_PUBLIC_URL</strong>    │
 └─────────────────────────────────────────────────────────────┘
     </div>
@@ -796,7 +797,7 @@ E-Schola Pro/
         <tr><td><code>username</code></td><td>String</td><td>Unique, Indexé, Nullable</td><td>Pseudonyme / identifiant de connexion unique (login)</td></tr>
         <tr><td><code>email</code></td><td>String</td><td>Unique, Indexé, Nullable</td><td>Adresse e-mail (login / contact)</td></tr>
         <tr><td><code>hashed_password</code></td><td>String</td><td>Not Null</td><td>Mot de passe haché (bcrypt)</td></tr>
-        <tr><td><code>role</code></td><td>String</td><td>Default: "étudiant"</td><td>admin | admin_manager | formateur | pedagogique | étudiant | stagiaire | employer</td></tr>
+        <tr><td><code>role</code></td><td>String</td><td>Default: "étudiant"</td><td>admin | admin_manager | formateur | pedagogique | dg_rh | étudiant | stagiaire | employer</td></tr>
         <tr><td><code>nom</code></td><td>String</td><td>Nullable</td><td>Nom de famille de l'utilisateur</td></tr>
         <tr><td><code>prenom</code></td><td>String</td><td>Nullable</td><td>Prénom de l'utilisateur</td></tr>
         <tr><td><code>date_naissance</code></td><td>String</td><td>Nullable</td><td>Date de naissance ISO (calcul dynamique d'âge)</td></tr>
@@ -1276,6 +1277,10 @@ E-Schola Pro/
         <p style="margin-top:8px"><strong>Formateur & Corps Pédagogique</strong> — Création et gestion de cours, quiz, devoirs, émargements, plannings, classes virtuelles et messagerie interne.</p>
       </div>
       <div class="card">
+        <p><span class="role-badge role-formateur" style="background: rgba(16, 185, 129, 0.15); color: #059669; border-color: rgba(16, 185, 129, 0.3);">DG_RH</span></p>
+        <p style="margin-top:8px"><strong>Direction Générale / Ressources Humaines (DG/RH)</strong> — Dispose exactement des mêmes prérogatives et autorisations que le rôle Formateur : consultation et création de cours/formations, gestion des quiz, attribution et notation des devoirs, pointage des feuilles d'émargement et présences, création et animation des classes virtuelles, gestion des plannings calendrier et messagerie interne.</p>
+      </div>
+      <div class="card">
         <p><span class="role-badge role-etudiant">ÉTUDIANT</span></p>
         <p style="margin-top:8px"><strong>Étudiant</strong> — Consultation des cours, passage des quiz chronométrés, soumission de livrables et devoirs, émargement et messagerie.</p>
       </div>
@@ -1305,7 +1310,7 @@ E-Schola Pro/
           <th>Fonctionnalité</th>
           <th><span class="role-badge role-admin">Super-Admin (admin)</span></th>
           <th><span class="role-badge role-admin" style="background: rgba(59,130,246,0.15); color: #2563eb;">Admin Manager</span></th>
-          <th><span class="role-badge role-formateur">Formateur</span></th>
+          <th><span class="role-badge role-formateur">Formateur &amp; DG/RH</span></th>
           <th><span class="role-badge role-etudiant">Étudiant / Stagiaire / Employé</span></th>
         </tr>
       </thead>
@@ -1462,7 +1467,7 @@ E-Schola Pro/
       <p><strong>Options et propriétés :</strong></p>
       <ul>
         <li><strong>Vue Apprenant (Étudiant, Stagiaire, Employé) :</strong> Tableau de bord d'engagement personnel individualisé lié au compte (Taux d'assiduité avec badge d'honneur, KPI des présences/retards/absences, score d'engagement aux quiz, sélecteur de périodes <em>Journalier, Mensuel, Semestriel, Global</em>, historique exhaustif et filtrable des pointages certifiés avec option d'impression du bilan officiel).</li>
-        <li><strong>Vue Formateur &amp; Administrateur :</strong> Feuille d'émargement et d'appel en direct par groupe/classe, pointage multi-statuts (<em>Présent, En retard avec minutes, Absent, Justifié</em>), boutons d'émargement rapide (<em>Tout marquer présent</em>), validation par lot (batch), inscription directe d'apprenants réels dans les promotions et vue d'ensemble des statistiques globales. <strong>Possibilité d'exporter le bilan analytique en format PDF pour chaque étudiant (via la page individuelle et le Dashboard analytique).</strong></li>
+        <li><strong>Vue Formateur, DG/RH &amp; Administrateur :</strong> Feuille d'émargement et d'appel en direct par groupe/classe, pointage multi-statuts (<em>Présent, En retard avec minutes, Absent, Justifié</em>), boutons d'émargement rapide (<em>Tout marquer présent</em>), validation par lot (batch), inscription directe d'apprenants réels dans les promotions et vue d'ensemble des statistiques globales. <strong>Possibilité d'exporter le bilan analytique en format PDF pour chaque étudiant (via la page individuelle et le Dashboard analytique).</strong></li>
       </ul>
       <div class="screenshot-container">
         <div class="screenshot-header">
