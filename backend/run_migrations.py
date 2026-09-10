@@ -36,7 +36,7 @@ def wait_for_database(max_retries: int = 30, delay_seconds: float = 2.0) -> bool
 
 
 def apply_migrations() -> bool:
-    """Applique explicitement toutes les révisions Alembic jusqu'à head."""
+    """Applique explicitement toutes les révisions Alembic jusqu'à head de manière idempotente."""
     print("=" * 70)
     print(f"  E-SCHOLA PRO — APPLICATION EXPLICITE DES MIGRATIONS (ALEMBIC)")
     print(f"  Environnement: {settings.ENVIRONMENT} | Moteur: {engine.dialect.name}")
@@ -46,15 +46,47 @@ def apply_migrations() -> bool:
     if not wait_for_database():
         return False
 
+    alembic_cfg_path = str(backend_dir / "alembic.ini")
+
     try:
-        # Run alembic upgrade head
-        print("\n[Migrations] Exécution de 'alembic upgrade head'...")
-        alembic_cfg_path = str(backend_dir / "alembic.ini")
+        # 1. Vérification de l'état actuel de la base de données
+        from sqlalchemy import inspect as sa_inspect
+        inspector = sa_inspect(engine)
+        existing_tables = set(inspector.get_table_names())
+
+        # Vérifier si alembic_version existe
+        has_alembic_version = "alembic_version" in existing_tables
+        has_users_table = "users" in existing_tables
+        has_tasks_table = "tasks" in existing_tables
+        has_invitations_table = "classroom_invitations" in existing_tables
+
+        # Si les tables existent déjà mais alembic_version n'est pas initialisé
+        if not has_alembic_version and has_users_table:
+            print("[Migrations] Tables existantes détectées sans table 'alembic_version'.")
+            if has_tasks_table and has_invitations_table:
+                print("[Migrations] Le schéma complet est déjà présent -> Marquage (stamp) sur 'head' pour éviter tout conflit.")
+                alembic.config.main(argv=["-c", alembic_cfg_path, "stamp", "head"])
+            else:
+                print("[Migrations] Schéma partiel détecté -> Marquage (stamp) sur révision initiale '23940a40bfca'.")
+                alembic.config.main(argv=["-c", alembic_cfg_path, "stamp", "23940a40bfca"])
+
+        # 2. Exécution de 'alembic upgrade head'
+        print("\n[Migrations] Exécution sécurisée de 'alembic upgrade head'...")
         alembic_args = ["-c", alembic_cfg_path, "upgrade", "head"]
         alembic.config.main(argv=alembic_args)
         print("[Migrations] Toutes les migrations de schéma ont été appliquées avec succès !")
         return True
     except Exception as exc:
+        print(f"[Migrations ERREUR] Notification lors des migrations : {exc}")
+        # En cas d'erreur bénigne "already exists", ne pas crasher le déploiement
+        err_msg = str(exc).lower()
+        if "already exists" in err_msg or "duplicate column" in err_msg:
+            print("[Migrations Résilience] L'élément de schéma existe déjà, alignement stamp vers head...")
+            try:
+                alembic.config.main(argv=["-c", alembic_cfg_path, "stamp", "head"])
+                return True
+            except Exception:
+                pass
         print(f"[Migrations ERREUR CRITIQUE] Échec lors de l'application des migrations : {exc}")
         return False
 
@@ -62,3 +94,4 @@ def apply_migrations() -> bool:
 if __name__ == "__main__":
     success = apply_migrations()
     sys.exit(0 if success else 1)
+

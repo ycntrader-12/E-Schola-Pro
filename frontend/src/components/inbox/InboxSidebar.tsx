@@ -70,7 +70,7 @@ export const InboxSidebar: React.FC<InboxSidebarProps> = ({
     snoozed: 'En attente',
     sent: 'Envoyés',
     drafts: 'Brouillons',
-    classroom: 'Classe Virtuelle',
+    classroom: 'Salle vidéo conférence',
     trash: 'Corbeille',
     calendar: 'Calendrier',
   },
@@ -212,7 +212,7 @@ export const InboxSidebar: React.FC<InboxSidebarProps> = ({
           )}
         </button>
 
-        {/* Classe Virtuelle (Liée au Classroom) */}
+        {/* Salle vidéo conférence (Liée au Classroom) */}
         <button
           type="button"
           onClick={() => onSelectFolder('classroom')}

@@ -29,15 +29,15 @@ def send_welcome_message(session: Session, new_user: User) -> Message | None:
 
         sender_id = admin_sender.id if admin_sender else new_user.id
 
-        welcome_subject = "Bienvenue sur la plateforme Oskula (E-Schola Pro) !"
+        welcome_subject = "Bienvenue sur la plateforme E-Schola Pro !"
         welcome_body = (
             f"Bonjour {user_name},\n\n"
-            f"Nous sommes ravis de vous accueillir sur la plateforme Oskula (E-Schola Pro) !\n"
+            f"Nous sommes ravis de vous accueillir sur la plateforme d'enseignement E-Schola Pro !\n"
             f"Votre compte ({new_user.email}) a été créé avec succès avec le rôle '{new_user.role}'.\n\n"
             f"Vous avez désormais accès à l'ensemble de vos fonctionnalités :\n"
             f"- Consultation de vos cours, devoirs et ressources pédagogiques\n"
             f"- Accès au calendrier et au suivi des présences\n"
-            f"- Participation aux classes virtuelles en direct\n"
+            f"- Participation aux salles vidéo conférence en direct\n"
             f"- Messagerie sécurisée et échanges personnels en direct avec vos formateurs et collègues.\n\n"
             f"Pour toute assistance, vous pouvez contacter l'équipe d'administration ou poser vos questions via cette messagerie.\n\n"
             f"Bien cordialement,\n"

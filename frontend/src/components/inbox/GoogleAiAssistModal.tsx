@@ -48,7 +48,7 @@ export const GoogleAiAssistModal: React.FC<GoogleAiAssistModalProps> = ({
         );
       } else if (mode === 'translate') {
         setGeneratedText(
-          `✨ **Traduction Multilingue IA** :\nBonjour, je vous informe que la classe virtuelle sur l'Intelligence Artificielle aura lieu cet après-midi à 14h00.`
+          `✨ **Traduction Multilingue IA** :\nBonjour, je vous informe que la salle vidéo conférence sur l'Intelligence Artificielle aura lieu cet après-midi à 14h00.`
         );
       } else {
         setGeneratedText(

@@ -17,6 +17,7 @@ from app.schemas.classroom import (
     ClassroomInvitationResponse,
 )
 from datetime import datetime, date
+from app.services.email_service import send_classroom_invitation_email
 
 router = APIRouter()
 
@@ -123,7 +124,7 @@ def create_classroom(
     if current_user.role not in ["formateur", "pedagogique", "dg_rh"] + ADMIN_ROLES:
         raise HTTPException(
             status_code=403,
-            detail="Seuls les formateurs et administrateurs peuvent créer une classe virtuelle.",
+            detail="Seuls les formateurs et administrateurs peuvent créer une salle vidéo conférence.",
         )
 
     room_code = (
@@ -137,7 +138,7 @@ def create_classroom(
     if existing:
         if existing.is_active:
             raise HTTPException(
-                status_code=400, detail="Ce code de classe virtuelle est déjà utilisé."
+                status_code=400, detail="Ce code de salle vidéo conférence est déjà utilisé."
             )
         else:
             # Reactivate
@@ -221,34 +222,65 @@ def create_classroom(
             group_info = f"👥 **Groupe(s) invité(s) :** {', '.join(group_labels_list)}\n" if group_labels_list else ""
 
             for t_user in targeted_users:
-                # 1. Register in Attendance as absent
+                # 1. Register ClassroomInvitation in DB so it persists
+                existing_inv = session.query(ClassroomInvitation).filter(
+                    ClassroomInvitation.classroom_id == classroom.id,
+                    ClassroomInvitation.invitee_id == t_user.id,
+                    ClassroomInvitation.status == "pending"
+                ).first()
+                if not existing_inv:
+                    inv = ClassroomInvitation(
+                        classroom_id=classroom.id,
+                        inviter_id=current_user.id,
+                        invitee_id=t_user.id,
+                        status="pending",
+                    )
+                    session.add(inv)
+
+                # 2. Register in Attendance as absent
                 att = Attendance(
                     user_id=t_user.id,
                     date=date.today(),
                     status="absent",
                     session_name=classroom.title,
-                    remarks=f"Invitation classe virtuelle : {classroom.title}"
+                    remarks=f"Invitation Salle vidéo conférence : {classroom.title}"
                 )
                 session.add(att)
 
-                # 2. Send invitation Message
+                # 3. Send in-app invitation Message
                 invitation_body = (
                     f"Bonjour {t_user.email.split('@')[0]},\n\n"
-                    f"Vous êtes convié(e) à la classe virtuelle en direct : **{classroom.title}**.\n\n"
+                    f"Vous êtes convié(e) à la Salle vidéo conférence en direct : **{classroom.title}**.\n\n"
                     f"📌 **Code de la salle :** `{classroom.room_id}`\n"
                     f"{group_info}"
                     f"👨‍🏫 **Formateur :** {current_user.email}\n\n"
-                    f"👉 Connectez-vous dès maintenant depuis la page des **Classes Virtuelles** pour rejoindre la session en direct."
+                    f"👉 Connectez-vous dès maintenant depuis la page des **Salles vidéo conférence** pour rejoindre la session en direct."
                 )
                 msg = Message(
                     sender_id=current_user.id,
                     recipient_id=t_user.id,
-                    subject=f"🎓 Invitation classe virtuelle : {classroom.title}",
+                    subject=f"🎓 Invitation Salle vidéo conférence : {classroom.title}",
                     body=invitation_body,
                 )
                 session.add(msg)
 
+                # 4. Dispatch transactional email
+                try:
+                    if t_user.email and "@" in t_user.email:
+                        target_name = f"{t_user.prenom or ''} {t_user.nom or ''}".strip() or t_user.username or t_user.email.split("@")[0]
+                        inviter_name = f"{current_user.prenom or ''} {current_user.nom or ''}".strip() or current_user.email
+                        send_classroom_invitation_email(
+                            to_email=t_user.email,
+                            user_name=target_name,
+                            room_title=classroom.title,
+                            room_id=classroom.room_id,
+                            inviter_name=inviter_name,
+                        )
+                except Exception as mail_err:
+                    print(f"[WARN] Email d'invitation salle non envoyé à {t_user.email}: {mail_err}")
+
             session.commit()
+            print(f"[Audit Invitation] {len(targeted_users)} invitation(s) auto envoyée(s) pour la Salle vidéo conférence '{classroom.title}'.")
 
     return classroom
 
@@ -266,7 +298,7 @@ def get_classroom_by_code(
     cleaned_id = room_id.strip().lower()
     classroom = session.query(Classroom).filter(Classroom.room_id == cleaned_id).first()
     if not classroom:
-        raise HTTPException(status_code=404, detail="Classe virtuelle introuvable.")
+        raise HTTPException(status_code=404, detail="Salle vidéo conférence introuvable.")
     return classroom
 
 
@@ -282,7 +314,7 @@ def join_classroom(
     cleaned_id = room_id.strip().lower()
     classroom = session.query(Classroom).filter(Classroom.room_id == cleaned_id).first()
     if not classroom:
-        raise HTTPException(status_code=404, detail="Classe virtuelle introuvable.")
+        raise HTTPException(status_code=404, detail="Salle vidéo conférence introuvable.")
 
     # We only track attendance for non-instructors
     if current_user.id != classroom.instructor_id and current_user.role not in ["formateur", "pedagogique", "dg_rh"] + ADMIN_ROLES:
@@ -326,13 +358,13 @@ def stop_classroom(
     if user_role in LEARNER_ROLES or user_role not in STAFF_ROLES:
         raise HTTPException(
             status_code=403,
-            detail="Accès interdit : les étudiants, stagiaires et employés ne sont pas autorisés à arrêter la classe.",
+            detail="Accès interdit : les étudiants, stagiaires et employés ne sont pas autorisés à arrêter la salle vidéo conférence.",
         )
 
     cleaned_id = room_id.strip().lower()
     classroom = session.query(Classroom).filter(Classroom.room_id == cleaned_id).first()
     if not classroom:
-        raise HTTPException(status_code=404, detail="Classe virtuelle introuvable.")
+        raise HTTPException(status_code=404, detail="Salle vidéo conférence introuvable.")
 
     classroom.is_active = False
     session.commit()
@@ -342,7 +374,7 @@ def stop_classroom(
         ROOM_SUBGROUPS[cleaned_id] = {"is_active": False, "timer_minutes": 15, "subgroups": []}
 
     return {
-        "message": "La classe virtuelle a été arrêtée avec succès.",
+        "message": "La salle vidéo conférence a été arrêtée avec succès.",
         "room_id": cleaned_id,
         "is_active": False,
     }
@@ -365,17 +397,17 @@ def delete_classroom(
     if user_role in LEARNER_ROLES or user_role not in STAFF_ROLES:
         raise HTTPException(
             status_code=403,
-            detail="Accès interdit : les étudiants, stagiaires et employés ne sont pas autorisés à supprimer la classe.",
+            detail="Accès interdit : les étudiants, stagiaires et employés ne sont pas autorisés à supprimer la salle vidéo conférence.",
         )
 
     cleaned_id = room_id.strip().lower()
     classroom = session.query(Classroom).filter(Classroom.room_id == cleaned_id).first()
     if not classroom:
-        raise HTTPException(status_code=404, detail="Classe virtuelle introuvable.")
+        raise HTTPException(status_code=404, detail="Salle vidéo conférence introuvable.")
 
     classroom.is_active = False
     session.commit()
-    return {"message": "Classe virtuelle clôturée avec succès.", "room_id": cleaned_id}
+    return {"message": "Salle vidéo conférence clôturée avec succès.", "room_id": cleaned_id}
 
 
 @router.delete("/history/purge")
@@ -525,7 +557,7 @@ def get_join_requests(room_id: str, session: SessionDep, current_user: CurrentUs
     cleaned_id = room_id.strip().lower()
     classroom = session.query(Classroom).filter(Classroom.room_id == cleaned_id).first()
     if not classroom:
-        raise HTTPException(status_code=404, detail="Classe virtuelle introuvable.")
+        raise HTTPException(status_code=404, detail="Salle vidéo conférence introuvable.")
     if current_user.id != classroom.instructor_id and current_user.role not in ADMIN_ROLES:
         raise HTTPException(status_code=403, detail="Seul le formateur peut consulter les demandes d'accès.")
     
@@ -540,7 +572,7 @@ def submit_join_request(room_id: str, session: SessionDep, current_user: Current
     cleaned_id = room_id.strip().lower()
     classroom = session.query(Classroom).filter(Classroom.room_id == cleaned_id).first()
     if not classroom:
-        raise HTTPException(status_code=404, detail="Classe virtuelle introuvable.")
+        raise HTTPException(status_code=404, detail="Salle vidéo conférence introuvable.")
 
     # Instructor and admins are automatically approved
     if current_user.id == classroom.instructor_id or current_user.role in ADMIN_ROLES + ["formateur", "pedagogique", "dg_rh"]:
@@ -583,7 +615,7 @@ def approve_join_request(room_id: str, user_id: int, session: SessionDep, curren
     cleaned_id = room_id.strip().lower()
     classroom = session.query(Classroom).filter(Classroom.room_id == cleaned_id).first()
     if not classroom:
-        raise HTTPException(status_code=404, detail="Classe virtuelle introuvable.")
+        raise HTTPException(status_code=404, detail="Salle vidéo conférence introuvable.")
     if current_user.id != classroom.instructor_id and current_user.role not in ADMIN_ROLES:
         raise HTTPException(status_code=403, detail="Seul le formateur peut approuver les demandes.")
 
@@ -610,7 +642,7 @@ def reject_join_request(room_id: str, user_id: int, session: SessionDep, current
     cleaned_id = room_id.strip().lower()
     classroom = session.query(Classroom).filter(Classroom.room_id == cleaned_id).first()
     if not classroom:
-        raise HTTPException(status_code=404, detail="Classe virtuelle introuvable.")
+        raise HTTPException(status_code=404, detail="Salle vidéo conférence introuvable.")
     if current_user.id != classroom.instructor_id and current_user.role not in ADMIN_ROLES:
         raise HTTPException(status_code=403, detail="Seul le formateur peut rejeter les demandes.")
 
@@ -630,7 +662,7 @@ def get_join_status(room_id: str, session: SessionDep, current_user: CurrentUser
     cleaned_id = room_id.strip().lower()
     classroom = session.query(Classroom).filter(Classroom.room_id == cleaned_id).first()
     if not classroom:
-        raise HTTPException(status_code=404, detail="Classe virtuelle introuvable.")
+        raise HTTPException(status_code=404, detail="Salle vidéo conférence introuvable.")
 
     if current_user.id == classroom.instructor_id or current_user.role in ADMIN_ROLES + ["formateur", "pedagogique", "dg_rh"]:
         return {"status": "approved"}
@@ -657,7 +689,7 @@ def update_room_settings(room_id: str, payload: dict, session: SessionDep, curre
     cleaned_id = room_id.strip().lower()
     classroom = session.query(Classroom).filter(Classroom.room_id == cleaned_id).first()
     if not classroom:
-        raise HTTPException(status_code=404, detail="Classe virtuelle introuvable.")
+        raise HTTPException(status_code=404, detail="Salle vidéo conférence introuvable.")
     if current_user.id != classroom.instructor_id and current_user.role not in ADMIN_ROLES:
         raise HTTPException(status_code=403, detail="Non autorisé à modifier les paramètres.")
 
@@ -710,7 +742,7 @@ def invite_users_to_classroom(
     cleaned_id = room_id.strip().lower()
     classroom = session.query(Classroom).filter(Classroom.room_id == cleaned_id).first()
     if not classroom:
-        raise HTTPException(status_code=404, detail="Classe virtuelle introuvable.")
+        raise HTTPException(status_code=404, detail="Salle vidéo conférence introuvable.")
 
     targeted_user_ids = set()
 
@@ -759,26 +791,42 @@ def invite_users_to_classroom(
                 date=date.today(),
                 status="absent",
                 session_name=classroom.title,
-                remarks=f"Invitation classe virtuelle : {classroom.title}"
+                remarks=f"Invitation Salle vidéo conférence : {classroom.title}"
             ))
 
         # Send invitation Message
         invitation_body = (
             f"Bonjour {target_user.email.split('@')[0]},\n\n"
-            f"Vous êtes invité(e) par **{current_user.email}** à rejoindre la classe virtuelle en direct : **{classroom.title}**.\n\n"
+            f"Vous êtes invité(e) par **{current_user.email}** à rejoindre la Salle vidéo conférence en direct : **{classroom.title}**.\n\n"
             f"📌 **Code de la salle :** `{classroom.room_id}`\n\n"
-            f"👉 Cliquez sur le bouton **Accepter l'invitation** sur la page des Classes Virtuelles ou ci-dessous pour intégrer la session immédiatement."
+            f"👉 Cliquez sur le bouton **Accepter l'invitation** sur la page des Salles vidéo conférence ou ci-dessous pour intégrer la session immédiatement."
         )
         msg = Message(
             sender_id=current_user.id,
             recipient_id=target_user.id,
-            subject=f"🎓 Invitation classe virtuelle : {classroom.title}",
+            subject=f"🎓 Invitation Salle vidéo conférence : {classroom.title}",
             body=invitation_body,
         )
         session.add(msg)
         count += 1
 
+        # Dispatch transactional invitation email
+        try:
+            if target_user.email and "@" in target_user.email:
+                target_name = f"{target_user.prenom or ''} {target_user.nom or ''}".strip() or target_user.username or target_user.email.split("@")[0]
+                inviter_name = f"{current_user.prenom or ''} {current_user.nom or ''}".strip() or current_user.email
+                send_classroom_invitation_email(
+                    to_email=target_user.email,
+                    user_name=target_name,
+                    room_title=classroom.title,
+                    room_id=classroom.room_id,
+                    inviter_name=inviter_name,
+                )
+        except Exception as mail_err:
+            print(f"[WARN] Email d'invitation salle non envoyé à {target_user.email}: {mail_err}")
+
     session.commit()
+    print(f"[Audit Invitation] {count} invitation(s) envoyée(s) pour la Salle vidéo conférence '{classroom.title}' ({classroom.room_id}) par {current_user.email}.")
     return {"message": f"{count} invitation(s) envoyée(s) avec succès.", "invited_count": count}
 
 

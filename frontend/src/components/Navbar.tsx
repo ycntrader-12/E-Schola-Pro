@@ -20,6 +20,7 @@ export default function Navbar() {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const [activeClassroomsCount, setActiveClassroomsCount] = useState(0);
+  const [pendingInvitationsCount, setPendingInvitationsCount] = useState(0);
 
   useEffect(() => {
     setIsMounted(true);
@@ -28,10 +29,11 @@ export default function Navbar() {
       setIsAuthenticated(!!token);
       if (token) {
         try {
-          const [userRes, unreadRes, roomsRes] = await Promise.all([
+          const [userRes, unreadRes, roomsRes, invitesRes] = await Promise.all([
             apiClient.get('/users/me'),
             apiClient.get('/messages/unread-count').catch(() => ({ data: { unread_count: 0 } })),
-            apiClient.get('/classrooms/').catch(() => ({ data: [] }))
+            apiClient.get('/classrooms/').catch(() => ({ data: [] })),
+            apiClient.get('/classrooms/invitations/my-invitations').catch(() => ({ data: [] }))
           ]);
           setUserRole(userRes.data.role);
           setUnreadCount(unreadRes.data?.unread_count || 0);
@@ -39,6 +41,10 @@ export default function Navbar() {
             ? roomsRes.data.filter((r: any) => r.is_active).length
             : 0;
           setActiveClassroomsCount(activeCount);
+          const pendingCount = Array.isArray(invitesRes.data)
+            ? invitesRes.data.filter((i: any) => i.status === 'pending').length
+            : 0;
+          setPendingInvitationsCount(pendingCount);
         } catch {
           setIsAuthenticated(false);
           setUserRole(null);
@@ -49,8 +55,8 @@ export default function Navbar() {
     };
     checkAuth();
     
-    // 10-second active polling for live notifications
-    const pollInterval = setInterval(checkAuth, 10000);
+    // 8-second active polling for live notifications
+    const pollInterval = setInterval(checkAuth, 8000);
 
     window.addEventListener('storage', checkAuth);
     window.addEventListener('auth_user_updated', checkAuth);
@@ -149,41 +155,60 @@ export default function Navbar() {
               {/* Classroom Notification Link with Blinking Signal Light */}
               <Link 
                 href="/classroom"
-                className="p-2 rounded-xl text-[#65676b] hover:text-emerald-600 hover:bg-emerald-50/70 transition-all relative group"
-                title={activeClassroomsCount > 0 ? `${activeClassroomsCount} session(s) de classe virtuelle active(s)` : "Classes Virtuelles & Sessions en direct"}
-                aria-label="Classe Virtuelle"
+                className={`p-2 rounded-xl transition-all relative group ${
+                  pendingInvitationsCount > 0 
+                    ? 'text-emerald-600 bg-emerald-50/80 shadow-xs ring-1 ring-emerald-500/30' 
+                    : activeClassroomsCount > 0 
+                      ? 'text-emerald-600 hover:bg-emerald-50/70' 
+                      : 'text-[#65676b] hover:text-emerald-600 hover:bg-emerald-50/70'
+                }`}
+                title={
+                  pendingInvitationsCount > 0
+                    ? `${pendingInvitationsCount} nouvelle(s) invitation(s) en attente • Salles vidéo conférence`
+                    : activeClassroomsCount > 0 
+                      ? `${activeClassroomsCount} session(s) active(s) • Salles vidéo conférence` 
+                      : "Salles vidéo conférence & Sessions en direct"
+                }
+                aria-label="Salle vidéo conférence"
               >
-                <Video size={18} className={`transition-colors ${activeClassroomsCount > 0 ? 'text-emerald-600 animate-pulse' : 'group-hover:text-emerald-600'}`} />
-                {activeClassroomsCount > 0 ? (
+                <Video size={18} className={`transition-colors ${pendingInvitationsCount > 0 || activeClassroomsCount > 0 ? 'text-emerald-600 animate-pulse' : 'group-hover:text-emerald-600'}`} />
+                {pendingInvitationsCount > 0 ? (
                   <>
-                    <span className="absolute top-1 right-1 w-3.5 h-3.5 bg-emerald-500 rounded-full animate-ping opacity-75" />
-                    <span className="absolute top-1 right-1 min-w-3.5 h-3.5 px-0.5 bg-emerald-500 text-white text-[9px] font-black rounded-full flex items-center justify-center ring-2 ring-white shadow-xs">
+                    <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-emerald-500 rounded-full animate-ping opacity-80" />
+                    <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 bg-emerald-600 text-white text-[9px] font-black rounded-full flex items-center justify-center ring-2 ring-white shadow-sm">
+                      {pendingInvitationsCount}
+                    </span>
+                  </>
+                ) : activeClassroomsCount > 0 ? (
+                  <>
+                    <span className="absolute top-0.5 right-0.5 w-3.5 h-3.5 bg-emerald-500 rounded-full animate-ping opacity-75" />
+                    <span className="absolute top-0.5 right-0.5 min-w-3.5 h-3.5 px-0.5 bg-emerald-500 text-white text-[9px] font-black rounded-full flex items-center justify-center ring-2 ring-white shadow-xs">
                       {activeClassroomsCount}
                     </span>
                   </>
-                ) : (
-                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-slate-300 rounded-full ring-2 ring-white" />
-                )}
+                ) : null}
               </Link>
 
               {/* Message / Inbox Notification Link with Blinking Signal Light */}
               <Link 
                 href="/inbox"
-                className="p-2 rounded-xl text-[#65676b] hover:text-[#1877f2] hover:bg-blue-50/70 transition-all relative group"
+                className={`p-2 rounded-xl transition-all relative group ${
+                  unreadCount > 0 
+                    ? 'text-[#1877f2] bg-blue-50/80 shadow-xs ring-1 ring-blue-500/30' 
+                    : 'text-[#65676b] hover:text-[#1877f2] hover:bg-blue-50/70'
+                }`}
                 title={unreadCount > 0 ? `${unreadCount} message(s) non lu(s)` : "Messagerie & Boîte de réception"}
                 aria-label="Boîte de réception"
               >
                 <MessageSquare size={18} className={`transition-colors ${unreadCount > 0 ? 'text-[#1877f2] animate-bounce' : 'group-hover:text-[#1877f2]'}`} />
                 {unreadCount > 0 ? (
                   <>
-                    <span className="absolute top-1 right-1 w-3.5 h-3.5 bg-blue-500 rounded-full animate-ping opacity-75" />
-                    <span className="absolute top-1 right-1 min-w-3.5 h-3.5 px-0.5 bg-[#1877f2] text-white text-[9px] font-black rounded-full flex items-center justify-center ring-2 ring-white shadow-xs">
+                    <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-blue-500 rounded-full animate-ping opacity-80" />
+                    <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 bg-[#1877f2] text-white text-[9px] font-black rounded-full flex items-center justify-center ring-2 ring-white shadow-sm">
                       {unreadCount}
                     </span>
                   </>
-                ) : (
-                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-slate-300 rounded-full ring-2 ring-white" />
-                )}
+                ) : null}
               </Link>
 
               <Link 

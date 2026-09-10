@@ -144,7 +144,11 @@ def send_email(
     )
 
     if not is_active:
-        print(f"[Email Service (DEV/MOCK)] To: {to_email} | Subject: '{subject}'")
+        try:
+            print(f"[Email Service (DEV/MOCK)] To: {to_email} | Subject: '{subject}'")
+        except UnicodeEncodeError:
+            safe_subject = subject.encode("ascii", "replace").decode("ascii")
+            print(f"[Email Service (DEV/MOCK)] To: {to_email} | Subject: '{safe_subject}'")
         print(f"       -> SMTP is inactive or unconfigured in .env. Email was logged safely without error.")
         return True
 
@@ -245,7 +249,7 @@ def send_welcome_email(
     </p>
     <ul style="margin: 0 0 20px 0; padding-left: 20px; color: #475569;">
         <li style="margin-bottom: 6px;">Accès à vos cours et modules de formation interactive</li>
-        <li style="margin-bottom: 6px;">Participation aux classes virtuelles en direct et suivi de présence</li>
+        <li style="margin-bottom: 6px;">Participation aux <strong>salles vidéo conférence</strong> en direct et suivi de présence</li>
         <li style="margin-bottom: 6px;">Dépôt de devoirs, passage de quiz et consultation de vos relevés de notes</li>
         <li style="margin-bottom: 6px;">Messagerie interne sécurisée avec vos formateurs et collègues</li>
     </ul>
@@ -261,6 +265,147 @@ def send_welcome_email(
         body_content=body_content,
         action_url=login_url,
         action_text="Accéder à la plateforme",
+    )
+
+    return send_email(to_email=to_email, subject=subject, html_content=html)
+
+
+def send_role_change_email(
+    to_email: str,
+    user_name: str,
+    old_role: str,
+    new_role: str,
+    login_url: Optional[str] = None,
+) -> bool:
+    """
+    Sends a security and notification email when an administrator modifies a user's role.
+    """
+    if not login_url:
+        base_frontend = os.getenv("FRONTEND_URL", "https://e-schola-pro-production.up.railway.app").rstrip("/")
+        login_url = f"{base_frontend}/login"
+
+    role_labels = {
+        "admin": "Administrateur Système",
+        "admin_manager": "Gestionnaire Administratif",
+        "formateur": "Formateur / Enseignant",
+        "pedagogique": "Responsable Pédagogique",
+        "dg_rh": "DG / RH (Direction Générale / Ressources Humaines)",
+        "étudiant": "Étudiant",
+        "stagiaire": "Stagiaire",
+        "employer": "Partenaire Employeur",
+    }
+    old_display = role_labels.get(old_role.lower().strip(), old_role.capitalize())
+    new_display = role_labels.get(new_role.lower().strip(), new_role.capitalize())
+
+    subject = f"Mise à jour de votre rôle sur E-Schola Pro : {new_display}"
+    preheader = f"Votre compte E-Schola Pro a été mis à jour avec le rôle : {new_display}."
+
+    body_content = f"""
+    <p style="margin: 0 0 16px 0;">
+        Bonjour <strong>{user_name}</strong>,
+    </p>
+    <p style="margin: 0 0 16px 0;">
+        Nous vous informons qu'un administrateur a mis à jour vos droits d'accès sur la plateforme <strong>E-Schola Pro</strong>.
+    </p>
+
+    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 20px 0;">
+        <table role="presentation" width="100%" style="border-collapse: collapse;">
+            <tr>
+                <td style="padding: 6px 0; color: #64748b; font-size: 13px;">Rôle précédent :</td>
+                <td style="padding: 6px 0; font-weight: 600; color: #475569;">{old_display}</td>
+            </tr>
+            <tr>
+                <td style="padding: 6px 0; color: #64748b; font-size: 13px;">Nouveau rôle attribué :</td>
+                <td style="padding: 6px 0; font-weight: 700; color: #4f46e5; font-size: 15px;">{new_display}</td>
+            </tr>
+            <tr>
+                <td style="padding: 6px 0; color: #64748b; font-size: 13px;">Compte utilisateur :</td>
+                <td style="padding: 6px 0; color: #334155;">{to_email}</td>
+            </tr>
+        </table>
+    </div>
+
+    <p style="margin: 0 0 16px 0;">
+        Vos autorisations et vos fonctionnalités disponibles sur la plateforme ont été adaptées immédiatement.
+    </p>
+    <div style="background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 18px 0; font-size: 13px; color: #991b1b;">
+        <strong>Information de sécurité :</strong> Si vous n'êtes pas à l'origine de cette modification ou si vous pensez qu'il s'agit d'une erreur, veuillez contacter immédiatement l'administrateur de votre établissement.
+    </div>
+
+    <p style="margin: 0 0 16px 0;">
+        Cliquez sur le lien ci-dessous pour vous connecter et accéder à vos modules :
+    </p>
+    """
+
+    html = get_base_html_template(
+        title="Modification de votre rôle",
+        preheader=preheader,
+        body_content=body_content,
+        action_url=login_url,
+        action_text="Accéder à mon espace",
+    )
+
+    return send_email(to_email=to_email, subject=subject, html_content=html)
+
+
+def send_classroom_invitation_email(
+    to_email: str,
+    user_name: str,
+    room_title: str,
+    room_id: str,
+    inviter_name: str,
+    start_time: Optional[str] = None,
+    room_url: Optional[str] = None,
+) -> bool:
+    """
+    Sends an invitation email for a Salle vidéo conférence.
+    """
+    if not room_url:
+        base_frontend = os.getenv("FRONTEND_URL", "https://e-schola-pro-production.up.railway.app").rstrip("/")
+        room_url = f"{base_frontend}/classroom/{room_id}"
+
+    date_str = start_time if start_time else "Session en direct / Accessible maintenant"
+
+    subject = f"🎓 Invitation Salle vidéo conférence : {room_title}"
+    preheader = f"Vous êtes invité(e) par {inviter_name} à rejoindre la Salle vidéo conférence '{room_title}'."
+
+    body_content = f"""
+    <p style="margin: 0 0 16px 0;">
+        Bonjour <strong>{user_name}</strong>,
+    </p>
+    <p style="margin: 0 0 16px 0;">
+        Vous avez reçu une invitation de <strong>{inviter_name}</strong> pour rejoindre une <strong>Salle vidéo conférence</strong> sur la plateforme E-Schola Pro.
+    </p>
+
+    <div style="background-color: #f1f5f9; border-left: 4px solid #10b981; padding: 16px 20px; border-radius: 0 8px 8px 0; margin: 20px 0;">
+        <h3 style="margin: 0 0 10px 0; font-size: 17px; color: #065f46;">{room_title}</h3>
+        <p style="margin: 0 0 6px 0; font-size: 13px; color: #334155;">
+            📅 <strong>Disponibilité :</strong> {date_str}
+        </p>
+        <p style="margin: 0 0 6px 0; font-size: 13px; color: #334155;">
+            🔑 <strong>Code de la salle :</strong> <span style="font-family: monospace; font-weight: 700; background-color: #e2e8f0; padding: 2px 6px; border-radius: 4px;">{room_id}</span>
+        </p>
+        <p style="margin: 0; font-size: 13px; color: #334155;">
+            👨‍🏫 <strong>Hôte / Formateur :</strong> {inviter_name}
+        </p>
+    </div>
+
+    <p style="margin: 0 0 12px 0; font-weight: 600; color: #1e293b;">
+        Comment rejoindre la Salle vidéo conférence ?
+    </p>
+    <ol style="margin: 0 0 20px 0; padding-left: 20px; color: #475569; font-size: 14px; line-height: 1.6;">
+        <li style="margin-bottom: 6px;">Cliquez sur le bouton <strong>« Rejoindre la Salle vidéo conférence »</strong> ci-dessous.</li>
+        <li style="margin-bottom: 6px;">Autorisez l'accès à votre caméra et à votre microphone lorsque votre navigateur vous le demande.</li>
+        <li style="margin-bottom: 6px;">Vous pouvez aussi saisir directement le code <strong>{room_id}</strong> dans l'onglet Salles vidéo conférence de votre espace.</li>
+    </ol>
+    """
+
+    html = get_base_html_template(
+        title="Invitation Salle vidéo conférence",
+        preheader=preheader,
+        body_content=body_content,
+        action_url=room_url,
+        action_text="Rejoindre la Salle vidéo conférence",
     )
 
     return send_email(to_email=to_email, subject=subject, html_content=html)

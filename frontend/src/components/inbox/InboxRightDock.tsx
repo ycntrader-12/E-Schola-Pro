@@ -147,7 +147,7 @@ export const InboxRightDock: React.FC<InboxRightDockProps> = ({ onOpenAiModal })
                 <div className="space-y-2">
                   <div className="p-2.5 rounded-xl bg-surface border border-border space-y-1">
                     <span className="text-[10px] font-bold uppercase text-primary">Aujourd'hui • 14:00</span>
-                    <p className="font-bold text-text-primary">Classe Virtuelle : IA & Deep Learning</p>
+                    <p className="font-bold text-text-primary">Salle vidéo conférence : IA & Deep Learning</p>
                     <p className="text-[11px] text-text-secondary">Présence obligatoire</p>
                   </div>
 

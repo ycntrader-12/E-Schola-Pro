@@ -96,7 +96,7 @@ export default function RoleSettings({ role }: RoleSettingsProps) {
         <Switch
           id="emailNotifs"
           label="Rappels de Cours"
-          description="Recevez un email 1h avant le début de votre classe virtuelle."
+          description="Recevez un email 1h avant le début de votre salle vidéo conférence."
           checked={prefs.emailNotifs}
           onChange={() => togglePref('emailNotifs')}
           isSaving={saving === 'emailNotifs'}

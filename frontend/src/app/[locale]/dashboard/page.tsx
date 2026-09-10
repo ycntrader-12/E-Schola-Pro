@@ -45,6 +45,7 @@ export default function DashboardPage() {
   const [isSearchDropdownOpen, setIsSearchDropdownOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [activeClassroomsCount, setActiveClassroomsCount] = useState(0);
+  const [pendingInvitationsCount, setPendingInvitationsCount] = useState(0);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
@@ -59,12 +60,13 @@ export default function DashboardPage() {
         return;
       }
       try {
-        // Fetch current user, all courses, unread messages & active classrooms
-        const [userRes, coursesRes, unreadRes, classroomsRes] = await Promise.all([
+        // Fetch current user, all courses, unread messages, active classrooms & pending invitations
+        const [userRes, coursesRes, unreadRes, classroomsRes, invitesRes] = await Promise.all([
           apiClient.get('/users/me'),
           apiClient.get('/courses/'),
           apiClient.get('/messages/unread-count').catch(() => ({ data: { unread_count: 0 } })),
-          apiClient.get('/classrooms/').catch(() => ({ data: [] }))
+          apiClient.get('/classrooms/').catch(() => ({ data: [] })),
+          apiClient.get('/classrooms/invitations/my-invitations').catch(() => ({ data: [] }))
         ]);
         setCurrentUser(userRes.data);
         setAllCourses(coursesRes.data);
@@ -73,6 +75,10 @@ export default function DashboardPage() {
           ? classroomsRes.data.filter((r: any) => r.is_active).length
           : 0;
         setActiveClassroomsCount(activeRooms);
+        const pendingCount = Array.isArray(invitesRes.data)
+          ? invitesRes.data.filter((i: any) => i.status === 'pending').length
+          : 0;
+        setPendingInvitationsCount(pendingCount);
       } catch (err) {
         console.error(err);
         localStorage.removeItem('access_token');
@@ -86,15 +92,20 @@ export default function DashboardPage() {
       const token = localStorage.getItem('access_token');
       if (!token) return;
       try {
-        const [unreadRes, classroomsRes] = await Promise.all([
+        const [unreadRes, classroomsRes, invitesRes] = await Promise.all([
           apiClient.get('/messages/unread-count').catch(() => ({ data: { unread_count: 0 } })),
-          apiClient.get('/classrooms/').catch(() => ({ data: [] }))
+          apiClient.get('/classrooms/').catch(() => ({ data: [] })),
+          apiClient.get('/classrooms/invitations/my-invitations').catch(() => ({ data: [] }))
         ]);
         setUnreadCount(unreadRes.data?.unread_count || 0);
         const activeRooms = Array.isArray(classroomsRes.data)
           ? classroomsRes.data.filter((r: any) => r.is_active).length
           : 0;
         setActiveClassroomsCount(activeRooms);
+        const pendingCount = Array.isArray(invitesRes.data)
+          ? invitesRes.data.filter((i: any) => i.status === 'pending').length
+          : 0;
+        setPendingInvitationsCount(pendingCount);
       } catch {
         // Silent catch for background polling
       }
@@ -328,32 +339,53 @@ export default function DashboardPage() {
 
           {/* Right Header Controls : Classroom Live Icon + Message/Inbox Icon + Real Profile Capsule */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            {/* 1. Classroom / Room Classe Icon with Blinking Signal Light */}
+            {/* 1. Classroom / Video Conference Live Icon with Blinking Signal Light */}
             <button 
               onClick={() => router.push('/classroom')} 
-              className="p-2 sm:p-2.5 rounded-xl text-slate-600 hover:text-emerald-600 hover:bg-emerald-50/70 transition-all relative cursor-pointer group"
-              title={activeClassroomsCount > 0 ? `${activeClassroomsCount} session(s) de classe virtuelle active(s)` : "Classes Virtuelles & Sessions en direct"}
-              aria-label="Classe Virtuelle"
+              className={`p-2 sm:p-2.5 rounded-xl transition-all relative cursor-pointer group ${
+                pendingInvitationsCount > 0 
+                  ? 'text-emerald-600 bg-emerald-50/80 shadow-xs ring-1 ring-emerald-500/30' 
+                  : activeClassroomsCount > 0 
+                    ? 'text-emerald-600 hover:bg-emerald-50/70' 
+                    : 'text-slate-600 hover:text-emerald-600 hover:bg-emerald-50/70'
+              }`}
+              title={
+                pendingInvitationsCount > 0
+                  ? `${pendingInvitationsCount} nouvelle(s) invitation(s) en attente • Salles vidéo conférence`
+                  : activeClassroomsCount > 0 
+                    ? `${activeClassroomsCount} session(s) active(s) • Salles vidéo conférence` 
+                    : "Salles vidéo conférence & Sessions en direct"
+              }
+              aria-label="Salle vidéo conférence"
             >
-              <Video size={20} className={`transition-colors ${activeClassroomsCount > 0 ? 'text-emerald-600 animate-pulse' : 'text-slate-700 group-hover:text-emerald-600'}`} />
-              {activeClassroomsCount > 0 ? (
+              <Video size={20} className={`transition-colors ${pendingInvitationsCount > 0 || activeClassroomsCount > 0 ? 'text-emerald-600 animate-pulse' : 'text-slate-700 group-hover:text-emerald-600'}`} />
+              {pendingInvitationsCount > 0 ? (
                 <>
                   {/* Outer Blinking Signal Halo */}
-                  <span className="absolute top-1 right-1 w-4 h-4 bg-emerald-500 rounded-full animate-ping opacity-75" />
+                  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-emerald-500 rounded-full animate-ping opacity-80" />
                   {/* Badge Counter */}
-                  <span className="absolute top-1 right-1 min-w-4 h-4 px-1 bg-emerald-500 text-white text-[10px] font-extrabold rounded-full flex items-center justify-center ring-2 ring-white shadow-xs">
+                  <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 bg-emerald-600 text-white text-[10px] font-extrabold rounded-full flex items-center justify-center ring-2 ring-white shadow-xs">
+                    {pendingInvitationsCount}
+                  </span>
+                </>
+              ) : activeClassroomsCount > 0 ? (
+                <>
+                  <span className="absolute top-0.5 right-0.5 w-4 h-4 bg-emerald-500 rounded-full animate-ping opacity-75" />
+                  <span className="absolute top-0.5 right-0.5 min-w-4 h-4 px-1 bg-emerald-500 text-white text-[10px] font-extrabold rounded-full flex items-center justify-center ring-2 ring-white shadow-xs">
                     {activeClassroomsCount}
                   </span>
                 </>
-              ) : (
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-slate-300 rounded-full ring-2 ring-white" />
-              )}
+              ) : null}
             </button>
 
             {/* 2. Messages / Inbox Icon with Blinking Signal Light */}
             <button 
               onClick={() => router.push('/inbox')} 
-              className="p-2 sm:p-2.5 rounded-xl text-slate-600 hover:text-[#1877f2] hover:bg-blue-50/70 transition-all relative cursor-pointer group"
+              className={`p-2 sm:p-2.5 rounded-xl transition-all relative cursor-pointer group ${
+                unreadCount > 0 
+                  ? 'text-[#1877f2] bg-blue-50/80 shadow-xs ring-1 ring-blue-500/30' 
+                  : 'text-slate-600 hover:text-[#1877f2] hover:bg-blue-50/70'
+              }`}
               title={unreadCount > 0 ? `${unreadCount} message(s) non lu(s)` : "Messagerie & Boîte de Réception"}
               aria-label="Boîte de réception"
             >
@@ -361,15 +393,13 @@ export default function DashboardPage() {
               {unreadCount > 0 ? (
                 <>
                   {/* Outer Blinking Signal Halo */}
-                  <span className="absolute top-1 right-1 w-4 h-4 bg-blue-500 rounded-full animate-ping opacity-75" />
+                  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-blue-500 rounded-full animate-ping opacity-80" />
                   {/* Badge Counter */}
-                  <span className="absolute top-1 right-1 min-w-4 h-4 px-1 bg-[#1877f2] text-white text-[10px] font-extrabold rounded-full flex items-center justify-center ring-2 ring-white shadow-xs">
+                  <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 bg-[#1877f2] text-white text-[10px] font-extrabold rounded-full flex items-center justify-center ring-2 ring-white shadow-xs">
                     {unreadCount}
                   </span>
                 </>
-              ) : (
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-slate-300 rounded-full ring-2 ring-white" />
-              )}
+              ) : null}
             </button>
 
             {/* Real Profile Capsule & Logout Menu */}

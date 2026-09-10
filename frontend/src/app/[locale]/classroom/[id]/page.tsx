@@ -4,23 +4,23 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { Link, useRouter } from '@/i18n/routing';
 import Image from 'next/image';
-import { 
-  Mic, 
-  MicOff, 
-  Video, 
-  VideoOff, 
-  MonitorUp, 
-  MonitorX, 
-  PhoneOff, 
-  Hand, 
-  MessageSquare, 
-  Users as UsersIcon, 
-  Shield, 
-  Radio, 
-  Send, 
-  AlertCircle, 
-  CheckCircle2, 
-  Settings, 
+import {
+  Mic,
+  MicOff,
+  Video,
+  VideoOff,
+  MonitorUp,
+  MonitorX,
+  PhoneOff,
+  Hand,
+  MessageSquare,
+  Users as UsersIcon,
+  Shield,
+  Radio,
+  Send,
+  AlertCircle,
+  CheckCircle2,
+  Settings,
   Info,
   Maximize2,
   Copy,
@@ -223,7 +223,7 @@ export default function VirtualClassroomLivePage() {
 
         // Check join approval status for non-host
         const isHost = userRes.data.id === roomRes.data.instructor_id || ['formateur', 'admin', 'admin_manager', 'pedagogique', 'dg_rh', 'dg/rh'].includes(userRes.data.role);
-        
+
         if (isHost) {
           setJoinStatus('approved');
           const reqsRes = await apiClient.get(`/classrooms/${roomId}/join-requests`).catch(() => ({ data: [] }));
@@ -271,10 +271,10 @@ export default function VirtualClassroomLivePage() {
           return;
         }
         setRoomError(
-          err?.response?.data?.detail || 
+          err?.response?.data?.detail ||
           (err?.message === 'Network Error' || !err?.response
             ? "Impossible de contacter le serveur backend. Vérifiez que le serveur FastAPI est bien démarré sur http://127.0.0.1:8000."
-            : "Impossible d'accéder à la classe virtuelle.")
+            : "Impossible d'accéder à la salle vidéo conférence.")
         );
       } finally {
         setIsLoadingRoom(false);
@@ -323,7 +323,7 @@ export default function VirtualClassroomLivePage() {
 
         if (roomRes?.data && roomRes.data.is_active === false) {
           stopAllMedia();
-          alert("La classe virtuelle a été arrêtée.");
+          alert("La salle vidéo conférence a été arrêtée.");
           router.push('/classroom');
           return;
         }
@@ -331,7 +331,7 @@ export default function VirtualClassroomLivePage() {
         if (subRes.data) {
           setSubgroupsState(subRes.data);
           if (subRes.data.is_active && currentUser) {
-            const mySg = subRes.data.subgroups.find((sg: SubGroup) => 
+            const mySg = subRes.data.subgroups.find((sg: SubGroup) =>
               sg.members.some(m => m.toLowerCase() === currentUser.email.toLowerCase())
             );
             if (mySg && !currentActiveSubgroupId) {
@@ -354,7 +354,7 @@ export default function VirtualClassroomLivePage() {
             return [...prev, ...fresh];
           });
         }
-      } catch {}
+      } catch { }
     }, 3000);
     return () => clearInterval(interval);
   }, [roomId, currentUser, currentActiveSubgroupId, isManager, classroom, joinStatus]);
@@ -426,7 +426,7 @@ export default function VirtualClassroomLivePage() {
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = stream;
         // Explicitly play for mobile Safari/WebKit policies
-        localVideoRef.current.play().catch(() => {});
+        localVideoRef.current.play().catch(() => { });
       }
       setIsCameraOff(false);
       setIsMicMuted(false);
@@ -515,7 +515,7 @@ export default function VirtualClassroomLivePage() {
 
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = localStreamRef.current;
-        localVideoRef.current.play().catch(() => {});
+        localVideoRef.current.play().catch(() => { });
       }
       setIsCameraOff(false);
     } catch (err) {
@@ -533,7 +533,7 @@ export default function VirtualClassroomLivePage() {
     }
 
     if (!isManager && classroom && classroom.allow_screen_sharing === false) {
-      alert("Le partage d'écran est désactivé par le formateur dans cette classe virtuelle.");
+      alert("Le partage d'écran est désactivé par le formateur dans cette salle vidéo conférence.");
       return;
     }
 
@@ -557,7 +557,7 @@ export default function VirtualClassroomLivePage() {
 
       if (screenVideoRef.current) {
         screenVideoRef.current.srcObject = stream;
-        screenVideoRef.current.play().catch(() => {});
+        screenVideoRef.current.play().catch(() => { });
       }
 
       stream.getVideoTracks()[0].onended = () => {
@@ -784,10 +784,10 @@ export default function VirtualClassroomLivePage() {
           <div className="w-16 h-16 mx-auto rounded-2xl bg-red-500/10 text-red-500 flex items-center justify-center">
             <AlertCircle size={36} />
           </div>
-          <h2 className="text-xl sm:text-2xl font-bold">Classe introuvable</h2>
-          <p className="text-gray-400 text-xs sm:text-sm">{roomError || "Cette classe virtuelle n'existe pas ou est fermée."}</p>
+          <h2 className="text-xl sm:text-2xl font-bold">Salle introuvable</h2>
+          <p className="text-gray-400 text-xs sm:text-sm">{roomError || "Cette salle vidéo conférence n'existe pas ou est fermée."}</p>
           <Link href="/classroom" className="btn-primary py-3 rounded-xl block font-bold text-xs sm:text-sm">
-            Retour aux Classes Virtuelles
+            Retour aux Salles Vidéo Conférence
           </Link>
         </div>
       </div>
@@ -804,7 +804,7 @@ export default function VirtualClassroomLivePage() {
           <div className="space-y-2">
             <h2 className="text-xl sm:text-2xl font-extrabold text-white">Salle d'Attente (Lobby)</h2>
             <p className="text-gray-300 text-xs sm:text-sm leading-relaxed">
-              Votre demande pour rejoindre la classe <span className="font-bold text-primary underline">{classroom.title}</span> a été transmise au formateur.
+              Votre demande pour rejoindre la salle <span className="font-bold text-primary underline">{classroom.title}</span> a été transmise au formateur.
             </p>
           </div>
           <div className="p-3 bg-purple-950/50 border border-purple-500/30 rounded-xl text-xs text-purple-200 flex items-center justify-center gap-2">
@@ -832,11 +832,11 @@ export default function VirtualClassroomLivePage() {
           <div className="space-y-2">
             <h2 className="text-xl sm:text-2xl font-extrabold text-white">Accès Refusé</h2>
             <p className="text-gray-300 text-xs sm:text-sm leading-relaxed">
-              Le formateur a refusé la demande d'accès à cette session de classe virtuelle.
+              Le formateur a refusé la demande d'accès à cette session de salle vidéo conférence.
             </p>
           </div>
           <Link href="/classroom" className="btn-primary py-3 rounded-xl block font-bold text-xs sm:text-sm">
-            Retour aux Classes Virtuelles
+            Retour aux Salles Vidéo Conférence
           </Link>
         </div>
       </div>
@@ -845,13 +845,13 @@ export default function VirtualClassroomLivePage() {
 
   const myName = currentUser?.email?.split('@')[0] || 'Participant';
   const instructorName = classroom.instructor?.email?.split('@')[0] || `Formateur #${classroom.instructor_id}`;
-  const mySubgroup = subgroupsState.subgroups.find(sg => 
+  const mySubgroup = subgroupsState.subgroups.find(sg =>
     sg.members.some(m => m.toLowerCase() === currentUser?.email?.toLowerCase())
   );
 
   return (
     <div className="h-[100dvh] max-h-[100dvh] w-screen bg-[#0b0f19] text-white flex flex-col overflow-hidden select-none touch-manipulation">
-      
+
       {/* 1. TOP HEADER BAR (Mobile Optimized) */}
       <header className="h-14 sm:h-16 px-3 sm:px-6 bg-[#111827]/90 backdrop-blur border-b border-white/10 flex items-center justify-between shrink-0 z-30">
         <div className="flex items-center gap-2.5 sm:gap-4 min-w-0">
@@ -882,11 +882,10 @@ export default function VirtualClassroomLivePage() {
           {isManager && (
             <button
               onClick={() => setShowRequestsModal(true)}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-bold border transition-all ${
-                pendingRequests.length > 0
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-bold border transition-all ${pendingRequests.length > 0
                   ? 'bg-purple-600/90 text-white border-purple-400 animate-pulse shadow-md shadow-purple-600/30'
                   : 'bg-white/5 hover:bg-white/10 text-gray-300 border-white/10'
-              }`}
+                }`}
               title="Demandes d'accès à la salle"
             >
               <Shield size={12} className={pendingRequests.length > 0 ? 'text-white' : 'text-purple-400'} />
@@ -932,10 +931,10 @@ export default function VirtualClassroomLivePage() {
 
       {/* 2. MAIN STAGE & VIDEO TILES (Mobile Responsive Layout) */}
       <div className="flex-1 flex overflow-hidden relative">
-        
+
         {/* Stage Content */}
         <div className="flex-1 p-2 sm:p-4 flex flex-col relative overflow-hidden">
-          
+
           {/* Subgroups Student Invite Banner */}
           {subgroupsState.is_active && mySubgroup && !currentActiveSubgroupId && (
             <div className="mb-2 p-2.5 sm:p-3.5 rounded-2xl bg-gradient-to-r from-blue-900/90 to-indigo-900/90 border border-blue-500/50 shadow-xl flex items-center justify-between gap-2 text-xs shrink-0 animate-fade-in-up">
@@ -999,7 +998,7 @@ export default function VirtualClassroomLivePage() {
 
           {/* Video Tiles Grid */}
           <div className="flex-1 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-3 h-full relative overflow-y-auto content-start p-1 scrollbar-thin">
-            
+
             {/* Screen Share Stage */}
             {isScreenSharing ? (
               <div className="col-span-2 md:col-span-3 lg:col-span-4 xl:col-span-5 relative rounded-2xl overflow-hidden bg-black border-2 border-primary/50 shadow-2xl flex items-center justify-center min-h-[300px]">
@@ -1095,7 +1094,7 @@ export default function VirtualClassroomLivePage() {
         {/* ========================================================================= */}
         {activeSidePanel && (
           <aside className="fixed sm:static inset-0 z-50 sm:z-20 w-full sm:w-80 md:w-96 bg-[#111827] border-l border-white/10 flex flex-col shrink-0 transition-all">
-            
+
             {/* Drawer Header */}
             <div className="p-3 sm:p-4 border-b border-white/10 flex flex-col gap-2">
               <div className="flex items-center justify-between">
@@ -1106,7 +1105,7 @@ export default function VirtualClassroomLivePage() {
                     <><UsersIcon size={16} className="text-secondary" /> Participants ({participantsList.length + 2})</>
                   )}
                 </h3>
-                <button 
+                <button
                   onClick={() => setActiveSidePanel(null)}
                   className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white text-xs font-bold flex items-center gap-1"
                 >
@@ -1208,19 +1207,18 @@ export default function VirtualClassroomLivePage() {
                             )}
                           </div>
 
-                          <div className={`p-2.5 sm:p-3 rounded-2xl text-xs max-w-[90%] leading-relaxed ${
-                            msg.isMe 
-                              ? isPrivate 
-                                ? 'bg-purple-900/80 border border-purple-500/40 text-white rounded-br-none' 
+                          <div className={`p-2.5 sm:p-3 rounded-2xl text-xs max-w-[90%] leading-relaxed ${msg.isMe
+                              ? isPrivate
+                                ? 'bg-purple-900/80 border border-purple-500/40 text-white rounded-br-none'
                                 : isSubgroup
                                   ? 'bg-indigo-700 text-white rounded-br-none'
-                                  : 'bg-primary text-white rounded-br-none' 
-                              : isPrivate 
-                                ? 'bg-purple-950/60 border border-purple-500/30 text-gray-200 rounded-bl-none' 
+                                  : 'bg-primary text-white rounded-br-none'
+                              : isPrivate
+                                ? 'bg-purple-950/60 border border-purple-500/30 text-gray-200 rounded-bl-none'
                                 : isSubgroup
                                   ? 'bg-indigo-950/60 border border-indigo-500/30 text-gray-200 rounded-bl-none'
                                   : 'bg-white/10 text-gray-200 rounded-bl-none'
-                          }`}>
+                            }`}>
                             {msg.text && <p className="whitespace-pre-wrap">{msg.text}</p>}
 
                             {/* Message Attachment */}
@@ -1228,9 +1226,9 @@ export default function VirtualClassroomLivePage() {
                               <div className="mt-2">
                                 {msg.attachment.category === 'image' && (
                                   <div className="rounded-xl overflow-hidden border border-white/10 bg-black/40">
-                                    <img 
-                                      src={msg.attachment.url} 
-                                      alt={msg.attachment.filename} 
+                                    <img
+                                      src={msg.attachment.url}
+                                      alt={msg.attachment.filename}
                                       className="w-full h-auto max-h-40 object-cover cursor-pointer hover:scale-105 transition-transform"
                                       onClick={() => window.open(msg.attachment!.url, '_blank')}
                                     />
@@ -1300,9 +1298,8 @@ export default function VirtualClassroomLivePage() {
                     <button
                       type="button"
                       onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                      className={`p-2 rounded-xl border border-white/10 transition-colors shrink-0 ${
-                        showEmojiPicker ? 'bg-amber-500/20 text-amber-300 border-amber-500/50' : 'bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white'
-                      }`}
+                      className={`p-2 rounded-xl border border-white/10 transition-colors shrink-0 ${showEmojiPicker ? 'bg-amber-500/20 text-amber-300 border-amber-500/50' : 'bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white'
+                        }`}
                       title="Insérer un émoji"
                     >
                       😊
@@ -1331,9 +1328,8 @@ export default function VirtualClassroomLivePage() {
                     type="button"
                     onClick={() => chatFileInputRef.current?.click()}
                     disabled={isUploadingFile}
-                    className={`p-2 rounded-xl border border-white/10 transition-colors shrink-0 ${
-                      selectedFile ? 'bg-primary/20 text-primary border-primary/50' : 'bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white'
-                    }`}
+                    className={`p-2 rounded-xl border border-white/10 transition-colors shrink-0 ${selectedFile ? 'bg-primary/20 text-primary border-primary/50' : 'bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white'
+                      }`}
                     title="Joindre un document ou média"
                   >
                     <Paperclip size={16} />
@@ -1368,7 +1364,7 @@ export default function VirtualClassroomLivePage() {
             {/* Content : PARTICIPANTS */}
             {activeSidePanel === 'participants' && (
               <div className="p-3 sm:p-4 space-y-2.5 overflow-y-auto">
-                
+
                 {/* Formateur */}
                 <div className="flex items-center justify-between p-2.5 sm:p-3 rounded-xl bg-white/5 border border-white/5">
                   <div className="flex items-center gap-2.5 min-w-0">
@@ -1445,7 +1441,7 @@ export default function VirtualClassroomLivePage() {
 
       {/* 3. BOTTOM CONTROLS BAR (Mobile Touch Optimized & Full Width) */}
       <footer className="h-16 sm:h-20 bg-[#111827] border-t border-white/10 px-2 sm:px-6 flex items-center justify-between shrink-0 z-30 overflow-x-auto scrollbar-none">
-        
+
         {/* Left info (Code on desktop) */}
         <div className="hidden lg:flex items-center gap-3 max-w-[200px] truncate">
           <p className="text-xs text-gray-400 font-mono">Code : <span className="text-white font-bold">{roomId}</span></p>
@@ -1453,15 +1449,14 @@ export default function VirtualClassroomLivePage() {
 
         {/* Center Main Action Buttons */}
         <div className="flex items-center gap-2 sm:gap-3.5 mx-auto">
-          
+
           {/* Micro Button */}
           <button
             onClick={toggleMicrophone}
-            className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all shrink-0 ${
-              isMicMuted 
-                ? 'bg-red-500 hover:bg-red-600 text-white shadow-md shadow-red-500/30' 
+            className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all shrink-0 ${isMicMuted
+                ? 'bg-red-500 hover:bg-red-600 text-white shadow-md shadow-red-500/30'
                 : 'bg-white/10 hover:bg-white/20 text-white'
-            }`}
+              }`}
             title={isMicMuted ? "Activer le micro" : "Couper le micro"}
           >
             {isMicMuted ? <MicOff size={18} /> : <Mic size={18} />}
@@ -1470,11 +1465,10 @@ export default function VirtualClassroomLivePage() {
           {/* Camera Button */}
           <button
             onClick={toggleCamera}
-            className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all shrink-0 ${
-              isCameraOff 
-                ? 'bg-red-500 hover:bg-red-600 text-white shadow-md shadow-red-500/30' 
+            className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all shrink-0 ${isCameraOff
+                ? 'bg-red-500 hover:bg-red-600 text-white shadow-md shadow-red-500/30'
                 : 'bg-white/10 hover:bg-white/20 text-white'
-            }`}
+              }`}
             title={isCameraOff ? "Activer la caméra" : "Couper la caméra"}
           >
             {isCameraOff ? <VideoOff size={18} /> : <Video size={18} />}
@@ -1495,11 +1489,10 @@ export default function VirtualClassroomLivePage() {
           {/* Screen Share Button */}
           <button
             onClick={toggleScreenShare}
-            className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all shrink-0 ${
-              isScreenSharing 
-                ? 'bg-cyan-500 hover:bg-cyan-600 text-black font-bold shadow-md shadow-cyan-500/30' 
+            className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all shrink-0 ${isScreenSharing
+                ? 'bg-cyan-500 hover:bg-cyan-600 text-black font-bold shadow-md shadow-cyan-500/30'
                 : 'bg-white/10 hover:bg-white/20 text-white'
-            }`}
+              }`}
             title={isScreenSharing ? "Arrêter le partage d'écran" : "Partager votre écran"}
           >
             {isScreenSharing ? <MonitorX size={18} /> : <MonitorUp size={18} />}
@@ -1508,11 +1501,10 @@ export default function VirtualClassroomLivePage() {
           {/* Raise Hand Button */}
           <button
             onClick={() => setIsHandRaised(!isHandRaised)}
-            className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all shrink-0 ${
-              isHandRaised 
-                ? 'bg-yellow-500 hover:bg-yellow-600 text-black font-bold' 
+            className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all shrink-0 ${isHandRaised
+                ? 'bg-yellow-500 hover:bg-yellow-600 text-black font-bold'
                 : 'bg-white/10 hover:bg-white/20 text-white'
-            }`}
+              }`}
             title={isHandRaised ? "Baisser la main" : "Lever la main"}
           >
             <Hand size={18} />
@@ -1521,11 +1513,10 @@ export default function VirtualClassroomLivePage() {
           {/* Chat Button (Prominent in main action bar) */}
           <button
             onClick={() => setActiveSidePanel(activeSidePanel === 'chat' ? null : 'chat')}
-            className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all relative shrink-0 ${
-              activeSidePanel === 'chat' 
-                ? 'bg-primary text-white shadow-md shadow-primary/30' 
+            className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all relative shrink-0 ${activeSidePanel === 'chat'
+                ? 'bg-primary text-white shadow-md shadow-primary/30'
                 : 'bg-white/10 hover:bg-white/20 text-white'
-            }`}
+              }`}
             title="Ouvrir la discussion"
           >
             <MessageSquare size={18} />
@@ -1536,11 +1527,10 @@ export default function VirtualClassroomLivePage() {
           {isManager && (
             <button
               onClick={handlePrepareSubgroups}
-              className={`px-3 h-11 sm:h-12 rounded-full flex items-center gap-1.5 text-xs font-bold transition-all shrink-0 ${
-                subgroupsState.is_active
+              className={`px-3 h-11 sm:h-12 rounded-full flex items-center gap-1.5 text-xs font-bold transition-all shrink-0 ${subgroupsState.is_active
                   ? 'bg-purple-600 hover:bg-purple-700 text-white shadow-md shadow-purple-600/30'
                   : 'bg-white/10 hover:bg-white/20 text-purple-300'
-              }`}
+                }`}
               title="Sous-groupes"
             >
               <Split size={17} />
@@ -1564,7 +1554,7 @@ export default function VirtualClassroomLivePage() {
           <button
             onClick={handleLeaveClass}
             className="px-3 sm:px-5 h-11 sm:h-12 bg-white/10 hover:bg-white/20 text-white font-bold rounded-full flex items-center gap-1.5 transition-all shrink-0 text-xs sm:text-sm border border-white/10 cursor-pointer"
-            title="Quitter la classe virtuelle (session personnelle)"
+            title="Quitter la salle vidéo conférence (session personnelle)"
           >
             <PhoneOff size={16} />
             <span className="hidden sm:inline">Quitter</span>
@@ -1576,9 +1566,8 @@ export default function VirtualClassroomLivePage() {
         <div className="flex items-center gap-2 shrink-0 ml-2">
           <button
             onClick={() => setActiveSidePanel(activeSidePanel === 'participants' ? null : 'participants')}
-            className={`p-2.5 sm:p-3 rounded-full transition-all relative ${
-              activeSidePanel === 'participants' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'
-            }`}
+            className={`p-2.5 sm:p-3 rounded-full transition-all relative ${activeSidePanel === 'participants' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'
+              }`}
             title="Participants"
           >
             <UsersIcon size={18} />
@@ -1596,7 +1585,7 @@ export default function VirtualClassroomLivePage() {
       {showSubgroupModal && (
         <div className="fixed inset-0 z-[100] bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
           <div className="bg-white max-w-2xl w-full p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-2xl space-y-5 my-auto text-slate-900 animate-zoom-in">
-            
+
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2.5 text-[#1877f2] font-extrabold text-sm sm:text-base">
                 <div className="w-8 h-8 rounded-xl bg-blue-50 border border-blue-200/60 text-[#1877f2] flex items-center justify-center font-bold shrink-0">
@@ -1604,7 +1593,7 @@ export default function VirtualClassroomLivePage() {
                 </div>
                 <h3 className="text-base font-extrabold text-slate-900">Création des Sous-Groupes (Breakout Rooms)</h3>
               </div>
-              <button 
+              <button
                 onClick={() => setShowSubgroupModal(false)}
                 className="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 transition-colors text-sm font-bold cursor-pointer"
                 aria-label="Fermer"
@@ -1614,7 +1603,7 @@ export default function VirtualClassroomLivePage() {
             </div>
 
             <div className="space-y-4 text-xs">
-              
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 p-4 rounded-2xl bg-slate-50 border border-slate-200">
                 <div>
                   <label className="block uppercase font-bold text-slate-700 mb-1.5 text-xs tracking-wider">
@@ -1766,8 +1755,8 @@ export default function VirtualClassroomLivePage() {
                 </div>
                 <h3 className="text-base font-extrabold text-slate-900">Demandes d'accès à la classe ({pendingRequests.length})</h3>
               </div>
-              <button 
-                onClick={() => setShowRequestsModal(false)} 
+              <button
+                onClick={() => setShowRequestsModal(false)}
                 className="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 transition-colors text-sm font-bold cursor-pointer"
                 aria-label="Fermer"
               >
@@ -1833,8 +1822,8 @@ export default function VirtualClassroomLivePage() {
                 </div>
                 <h3 className="text-base font-extrabold text-slate-900">Paramètres de la classe en direct</h3>
               </div>
-              <button 
-                onClick={() => setShowSettingsModal(false)} 
+              <button
+                onClick={() => setShowSettingsModal(false)}
                 className="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 transition-colors text-sm font-bold cursor-pointer"
                 aria-label="Fermer"
               >
@@ -1905,7 +1894,7 @@ export default function VirtualClassroomLivePage() {
                 <Square size={24} fill="currentColor" />
               </div>
               <div>
-                <h3 className="text-lg font-extrabold text-slate-900">Arrêter la Classe Virtuelle ?</h3>
+                <h3 className="text-lg font-extrabold text-slate-900">Arrêter la Salle Vidéo Conférence ?</h3>
                 <p className="text-xs text-slate-500">Cette action fermera la session pour l'ensemble des apprenants.</p>
               </div>
             </div>

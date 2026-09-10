@@ -1,4 +1,5 @@
 import os
+import re
 import socket
 from pathlib import Path
 from typing import Any
@@ -12,11 +13,15 @@ def is_in_railway() -> bool:
     """Detects if code is executing inside Railway cloud infrastructure."""
     return bool(
         os.getenv("RAILWAY_ENVIRONMENT")
+        or os.getenv("RAILWAY_ENVIRONMENT_NAME")
         or os.getenv("RAILWAY_ENVIRONMENT_ID")
         or os.getenv("RAILWAY_PROJECT_ID")
         or os.getenv("RAILWAY_SERVICE_ID")
+        or os.getenv("RAILWAY_SERVICE_NAME")
+        or os.getenv("RAILWAY_DEPLOYMENT_ID")
         or os.getenv("RAILWAY_PRIVATE_DOMAIN")
         or os.getenv("RAILWAY_PUBLIC_DOMAIN")
+        or os.getenv("RAILWAY_TCP_PROXY_DOMAIN")
     )
 
 
@@ -28,11 +33,23 @@ def is_production() -> bool:
 
 def expand_railway_template_variables(url: str) -> str:
     """
-    Expands Railway template tokens like ${{PGUSER}}, ${{POSTGRES_PASSWORD}}, ${{RAILWAY_PRIVATE_DOMAIN}}, etc.
+    Expands Railway template tokens like ${{PGUSER}}, ${{Postgres.DATABASE_URL}}, ${{POSTGRES_PASSWORD}}, etc.
     even if passed literally in DATABASE_URL or .env file.
     """
     if not url or ("${{" not in url and "${" not in url):
         return url
+
+    # Extract single token if whole url is a reference like ${{Postgres.DATABASE_URL}}
+    cleaned = url.strip()
+    if (cleaned.startswith("${{") and cleaned.endswith("}}")) or (cleaned.startswith("${") and cleaned.endswith("}")):
+        inner = cleaned.lstrip("${").rstrip("}").strip()
+        # Direct lookup in environment (e.g. Postgres.DATABASE_URL, DATABASE_URL)
+        if os.getenv(inner):
+            return os.getenv(inner).strip().strip("'\"")
+        # Suffix lookup (e.g. DATABASE_URL)
+        suffix = inner.split(".")[-1]
+        if os.getenv(suffix):
+            return os.getenv(suffix).strip().strip("'\"")
 
     replacements = {
         "PGUSER": os.getenv("PGUSER") or os.getenv("POSTGRES_USER") or "postgres",
@@ -54,6 +71,11 @@ def expand_railway_template_variables(url: str) -> str:
         result = result.replace(f"${{{{{k}}}}}", v)
         result = result.replace(f"${{{k}}}", v)
         result = result.replace(f"${k}", v)
+        # Handle service-scoped references e.g. ${{Postgres.PGHOST}} or ${{postgresql.PGHOST}}
+        for prefix in ["Postgres.", "postgres.", "PostgreSQL.", "postgresql."]:
+            result = result.replace(f"${{{{ {prefix}{k} }}}}", v)
+            result = result.replace(f"${{{{{prefix}{k}}}}}", v)
+            result = result.replace(f"${{{prefix}{k}}}", v)
     return result
 
 
@@ -106,26 +128,30 @@ def get_default_database_url() -> str:
         auth = f"{pguser}:{pgpassword}@" if pgpassword else f"{pguser}@"
         return f"postgresql+psycopg2://{auth}{pghost}:{pgport}/{pgdatabase}"
 
-    # 3. Railway Persistent Volume auto-detection for SQLite fallback
+    # 3. Railway Persistent Volume auto-detection for file-backed storage
     railway_vol = os.getenv("RAILWAY_VOLUME_MOUNT_PATH")
     if railway_vol:
         vol_path = Path(railway_vol)
         vol_path.mkdir(parents=True, exist_ok=True)
         return f"sqlite:///{(vol_path / 'eschola.db').as_posix()}"
 
-    # 4. In Railway without a volume: prevent silent ephemeral SQLite fallback unless explicitly opted in
+    # 4. In Railway without a volume: prevent silent ephemeral SQLite fallback
     if is_in_railway():
         allow_ephemeral = os.getenv("ALLOW_EPHEMERAL_SQLITE", "false").strip().lower() in ("true", "1", "yes")
         if not allow_ephemeral:
-            print("[CRITICAL RAILWAY WARNING] Railway container detected without DATABASE_URL or persistent volume!")
-            print("To prevent accidental data loss on redeployment, link a PostgreSQL database in Railway.")
+            raise RuntimeError(
+                "Environnement Railway détecté sans base de données PostgreSQL configurée (DATABASE_URL manquante). "
+                "Pour éviter toute perte de données lors des redéploiements, configurez la variable DATABASE_URL "
+                "avec la référence PostgreSQL Railway (ex: ${{Postgres.DATABASE_URL}})."
+            )
+        print("[CRITICAL RAILWAY WARNING] Production container running with ephemeral SQLite fallback (ALLOW_EPHEMERAL_SQLITE=true)!")
 
-    # 5. Known persistent mount directories in container
-    for mount_dir in ["/data", "/app/backend/data", "/app/data"]:
+    # 5. Known persistent mount directories outside container root
+    for mount_dir in ["/data", "/app/data"]:
         if os.path.exists(mount_dir) and os.path.isdir(mount_dir):
             return f"sqlite:///{(Path(mount_dir) / 'eschola.db').as_posix()}"
 
-    # 6. Canonical local SQLite path anchored to backend/eschola.db
+    # 6. Canonical local SQLite path anchored to backend/eschola.db for local dev
     canonical_db = BACKEND_DIR / "eschola.db"
     return f"sqlite:///{canonical_db.as_posix()}"
 
@@ -175,7 +201,7 @@ class Settings(BaseSettings):
             return get_default_database_url()
         v = expand_railway_template_variables(str(v).strip().strip("'\""))
 
-        # Fallback to local SQLite ONLY when running locally (outside Railway) and Railway internal host is unresolvable
+        # Fallback to local SQLite ONLY when running locally (strictly outside Railway) and Railway internal host is unresolvable
         if not is_in_railway() and "railway.internal" in v and not is_postgres_url_resolvable(v):
             print("[Database Notice] 'postgres.railway.internal' est un réseau privé Railway inaccessible hors du cloud.")
             print("                 Pour le dev local : configurez le TCP Proxy Railway (DATABASE_PUBLIC_URL) ou utilisez la base SQLite.")
@@ -186,7 +212,7 @@ class Settings(BaseSettings):
         # Fix Railway / Supabase postgres:// prefix for SQLAlchemy
         if v.startswith("postgres://"):
             v = v.replace("postgres://", "postgresql+psycopg2://", 1)
-        elif v.startswith("postgresql://") and not v.startswith("postgresql+"):
+        elif v.startswith("postgresql://") and not db_has_driver(v):
             v = v.replace("postgresql://", "postgresql+psycopg2://", 1)
         # Normalize relative sqlite paths to canonical backend directory
         elif v.startswith("sqlite:///./"):
@@ -211,6 +237,23 @@ class Settings(BaseSettings):
             self.AUTO_SYNC_SCHEMA = False
         return self
 
+    @field_validator("SMTP_PORT", mode="before")
+    @classmethod
+    def validate_smtp_port(cls, v: Any) -> int:
+        if v is not None and str(v).strip():
+            try:
+                return int(str(v).strip())
+            except Exception:
+                return 587
+        return 587
+
+    @field_validator("SMTP_TLS", "SMTP_SSL", mode="before")
+    @classmethod
+    def validate_smtp_bools(cls, v: Any) -> bool:
+        if v is not None and str(v).strip():
+            return str(v).strip().lower() in ("true", "1", "yes", "on")
+        return False
+
     @field_validator("EMAILS_ENABLED", mode="before")
     @classmethod
     def validate_emails_enabled(cls, v: Any, info: Any) -> bool:
@@ -223,8 +266,11 @@ class Settings(BaseSettings):
     def default_from_email(cls, v: str, info: Any) -> str:
         if v and str(v).strip():
             return str(v).strip()
-        # Fallback to SMTP_USER if user looks like an email
         return ""
+
+
+def db_has_driver(url: str) -> bool:
+    return bool(re.match(r"^postgresql\+[a-zA-Z0-9_]+://", url))
 
 
 settings = Settings()
@@ -232,4 +278,5 @@ settings = Settings()
 # Automatically enable EMAILS_ENABLED if SMTP_HOST and SMTP_FROM_EMAIL or SMTP_USER are provided and EMAILS_ENABLED wasn't explicitly disabled
 if not settings.EMAILS_ENABLED and settings.SMTP_HOST and (settings.SMTP_USER or settings.SMTP_FROM_EMAIL):
     settings.EMAILS_ENABLED = True
+
 

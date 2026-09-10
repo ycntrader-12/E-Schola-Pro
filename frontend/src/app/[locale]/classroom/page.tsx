@@ -164,6 +164,9 @@ export default function ClassroomHubPage() {
     setProcessingInvId(invId);
     try {
       const res = await apiClient.post(`/classrooms/invitations/${invId}/accept`);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('classroom_updated'));
+      }
       const targetRoomCode = res.data?.room_id || roomId;
       if (targetRoomCode) {
         router.push(`/classroom/${targetRoomCode}`);
@@ -182,6 +185,9 @@ export default function ClassroomHubPage() {
     try {
       await apiClient.post(`/classrooms/invitations/${invId}/decline`);
       setMyInvitations((prev) => prev.filter((i) => i.id !== invId));
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('classroom_updated'));
+      }
     } catch (err: any) {
       alert(extractErrorMessage(err, "Erreur lors du refus de l'invitation."));
     } finally {
@@ -221,10 +227,13 @@ export default function ClassroomHubPage() {
         requires_approval: requiresApproval,
       });
       setIsModalOpen(false);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('classroom_updated'));
+      }
       router.push(`/classroom/${res.data.room_id}`);
     } catch (err) {
       const e = err as { response?: { data?: { detail?: string } } };
-      setCreateError(e.response?.data?.detail || 'Erreur lors de la création de la classe virtuelle.');
+      setCreateError(e.response?.data?.detail || 'Erreur lors de la création de la salle vidéo conférence.');
     } finally {
       setIsCreating(false);
     }
@@ -232,7 +241,7 @@ export default function ClassroomHubPage() {
 
 
   const handlePurgeHistory = async () => {
-    if (!window.confirm("Êtes-vous sûr de vouloir supprimer DÉFINITIVEMENT tout l'historique des classes fermées ?")) return;
+    if (!window.confirm("Êtes-vous sûr de vouloir supprimer DÉFINITIVEMENT tout l'historique des salles fermées ?")) return;
     setIsPurging(true);
     try {
       const res = await apiClient.delete('/classrooms/history/purge');
@@ -248,13 +257,16 @@ export default function ClassroomHubPage() {
   const [stoppingRoomId, setStoppingRoomId] = useState<string | null>(null);
 
   const handleStopClassroom = async (roomId: string) => {
-    if (!window.confirm("Êtes-vous sûr de vouloir ARRÊTER cette classe virtuelle pour tous les participants ?")) return;
+    if (!window.confirm("Êtes-vous sûr de vouloir ARRÊTER cette salle vidéo conférence pour tous les participants ?")) return;
     setStoppingRoomId(roomId);
     try {
       await apiClient.post(`/classrooms/${roomId}/stop`);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('classroom_updated'));
+      }
       fetchData();
     } catch (err: any) {
-      alert(err?.response?.data?.detail || "Erreur lors de l'arrêt de la classe.");
+      alert(err?.response?.data?.detail || "Erreur lors de l'arrêt de la salle vidéo conférence.");
     } finally {
       setStoppingRoomId(null);
     }
@@ -275,7 +287,7 @@ export default function ClassroomHubPage() {
             <Radio size={14} className="animate-pulse" /> Direct & Visioconférence
           </div>
           <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight leading-tight">
-            Classes <span className="text-brand-gradient">Virtuelles</span>
+            Salles <span className="text-brand-gradient">vidéo conférence</span>
           </h1>
           <p className="text-text-secondary text-base leading-relaxed">
             Rejoignez des sessions de cours en direct avec vos formateurs et camarades. Activez votre caméra, votre micro et partagez votre écran pour collaborer.
@@ -309,7 +321,7 @@ export default function ClassroomHubPage() {
               onClick={() => setIsModalOpen(true)}
               className="btn-primary px-8 py-4 rounded-2xl font-bold shadow-lg flex items-center justify-center gap-3 text-base"
             >
-              <Plus size={20} /> Nouvelle Classe Virtuelle
+              <Plus size={20} /> Nouvelle Salle vidéo conférence
             </button>
           )}
           <div className="p-4 rounded-2xl bg-surface/50 border border-border text-xs text-text-secondary space-y-1">
@@ -331,14 +343,14 @@ export default function ClassroomHubPage() {
         <div className="space-y-4 bg-emerald-500/10 border border-emerald-500/30 p-6 rounded-2xl shadow-xl">
           <div className="flex items-center gap-2 text-emerald-400 font-bold text-lg">
             <Sparkles size={20} className="animate-bounce" />
-            <span>Vos Invitations aux Classes Virtuelles ({myInvitations.length})</span>
+            <span>Vos Invitations aux Salles vidéo conférence ({myInvitations.length})</span>
           </div>
           <p className="text-xs text-text-secondary">
-            Vous avez été invité(e) à participer à une classe virtuelle en direct. Choisissez d'accepter pour rejoindre le cours immédiatement ou de décliner.
+            Vous avez été invité(e) à participer à une salle vidéo conférence en direct. Choisissez d'accepter pour rejoindre le cours immédiatement ou de décliner.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
             {myInvitations.map((inv) => {
-              const roomTitle = inv.classroom?.title || "Classe Virtuelle";
+              const roomTitle = inv.classroom?.title || "Salle vidéo conférence";
               const inviterName = inv.inviter?.email ? inv.inviter.email.split('@')[0] : `Formateur #${inv.inviter_id}`;
               const isProcessing = processingInvId === inv.id;
 
@@ -392,7 +404,7 @@ export default function ClassroomHubPage() {
             </div>
             <div>
               <h2 className="text-2xl font-bold">Sessions en cours et disponibles</h2>
-              <p className="text-xs text-text-secondary">Sélectionnez une classe virtuelle pour participer au cours interactif.</p>
+              <p className="text-xs text-text-secondary">Sélectionnez une salle vidéo conférence pour participer au cours interactif.</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -438,11 +450,11 @@ export default function ClassroomHubPage() {
         ) : classrooms.length === 0 ? (
           <div className="glass-card p-12 text-center text-text-secondary space-y-4 border border-dashed border-border">
             <Video size={48} className="mx-auto opacity-20" />
-            <p className="text-lg font-semibold text-text-primary">Aucune classe virtuelle ouverte pour le moment</p>
+            <p className="text-lg font-semibold text-text-primary">Aucune salle vidéo conférence ouverte pour le moment</p>
             <p className="text-sm max-w-md mx-auto">
               {canCreateClass 
-                ? 'Cliquez sur le bouton "Nouvelle Classe Virtuelle" ci-dessus pour lancer un direct avec vos étudiants.'
-                : 'Les formateurs ouvriront bientôt des classes virtuelles en direct. Vous pouvez aussi rejoindre avec un code fourni par votre formateur.'}
+                ? 'Cliquez sur le bouton "Nouvelle Salle vidéo conférence" ci-dessus pour lancer un direct avec vos étudiants.'
+                : 'Les formateurs ouvriront bientôt des salles vidéo conférence en direct. Vous pouvez aussi rejoindre avec un code fourni par votre formateur.'}
             </p>
           </div>
         ) : (
@@ -537,7 +549,7 @@ export default function ClassroomHubPage() {
                   <Video size={20} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900 tracking-tight">Nouvelle Classe Virtuelle</h3>
+                  <h3 className="text-lg font-bold text-slate-900 tracking-tight">Nouvelle Salle vidéo conférence</h3>
                   <p className="text-xs text-slate-500">Configurez et lancez une session en direct avec vos apprenants.</p>
                 </div>
               </div>
@@ -766,7 +778,7 @@ export default function ClassroomHubPage() {
                   className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer rounded-none"
                 >
                   {isCreating ? <Loader2 size={15} className="animate-spin" /> : <Plus size={16} />}
-                  <span>{isCreating ? 'Création...' : 'Lancer la Classe Virtuelle'}</span>
+                  <span>{isCreating ? 'Création...' : 'Lancer la Salle Vidéo Conférence'}</span>
                 </button>
               </div>
             </form>

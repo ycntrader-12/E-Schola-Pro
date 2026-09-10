@@ -590,7 +590,7 @@
     <div class="feature-card">
       <div class="feature-icon" style="background: rgba(168,85,247,0.1);">🎥</div>
       <div>
-        <h4>Classe Virtuelle</h4>
+        <h4>Salle Vidéo Conférence</h4>
         <p>Création de salles de visioconférence intégrées avec identifiant unique, accessibles par tous les utilisateurs inscrits.</p>
       </div>
     </div>
@@ -763,25 +763,28 @@ E-Schola Pro/
     <div class="card" style="margin-bottom: 24px;">
       <h4 style="margin-bottom: 8px; color: var(--text-primary);">🛡️ Persistance Permanente & Haute Disponibilité (PostgreSQL Railway & SQLite Local)</h4>
       <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">
-        <strong>Support Natif PostgreSQL Railway & Multi-Variables :</strong> E-Schola Pro supporte nativement <strong>PostgreSQL</strong> (en local ou sur cloud via Railway, Supabase, Neon) avec le driver performant <code>psycopg2-binary</code>. Le backend gère automatiquement la normalisation des chaînes de connexion (conversion <code>postgres://</code> en <code>postgresql+psycopg2://</code>), l'expansion automatique des variables de template Railway (ex. <code>postgresql://${{PGUSER}}:${{POSTGRES_PASSWORD}}@${{RAILWAY_PRIVATE_DOMAIN}}:5432/${{PGDATABASE}}</code>) et la détection multi-variables (<code>DATABASE_URL</code>, <code>POSTGRES_URL</code>, <code>DATABASE_PUBLIC_URL</code>, <code>DATABASE_URL_UNPOOLED</code>, <code>RAILWAY_PRIVATE_DOMAIN</code>, <code>PGHOST</code>, <code>POSTGRES_PASSWORD</code>, <code>PGDATABASE</code>).
+        <strong>Support Natif PostgreSQL Railway & Multi-Variables :</strong> E-Schola Pro supporte nativement <strong>PostgreSQL</strong> (en local ou sur cloud via Railway, Supabase, Neon) avec le driver performant <code>psycopg2-binary</code>. Le backend gère automatiquement la normalisation des chaînes de connexion (conversion <code>postgres://</code> en <code>postgresql+psycopg2://</code>), l'expansion automatique des variables de template Railway (ex. <code>${{Postgres.DATABASE_URL}}</code>, <code>${{postgres.DATABASE_URL}}</code>, <code>postgresql://${{PGUSER}}:${{POSTGRES_PASSWORD}}@${{RAILWAY_PRIVATE_DOMAIN}}:5432/${{PGDATABASE}}</code>) et la détection multi-variables (<code>DATABASE_URL</code>, <code>POSTGRES_URL</code>, <code>DATABASE_PUBLIC_URL</code>, <code>DATABASE_URL_UNPOOLED</code>, <code>RAILWAY_PRIVATE_DOMAIN</code>, <code>PGHOST</code>, <code>POSTGRES_PASSWORD</code>, <code>PGDATABASE</code>).
       </p>
       <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">
-        <strong>Garantie Anti-Dégradation Cloud & Isolation des Déploiements :</strong> Grâce au détecteur d'environnement cloud (<code>is_in_railway()</code>), la plateforme ne bascule jamais sur le stockage éphémère SQLite en production Railway sans volume persistant explicite. Pour garantir la persistance permanente sur Railway lors de chaque mise à jour GitHub, la variable de référence <code>DATABASE_URL="${{Postgres.DATABASE_URL}}"</code> est liée au conteneur. Toutes les créations, modifications de profil, réinitialisations de mot de passe, attributions de rôle et suppressions de comptes utilisateurs sont <strong>100% persistées de façon permanente</strong> dans la base PostgreSQL Railway, strictement isolées des reconstructions de conteneurs.
+        <strong>Garantie Anti-Dégradation Cloud & Élimination du Fallback Éphémère :</strong> Grâce au détecteur d'environnement cloud multi-signaux (<code>is_in_railway()</code>, analysant <code>RAILWAY_ENVIRONMENT</code>, <code>RAILWAY_ENVIRONMENT_NAME</code>, <code>RAILWAY_SERVICE_NAME</code>, <code>RAILWAY_DEPLOYMENT_ID</code>, <code>RAILWAY_TCP_PROXY_DOMAIN</code>, <code>RAILWAY_PUBLIC_DOMAIN</code>), la plateforme <strong>refuse strictement tout fallback silencieux vers SQLite</strong> en environnement Railway. Si la base PostgreSQL n'est pas provisionnée ou si les variables sont manquantes, le système émet une erreur bloquante <code>RuntimeError</code> explicite plutôt que d'écrire sur un système de fichiers éphémère réinitialisé à chaque déploiement.
+      </p>
+      <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">
+        <strong>Protection Intégrale des Comptes &amp; Mots de Passe aux Redémarrages :</strong> Le script d'amorce (<code>backend/create_admin.py</code>) intègre une vérification d'existence stricte (<code>ensure_root_admin_first()</code>) qui préserve formellement le mot de passe existant de l'administrateur racine <code>admin_first</code> et de tous les utilisateurs créés. Le mot de passe n'est jamais écrasé ou réinitialisé lors des redémarrages de conteneur ou des commits/push GitHub.
       </p>
       <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">
         <strong>Ancrage Canonique Absolu SQLite en Local :</strong> Pour éliminer tout risque d'effacement ou de duplication lors des démarrages locaux depuis des répertoires de travail distincts, toute URL SQLite relative (ex: <code>sqlite:///./eschola.db</code>) est automatiquement résolue de manière absolue et invariable vers <code>backend/eschola.db</code>. Le moteur SQLite est configuré en mode <code>WAL</code> (Write-Ahead Logging) avec <code>PRAGMA synchronous=NORMAL</code> et <code>PRAGMA foreign_keys=ON</code> pour une durabilité maximale contre les arrêts brutaux.
       </p>
       <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">
-        <strong>Isolation du Seeding en Production (<code>SEED_DEMO_DATA=false</code>) :</strong> Lors des redéploiements déclenchés par GitHub vers Railway, le script d'initialisation (<code>create_admin.py</code>) n'injecte aucun compte de démonstration si un administrateur existe déjà dans la base. Les comptes personnalisés ou supprimés par l'administrateur en production ne sont jamais réinjectés ou écrasés.
+        <strong>Isolation du Seeding en Production (<code>SEED_DEMO_DATA=false</code>) :</strong> Lors des redéploiements déclenchés par GitHub vers Railway, le script d'initialisation n'injecte aucun compte de démonstration si un administrateur existe déjà dans la base. Les comptes personnalisés ou modifiés en production ne sont jamais écrasés.
       </p>
       <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">
         <strong>Désactivation Totale de la Synchronisation Automatique ORM en Production (<code>AUTO_SYNC_SCHEMA=false</code>) :</strong> Pour garantir l'intégrité absolue des données existantes et empêcher tout verrouillage concurrent de tables (table locking) lors des déploiements, l'ORM SQLAlchemy/FastAPI a sa synchronisation automatique de schéma (<code>Base.metadata.create_all</code>) <strong>strictement désactivée en production</strong> (détecté via <code>is_in_railway()</code> ou <code>ENVIRONMENT=production</code>). L'importation de l'application et le démarrage des workers Uvicorn n'exécutent aucune altération implicite de structure.
       </p>
       <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">
-        <strong>Application Explicite et Idempotente des Migrations PostgreSQL (<code>backend/run_migrations.py</code>) :</strong> Toutes les 17 tables relationnelles, contraintes CASCADE, colonnes étendues et index sont régis de façon centralisée et vérifiable par la chaîne de migrations Alembic (jusqu'à la révision <code>f8a1b2c3d4e5_tasks_classrooms_and_invitations</code>). Lors de chaque déploiement sur Railway (<code>start.sh</code>), le script <code>run_migrations.py</code> applique explicitement et de manière bloquante <code>alembic upgrade head</code> après validation de la connectivité PostgreSQL (boucle résiliente 60s). En cas d'erreur DDL, le déploiement s'interrompt immédiatement sans altérer les données, éliminant tout risque de désynchronisation.
+        <strong>Application Explicite, Idempotente et Auto-Réparatrice des Migrations (<code>backend/run_migrations.py</code>) :</strong> Toutes les tables relationnelles, contraintes CASCADE, colonnes étendues et index sont régis de façon centralisée par Alembic. Lors de chaque déploiement sur Railway (<code>start.sh</code>), le script <code>run_migrations.py</code> valide la connectivité PostgreSQL, inspecte la présence physique des tables (<code>users</code>, <code>tasks</code>, <code>classroom_invitations</code>) et régularise automatiquement l'estampille Alembic si la table de versionnement était absente, garantissant une montée de version sans rupture ni duplication.
       </p>
       <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">
-        <strong>Synchronisation Complète de la Messagerie &amp; Modules Étendus :</strong> Le schéma complet de la boîte de messagerie (réception, envoi, brouillons, corbeille, favoris ⭐, diffusions générales, copies CC, signalements et pièces jointes), ainsi que les devoirs (<code>tasks</code>, <code>task_submissions</code>) et classes virtuelles (<code>classrooms</code>, <code>classroom_invitations</code>) sont consolidés dans la chaîne de migrations officielle.
+        <strong>Synchronisation Complète de la Messagerie &amp; Salles Vidéo Conférence :</strong> Le schéma complet de la messagerie, des devoirs et des salles vidéo conférence (<code>classrooms</code>, <code>classroom_invitations</code>) est consolidé avec intégrité relationnelle permanente en base PostgreSQL.
       </p>
       <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 0;">
         <strong>Intégrité Référentielle &amp; Suppression en Cascade Sécurisée :</strong> Pour respecter la rigueur transactionnelle de PostgreSQL, le gestionnaire de suppression (<code>DELETE /api/v1/users/{id}</code>) exécute un nettoyage ordonné des tables dépendantes avant d'effacer le profil utilisateur, éliminant tout risque de <code>ForeignKeyViolation</code> ou d'incohérence.
@@ -968,7 +971,7 @@ E-Schola Pro/
     </table>
 
     <!-- CLASSROOM -->
-    <h3>Classroom (Classe Virtuelle)</h3>
+    <h3>Classroom (Salle Vidéo Conférence)</h3>
     <table>
       <thead><tr><th>Colonne</th><th>Type</th><th>Contraintes</th><th>Description</th></tr></thead>
       <tbody>
@@ -989,12 +992,12 @@ E-Schola Pro/
     </table>
 
     <!-- CLASSROOM INVITATION -->
-    <h3>ClassroomInvitation (Invitations aux Classes Virtuelles)</h3>
+    <h3>ClassroomInvitation (Invitations aux Salles Vidéo Conférence)</h3>
     <table>
       <thead><tr><th>Colonne</th><th>Type</th><th>Contraintes</th><th>Description</th></tr></thead>
       <tbody>
         <tr><td><code>id</code></td><td>Integer</td><td>PK</td><td>Identifiant unique de l'invitation</td></tr>
-        <tr><td><code>classroom_id</code></td><td>Integer</td><td>FK → classrooms.id</td><td>Classe virtuelle associée</td></tr>
+        <tr><td><code>classroom_id</code></td><td>Integer</td><td>FK → classrooms.id</td><td>Salle vidéo conférence associée</td></tr>
         <tr><td><code>inviter_id</code></td><td>Integer</td><td>FK → users.id</td><td>Formateur / Admin ayant envoyé l'invitation</td></tr>
         <tr><td><code>invitee_id</code></td><td>Integer</td><td>FK → users.id</td><td>Apprenant destinataire invité</td></tr>
         <tr><td><code>status</code></td><td>String</td><td>Default: "pending"</td><td>Statut de l'invitation (<code>pending</code>, <code>accepted</code>, <code>declined</code>)</td></tr>
@@ -1097,17 +1100,17 @@ E-Schola Pro/
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/users/me</code></td><td>Profil de l'utilisateur connecté</td><td>Authentifié</td></tr>
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/users/search</code></td><td>Recherche d'utilisateurs par nom, prénom, email ou nom d'utilisateur (Matching ILIKE, limite paramétrable) avec payload <code>UserMinimalRead</code></td><td>Authentifié</td></tr>
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/users/check-username</code></td><td>Vérifier la disponibilité d'un nom d'utilisateur en temps réel</td><td>Public</td></tr>
-        <tr><td><span class="badge badge-post">POST</span></td><td><code>/users/</code></td><td>Créer un utilisateur (inscription publique avec profil complet)</td><td>Public</td></tr>
-        <tr><td><span class="badge badge-post">POST</span></td><td><code>/users/admin-create</code></td><td>Créer un compte depuis le panneau d'administration (profil standard ou allégé admin)</td><td>Admin, Admin Manager</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/users/</code></td><td>Créer un utilisateur (inscription publique avec profil complet, envoi automatique d'un email de bienvenue avec rôle et lien d'accès, traçabilité [AUDIT])</td><td>Public</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/users/admin-create</code></td><td>Créer un compte depuis le panneau d'administration (profil standard ou allégé admin, envoi de l'email de bienvenue avec rôle assigné, traçabilité [AUDIT])</td><td>Admin, Admin Manager</td></tr>
         <tr><td><span class="badge badge-put">PUT</span></td><td><code>/users/me/password</code></td><td>Modifier son propre mot de passe (persistant avec hachage bcrypt)</td><td>Authentifié</td></tr>
-        <tr><td><span class="badge badge-put">PUT</span></td><td><code>/users/me</code></td><td>Mise à jour complète et persistance en base (nom, prénom, username unique, email, téléphone, adresse, date de naissance, CIN, coordonnées, mot de passe direct, réinitialisation des champs vidés vers NULL, et synchronisation atomique du groupe pédagogique avec <code>group_members</code>)</td><td>Authentifié</td></tr>
-        <tr><td><span class="badge badge-put">PUT</span></td><td><code>/users/{id}</code></td><td>Modifier un compte utilisateur (profil complet, normalisation des rôles avec accents, unicité croisée username/email insensible à la casse, département, spécialisation, mot de passe, affectation/désassignation de groupe et synchronisation atomique de <code>group_members</code>)</td><td>Admin, Admin Manager</td></tr>
+        <tr><td><span class="badge badge-put">PUT</span></td><td><code>/users/me</code></td><td>Mise à jour complète et persistance en base (nom, prénom, username unique, email, téléphone, adresse, date de naissance, CIN, coordonnées, mot de passe direct, réinitialisation des champs vidés vers NULL, et synchronisation atomique du groupe pédagogique avec <code>group_members</code>, traçabilité [AUDIT])</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-put">PUT</span></td><td><code>/users/{id}</code></td><td>Modifier un compte utilisateur (profil complet, normalisation des rôles avec accents, unicité croisée username/email, mot de passe, affectation de groupe, détection de changement de rôle avec persistance immédiate, envoi d'un email de notification de sécurité et traçabilité [AUDIT])</td><td>Admin, Admin Manager</td></tr>
         <tr><td><span class="badge badge-put">PUT</span></td><td><code>/users/{id}/password</code></td><td>Réinitialiser le mot de passe d'un utilisateur</td><td>Admin, Admin Manager</td></tr>
-        <tr><td><span class="badge badge-put">PUT</span></td><td><code>/users/{id}/role</code></td><td>Changer le rôle d'un utilisateur (persistant avec contrôles stricts)</td><td>Admin, Admin Manager</td></tr>
+        <tr><td><span class="badge badge-put">PUT</span></td><td><code>/users/{id}/role</code></td><td>Changer le rôle d'un utilisateur (persistance immédiate en base de données, notification par email transactionnel à l'utilisateur, contrôles stricts anti-élévation, traçabilité [AUDIT])</td><td>Admin, Admin Manager</td></tr>
         <tr><td><span class="badge badge-post">POST</span></td><td><code>/users/me/avatar</code></td><td>Téléverser une photo de profil avec auto-optimisation WebP 256×256 (Pillow, qualité 80, réduction &gt;98% d'espace) et persistance intégrale en base de données Railway (Data URI Base64)</td><td>Authentifié</td></tr>
         <tr><td><span class="badge badge-delete">DELETE</span></td><td><code>/users/me/avatar</code></td><td>Supprimer la photo de profil personnalisée et réinitialiser vers les initiales dynamiques</td><td>Authentifié</td></tr>
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/users/{id}/avatar</code></td><td>Servir et streamer directement l'avatar optimisé WebP depuis la base de données avec en-têtes HTTP de mise en cache</td><td>Public</td></tr>
-        <tr><td><span class="badge badge-delete">DELETE</span></td><td><code>/users/{id}</code></td><td>Supprimer définitivement un utilisateur (nettoyage en cascade sécurisé)</td><td>Admin, Admin Manager</td></tr>
+        <tr><td><span class="badge badge-delete">DELETE</span></td><td><code>/users/{id}</code></td><td>Supprimer définitivement un utilisateur (nettoyage en cascade sécurisé, traçabilité [AUDIT])</td><td>Admin, Admin Manager</td></tr>
       </tbody>
     </table>
 
@@ -1185,12 +1188,12 @@ E-Schola Pro/
       </tbody>
     </table>
 
-    <h3>Classes Virtuelles (/classrooms)</h3>
+    <h3>Salles Vidéo Conférence (/classrooms)</h3>
     <table>
       <thead><tr><th>Méthode</th><th>Endpoint</th><th>Description</th><th>Accès</th></tr></thead>
       <tbody class="endpoint-row">
-        <tr><td><span class="badge badge-get">GET</span></td><td><code>/classrooms/</code></td><td>Lister les salles virtuelles actives (filtrage intelligent par rôle/groupe pour apprenants et accès complet pour formateurs/admins)</td><td>Authentifié</td></tr>
-        <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/</code></td><td>Créer une salle avec configuration avancée (salle privée, sans invitations auto par défaut, écran désactivé, approbation d'accès)</td><td>Admin, Formateur</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/classrooms/</code></td><td>Lister les salles vidéo conférence actives (filtrage intelligent par rôle/groupe pour apprenants et accès complet pour formateurs/admins)</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/</code></td><td>Créer une salle avec configuration avancée (salle privée, sans invitations auto par défaut, écran désactivé, approbation d'accès, génération d'invitations et emails d'invitation avec URL directe, traçabilité [AUDIT])</td><td>Admin, Formateur</td></tr>
         <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/{room_id}/join</code></td><td>Rejoindre et tracker l'assiduité (retards et présences)</td><td>Authentifié</td></tr>
         <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/{room_id}/join-request</code></td><td>Soumettre une demande pour rejoindre la salle d'attente</td><td>Authentifié</td></tr>
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/classrooms/{room_id}/join-requests</code></td><td>Consulter les demandes d'accès en attente</td><td>Formateur, Admin</td></tr>
@@ -1198,11 +1201,11 @@ E-Schola Pro/
         <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/{room_id}/join-requests/{uid}/reject</code></td><td>Rejeter la demande d'accès d'un participant</td><td>Formateur, Admin</td></tr>
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/classrooms/{room_id}/join-status</code></td><td>Vérifier le statut d'approbation pour rejoindre la salle</td><td>Authentifié</td></tr>
         <tr><td><span class="badge badge-patch">PATCH</span></td><td><code>/classrooms/{room_id}/settings</code></td><td>Modifier les paramètres en direct de la salle (écran, salle d'attente, confidentialité)</td><td>Formateur, Admin</td></tr>
-        <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/{room_id}/stop</code></td><td>Arrêter/clôturer la classe virtuelle en direct pour tous les participants (Strictement interdit aux étudiants, stagiaires et employés)</td><td>Admin, Formateur, Pédagogique</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/{room_id}/stop</code></td><td>Arrêter/clôturer la salle vidéo conférence en direct pour tous les participants (Strictement interdit aux étudiants, stagiaires et employés)</td><td>Admin, Formateur, Pédagogique</td></tr>
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/classrooms/invitations/my-invitations</code></td><td>Lister les invitations en attente reçues par l'utilisateur connecté</td><td>Authentifié</td></tr>
-        <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/{room_id}/invite</code></td><td>Inviter des apprenants ou des groupes spécifiques à une classe virtuelle en direct</td><td>Admin, Formateur, Pédagogique</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/{room_id}/invite</code></td><td>Inviter des apprenants ou des groupes spécifiques (persistance dans classroom_invitations, envoi d'email transactionnel avec lien direct et code de salle, traçabilité [AUDIT])</td><td>Admin, Formateur, Pédagogique</td></tr>
         <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/invitations/{id}/accept</code></td><td>Accepter l'invitation, enregistrer la présence et obtenir le code de salle</td><td>Authentifié</td></tr>
-        <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/invitations/{id}/decline</code></td><td>Refuser l'invitation à une classe virtuelle</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/invitations/{id}/decline</code></td><td>Refuser l'invitation à une salle vidéo conférence</td><td>Authentifié</td></tr>
         <tr><td><span class="badge badge-delete">DELETE</span></td><td><code>/classrooms/{id}</code></td><td>Supprimer une salle</td><td>Admin, Formateur</td></tr>
       </tbody>
     </table>
@@ -1302,6 +1305,7 @@ E-Schola Pro/
         <li><strong>Rôle ADMIN_MANAGER :</strong> Bénéficie de toutes les fonctionnalités applicatives (cours, quiz, présences, groupes, devoirs, calendrier, messages) mais ne peut <strong>jamais</strong> accéder à SQLAdmin (/admin) ni à l'onglet "Base de Données &amp; Backend".</li>
         <li><strong>Protection de la hiérarchie des rôles :</strong> Un <code>ADMIN_MANAGER</code> ne peut <strong>pas</strong> créer, promouvoir, rétrograder ou supprimer un compte ayant un rôle administrateur (<code>admin</code>, <code>admin_manager</code>).</li>
         <li><strong>Gestion des rôles sensibles :</strong> Seul le rôle <code>ADMIN</code> (Super-Administrateur) est autorisé à attribuer ou manipuler des privilèges administrateurs. Le rôle obsolète <code>admin_limited</code> a été complètement désactivé et migré vers <code>admin_manager</code>.</li>
+        <li><strong>Persistance Immédiate &amp; Notification par Email :</strong> Toute modification de rôle est immédiatement persistée en base PostgreSQL (commit transactionnel garanti). L'utilisateur concerné reçoit automatiquement un email de notification de sécurité détaillant son nouveau statut, et l'événement est enregistré dans les logs d'audit <code>[AUDIT]</code>.</li>
       </ul>
     </div>
 
@@ -1328,8 +1332,8 @@ E-Schola Pro/
         <tr><td><strong>Créer des plannings &amp; événements calendrier</strong></td><td>✅</td><td>✅</td><td>✅</td><td>❌</td></tr>
         <tr><td><strong>Gérer les groupes &amp; affecter les apprenants</strong></td><td>✅</td><td>✅</td><td>✅</td><td>❌</td></tr>
         <tr><td><strong>Afficher &amp; accéder au bouton "Groupes" (/group)</strong></td><td>✅</td><td>✅</td><td>✅</td><td>❌ <em>(Masqué &amp; Interdit)</em></td></tr>
-        <tr><td><strong>Créer des classes virtuelles &amp; sous-groupes</strong></td><td>✅</td><td>✅</td><td>✅</td><td>❌</td></tr>
-        <tr><td><strong>Arrêter / Clôturer la classe virtuelle en direct</strong></td><td>✅</td><td>✅</td><td>✅</td><td>❌ <em>(Strictement interdit aux Étudiants, Stagiaires et Employés)</em></td></tr>
+        <tr><td><strong>Créer des salles vidéo conférence &amp; sous-groupes</strong></td><td>✅</td><td>✅</td><td>✅</td><td>❌</td></tr>
+        <tr><td><strong>Arrêter / Clôturer la salle vidéo conférence en direct</strong></td><td>✅</td><td>✅</td><td>✅</td><td>❌ <em>(Strictement interdit aux Étudiants, Stagiaires et Employés)</em></td></tr>
         <tr><td><strong>Messagerie interne (Messages personnels &amp; Copie CC local/relais)</strong></td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
         <tr><td><strong>Envoi Général / Broadcast ("All")</strong></td><td>✅</td><td>✅</td><td>✅</td><td>❌ <em>(Interdit &amp; HTTP 403 pour Étudiant, Stagiaire, Employé)</em></td></tr>
         <tr><td><strong>Réception du Message d'Accueil Automatique</strong></td><td>✅</td><td>✅</td><td>✅</td><td>✅ <em>(Déclenché à la création du compte)</em></td></tr>
@@ -1375,10 +1379,10 @@ E-Schola Pro/
       <p>Le tableau de bord est la page d'accueil après connexion. Il affiche :</p>
       <ul>
         <li>En-tête de navigation officiel E-Schola Pro avec logo corporate</li>
-        <li>Double centre de notification interactif avec <strong>signalisation lumineuse clignotante en temps réel (Polling 10s &amp; animations <code>animate-ping</code> / <code>animate-pulse</code> / <code>animate-bounce</code>)</strong> :
+        <li>Double centre de notification interactif avec <strong>signalisation sonore et lumineuse dynamique en temps réel (Polling 8s, Web Audio API, Toast interactif &amp; animations <code>animate-ping</code> / <code>animate-pulse</code>)</strong> :
           <ul>
-            <li><strong>Icône Classe Virtuelle (<code>Video</code>) :</strong> Signal vert émeraude clignotant dès qu'une session de cours ou invitation à la Class Room est active (<code>/classroom</code>).</li>
-            <li><strong>Icône Messagerie (<code>MessageSquare</code>) :</strong> Signal bleu royal clignotant dès la réception d'un nouveau message non lu avec compteur dynamique (<code>/inbox</code>).</li>
+            <li><strong>Icône Salle Vidéo Conférence (<code>Video</code>) :</strong> Détection temps réel des invitations en attente (<code>/classrooms/invitations/my-invitations</code>) et des sessions actives. Signal vert émeraude clignotant avec carillon harmonique ascendant synthétisé (Do5 &rarr; Mi5 &rarr; Sol5), bannière toast avec bouton direct « Rejoindre la salle », compteur d'invitations exact et suppression intégrale du point gris inerte lorsque le compteur est nul.</li>
+            <li><strong>Icône Messagerie (<code>MessageSquare</code>) :</strong> Signal bleu royal clignotant dès la réception d'un nouveau message non lu avec carillon cristallin synthétisé (Mi5 &rarr; La5), bannière toast avec bouton « Consulter la boîte », compteur dynamique précis et synchronisation événementielle instantanée (<code>messages_updated</code>).</li>
           </ul>
         </li>
         <li>Capsule de profil personnalisée avec avatar réel téléversé ou initiales générées dynamiquement, lien direct vers « Mon Compte » (<code>/profile</code>), bouton de déconnexion immédiate « Se déconnecter » directement sous l'intitulé et menu déroulant complet de gestion de compte</li>
@@ -1494,7 +1498,7 @@ E-Schola Pro/
           </ul>
         </li>
         <li><strong>Barre Latérale Unifiée (InboxSidebar.tsx) :</strong> Bouton pilule "Rédiger", navigation par dossiers (<em>Boîte de réception, Tous les messages, Favoris ⭐, En attente 🕒, Envoyés, Brouillons, Classes Virtuelles 📹, Corbeille</em>) avec compteurs dynamiques, lien direct vers le <strong>Calendrier</strong> et élimination des catégories redondantes pour une fluidité maximale.</li>
-        <li><strong>Intégration Classe Virtuelle (Classroom) :</strong> Dossier dédié et bannière interactive reliant directement la messagerie aux sessions de visioconférence HD (<code>/classroom</code>).</li>
+        <li><strong>Intégration Salle Vidéo Conférence (Classroom) :</strong> Dossier dédié et bannière interactive reliant directement la messagerie aux sessions de visioconférence HD (<code>/classroom</code>).</li>
         <li><strong>Dock d'Outils Rétractable (InboxRightDock.tsx) :</strong> Panneau latéral droit offrant un accès instantané à l'Agenda, aux Devoirs &amp; Tâches, aux Contacts et au Chat Assistant IA Gemini.</li>
         <li><strong>Assistant IA Google Gemini (GoogleAiAssistModal.tsx) :</strong> Modal d'assistance IA pour la création de messages professionnels, la traduction automatique et la génération instantanée de résumés d'e-mails.</li>
         <li><strong>Support Multilingue Complètement Adaptatif (i18n) :</strong> Prise en charge intégrale des traductions multilingues (Français, Anglais, Arabe avec mise en page RTL adaptative) via <code>next-intl</code>.</li>
@@ -1526,6 +1530,7 @@ E-Schola Pro/
             <li><em>En-têtes HTTP de Sécurité OWASP &amp; CORS Railway :</em> Middleware injectant <code>X-Content-Type-Options: nosniff</code>, <code>X-Frame-Options: SAMEORIGIN</code>, <code>X-XSS-Protection</code>, <code>Referrer-Policy</code> et prise en charge des sous-domaines Railway via regex CORS.</li>
           </ul>
         </li>
+        <li><strong>Moteur de Notification Sonore, Visuelle &amp; Desktop Push en Temps Réel (NotificationManager) :</strong> Lors de l'arrivée d'un nouveau message non lu, le gestionnaire global émet un carillon sonore cristallin via l'API Web Audio (Mi5 659Hz &rarr; La5 880Hz, sans aucun fichier externe requis), affiche une notification Toast flottante interactive avec accès direct à <code>/inbox</code>, active une notification native système de bureau (Web Notification API) et incrémente le badge animé bleu royal de la barre de navigation. L'état est réactualisé instantanément lors de la lecture ou suppression via l'événement <code>messages_updated</code>.</li>
       </ul>
       <div class="screenshot-container">
         <div class="screenshot-header">
@@ -1536,31 +1541,30 @@ E-Schola Pro/
       </div>
     </div>
 
-    <h3>Module 7 — Classes Virtuelles</h3>
+    <h3>Module 7 — Salles Vidéo Conférence</h3>
     <div class="card">
       <p><strong>Route Frontend :</strong> <code>/classroom</code> · <code>/classroom/{id}</code></p>
       <p><strong>Options et propriétés :</strong></p>
       <ul>
         <li><strong>Communication Temps Réel &amp; Flux Médias WebRTC (Zéro Démo) :</strong> Transmission audio, vidéo et partage d'écran PC/mobile en direct avec grille dynamique de visioconférence et gestion intelligente des pistes médias.</li>
-        <li><strong>Système d'Invitations Interactif avec Options Accepter / Décliner :</strong> Possibilité pour les Formateurs, Administrateurs et Responsables Pédagogiques d'inviter des apprenants ou groupes ciblés. Les apprenants reçoivent un bandeau d'action interactif sur le hub (<code>/classroom</code>) et la messagerie (<code>/inbox</code>) avec les options 🟢 <strong>Accepter l'invitation</strong> (redirection immédiate en direct) et 🔴 <strong>Décliner</strong>.</li>
-        <li><strong>Filtrage Intelligent &amp; Résilience du Hub Visioconférence (/classroom) :</strong> Chargement découplé et tolérant aux pannes avec extraction automatique des messages d'erreur FastAPI. Visibilité basée sur les rôles et groupes (salles publiques ou ciblées pour les apprenants, toutes les salles pour l'équipe pédagogique et admins).</li>
-        <li><strong>Création & Confidentialité (Oscola) :</strong> Titre, description, identifiant unique et salle privée par défaut.</li>
+        <li><strong>Système d'Invitations Interactif, Notifications Sonores Temps Réel &amp; Par Email :</strong> Possibilité pour les Formateurs, Administrateurs et Responsables Pédagogiques d'inviter des apprenants ou groupes ciblés. Dès l'émission d'une invitation, l'apprenant concerné est immédiatement alerté par <strong>carillon sonore Web Audio API ascendant (Do5 &rarr; Mi5 &rarr; Sol5)</strong>, un toast interactif flottant avec bouton d'action directe « Rejoindre la salle », une notification système de bureau et un badge animé vert émeraude avec compteur dynamique sur la Navbar et le Dashboard. Les apprenants reçoivent également un email transactionnel complet avec code et lien direct d'accès, ainsi qu'un bandeau interactif sur le hub (<code>/classroom</code>) avec les boutons 🟢 <strong>Accepter l'invitation</strong> (redirection immédiate) et 🔴 <strong>Décliner</strong> (synchronisation instantanée de l'interface via <code>classroom_updated</code>). Toutes les invitations sont persistées en base PostgreSQL dans <code>classroom_invitations</code>.</li>
+        <li><strong>Filtrage Intelligent &amp; Résilience du Hub Salles Vidéo Conférence (/classroom) :</strong> Chargement découplé et tolérant aux pannes avec extraction automatique des messages d'erreur FastAPI. Visibilité basée sur les rôles et groupes (salles publiques ou ciblées pour les apprenants, toutes les salles pour l'équipe pédagogique et admins).</li>
+        <li><strong>Création & Confidentialité :</strong> Titre, description, identifiant unique et salle privée par défaut.</li>
         <li><strong>Gestion des Invitations :</strong> Désactivation des invitations automatiques par défaut. Ajout manuel de participants ou par groupe sélectionné.</li>
         <li><strong>Contrôle du Partage d'Écran :</strong> Désactivé par défaut. Activable/désactivable en direct par le formateur depuis le panneau de configuration.</li>
         <li><strong>Salle d'Attente (Demandes d'accès) :</strong> Toute demande pour rejoindre une salle privée est soumise à validation. L'hôte visualise les demandes et peut les **Approuver** ou les **Rejeter**.</li>
         <li><strong>Messagerie Instantanée & Émojis :</strong> Rendu immédiat des messages dans le chat avec sélecteur d'émojis expressifs intégré.</li>
         <li><strong>Émargement & Assiduité Intégrés :</strong> Enregistrement automatique lors du passage de la salle d'attente à la session en direct.</li>
-        <li><strong>Sous-Groupes (Breakout Rooms) &amp; Modales Mode Clair UX :</strong> Refonte complète de la modale de création et répartition des ateliers en mode clair (fond blanc <code>bg-white</code>, cartes de sous-groupes <code>bg-slate-50 border-slate-200</code>, champs de durée/salles <code>bg-white border-slate-300 text-slate-900</code>, bouton de mélange aléatoire <code>#1877f2</code> et typographie ultra-lisible à haute netteté).</li>
-        <li><strong>Arrêt de la Classe Virtuelle &amp; Sécurité RBAC :</strong> Option d'arrêt de la classe en direct accessible depuis le hub (<code>/classroom</code>) et la barre de contrôles (<code>/classroom/{id}</code>). <strong>Restrictions de sécurité strictes :</strong> Réservé exclusivement aux formateurs, administrateurs et responsables pédagogiques. <em>Strictement interdit et masqué pour les étudiants, stagiaires et employés</em> (avec vérification et rejet HTTP 403 côté API backend FastAPI). Lors de l'arrêt, la session est fermée pour tous les membres et les participants connectés sont automatiquement redirigés.</li>
-        <li><strong>Gestion &amp; Clôture :</strong> Le formateur ou l'administrateur peut fermer la session, clôturer les ateliers et purger l'historique des classes inactives.</li>
-
+        <li><strong>Sous-Groupes (Breakout Rooms) &amp; Modales Mode Clair UX :</strong> Modale de création et répartition des ateliers en mode clair à haute lisibilité.</li>
+        <li><strong>Arrêt de la Salle Vidéo Conférence &amp; Sécurité RBAC :</strong> Option d'arrêt de la session en direct accessible depuis le hub (<code>/classroom</code>) et la barre de contrôles (<code>/classroom/{id}</code>). <strong>Restrictions de sécurité strictes :</strong> Réservé exclusivement aux formateurs, administrateurs et responsables pédagogiques. <em>Strictement interdit et masqué pour les étudiants, stagiaires et employés</em> (avec vérification et rejet HTTP 403 côté API backend FastAPI). Lors de l'arrêt, la session est fermée pour tous les membres et les participants connectés sont automatiquement redirigés.</li>
+        <li><strong>Gestion &amp; Clôture :</strong> Le formateur ou l'administrateur peut fermer la session, clôturer les ateliers et purger l'historique des salles inactives.</li>
       </ul>
       <div class="screenshot-container">
         <div class="screenshot-header">
           <div class="screenshot-dots"><span class="dot-red"></span><span class="dot-yellow"></span><span class="dot-green"></span></div>
-          <span>Aperçu de l'interface : Salle de Classe Virtuelle (/classroom)</span>
+          <span>Aperçu de l'interface : Salles Vidéo Conférence (/classroom)</span>
         </div>
-        <img src="docs_screenshots/classroom.png" alt="Interface Classe Virtuelle E-Schola Pro" class="screenshot-img" />
+        <img src="docs_screenshots/classroom.png" alt="Interface Salle Vidéo Conférence E-Schola Pro" class="screenshot-img" />
       </div>
     </div>
 
@@ -1680,6 +1684,32 @@ E-Schola Pro/
         <li><strong>Authentification Hybride :</strong> Le point d'entrée <code>POST /login/access-token</code> accepte indifféremment le <code>username</code> ou l'<code>email</code> avec mot de passe.</li>
       </ul>
     </div>
+
+    <h3>Module 12 — Système d'Emails Transactionnels &amp; Notifications</h3>
+    <div class="card">
+      <p><strong>Service Backend :</strong> <code>backend/app/services/email_service.py</code> · <code>backend/app/core/email_utils.py</code></p>
+      <p><strong>Architecture et propriétés :</strong></p>
+      <ul>
+        <li><strong>Configuration SMTP Sécurisée par Variables d'Environnement :</strong> Aucune information d'authentification n'est stockée en clair dans le code source. L'expédition repose intégralement sur les variables d'environnement <code>SMTP_HOST</code>, <code>SMTP_PORT</code>, <code>SMTP_USER</code>, <code>SMTP_PASSWORD</code>, <code>SMTP_FROM</code>, <code>SMTP_TLS</code>, <code>SMTP_SSL</code> et le commutateur <code>EMAILS_ENABLED</code>.</li>
+        <li><strong>Résilience &amp; Exécution Non-Bloquante :</strong> Toutes les fonctions d'envoi d'email interceptent les exceptions SMTP de manière totalement transparente. Si le serveur SMTP est injoignable ou désactivé, l'action métier sous-jacente (création de compte, changement de rôle, invitation à une salle) s'exécute et persiste en base sans interruption ni erreur HTTP 500 pour l'utilisateur.</li>
+        <li><strong>Email de Bienvenue Professionnel (<code>send_welcome_email</code>) :</strong> Déclenché automatiquement lors de la création d'un utilisateur par l'administrateur ou par auto-inscription. Contient les salutations personnalisées, le rôle officiel attribué dans la plateforme, l'URL de connexion sécurisée et les consignes de sécurité (sans jamais exposer de mot de passe en clair).</li>
+        <li><strong>Email d'Alerte lors d'un Changement de Rôle (<code>send_role_change_email</code>) :</strong> Déclenché immédiatement après validation et commit de la modification de privilèges en base de données. Précise l'ancien rôle, le nouveau rôle accordé par l'administration, et des recommandations de sécurité en cas de modification inattendue.</li>
+        <li><strong>Email d'Invitation aux Salles Vidéo Conférence (<code>send_classroom_invitation_email</code>) :</strong> Déclenché lors de la planification d'une session interactive en direct ou de l'invitation ciblée d'apprenants/groupes. Fournit le titre de la visioconférence, le formateur hôte, la date et l'heure prévues, le code de salle unique et le lien direct d'accès en un clic.</li>
+      </ul>
+    </div>
+
+    <h3>Module 13 — Journalisation d'Audit &amp; Traçabilité des Actions</h3>
+    <div class="card">
+      <p><strong>Architecture :</strong> Journalisation structurée <code>[AUDIT]</code> et <code>[SECURITY/AUDIT]</code> intégrée aux contrôleurs d'API.</p>
+      <p><strong>Traçabilité des opérations sensibles :</strong></p>
+      <ul>
+        <li><strong>Création d'utilisateurs :</strong> Horodatage, identifiant du compte généré, pseudonyme, rôle attribué et identifiant de l'administrateur créateur.</li>
+        <li><strong>Mise à jour des profils :</strong> Traçabilité des modifications apportées aux coordonnées et informations institutionnelles des utilisateurs.</li>
+        <li><strong>Changement de rôle &amp; Permissions :</strong> Enregistrement détaillé de l'ancien rôle et du nouveau rôle, avec contrôle d'intégrité et alertes de sécurité en cas de tentative d'élévation illégitime de privilèges.</li>
+        <li><strong>Invitations aux Salles Vidéo Conférence :</strong> Enregistrement de chaque invitation émise (identifiant de salle, code de session, hôte émetteur, utilisateur invité).</li>
+        <li><strong>Suppression de compte :</strong> Enregistrement de la suppression définitive d'un compte utilisateur avec suivi du nettoyage en cascade.</li>
+      </ul>
+    </div>
   </section>
 
   <!-- ═══════════════════════════════════════════════════════════════ -->
@@ -1696,7 +1726,7 @@ E-Schola Pro/
       <ol>
         <li>🏠 <strong>Tableau de bord</strong> → <code>/dashboard</code></li>
         <li>📅 <strong>Calendrier</strong> → <code>/calendar</code></li>
-        <li>🎥 <strong>Classe Virtuelle</strong> → <code>/classroom</code></li>
+        <li>🎥 <strong>Salles Vidéo Conférence</strong> → <code>/classroom</code></li>
         <li>💬 <strong>Boîte de réception</strong> → <code>/inbox</code> (avec badge non-lus)</li>
         <li>📚 <strong>Cours</strong> → <code>/courses</code></li>
         <li>🏆 <strong>Quiz & Tests</strong> → <code>/quizzes</code></li>
@@ -1714,10 +1744,34 @@ E-Schola Pro/
     <div class="card">
       <p>La barre supérieure (<code>Navbar.tsx</code>) intègre un <strong>bouton de retour au Tableau de bord positionné au centre supérieur</strong> de l'écran :</p>
       <ul>
-        <li><strong>Règle de visibilité :</strong> Affiché au haut centre sur <em>toutes les pages</em> de l'application (cours, classes virtuelles, boîte de réception, calendrier, présences, quiz, devoirs, profil, etc.), <strong>sauf la page d'accueil</strong> (landing page <code>/</code>) qui conserve son design immersif épuré.</li>
+        <li><strong>Règle de visibilité :</strong> Affiché au haut centre sur <em>toutes les pages</em> de l'application (cours, salles vidéo conférence, boîte de réception, calendrier, présences, quiz, devoirs, profil, etc.), <strong>sauf la page d'accueil</strong> (landing page <code>/</code>) qui conserve son design immersif épuré.</li>
         <li><strong>Contrôle d'accès :</strong> Autorisé pour l'ensemble des rôles utilisateurs (Administrateur, Formateur, Étudiant, Stagiaire, Employé) à condition stricte que l'utilisateur soit connecté (vérification <code>isAuthenticated</code> et token JWT actif).</li>
         <li><strong>Esthétique &amp; Ergonomie :</strong> Capsule avec dégradé bleu royal (<code>#1877f2</code> / <code>#2563eb</code>), icône <code>LayoutDashboard</code> de Lucide React, libellé dynamique multilingue (<code>Tableau de bord</code> / <code>Dashboard</code> / <code>لوحة التحكم</code>) géré par <code>next-intl</code>.</li>
         <li><strong>Design Adaptatif (Responsive) :</strong> Parfaitement centré (<code>absolute left-1/2 -translate-x-1/2</code>) avec accélération GPU 60 FPS (<code>transform</code>), cible tactile optimisée $\ge 44$ px, et masquage adaptatif du logo textuel sur petits écrans pour un affichage mobile sans aucun chevauchement.</li>
+      </ul>
+    </div>
+
+    <h3>Moteur Global de Notifications Temps Réel (NotificationManager &amp; Sound Engine)</h3>
+    <div class="card">
+      <p>Un système unifié et centralisé de notification sonore, visuelle et push a été déployé pour informer les utilisateurs en temps réel des nouveaux messages et des invitations aux salles vidéo conférence :</p>
+      <ul>
+        <li><strong>Gestionnaire Global Racine (NotificationManager.tsx) :</strong> Monté dans <code>providers.tsx</code>, il opère un cycle de surveillance optimisé en tâche de fond (polling léger toutes les 8 secondes) des endpoints <code>/messages/unread-count</code>, <code>/classrooms/invitations/my-invitations</code> et <code>/classrooms/</code>, sans blocage du thread principal (60 FPS garantis).</li>
+        <li><strong>Synthèse Audio Pure Web Audio API (sound.ts) :</strong> Génération harmonique de carillons sonores en temps réel directement par l'<code>AudioContext</code> du navigateur. Ne nécessite aucun asset MP3 ou WAV externe (100% autonome, zéro latence réseau, fonctionnement hors ligne garanti) :
+          <ul>
+            <li><em>Carillon Invitation Salle Vidéo Conférence :</em> Accord arpégé ascendant tri-tonal chaleureux (Do5 523.25 Hz &rarr; Mi5 659.25 Hz &rarr; Sol5 783.99 Hz avec enveloppe douce d'attaque-relâchement).</li>
+            <li><em>Carillon Message Interne :</em> Tintement cristallin bi-tonal résonant (Mi5 659.25 Hz &rarr; La5 880.00 Hz).</li>
+          </ul>
+        </li>
+        <li><strong>Toasts Flottants Interactifs :</strong> Notification contextuelle translucide avec icône thématique (Caméra vidéo ou Bulle de message), libellé clair, compteur de nouveaux éléments et bouton d'action directe (<em>« Rejoindre la salle »</em> redirigeant vers <code>/classroom</code> ou <em>« Consulter la boîte »</em> vers <code>/inbox</code>), auto-masquée après 7 secondes.</li>
+        <li><strong>Notifications Push Système (Web Notification API) :</strong> Si l'utilisateur a accordé l'autorisation de notification au navigateur, des alertes de bureau natives sont générées même si l'onglet n'est pas actif au premier plan.</li>
+        <li><strong>Badges de Navigation Réactifs &amp; Élimination du Point Gris Inerte :</strong>
+          <ul>
+            <li>Suppression formelle du point gris statique trompeur (<code>bg-slate-300</code>) dans <code>Navbar.tsx</code> et <code>dashboard/page.tsx</code> qui apparaissait même avec 0 notification et donnait une impression de dysfonctionnement.</li>
+            <li>Affichage conditionnel strict : les badges ne s'affichent <strong>que</strong> si un élément requiert l'attention de l'utilisateur (pastille verte émeraude pour les invitations/salles actives, pastille bleue pour les messages non lus).</li>
+            <li>Animations douces <code>animate-ping</code> (halo pulsé) et <code>animate-pulse</code>, accompagnées du badge chiffré indiquant le nombre exact d'invitations ou de messages en attente.</li>
+          </ul>
+        </li>
+        <li><strong>Synchronisation Client-Serveur Instantanée :</strong> Envoi d'événements personnalisés <code>window.dispatchEvent(new Event('messages_updated'))</code> et <code>window.dispatchEvent(new Event('classroom_updated'))</code> lors de la lecture d'un message, de l'envoi d'un message, ou de l'acceptation/refus d'une invitation, provoquant la mise à jour immédiate des badges sans attendre le prochain cycle de polling.</li>
       </ul>
     </div>
 
@@ -1938,7 +1992,7 @@ http://localhost:8000/admin
 # - Quiz, Questions QCM, Tentatives & notes
 # - Présences & feuilles d'émargement
 # - Groupes/Classes, Membres des groupes
-# - Salles de classe virtuelle, Messagerie & signalements
+# - Salles vidéo conférence, Messagerie & signalements
 
 # Ce panel est également accessible en 1 clic depuis l'onglet :
 # "Paramètres" -> "Base de Données & Backend (Admin)"

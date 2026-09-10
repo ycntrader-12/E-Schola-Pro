@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import NotificationManager from '@/components/NotificationManager';
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
@@ -11,5 +12,10 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  return <>{children}</>;
+  return (
+    <>
+      <NotificationManager />
+      {children}
+    </>
+  );
 }

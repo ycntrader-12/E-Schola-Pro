@@ -67,8 +67,8 @@ class ClassroomAdmin(ModelView, model=Classroom):
         Classroom.created_at,
     ]
     column_searchable_list = [Classroom.room_id, Classroom.title]
-    name = "Classe Virtuelle"
-    name_plural = "Classes Virtuelles"
+    name = "Salle Vidéo Conférence"
+    name_plural = "Salles Vidéo Conférence"
     icon = "fa-solid fa-video"
 
 
@@ -201,8 +201,8 @@ class ClassroomInvitationAdmin(ModelView, model=ClassroomInvitation):
         ClassroomInvitation.created_at,
     ]
     column_searchable_list = [ClassroomInvitation.status]
-    name = "Invitation Classe Virtuelle"
-    name_plural = "Invitations Classes Virtuelles"
+    name = "Invitation Salle Vidéo Conférence"
+    name_plural = "Invitations Salles Vidéo Conférence"
     icon = "fa-solid fa-envelope-open-text"
 
 

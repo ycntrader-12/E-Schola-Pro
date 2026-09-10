@@ -32,11 +32,11 @@ def ensure_root_admin_first(db):
         db.refresh(admin_first)
         print("[Root Seed] Compte administrateur racine intouchable 'admin_first' créé avec succès.")
     else:
-        # Guarantee correct role and password
-        admin_first.role = "admin"
-        admin_first.hashed_password = get_password_hash("Admin@1212")
-        db.commit()
-        print("[Root Seed] Compte administrateur racine intouchable 'admin_first' vérifié et synchronisé.")
+        # Guarantee correct role without overwriting existing customized password
+        if admin_first.role != "admin":
+            admin_first.role = "admin"
+            db.commit()
+        print("[Root Seed] Compte administrateur racine intouchable 'admin_first' vérifié (mot de passe existant préservé).")
     return admin_first
 
 

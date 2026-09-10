@@ -290,6 +290,9 @@ export default function InboxMessagesPage() {
           prev.map((m) => (m.id === msg.id ? { ...m, is_read: true } : m))
         );
         setSelectedMessage((prev) => (prev && prev.id === msg.id ? { ...prev, is_read: true } : prev));
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('messages_updated'));
+        }
       } catch (err) {
         console.error('Error marking as read:', err);
       }
@@ -362,6 +365,9 @@ export default function InboxMessagesPage() {
 
     setSelectedMessageIds(new Set());
     await loadAllMessages();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('messages_updated'));
+    }
     setActionMessage({ type: 'success', text: 'Messages supprimés avec succès.' });
   };
 
@@ -497,6 +503,9 @@ export default function InboxMessagesPage() {
               onClose={closeComposer}
               onSuccess={() => {
                 loadAllMessages();
+                if (typeof window !== 'undefined') {
+                  window.dispatchEvent(new Event('messages_updated'));
+                }
                 setActionMessage({ type: 'success', text: 'Message enregistré avec succès !' });
               }}
               initialToRecipients={composerInitialData?.to}
@@ -590,15 +599,16 @@ export default function InboxMessagesPage() {
               </div>
 
               {/* Virtual Classroom Invitation Action Banner */}
-              {(selectedMessage.subject?.toLowerCase().includes('invitation classe virtuelle') ||
+              {(selectedMessage.subject?.toLowerCase().includes('invitation salle vidéo conférence') ||
+                selectedMessage.subject?.toLowerCase().includes('invitation classe virtuelle') ||
                 selectedMessage.body?.toLowerCase().includes('code de la salle')) && (
                 <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 space-y-3">
                   <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs">
                     <Video size={16} />
-                    <span>Invitation Directe à la Classe Virtuelle</span>
+                    <span>Invitation Directe à la Salle vidéo conférence</span>
                   </div>
                   <p className="text-xs text-text-secondary">
-                    Vous pouvez accepter cette invitation et rejoindre la session de visioconférence immédiatement depuis le Hub des Classes Virtuelles.
+                    Vous pouvez accepter cette invitation et rejoindre la session en direct immédiatement depuis l'espace des Salles vidéo conférence.
                   </p>
                   <div className="flex items-center gap-3 pt-1">
                     <button
@@ -606,7 +616,7 @@ export default function InboxMessagesPage() {
                       onClick={() => router.push('/classroom')}
                       className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow-md flex items-center gap-1.5 transition-colors"
                     >
-                      <CheckCircle2 size={14} /> Accepter &amp; Accéder au Hub Visioconférence
+                      <CheckCircle2 size={14} /> Accepter &amp; Accéder à la Salle vidéo conférence
                     </button>
                   </div>
                 </div>
@@ -730,7 +740,7 @@ export default function InboxMessagesPage() {
                 </div>
               </div>
 
-              {/* Classe Virtuelle Classroom HD Banner */}
+              {/* Salle Vidéo Conférence Banner */}
               {activeFolder === 'classroom' && (
                 <div className="mx-4 my-3 p-4 rounded-2xl bg-gradient-to-r from-blue-600/15 via-indigo-600/10 to-primary/10 border border-blue-500/30 flex items-center justify-between gap-4">
                   <div className="flex items-center gap-3">
@@ -738,9 +748,9 @@ export default function InboxMessagesPage() {
                       <Video size={20} />
                     </div>
                     <div>
-                      <h3 className="text-xs font-bold text-text-primary">Espace Classes Virtuelles HD</h3>
+                      <h3 className="text-xs font-bold text-text-primary">Espace Salles vidéo conférence HD</h3>
                       <p className="text-[11px] text-text-secondary">
-                        Rejoignez vos sessions interactives en visioconférence HD avec les enseignants et les apprenants.
+                        Rejoignez vos sessions interactives en salle vidéo conférence HD avec les enseignants et les apprenants.
                       </p>
                     </div>
                   </div>
@@ -749,7 +759,7 @@ export default function InboxMessagesPage() {
                     onClick={() => router.push('/classroom')}
                     className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl shadow-md shadow-blue-500/25 flex items-center gap-2 shrink-0 transition-colors cursor-pointer"
                   >
-                    <span>Ouvrir Classroom</span>
+                    <span>Ouvrir Salle vidéo conférence</span>
                     <ChevronRight size={14} />
                   </button>
                 </div>

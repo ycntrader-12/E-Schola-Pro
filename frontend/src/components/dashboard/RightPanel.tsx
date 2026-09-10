@@ -121,7 +121,7 @@ export default function RightPanel({ isOpen, setIsOpen }: RightPanelProps) {
             <Link 
               href="/classroom" 
               className="w-8 h-8 rounded-full border border-slate-200 bg-slate-50/80 flex items-center justify-center text-slate-600 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600 transition-colors shadow-xs" 
-              title="Classe Virtuelle"
+              title="Salle vidéo conférence"
             >
               <MessageSquare size={14} />
             </Link>

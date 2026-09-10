@@ -21,6 +21,7 @@ from app.schemas.user import (
     UserUpdate,
     UserUpdatePassword,
 )
+from app.services.email_service import send_role_change_email
 from app.services.welcome import send_welcome_message
 
 router = APIRouter()
@@ -568,10 +569,31 @@ def update_user_role(
                 detail="Un ADMIN_MANAGER ne peut pas modifier les permissions ou le rôle d'un compte administrateur.",
             )
 
+    old_role = user.role or "étudiant"
     user.role = new_role
     session.add(user)
     session.commit()
     session.refresh(user)
+
+    # Journalisation d'audit de modification de rôle
+    print(
+        f"[Audit Rôle] L'administrateur ID {current_user.id} ({current_user.email}) "
+        f"a modifié le rôle de l'utilisateur ID {user.id} ({user.email}) : '{old_role}' -> '{new_role}'."
+    )
+
+    # Envoi automatique de l'email de notification de rôle
+    try:
+        if user.email and "@" in user.email and old_role.lower() != new_role.lower():
+            target_name = f"{user.prenom or ''} {user.nom or ''}".strip() or user.username or user.email.split("@")[0]
+            send_role_change_email(
+                to_email=user.email,
+                user_name=target_name,
+                old_role=old_role,
+                new_role=new_role,
+            )
+    except Exception as mail_err:
+        print(f"[WARN] Impossible d'expédier l'email de changement de rôle à {user.email}: {mail_err}")
+
     return user
 
 
@@ -664,8 +686,16 @@ def delete_user(
         session.rollback()
         print(f"[Warning] Safe cascade cleanup notice for user {user_id}: {cascade_err}")
 
+    deleted_email = user.email
+    deleted_role = user.role
     session.delete(user)
     session.commit()
+
+    print(
+        f"[Audit Suppression] Compte utilisateur ID {user_id} ({deleted_email}, rôle: {deleted_role}) "
+        f"supprimé par l'administrateur ID {current_user.id} ({current_user.email})."
+    )
+
     return {"message": "User deleted successfully", "id": user_id}
 
 
@@ -1000,6 +1030,8 @@ def admin_update_user(
             user.email = new_email
 
     # Role update with accent normalization
+    role_changed = False
+    old_role = user.role or "étudiant"
     if user_in.role is not None:
         raw_role = user_in.role.strip().lower()
         role_map = {
@@ -1022,7 +1054,9 @@ def admin_update_user(
         normalized_role = role_map.get(raw_role, raw_role)
         if current_user.role.lower() == "admin_manager" and normalized_role in ADMIN_ROLES:
             raise HTTPException(status_code=403, detail="Un ADMIN_MANAGER ne peut pas accorder de rôle administrateur.")
-        user.role = normalized_role
+        if normalized_role != old_role:
+            role_changed = True
+            user.role = normalized_role
 
     if user_in.nom is not None:
         user.nom = user_in.nom.strip() or None
@@ -1052,9 +1086,28 @@ def admin_update_user(
         if len(pwd_val) < 6:
             raise HTTPException(status_code=400, detail="Le mot de passe doit contenir au moins 6 caractères.")
         user.hashed_password = get_password_hash(pwd_val)
+        print(f"[Audit Mot de passe] Mot de passe de l'utilisateur ID {user.id} mis à jour par l'administrateur ID {current_user.id}.")
 
     session.add(user)
     session.commit()
     session.refresh(user)
+
+    if role_changed:
+        print(
+            f"[Audit Rôle] L'administrateur ID {current_user.id} ({current_user.email}) "
+            f"a modifié le rôle de l'utilisateur ID {user.id} ({user.email}) : '{old_role}' -> '{user.role}'."
+        )
+        try:
+            if user.email and "@" in user.email:
+                target_name = f"{user.prenom or ''} {user.nom or ''}".strip() or user.username or user.email.split("@")[0]
+                send_role_change_email(
+                    to_email=user.email,
+                    user_name=target_name,
+                    old_role=old_role,
+                    new_role=user.role,
+                )
+        except Exception as mail_err:
+            print(f"[WARN] Impossible d'expédier l'email de notification de rôle à {user.email}: {mail_err}")
+
     return user
 

@@ -1404,7 +1404,7 @@ export default function ProfilePage() {
                     { title: "Présences", table: "attendance", link: `${backendBaseUrl}/admin/attendance/list`, icon: ClipboardCheck, desc: "Statuts d'émargement & retards" },
                     { title: "Groupes & Classes", table: "groups", link: `${backendBaseUrl}/admin/group/list`, icon: Users, desc: "Classes, niveaux scolaires" },
                     { title: "Membres de Groupes", table: "group_members", link: `${backendBaseUrl}/admin/groupmember/list`, icon: UserPlus, desc: "Affectation utilisateurs ↔ groupes" },
-                    { title: "Classes Virtuelles", table: "classrooms", link: `${backendBaseUrl}/admin/classroom/list`, icon: Video, desc: "Salles visioconférence & hôtes" },
+                    { title: "Salles vidéo conférence", table: "classrooms", link: `${backendBaseUrl}/admin/classroom/list`, icon: Video, desc: "Salles vidéo conférence & hôtes" },
                     { title: "Messagerie", table: "messages", link: `${backendBaseUrl}/admin/message/list`, icon: MessageSquare, desc: "Boîtes de réception, signalements" },
                   ].map((tbl, idx) => {
                     const IconComp = tbl.icon;
@@ -1472,7 +1472,7 @@ export default function ProfilePage() {
                         { method: "POST", route: "/attendance/mark", role: "Formateur/Admin", desc: "Enregistrement de l'état de présence (Présent, Retard, Absent)" },
                         { method: "GET", route: "/groups/", role: "Authentifié", desc: "Liste de toutes les classes et niveaux d'étude" },
                         { method: "POST", route: "/groups/{id}/members", role: "Formateur/Admin", desc: "Affectation d'un apprenant à une classe spécifique" },
-                        { method: "GET", route: "/classrooms/", role: "Authentifié", desc: "Salles de classe virtuelle en direct (visioconférence)" },
+                        { method: "GET", route: "/classrooms/", role: "Authentifié", desc: "Salles vidéo conférence en direct" },
                         { method: "GET", route: "/messages/inbox", role: "Authentifié", desc: "Boîte de réception de la messagerie interne" },
                         { method: "POST", route: "/upload/file", role: "Authentifié", desc: "Téléversement de tout type de fichier ou document" },
                       ].map((ep, i) => (
