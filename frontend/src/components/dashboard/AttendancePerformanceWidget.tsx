@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Link } from '@/i18n/routing';
 import { 
   UserCheck, 
@@ -16,9 +16,186 @@ import {
   Loader2,
   FileText,
   Users,
-  Download
+  Download,
+  Search,
+  ChevronDown,
+  X,
+  Check,
+  AlertCircle
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
+
+interface OptionItem {
+  id: string | number;
+  label: string;
+  sublabel?: string;
+  badge?: string;
+}
+
+function SearchableSelect({
+  label,
+  icon,
+  placeholder,
+  options,
+  selectedValue,
+  onSelect,
+  emptyText = "Aucun résultat trouvé",
+  disabled = false
+}: {
+  label: string;
+  icon: React.ReactNode;
+  placeholder: string;
+  options: OptionItem[];
+  selectedValue: string | number | null;
+  onSelect: (value: any) => void;
+  emptyText?: string;
+  disabled?: boolean;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Find selected option
+  const selectedOption = useMemo(() => {
+    return options.find(opt => String(opt.id) === String(selectedValue));
+  }, [options, selectedValue]);
+
+  // Keep input text in sync when not open
+  useEffect(() => {
+    if (!isOpen) {
+      setSearchTerm(selectedOption ? selectedOption.label : '');
+    }
+  }, [selectedOption, isOpen]);
+
+  // Filter options based on search term
+  const filteredOptions = useMemo(() => {
+    if (!searchTerm.trim()) return options;
+    const q = searchTerm.toLowerCase().trim();
+    return options.filter(opt => 
+      opt.label.toLowerCase().includes(q) || 
+      (opt.sublabel && opt.sublabel.toLowerCase().includes(q)) ||
+      (opt.badge && opt.badge.toLowerCase().includes(q))
+    );
+  }, [options, searchTerm]);
+
+  // Click outside listener
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  return (
+    <div ref={containerRef} className="relative flex-1 min-w-[240px] w-full">
+      {/* Field Label */}
+      <label className="block text-[11px] font-bold text-text-secondary uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+        <span className="p-1 rounded bg-primary/10 text-primary">{icon}</span>
+        <span>{label}</span>
+      </label>
+      
+      {/* Input container */}
+      <div className="relative">
+        <div className="relative flex items-center">
+          <input
+            type="text"
+            disabled={disabled}
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              if (!isOpen) setIsOpen(true);
+            }}
+            onFocus={() => {
+              setIsOpen(true);
+            }}
+            placeholder={placeholder}
+            className="w-full text-xs font-medium bg-white border border-border rounded-xl pl-8 pr-16 py-2.5 text-text-primary placeholder:text-text-secondary/60 outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 transition-all shadow-sm disabled:opacity-60 disabled:bg-slate-50 disabled:cursor-not-allowed"
+          />
+          <Search size={14} className="absolute left-2.5 text-text-secondary pointer-events-none" />
+          
+          <div className="absolute right-2 flex items-center gap-0.5">
+            {searchTerm && !disabled && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSearchTerm('');
+                  if (!isOpen) setIsOpen(true);
+                }}
+                className="p-1 hover:bg-slate-100 rounded-md text-text-secondary hover:text-text-primary transition-colors"
+                title="Effacer la saisie"
+              >
+                <X size={12} />
+              </button>
+            )}
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={() => setIsOpen(!isOpen)}
+              className="p-1 text-text-secondary hover:text-text-primary transition-transform"
+              title={isOpen ? "Fermer la liste" : "Ouvrir la liste"}
+            >
+              <ChevronDown size={14} className={`transition-transform duration-200 ${isOpen ? 'rotate-180 text-primary' : ''}`} />
+            </button>
+          </div>
+        </div>
+
+        {/* Dropdown Menu */}
+        {isOpen && !disabled && (
+          <div className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white rounded-xl border border-border shadow-2xl max-h-64 overflow-y-auto py-1 animate-in fade-in slide-in-from-top-1 duration-150 ring-1 ring-black/5">
+            <div className="px-3 py-1.5 border-b border-border/60 text-[10px] font-bold text-text-secondary flex items-center justify-between bg-slate-50">
+              <span>{filteredOptions.length} option{filteredOptions.length > 1 ? 's' : ''}</span>
+              {searchTerm && <span className="text-primary truncate max-w-[120px]">Filtre: "{searchTerm}"</span>}
+            </div>
+            
+            {filteredOptions.length === 0 ? (
+              <div className="px-4 py-5 text-center text-xs text-text-secondary flex flex-col items-center gap-1.5">
+                <AlertCircle size={18} className="text-amber-500/70" />
+                <span>{emptyText}</span>
+              </div>
+            ) : (
+              filteredOptions.map((opt) => {
+                const isSelected = String(opt.id) === String(selectedValue);
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => {
+                      onSelect(opt.id);
+                      setSearchTerm(opt.label);
+                      setIsOpen(false);
+                    }}
+                    className={`w-full text-left px-3.5 py-2 text-xs flex items-center justify-between gap-2.5 hover:bg-primary/5 transition-colors border-b border-border/30 last:border-0 ${
+                      isSelected ? 'bg-primary/10 font-bold text-primary' : 'text-text-primary'
+                    }`}
+                  >
+                    <div className="flex flex-col min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        {isSelected && <Check size={12} className="text-primary shrink-0" />}
+                        <span className="truncate">{opt.label}</span>
+                      </div>
+                      {opt.sublabel && (
+                        <span className="text-[10px] text-text-secondary truncate mt-0.5">{opt.sublabel}</span>
+                      )}
+                    </div>
+                    {opt.badge && (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-100 text-text-secondary font-medium shrink-0">
+                        {opt.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 interface PeriodStats {
   period_name: string;
@@ -157,8 +334,8 @@ export default function AttendancePerformanceWidget() {
     <div className="bg-surface rounded-2xl p-6 border border-border shadow-sm space-y-6 mb-8">
       
       {/* Header & Period Switcher */}
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 pb-4 border-b border-border">
-        <div>
+      <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4 pb-4 border-b border-border">
+        <div className="flex-1">
           <div className="flex items-center gap-2">
             <span className="p-1.5 rounded-lg bg-primary/10 text-primary">
               <UserCheck size={18} />
@@ -175,30 +352,34 @@ export default function AttendancePerformanceWidget() {
 
           {/* Manager Filters */}
           {isManager && (
-            <div className="mt-4 flex flex-col sm:flex-row items-center gap-3 bg-slate-50/50 p-2.5 rounded-xl border border-border">
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <Users size={14} className="text-text-secondary shrink-0" />
-                <select 
-                  value={selectedGroup}
-                  onChange={(e) => handleGroupChange(e.target.value)}
-                  className="w-full sm:w-48 text-xs bg-white border border-border rounded-lg px-2 py-1.5 text-text-primary outline-none focus:border-primary"
-                >
-                  {groups.map(g => (
-                    <option key={g} value={g}>{g}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <UserCheck size={14} className="text-text-secondary shrink-0" />
-                <select 
-                  value={selectedUserId || ''}
-                  onChange={(e) => handleUserChange(Number(e.target.value))}
-                  className="w-full sm:w-48 text-xs bg-white border border-border rounded-lg px-2 py-1.5 text-text-primary outline-none focus:border-primary"
-                >
-                  {learners.map(l => (
-                    <option key={l.id} value={l.id}>{l.email}</option>
-                  ))}
-                </select>
+            <div className="mt-4 p-3.5 bg-slate-50/90 rounded-2xl border border-border shadow-sm">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-start gap-4">
+                <SearchableSelect
+                  label="Groupe / Promotion"
+                  icon={<Users size={13} />}
+                  placeholder="Rechercher un groupe..."
+                  options={groups.map(g => ({ id: g, label: g }))}
+                  selectedValue={selectedGroup}
+                  onSelect={(val) => handleGroupChange(String(val))}
+                  emptyText="Aucun groupe correspondant"
+                />
+
+                <div className="hidden sm:block w-px h-12 bg-border self-center" />
+
+                <SearchableSelect
+                  label="Apprenant / Étudiant"
+                  icon={<UserCheck size={13} />}
+                  placeholder={learners.length === 0 ? "Aucun apprenant dans ce groupe" : "Rechercher par email..."}
+                  options={learners.map(l => ({ 
+                    id: l.id, 
+                    label: l.email,
+                    sublabel: `ID #${l.id} • ${selectedGroup || 'Groupe'}`
+                  }))}
+                  selectedValue={selectedUserId}
+                  onSelect={(val) => handleUserChange(Number(val))}
+                  disabled={learners.length === 0}
+                  emptyText="Aucun apprenant trouvé"
+                />
               </div>
             </div>
           )}
