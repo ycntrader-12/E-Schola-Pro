@@ -244,10 +244,10 @@ Chaque mise à jour de l'interface utilisateur (composants React, CSS, landing p
 ### Étape 2 : Configurer les Variables d'Environnement
 1. Dans le tableau de bord Railway, cliquez sur le service `E-Schola-Pro` -> onglet **Variables**.
 2. Renseignez les variables suivantes :
-   * `DATABASE_URL` = `postgresql://postgres:JiYvfWjZyLzTVMlmlykvqEIIxFqtrnqp@postgres.railway.internal:5432/railway`
-     *(Permet à la production sur Railway d'utiliser la base de données PostgreSQL centralisée)*
+   * `DATABASE_URL` = `${{Postgres.DATABASE_URL}}`
+     *(Lie dynamiquement le service de l'application à la base de données PostgreSQL provisionnée sur Railway)*
    * `SEED_DEMO_DATA` = `false` *(Désactive la réinjection de comptes de démo lors des redéploiements)*
-   * `SECRET_KEY` = *[Votre clé secrète JWT]* (ex: générée avec `openssl rand -hex 32`)
+   * `SECRET_KEY` = *[Votre clé secrète JWT]* (ex: générée avec `openssl rand -hex 32`)*
    * `ACCESS_TOKEN_EXPIRE_MINUTES` = `10080` (7 jours)
    * `CLOUDINARY_CLOUD_NAME` = *[Votre Cloud Name]* (Requis pour médias Cloudinary)
    * `CLOUDINARY_API_KEY` = *[Votre API Key]*
