@@ -1414,7 +1414,17 @@ E-Schola Pro/
       <ul>
         <li><strong>Création :</strong> Formulaire avec titre, description, image de couverture (upload Cloudinary), document PDF</li>
         <li><strong>Vidéos &amp; Playlist :</strong> Gestion d'une playlist de vidéos ordonnées par cours. Les formateurs et administrateurs peuvent téléverser des fichiers vidéo locaux (MP4, WebM) via un modal d'upload dédié directement depuis la page de détail du cours (<code>/courses/{id}</code>) ou en tant que raccourci depuis la liste globale des cours (<code>/courses</code>).</li>
-        <li><strong>Lecteur Vidéo Hybride Universel (<code>YoutubePlayer.tsx</code>) :</strong> Le lecteur analyse dynamiquement la source du contenu. Si le lien est une URL YouTube (ex: <code>youtube.com/watch?v=...</code> ou <code>youtu.be/...</code>), un lecteur <code>&lt;iframe&gt;</code> responsive sécurisé est injecté automatiquement. Si le contenu est un fichier vidéo autonome (MP4, WebM ou upload direct du serveur), le lecteur HTML5 personnalisé avec contrôles enrichis (gestion du volume, vitesses de lecture 0.5x à 2x, plein écran et téléchargement direct) prend le relais de façon transparente.</li>
+        <li><strong>Lecteur Vidéo Avancé Haute Performance UDP (<code>YoutubePlayer.tsx</code>) :</strong> Moteur de streaming vidéo universel hybride intégrant :
+          <ul>
+            <li><strong>Pipeline UDP Streaming &amp; Accélération QUIC/RTP :</strong> Diffusion en basse latence sans blocage de tête de ligne avec badge HUD dynamique, préchargement continu de mémoire tampon et panneau de diagnostic des métriques réseau (débit en Mbps, perte de paquets 0%, latence RTT, jitter, résolution 60 FPS).</li>
+            <li><strong>Sélection Complète de la Vitesse de Lecture :</strong> 0.25x (Très lent), 0.5x, 0.75x, 1.0x (Normale), 1.25x, 1.5x, 1.75x, 2.0x (Rapide).</li>
+            <li><strong>Sélection de la Qualité Vidéo :</strong> Auto (Adaptatif UDP), 1080p Full HD (60 FPS), 720p HD, 480p SD, 360p Éco données.</li>
+            <li><strong>Contrôles Avancés &amp; Immersion :</strong> Scrubbing interactif avec tooltip temporel au survol et visualisation du buffer, avance/recul de 10s (<code>±10s</code>), mode Picture-in-Picture (PiP fenêtre flottante), mode Cinéma/Théâtre, plein écran natif (Fullscreen API), lecture en boucle (Loop) et téléchargement direct du fichier source.</li>
+            <li><strong>Amplification Audio (Audio Booster) :</strong> Gain Web Audio API ajustable (100%, 150%, 200%) avec curseur de volume précis et coupure instantanée (Mute).</li>
+            <li><strong>Raccourcis Clavier Complets :</strong> Raccourcis multimédias natifs (Espace/K, Flèches Gauche/Droite/Haut/Bas, J/L, M, F, P, T, ?) avec modal interactif d'aide.</li>
+            <li><strong>Compatibilité Hybride :</strong> Détection automatique et encapsulation optimisée pour les flux YouTube ou lecture native pour les vidéos locales/serveur.</li>
+          </ul>
+        </li>
         <li><strong>Inscription :</strong> Les étudiants peuvent s'inscrire/se désinscrire automatiquement</li>
         <li><strong>Détail du cours (/courses/{id}) :</strong> Bannière horizontale d'inscription et d'actions (statut d'inscription, bouton de téléchargement du support, bouton de suppression), lecteur vidéo intégré, description étendue et playlist interactive des leçons</li>
         <li><strong>Suppression :</strong> Cascade automatique (vidéos et inscriptions supprimées)</li>
