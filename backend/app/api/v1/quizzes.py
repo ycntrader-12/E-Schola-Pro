@@ -6,10 +6,13 @@ from fastapi import APIRouter, HTTPException
 from app.api.deps import CurrentUser, SessionDep
 from app.models.quiz import Quiz, QuizAttempt, QuizQuestion
 from app.schemas.quiz import (
+    QuizAttemptDetailResponse,
     QuizAttemptResponse,
     QuizCreate,
     QuizDetailResponse,
+    QuizGlobalReportResponse,
     QuizQuestionResponse,
+    QuizQuestionReviewItem,
     QuizResponse,
     QuizSubmit,
 )
@@ -375,3 +378,160 @@ def get_my_attempts(
             )
         )
     return results
+
+
+@router.get("/attempts/{attempt_id}/details", response_model=QuizAttemptDetailResponse)
+def get_attempt_details_for_pdf(
+    attempt_id: int,
+    session: SessionDep,
+    current_user: CurrentUser,
+) -> Any:
+    """
+    Get full attempt details with question-by-question review for PDF generation.
+    Strict Role Authorization:
+    - Learners (étudiant, stagiaire, employer): strictly allowed ONLY for their own attempt.
+    - Staff (formateur, admin, pedagogique, dg_rh): allowed for any student attempt.
+    """
+    attempt = session.query(QuizAttempt).filter(QuizAttempt.id == attempt_id).first()
+    if not attempt:
+        raise HTTPException(status_code=404, detail="Résultat d'évaluation introuvable.")
+
+    # Strict ownership check for learners
+    if current_user.role not in STAFF_ROLES and attempt.user_id != current_user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="Accès refusé. Les apprenants ne peuvent exporter que leurs propres résultats de quiz.",
+        )
+
+    quiz = attempt.quiz
+    if not quiz:
+        raise HTTPException(status_code=404, detail="Quiz associé introuvable.")
+
+    user = attempt.user
+    user_email = user.email if user else "Inconnu"
+    user_role = user.role if user else "étudiant"
+    user_group = user.group_name if user else None
+
+    # Parse stored answers
+    user_answers = {}
+    if attempt.answers:
+        try:
+            raw_answers = json.loads(attempt.answers)
+            # Keys might be ints or strings
+            user_answers = {str(k): int(v) for k, v in raw_answers.items()}
+        except Exception:
+            user_answers = {}
+
+    detailed_review = []
+    for q in quiz.questions:
+        try:
+            options_list = json.loads(q.options)
+        except Exception:
+            options_list = [q.options]
+
+        user_choice = user_answers.get(str(q.id))
+        is_correct = user_choice is not None and user_choice == q.correct_option_index
+
+        detailed_review.append(
+            QuizQuestionReviewItem(
+                question_id=q.id,
+                question_text=q.question_text,
+                options=options_list,
+                selected_index=user_choice,
+                correct_index=q.correct_option_index,
+                is_correct=is_correct,
+                points=q.points if is_correct else 0,
+                max_points=q.points,
+            )
+        )
+
+    return QuizAttemptDetailResponse(
+        attempt_id=attempt.id,
+        quiz_id=quiz.id,
+        quiz_title=quiz.title,
+        quiz_description=quiz.description,
+        time_limit_minutes=quiz.time_limit_minutes,
+        creator_email=quiz.creator.email if quiz.creator else None,
+        user_id=attempt.user_id,
+        user_email=user_email,
+        user_role=user_role,
+        user_group=user_group,
+        score=attempt.score,
+        max_score=attempt.max_score,
+        percentage=attempt.percentage,
+        passed=attempt.percentage >= 60.0,
+        completed_at=attempt.completed_at,
+        questions_review=detailed_review,
+    )
+
+
+@router.get("/{quiz_id}/report-data", response_model=QuizGlobalReportResponse)
+def get_quiz_global_report_for_pdf(
+    quiz_id: int,
+    session: SessionDep,
+    current_user: CurrentUser,
+) -> Any:
+    """
+    Get full aggregated report of a quiz for formateurs and admins to export as PDF.
+    Strictly restricted to STAFF_ROLES.
+    """
+    if current_user.role not in STAFF_ROLES:
+        raise HTTPException(
+            status_code=403,
+            detail="Seuls les formateurs et administrateurs peuvent exporter le rapport global des résultats.",
+        )
+
+    quiz = session.query(Quiz).filter(Quiz.id == quiz_id).first()
+    if not quiz:
+        raise HTTPException(status_code=404, detail="Quiz introuvable.")
+
+    attempts = (
+        session.query(QuizAttempt)
+        .filter(QuizAttempt.quiz_id == quiz_id)
+        .order_by(QuizAttempt.completed_at.desc())
+        .all()
+    )
+
+    total_pts = sum(q.points for q in quiz.questions)
+    total_attempts = len(attempts)
+    passed_count = sum(1 for a in attempts if a.percentage >= 60.0)
+
+    avg_score = round(sum(a.score for a in attempts) / total_attempts, 2) if total_attempts > 0 else 0.0
+    avg_pct = round(sum(a.percentage for a in attempts) / total_attempts, 2) if total_attempts > 0 else 0.0
+    highest_pct = max((a.percentage for a in attempts), default=0.0)
+    lowest_pct = min((a.percentage for a in attempts), default=0.0)
+    success_rate = round((passed_count / total_attempts * 100), 1) if total_attempts > 0 else 0.0
+
+    attempts_data = [
+        QuizAttemptResponse(
+            id=a.id,
+            quiz_id=a.quiz_id,
+            quiz_title=quiz.title,
+            user_id=a.user_id,
+            user_email=a.user.email if a.user else "Inconnu",
+            user_role=a.user.role if a.user else "étudiant",
+            score=a.score,
+            max_score=a.max_score,
+            percentage=a.percentage,
+            completed_at=a.completed_at,
+        )
+        for a in attempts
+    ]
+
+    return QuizGlobalReportResponse(
+        quiz_id=quiz.id,
+        quiz_title=quiz.title,
+        created_at=quiz.created_at,
+        creator_email=quiz.creator.email if quiz.creator else None,
+        target_roles=quiz.target_roles or "Tous",
+        total_points=total_pts,
+        total_attempts=total_attempts,
+        passed_count=passed_count,
+        average_score=avg_score,
+        average_percentage=avg_pct,
+        highest_percentage=highest_pct,
+        lowest_percentage=lowest_pct,
+        success_rate=success_rate,
+        attempts=attempts_data,
+    )
+

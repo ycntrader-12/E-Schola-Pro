@@ -1145,12 +1145,15 @@ E-Schola Pro/
     <table>
       <thead><tr><th>Méthode</th><th>Endpoint</th><th>Description</th><th>Accès</th></tr></thead>
       <tbody class="endpoint-row">
-        <tr><td><span class="badge badge-get">GET</span></td><td><code>/quizzes/</code></td><td>Lister tous les quiz</td><td>Authentifié</td></tr>
-        <tr><td><span class="badge badge-get">GET</span></td><td><code>/quizzes/{id}</code></td><td>Détail d'un quiz avec questions</td><td>Authentifié</td></tr>
-        <tr><td><span class="badge badge-post">POST</span></td><td><code>/quizzes/</code></td><td>Créer un quiz</td><td>Admin, Formateur</td></tr>
-        <tr><td><span class="badge badge-post">POST</span></td><td><code>/quizzes/{id}/submit</code></td><td>Soumettre les réponses</td><td>Étudiant</td></tr>
-        <tr><td><span class="badge badge-get">GET</span></td><td><code>/quizzes/{id}/leaderboard</code></td><td>Classement du quiz</td><td>Authentifié</td></tr>
-        <tr><td><span class="badge badge-delete">DELETE</span></td><td><code>/quizzes/{id}</code></td><td>Supprimer un quiz</td><td>Admin, Formateur</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/quizzes/</code></td><td>Lister tous les quiz disponibles pour le rôle de l'utilisateur</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/quizzes/{id}</code></td><td>Détail d'un quiz avec questions (anti-triche : réponses masquées aux apprenants)</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/quizzes/</code></td><td>Créer un nouveau quiz avec son barème et ses questions</td><td>Admin, Formateur, DG-RH</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/quizzes/{id}/submit</code></td><td>Soumettre les réponses, calculer la note et enregistrer la tentative</td><td>Étudiant, Stagiaire, Employé</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/quizzes/attempts/my</code></td><td>Historique de toutes les tentatives personnelles de l'utilisateur</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/quizzes/attempts/{attempt_id}/details</code></td><td>Relevé complet d'une tentative avec correction question par question pour génération du PDF (<strong>Contrôle strict :</strong> Apprenants autorisés uniquement sur leurs propres tentatives ; Formateurs/Admins autorisés sur tous)</td><td>Authentifié (Contrôle RBAC strict)</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/quizzes/{id}/results</code></td><td>Consulter la liste de toutes les tentatives des apprenants pour ce quiz</td><td>Admin, Formateur, DG-RH, Pédagogique</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/quizzes/{id}/report-data</code></td><td>Données agrégées et synthèse statistique de la promotion pour export du Procès-Verbal Global PDF</td><td>Admin, Formateur, DG-RH, Pédagogique</td></tr>
+        <tr><td><span class="badge badge-delete">DELETE</span></td><td><code>/quizzes/{id}</code></td><td>Supprimer un quiz et ses questions en cascade</td><td>Admin, Formateur</td></tr>
       </tbody>
     </table>
 
@@ -1443,12 +1446,17 @@ E-Schola Pro/
       <p><strong>Route Frontend :</strong> <code>/quizzes</code></p>
       <p><strong>Options et propriétés :</strong></p>
       <ul>
-        <li><strong>Création :</strong> Titre, description, cours associé (optionnel), rôles cibles, durée limite</li>
-        <li><strong>Questions :</strong> QCM à 4 choix, points par question, indication de la bonne réponse</li>
-        <li><strong>Timer :</strong> Compte à rebours configurable (1 à 120 minutes)</li>
-        <li><strong>Correction :</strong> Automatique après soumission, score en pourcentage</li>
-        <li><strong>Classement :</strong> Tableau des meilleurs scores par quiz</li>
-        <li><strong>Limitation :</strong> Un seul passage par étudiant par quiz</li>
+        <li><strong>Création :</strong> Titre, description, cours associé (optionnel), rôles cibles (Étudiants, Stagiaires, Employés), durée limite et barème par question</li>
+        <li><strong>Questions &amp; Barème :</strong> QCM à 4 choix, points personnalisables par question, validation interactive de la bonne réponse</li>
+        <li><strong>Timer &amp; Soumission :</strong> Compte à rebours temps réel avec auto-soumission à expiration du délai</li>
+        <li><strong>Correction Immédiate :</strong> Calcul automatique de la note, pourcentage, mention d'excellence et révision détaillée question par question</li>
+        <li><strong>Export PDF Universel Sécurisé (Moteur <code>quizPdfExport.ts</code>) :</strong>
+          <ul>
+            <li><strong>Pour les Apprenants (Étudiants, Stagiaires, Employés) :</strong> Export PDF autorisé <em>strictement pour leurs évaluations personnelles</em>. Génère un <strong>Relevé Officiel de Résultats / Certificat d'Évaluation A4</strong> avec identifiant unique, notes, pourcentage, statut de validation, mention, tableau complet de correction pédagogique, code d'authenticité et cachet numérique.</li>
+            <li><strong>Pour l'Équipe Pédagogique (Formateurs, Pédagogique, DG-RH, Administrateurs) :</strong> Export des relevés individuels de n'importe quel apprenant + Export du <strong>Procès-Verbal &amp; Rapport Global de la Promotion en PDF</strong> (statistiques agrégées, moyenne de promo, taux de réussite, amplitude min/max et tableau de classement complet).</li>
+          </ul>
+        </li>
+        <li><strong>Onglet Dédié « Mes Résultats &amp; Relevés PDF » :</strong> Permet à chaque utilisateur de consulter l'historique complet de ses passages et de réexporter ses attestations en PDF à tout moment.</li>
       </ul>
       <div class="screenshot-container">
         <div class="screenshot-header">

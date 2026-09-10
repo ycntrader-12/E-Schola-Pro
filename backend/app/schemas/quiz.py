@@ -68,3 +68,51 @@ class QuizAttemptResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class QuizQuestionReviewItem(BaseModel):
+    question_id: int
+    question_text: str
+    options: list[str]
+    selected_index: int | None = None
+    correct_index: int
+    is_correct: bool
+    points: int
+    max_points: int
+
+
+class QuizAttemptDetailResponse(BaseModel):
+    attempt_id: int
+    quiz_id: int
+    quiz_title: str
+    quiz_description: str | None = None
+    time_limit_minutes: int = 15
+    creator_email: str | None = None
+    user_id: int
+    user_email: str
+    user_role: str
+    user_group: str | None = None
+    score: int
+    max_score: int
+    percentage: float
+    passed: bool
+    completed_at: datetime
+    questions_review: list[QuizQuestionReviewItem] = []
+
+
+class QuizGlobalReportResponse(BaseModel):
+    quiz_id: int
+    quiz_title: str
+    created_at: datetime
+    creator_email: str | None = None
+    target_roles: str
+    total_points: int
+    total_attempts: int
+    passed_count: int
+    average_score: float
+    average_percentage: float
+    highest_percentage: float
+    lowest_percentage: float
+    success_rate: float
+    attempts: list[QuizAttemptResponse] = []
+

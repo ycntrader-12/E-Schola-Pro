@@ -12,16 +12,26 @@ import {
   BarChart3, 
   Users, 
   ArrowRight, 
-  ArrowLeft,
+  ArrowLeft, 
   X, 
   Loader2, 
   Check, 
-  FileQuestion,
-  ShieldCheck,
-  Sparkles,
-  BookOpen
+  FileQuestion, 
+  ShieldCheck, 
+  Sparkles, 
+  BookOpen,
+  Download,
+  FileText,
+  History,
+  GraduationCap
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
+import { 
+  exportPersonalQuizAttemptPDF, 
+  exportGlobalQuizReportPDF,
+  QuizAttemptDetail,
+  QuizGlobalReport 
+} from '@/lib/quizPdfExport';
 
 interface Quiz {
   id: number;
@@ -64,8 +74,10 @@ interface QuizAttempt {
 export default function QuizzesPage() {
   const [currentUser, setCurrentUser] = useState<{ id: number; email: string; role: string } | null>(null);
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
+  const [myAttempts, setMyAttempts] = useState<QuizAttempt[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'available' | 'manage'>('available');
+  const [activeTab, setActiveTab] = useState<'available' | 'history' | 'manage'>('available');
+  const [isExportingPdf, setIsExportingPdf] = useState<number | null>(null);
 
   // Taking a Quiz state
   const [activeQuizDetail, setActiveQuizDetail] = useState<QuizDetail | null>(null);
@@ -102,15 +114,17 @@ export default function QuizzesPage() {
 
   const canManage = ['formateur', 'pedagogique', 'dg_rh', 'dg/rh', 'admin', 'admin_manager'].includes(currentUser?.role || '');
 
-  // 1. Fetch User & Quizzes
+  // 1. Fetch User, Quizzes & Personal Attempts
   const fetchQuizzes = async () => {
     try {
-      const [userRes, quizRes] = await Promise.all([
+      const [userRes, quizRes, attemptsRes] = await Promise.all([
         apiClient.get('/users/me').catch(() => null),
-        apiClient.get('/quizzes/')
+        apiClient.get('/quizzes/'),
+        apiClient.get('/quizzes/attempts/my').catch(() => ({ data: [] }))
       ]);
       if (userRes?.data) setCurrentUser(userRes.data);
       setQuizzes(quizRes.data);
+      if (attemptsRes?.data) setMyAttempts(attemptsRes.data);
     } catch (err) {
       console.error('Error fetching quizzes:', err);
     } finally {
@@ -122,6 +136,58 @@ export default function QuizzesPage() {
     fetchQuizzes();
   }, []);
 
+  // 2. Export Individual Quiz Attempt PDF
+  const handleExportAttemptPDF = async (attemptId: number) => {
+    setIsExportingPdf(attemptId);
+    try {
+      const res = await apiClient.get(`/quizzes/attempts/${attemptId}/details`);
+      exportPersonalQuizAttemptPDF(res.data);
+    } catch (err: any) {
+      alert(err?.response?.data?.detail || "Erreur lors de l'exportation du relevé PDF.");
+    } finally {
+      setIsExportingPdf(null);
+    }
+  };
+
+  // 3. Export PDF directly from Quiz Card
+  const handleExportQuizCardPDF = async (quizId: number) => {
+    // Find the latest attempt for this quiz
+    const targetAttempt = myAttempts.find(a => a.quiz_id === quizId);
+    if (targetAttempt) {
+      await handleExportAttemptPDF(targetAttempt.id);
+    } else {
+      // Re-fetch my attempts to get the ID
+      setIsExportingPdf(quizId);
+      try {
+        const attemptsRes = await apiClient.get('/quizzes/attempts/my');
+        const match = attemptsRes.data.find((a: QuizAttempt) => a.quiz_id === quizId);
+        if (match) {
+          const detailRes = await apiClient.get(`/quizzes/attempts/${match.id}/details`);
+          exportPersonalQuizAttemptPDF(detailRes.data);
+        } else {
+          alert("Aucun résultat d'évaluation enregistré pour ce quiz.");
+        }
+      } catch (err) {
+        alert("Erreur lors de l'exportation PDF.");
+      } finally {
+        setIsExportingPdf(null);
+      }
+    }
+  };
+
+  // 4. Export Global Quiz Report PDF (Formateurs & Admins)
+  const handleExportGlobalReportPDF = async (quizId: number) => {
+    setIsExportingPdf(quizId);
+    try {
+      const res = await apiClient.get(`/quizzes/${quizId}/report-data`);
+      exportGlobalQuizReportPDF(res.data);
+    } catch (err: any) {
+      alert(err?.response?.data?.detail || "Erreur lors de l'exportation du rapport global PDF.");
+    } finally {
+      setIsExportingPdf(null);
+    }
+  };
+
   const submitQuizAnswers = async () => {
     if (!activeQuizDetail) return;
     setIsSubmittingQuiz(true);
@@ -130,7 +196,7 @@ export default function QuizzesPage() {
         answers: selectedAnswers
       });
       setQuizResult(res.data);
-      fetchQuizzes(); // Refresh scores on main list
+      fetchQuizzes(); // Refresh scores and attempts
     } catch (err: any) {
       alert(err?.response?.data?.detail || 'Erreur lors de la soumission du quiz.');
     } finally {
@@ -143,7 +209,7 @@ export default function QuizzesPage() {
     submitQuizAnswers();
   };
 
-  // 2. Timer for active quiz
+  // 5. Timer for active quiz
   useEffect(() => {
     if (!activeQuizDetail || quizResult) return;
     if (timeLeftSeconds <= 0) {
@@ -156,7 +222,7 @@ export default function QuizzesPage() {
     return () => clearInterval(timer);
   }, [activeQuizDetail, timeLeftSeconds, quizResult]);
 
-  // 3. Start a Quiz
+  // 6. Start a Quiz
   const handleStartQuiz = async (quizId: number) => {
     try {
       setIsLoading(true);
@@ -173,7 +239,7 @@ export default function QuizzesPage() {
     }
   };
 
-  // 5. Delete Quiz (Formateur & Admin)
+  // 7. Delete Quiz (Formateur & Admin)
   const handleDeleteQuiz = async (quizId: number) => {
     if (!confirm('Voulez-vous vraiment supprimer ce quiz ?')) return;
     try {
@@ -184,7 +250,7 @@ export default function QuizzesPage() {
     }
   };
 
-  // 6. View Results (Formateur & Admin)
+  // 8. View Results (Formateur & Admin)
   const handleInspectResults = async (quiz: Quiz) => {
     setIsLoadingResults(true);
     try {
@@ -197,7 +263,7 @@ export default function QuizzesPage() {
     }
   };
 
-  // 7. Add Question to Builder
+  // 9. Add Question to Builder
   const handleAddQuestionToBuilder = () => {
     setNewQuestions(prev => [
       ...prev,
@@ -210,12 +276,11 @@ export default function QuizzesPage() {
     ]);
   };
 
-  // 8. Submit New Quiz (Formateur & Admin)
+  // 10. Submit New Quiz (Formateur & Admin)
   const handleCreateQuizSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim()) return;
 
-    // Validate questions
     for (let i = 0; i < newQuestions.length; i++) {
       const q = newQuestions[i];
       if (!q.question_text.trim()) {
@@ -258,7 +323,6 @@ export default function QuizzesPage() {
     }
   };
 
-  // Format timer
   const formatTimer = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -287,52 +351,66 @@ export default function QuizzesPage() {
             Quiz & <span className="text-brand-gradient">Tests de Connaissances</span>
           </h1>
           <p className="text-text-secondary text-sm max-w-2xl mt-1">
-            Participez aux évaluations préparées par vos formateurs, obtenez vos notes en temps réel et validez vos compétences académiques et professionnelles.
+            Passez vos évaluations pédagogiques, obtenez vos notes instantanément et exportez vos relevés officiels et certifications au format PDF.
           </p>
         </div>
 
-        {/* Action Button for Formateurs & Admins */}
-        {canManage && (
-          <div className="flex items-center gap-3">
+        {/* Action Buttons */}
+        <div className="flex items-center gap-3">
+          {canManage && (
             <button
               onClick={() => setShowCreateModal(true)}
-              className="btn-primary px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg shadow-primary/20"
+              className="btn-primary px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg shadow-primary/20 cursor-pointer"
             >
               <Plus size={16} /> Générer un nouveau Quiz
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
-      {/* 2. Navigation Tabs (Formateurs & Admins) */}
-      {canManage && (
-        <div className="flex items-center gap-3 border-b border-border pb-1">
-          <button
-            onClick={() => setActiveTab('available')}
-            className={`px-4 py-2 text-xs font-bold rounded-xl transition-all ${
-              activeTab === 'available'
-                ? 'bg-primary text-white shadow-sm'
-                : 'text-text-secondary hover:text-text-primary hover:bg-surface'
-            }`}
-          >
-            Vue Apprenants (Passer les Quiz)
-          </button>
+      {/* 2. Navigation Tabs (Tous les Rôles) */}
+      <div className="flex items-center gap-2 border-b border-border pb-1 overflow-x-auto">
+        <button
+          onClick={() => setActiveTab('available')}
+          className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
+            activeTab === 'available'
+              ? 'bg-primary text-white shadow-sm'
+              : 'text-text-secondary hover:text-text-primary hover:bg-surface'
+          }`}
+        >
+          <BookOpen size={15} />
+          <span>Évaluations Disponibles ({quizzes.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('history')}
+          className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
+            activeTab === 'history'
+              ? 'bg-primary text-white shadow-sm'
+              : 'text-text-secondary hover:text-text-primary hover:bg-surface'
+          }`}
+        >
+          <History size={15} />
+          <span>Mes Résultats & Relevés PDF ({myAttempts.length})</span>
+        </button>
+
+        {canManage && (
           <button
             onClick={() => setActiveTab('manage')}
-            className={`px-4 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-2 ${
+            className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
               activeTab === 'manage'
                 ? 'bg-primary text-white shadow-sm'
                 : 'text-text-secondary hover:text-text-primary hover:bg-surface'
             }`}
           >
             <ShieldCheck size={15} />
-            Gestion & Résultats des Apprenants ({quizzes.length})
+            <span>Gestion & Résultats Promo ({quizzes.length})</span>
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* ========================================================================= */}
-      {/* SECTION 1 : VUE APPRENANTS (Étudiants, Stagiaires, Employés & Tous)      */}
+      {/* SECTION 1 : VUE QUIZ DISPONIBLES                                          */}
       {/* ========================================================================= */}
       {activeTab === 'available' && (
         <div className="space-y-6">
@@ -341,7 +419,7 @@ export default function QuizzesPage() {
               <HelpCircle size={40} className="mx-auto opacity-30 text-primary" />
               <p className="font-bold text-base text-text-primary">Aucun quiz disponible pour le moment</p>
               <p className="text-xs max-w-sm mx-auto">
-                Les formateurs n'ont pas encore publié d'évaluation pour votre groupe. Revenez très bientôt !
+                Les formateurs n'ont pas encore publié d'évaluation pour votre profil. Revenez très bientôt !
               </p>
             </div>
           ) : (
@@ -386,22 +464,42 @@ export default function QuizzesPage() {
                     </div>
                   </div>
 
-                  <div className="pt-4 border-t border-border flex items-center justify-between">
-                    <span className="text-[11px] text-text-secondary">
+                  <div className="pt-4 border-t border-border flex items-center justify-between gap-2">
+                    <span className="text-[11px] text-text-secondary truncate">
                       Par {quiz.creator_email ? quiz.creator_email.split('@')[0] : 'Formateur'}
                     </span>
 
-                    <button
-                      onClick={() => handleStartQuiz(quiz.id)}
-                      className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
-                        quiz.is_completed
-                          ? 'bg-surface hover:bg-surface-hover border border-border text-text-primary'
-                          : 'btn-primary'
-                      }`}
-                    >
-                      <span>{quiz.is_completed ? 'Repasser le Quiz' : 'Passer le Quiz'}</span>
-                      <ArrowRight size={14} />
-                    </button>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {quiz.is_completed && (
+                        <button
+                          type="button"
+                          onClick={() => handleExportQuizCardPDF(quiz.id)}
+                          disabled={isExportingPdf === quiz.id}
+                          className="px-3 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                          title="Exporter mon relevé de résultats officiel au format PDF"
+                        >
+                          {isExportingPdf === quiz.id ? (
+                            <Loader2 size={13} className="animate-spin" />
+                          ) : (
+                            <Download size={13} />
+                          )}
+                          <span>Bilan PDF</span>
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => handleStartQuiz(quiz.id)}
+                        className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                          quiz.is_completed
+                            ? 'bg-surface hover:bg-surface-hover border border-border text-text-primary'
+                            : 'btn-primary'
+                        }`}
+                      >
+                        <span>{quiz.is_completed ? 'Repasser' : 'Passer'}</span>
+                        <ArrowRight size={14} />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -411,18 +509,99 @@ export default function QuizzesPage() {
       )}
 
       {/* ========================================================================= */}
-      {/* SECTION 2 : VUE FORMATEUR & ADMIN (Gestion des Quiz & Résultats)          */}
+      {/* SECTION 2 : MES RÉSULTATS & RELEVÉS PDF (Accessible à TOUS les rôles)     */}
+      {/* ========================================================================= */}
+      {activeTab === 'history' && (
+        <div className="glass-card rounded-3xl border border-border overflow-hidden space-y-4">
+          <div className="p-6 bg-surface border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <h3 className="font-extrabold text-base text-text-primary flex items-center gap-2">
+                <GraduationCap size={20} className="text-primary" />
+                <span>Mes Évaluations Complétées & Relevés de Notes</span>
+              </h3>
+              <p className="text-xs text-text-secondary">
+                Consultez vos scores obtenus et téléchargez à tout moment vos relevés de résultats officiels en PDF.
+              </p>
+            </div>
+          </div>
+
+          <div className="p-4 sm:p-6">
+            {myAttempts.length === 0 ? (
+              <div className="py-12 text-center text-text-secondary space-y-3">
+                <FileText size={40} className="mx-auto opacity-30 text-primary" />
+                <p className="font-bold text-sm text-text-primary">Aucun résultat d'évaluation enregistré</p>
+                <p className="text-xs max-w-sm mx-auto">
+                  Vous n'avez pas encore passé d'évaluation. Rendez-vous dans l'onglet « Évaluations Disponibles » pour commencer !
+                </p>
+              </div>
+            ) : (
+              <div className="divide-y divide-border border border-border rounded-2xl overflow-hidden bg-white/50">
+                {myAttempts.map((att, idx) => (
+                  <div key={att.id} className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-surface/80 transition-colors">
+                    <div className="space-y-1.5 flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-black flex items-center justify-center shrink-0">
+                          #{idx + 1}
+                        </span>
+                        <h4 className="text-sm font-bold text-text-primary truncate">{att.quiz_title || `Évaluation #${att.quiz_id}`}</h4>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2.5 text-xs text-text-secondary pl-8">
+                        <span>Score : <strong className="text-text-primary font-mono">{att.score} / {att.max_score} pts</strong></span>
+                        <span>•</span>
+                        <span>Passé le : {new Date(att.completed_at).toLocaleDateString('fr-FR')} à {new Date(att.completed_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 shrink-0 pl-8 sm:pl-0">
+                      <span className={`px-3 py-1 rounded-xl text-xs font-bold font-mono ${
+                        att.percentage >= 60 
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                          : 'bg-rose-50 text-rose-700 border border-rose-200'
+                      }`}>
+                        {att.percentage}% • {att.percentage >= 60 ? 'Validé ✓' : 'Non Validé ✗'}
+                      </span>
+
+                      <button
+                        type="button"
+                        onClick={() => handleExportAttemptPDF(att.id)}
+                        disabled={isExportingPdf === att.id}
+                        className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-indigo-600/20 transition-all cursor-pointer"
+                        title="Télécharger le Relevé de Résultats officiel en PDF"
+                      >
+                        {isExportingPdf === att.id ? (
+                          <Loader2 size={14} className="animate-spin" />
+                        ) : (
+                          <Download size={14} />
+                        )}
+                        <span>Exporter PDF</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* SECTION 3 : VUE FORMATEUR & ADMIN (Gestion & Export Global)               */}
       {/* ========================================================================= */}
       {activeTab === 'manage' && canManage && (
-        <div className="glass-card rounded-2xl border border-border overflow-hidden">
-          <div className="p-4 bg-surface border-b border-border flex items-center justify-between">
-            <h3 className="font-bold text-sm text-text-primary flex items-center gap-2">
-              <ShieldCheck size={17} className="text-primary" />
-              <span>Liste des Quiz Créés par les Formateurs</span>
-            </h3>
+        <div className="glass-card rounded-3xl border border-border overflow-hidden">
+          <div className="p-6 bg-surface border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <h3 className="font-extrabold text-base text-text-primary flex items-center gap-2">
+                <ShieldCheck size={20} className="text-primary" />
+                <span>Gestion des Évaluations & Rapports Globaux de la Promotion</span>
+              </h3>
+              <p className="text-xs text-text-secondary">
+                Auditez les notes de chaque apprenant et exportez les procès-verbaux d'évaluation en PDF.
+              </p>
+            </div>
             <button
               onClick={() => setShowCreateModal(true)}
-              className="btn-primary px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5"
+              className="btn-primary px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0"
             >
               <Plus size={14} /> Créer un Quiz
             </button>
@@ -430,15 +609,15 @@ export default function QuizzesPage() {
 
           <div className="divide-y divide-border">
             {quizzes.length === 0 ? (
-              <div className="p-8 text-center text-text-secondary text-xs">
+              <div className="p-12 text-center text-text-secondary text-xs">
                 Aucun quiz créé pour le moment. Cliquez sur "Créer un Quiz" pour commencer.
               </div>
             ) : (
               quizzes.map((quiz) => (
-                <div key={quiz.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-surface/50 transition-colors">
+                <div key={quiz.id} className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-surface/50 transition-colors">
                   <div className="space-y-1">
                     <h4 className="text-sm font-bold text-text-primary">{quiz.title}</h4>
-                    <div className="flex items-center gap-3 text-xs text-text-secondary">
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-text-secondary">
                       <span>{quiz.question_count} questions ({quiz.total_points} pts)</span>
                       <span>•</span>
                       <span>Durée : {quiz.time_limit_minutes} min</span>
@@ -447,17 +626,35 @@ export default function QuizzesPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-2.5 shrink-0">
                     <button
+                      type="button"
+                      onClick={() => handleExportGlobalReportPDF(quiz.id)}
+                      disabled={isExportingPdf === quiz.id}
+                      className="px-3.5 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                      title="Exporter le Procès-Verbal Global en PDF"
+                    >
+                      {isExportingPdf === quiz.id ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : (
+                        <Download size={14} />
+                      )}
+                      <span>Rapport Global PDF</span>
+                    </button>
+
+                    <button
+                      type="button"
                       onClick={() => handleInspectResults(quiz)}
-                      className="px-3.5 py-2 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold flex items-center gap-1.5 transition-colors"
+                      className="px-3.5 py-2 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
                     >
                       <BarChart3 size={14} />
-                      <span>Consulter les Résultats</span>
+                      <span>Consulter Résultats</span>
                     </button>
+
                     <button
+                      type="button"
                       onClick={() => handleDeleteQuiz(quiz.id)}
-                      className="p-2 rounded-xl text-text-secondary hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
+                      className="p-2 rounded-xl text-text-secondary hover:text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
                       title="Supprimer ce quiz"
                     >
                       <Trash2 size={16} />
@@ -536,15 +733,33 @@ export default function QuizzesPage() {
                   ))}
                 </div>
 
-                <button
-                  onClick={() => {
-                    setActiveQuizDetail(null);
-                    setQuizResult(null);
-                  }}
-                  className="btn-primary w-full py-3 rounded-xl font-bold text-sm"
-                >
-                  Terminer & Retourner aux Quiz
-                </button>
+                {/* Action Buttons with PDF Export */}
+                <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => handleExportAttemptPDF(quizResult.attempt_id)}
+                    disabled={isExportingPdf === quizResult.attempt_id}
+                    className="w-full sm:w-1/2 py-3 rounded-xl font-bold text-xs bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/25 transition-all cursor-pointer"
+                  >
+                    {isExportingPdf === quizResult.attempt_id ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      <Download size={16} />
+                    )}
+                    <span>Exporter mon Bilan PDF</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveQuizDetail(null);
+                      setQuizResult(null);
+                    }}
+                    className="w-full sm:w-1/2 btn-primary py-3 rounded-xl font-bold text-xs cursor-pointer"
+                  >
+                    Terminer & Retourner aux Quiz
+                  </button>
+                </div>
               </div>
             ) : (
               /* Quiz Taking Active Screen */
@@ -571,7 +786,7 @@ export default function QuizzesPage() {
                           setQuizResult(null);
                         }
                       }}
-                      className="p-1.5 rounded-xl text-text-secondary hover:text-text-primary hover:bg-surface border border-border transition-colors"
+                      className="p-1.5 rounded-xl text-text-secondary hover:text-text-primary hover:bg-surface border border-border transition-colors cursor-pointer"
                       title="Quitter le quiz"
                     >
                       <X size={18} />
@@ -604,7 +819,7 @@ export default function QuizzesPage() {
                             key={optIdx}
                             type="button"
                             onClick={() => setSelectedAnswers(prev => ({ ...prev, [currentQId]: optIdx }))}
-                            className={`w-full p-3.5 sm:p-4 rounded-2xl border text-left transition-all flex items-center justify-between ${
+                            className={`w-full p-3.5 sm:p-4 rounded-2xl border text-left transition-all flex items-center justify-between cursor-pointer ${
                               isSelected
                                 ? 'bg-primary/15 border-primary text-text-primary shadow-md shadow-primary/10'
                                 : 'bg-surface border-border hover:bg-surface-hover text-text-secondary'
@@ -628,7 +843,7 @@ export default function QuizzesPage() {
                   <button
                     onClick={() => setCurrentQuestionIndex(prev => Math.max(0, prev - 1))}
                     disabled={currentQuestionIndex === 0}
-                    className="px-4 py-2 rounded-xl bg-surface border border-border text-xs font-bold text-text-secondary hover:text-text-primary disabled:opacity-30 flex items-center gap-1.5"
+                    className="px-4 py-2 rounded-xl bg-surface border border-border text-xs font-bold text-text-secondary hover:text-text-primary disabled:opacity-30 flex items-center gap-1.5 cursor-pointer"
                   >
                     <ArrowLeft size={14} /> Précédent
                   </button>
@@ -636,7 +851,7 @@ export default function QuizzesPage() {
                   {currentQuestionIndex < activeQuizDetail.questions.length - 1 ? (
                     <button
                       onClick={() => setCurrentQuestionIndex(prev => prev + 1)}
-                      className="px-5 py-2 rounded-xl bg-primary text-white text-xs font-bold flex items-center gap-1.5 hover:bg-primary-hover transition-colors"
+                      className="px-5 py-2 rounded-xl bg-primary text-white text-xs font-bold flex items-center gap-1.5 hover:bg-primary-hover transition-colors cursor-pointer"
                     >
                       <span>Suivant</span>
                       <ArrowRight size={14} />
@@ -645,7 +860,7 @@ export default function QuizzesPage() {
                     <button
                       onClick={submitQuizAnswers}
                       disabled={isSubmittingQuiz}
-                      className="btn-primary px-6 py-2 rounded-xl text-xs font-bold flex items-center gap-2"
+                      className="btn-primary px-6 py-2 rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer"
                     >
                       {isSubmittingQuiz ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
                       <span>Valider & Obtenir Ma Note</span>
@@ -670,12 +885,29 @@ export default function QuizzesPage() {
                 <span className="text-[11px] uppercase font-bold text-primary">RÉSULTATS DE L'ÉVALUATION</span>
                 <h3 className="text-base font-bold text-text-primary">{inspectQuizResults.quiz.title}</h3>
               </div>
-              <button 
-                onClick={() => setInspectQuizResults(null)}
-                className="text-text-secondary hover:text-text-primary font-bold"
-              >
-                ✕
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleExportGlobalReportPDF(inspectQuizResults.quiz.id)}
+                  disabled={isExportingPdf === inspectQuizResults.quiz.id}
+                  className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-indigo-600/20 cursor-pointer transition-all"
+                  title="Exporter le Procès-Verbal Global en PDF"
+                >
+                  {isExportingPdf === inspectQuizResults.quiz.id ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : (
+                    <Download size={14} />
+                  )}
+                  <span>Rapport Global PDF</span>
+                </button>
+
+                <button 
+                  onClick={() => setInspectQuizResults(null)}
+                  className="text-text-secondary hover:text-text-primary font-bold p-1 rounded-lg"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
 
             <div className="flex-1 overflow-y-auto divide-y divide-border">
@@ -693,15 +925,32 @@ export default function QuizzesPage() {
                       </span>
                     </div>
 
-                    <div className="text-right shrink-0">
-                      <span className={`text-sm font-black font-mono block ${
-                        att.percentage >= 60 ? 'text-emerald-500' : 'text-rose-500'
-                      }`}>
-                        {att.score} / {att.max_score} ({att.percentage}%)
-                      </span>
-                      <span className="text-[10px] font-bold text-text-secondary">
-                        {att.percentage >= 60 ? 'Validé ✓' : 'Non validé ✗'}
-                      </span>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <div className="text-right">
+                        <span className={`text-sm font-black font-mono block ${
+                          att.percentage >= 60 ? 'text-emerald-500' : 'text-rose-500'
+                        }`}>
+                          {att.score} / {att.max_score} ({att.percentage}%)
+                        </span>
+                        <span className="text-[10px] font-bold text-text-secondary">
+                          {att.percentage >= 60 ? 'Validé ✓' : 'Non validé ✗'}
+                        </span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleExportAttemptPDF(att.id)}
+                        disabled={isExportingPdf === att.id}
+                        className="p-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                        title="Exporter le relevé individuel de cet apprenant en PDF"
+                      >
+                        {isExportingPdf === att.id ? (
+                          <Loader2 size={13} className="animate-spin" />
+                        ) : (
+                          <Download size={13} />
+                        )}
+                        <span>PDF</span>
+                      </button>
                     </div>
                   </div>
                 ))
@@ -710,7 +959,7 @@ export default function QuizzesPage() {
 
             <button
               onClick={() => setInspectQuizResults(null)}
-              className="w-full py-2.5 rounded-xl bg-surface border border-border text-xs font-semibold text-text-primary hover:bg-surface-hover"
+              className="w-full py-2.5 rounded-xl bg-surface border border-border text-xs font-semibold text-text-primary hover:bg-surface-hover cursor-pointer"
             >
               Fermer
             </button>
@@ -732,7 +981,7 @@ export default function QuizzesPage() {
               </div>
               <button 
                 onClick={() => setShowCreateModal(false)}
-                className="text-text-secondary hover:text-text-primary font-bold"
+                className="text-text-secondary hover:text-text-primary font-bold p-1 rounded-lg"
               >
                 ✕
               </button>
@@ -811,7 +1060,7 @@ export default function QuizzesPage() {
                   <button
                     type="button"
                     onClick={handleAddQuestionToBuilder}
-                    className="px-3 py-1 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary font-bold text-xs flex items-center gap-1 transition-colors"
+                    className="px-3 py-1 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer"
                   >
                     <Plus size={14} /> Ajouter une question
                   </button>
@@ -826,7 +1075,7 @@ export default function QuizzesPage() {
                           <button
                             type="button"
                             onClick={() => setNewQuestions(prev => prev.filter((_, idx) => idx !== qIndex))}
-                            className="text-text-secondary hover:text-rose-500 transition-colors"
+                            className="text-text-secondary hover:text-rose-500 transition-colors cursor-pointer"
                             title="Supprimer cette question"
                           >
                             <Trash2 size={14} />
@@ -890,14 +1139,14 @@ export default function QuizzesPage() {
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  className="w-1/2 py-2.5 bg-surface hover:bg-surface-hover rounded-xl font-semibold border border-border text-text-secondary"
+                  className="w-1/2 py-2.5 bg-surface hover:bg-surface-hover rounded-xl font-semibold border border-border text-text-secondary cursor-pointer"
                 >
                   Annuler
                 </button>
                 <button
                   type="submit"
                   disabled={isCreatingQuiz}
-                  className="w-1/2 btn-primary py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-primary/25"
+                  className="w-1/2 btn-primary py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-primary/25 cursor-pointer"
                 >
                   {isCreatingQuiz ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
                   <span>Publier l'Évaluation</span>
