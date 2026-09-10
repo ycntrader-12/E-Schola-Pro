@@ -153,7 +153,14 @@ def update_group(
         raise HTTPException(status_code=404, detail="Groupe introuvable.")
 
     if group_in.name is not None:
-        group.name = group_in.name.strip()
+        new_name = group_in.name.strip()
+        group.name = new_name
+        # Update user.group_name for all members of this group
+        members = session.query(GroupMember).filter(GroupMember.group_id == group.id).all()
+        member_uids = [m.user_id for m in members]
+        if member_uids:
+            session.query(User).filter(User.id.in_(member_uids)).update({User.group_name: new_name}, synchronize_session=False)
+
     if group_in.level is not None:
         group.level = group_in.level.strip() if group_in.level else None
     if group_in.description is not None:
@@ -163,6 +170,7 @@ def update_group(
 
     session.commit()
     session.refresh(group)
+
 
     count = session.query(GroupMember).filter(GroupMember.group_id == group.id).count()
     return {
@@ -375,6 +383,19 @@ def remove_group_member(
             status_code=404, detail="Membre introuvable dans ce groupe."
         )
 
+    # Synchronize user's group_name if it points to this group
+    user = session.query(User).filter(User.id == user_id).first()
+    group = session.query(Group).filter(Group.id == group_id).first()
+    if user and group and user.group_name == group.name:
+        other_membership = session.query(GroupMember).filter(
+            GroupMember.user_id == user_id,
+            GroupMember.group_id != group_id
+        ).first()
+        if other_membership and other_membership.group:
+            user.group_name = other_membership.group.name
+        else:
+            user.group_name = None
+
     session.delete(member)
     session.commit()
     return {"message": "Membre retiré du groupe."}
@@ -411,6 +432,8 @@ def get_available_users(
             "username": u.username,
             "avatar_url": u.avatar_url,
             "departement": u.departement,
+            "group_name": u.group_name,
         }
         for u in users
     ]
+

@@ -442,6 +442,15 @@ export const UserProfileCard: React.FC<UserProfileCardProps> = ({
             )}
 
             <div>
+              <span className="text-text-secondary block text-[11px] font-semibold">Groupe / Classe</span>
+              <p className="font-bold text-text-primary mt-0.5 flex items-center gap-1.5">
+                <Users size={13} className="text-primary shrink-0" />
+                <span>{user.group_name || 'Non assigné'}</span>
+              </p>
+            </div>
+
+
+            <div>
               <span className="text-text-secondary block text-[11px] font-semibold">Statut du compte</span>
               <p className="font-bold text-emerald-400 mt-0.5 flex items-center gap-1.5">
                 <CheckCircle2 size={14} /> Actif & Vérifié

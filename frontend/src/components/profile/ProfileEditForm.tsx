@@ -45,6 +45,7 @@ export interface UserProfileData {
   adresse?: string;
   ville?: string;
   pays?: string;
+  group_name?: string;
 }
 
 export interface ProfileEditFormValues {
@@ -60,8 +61,10 @@ export interface ProfileEditFormValues {
   departement: string;
   specialisation: string;
   adresse: string;
+  group_name: string;
   password?: string;
 }
+
 
 export interface ProfileEditFormProps {
   user: UserProfileData;
@@ -78,6 +81,17 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
 }) => {
   const [isManualUsername, setIsManualUsername] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [availableGroups, setAvailableGroups] = useState<Array<{ id: number; name: string; level?: string }>>([]);
+
+  useEffect(() => {
+    apiClient.get('/groups/')
+      .then((res) => {
+        if (Array.isArray(res.data)) {
+          setAvailableGroups(res.data);
+        }
+      })
+      .catch((err) => console.log('Notice: Failed loading groups list in ProfileEditForm:', err));
+  }, []);
 
   const {
     register,
@@ -101,6 +115,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
       departement: user.departement || '',
       specialisation: user.specialisation || '',
       adresse: user.adresse || '',
+      group_name: user.group_name || '',
       password: '',
     },
   });
@@ -121,10 +136,12 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
         departement: user.departement || '',
         specialisation: user.specialisation || '',
         adresse: user.adresse || '',
+        group_name: user.group_name || '',
         password: '',
       });
     }
   }, [user, reset]);
+
 
   const watchNom = watch('nom');
   const watchPrenom = watch('prenom');
@@ -178,9 +195,13 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
         pays: values.pays || '',
         departement: isEmployeeOrStagiaire ? (values.departement || '') : '',
         specialisation: isStudentOrStagiaire ? (values.specialisation || '') : '',
+        group_name: (!isAdminMode && !['admin', 'formateur', 'dg_rh', 'pedagogique'].some(r => userRoleLower.includes(r)))
+          ? (user.group_name || null)
+          : (values.group_name?.trim() || ''),
       };
 
       if (values.password && values.password.trim()) {
+
         payload.password = values.password.trim();
       }
 
@@ -376,15 +397,46 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
         </div>
       </div>
 
-      {/* Section 3: Profil Professionnel / Académique (Selon Rôle) */}
-      {(isEmployeeOrStagiaire || isStudentOrStagiaire) && (
+      {/* Section 3: Profil Professionnel / Académique & Groupe */}
+      {(isEmployeeOrStagiaire || isStudentOrStagiaire || isAdminMode) && (
         <div className="glass-card p-6 rounded-2xl border border-border space-y-4">
           <h3 className="text-sm font-bold text-text-primary uppercase tracking-wider flex items-center gap-2 pb-2 border-b border-border">
             <Briefcase size={16} className="text-amber-400" />
-            Spécifications de Rôle ({user.role})
+            Affectation, Groupe & Spécifications ({user.role})
           </h3>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+            {/* Groupe Pédagogique / Classe */}
+            <div className={!isEmployeeOrStagiaire && !isStudentOrStagiaire ? "sm:col-span-2" : ""}>
+              <label className="block font-bold text-text-secondary mb-1 flex items-center justify-between">
+                <span>Groupe pédagogique / Classe</span>
+                {user.group_name && (
+                  <span className="text-[10px] text-primary font-normal">Actuel : {user.group_name}</span>
+                )}
+              </label>
+              {!isAdminMode && !['admin', 'formateur', 'dg_rh', 'pedagogique'].some(r => userRoleLower.includes(r)) ? (
+                <div className="w-full px-4 py-2.5 rounded-xl bg-surface/50 border border-border/70 text-xs text-text-primary font-medium flex items-center justify-between">
+                  <span>{user.group_name || 'Non assigné'}</span>
+                  <span className="text-[10px] text-text-secondary italic">Assignation administrative</span>
+                </div>
+              ) : (
+                <select
+                  {...register('group_name')}
+                  className="w-full px-4 py-2.5 rounded-xl bg-surface border border-border focus:border-primary text-xs text-text-primary outline-none transition-colors cursor-pointer"
+                >
+                  <option value="">-- Aucun groupe / Non assigné --</option>
+                  {user.group_name && !availableGroups.some(g => g.name.toLowerCase() === user.group_name?.toLowerCase()) && (
+                    <option value={user.group_name}>{user.group_name} (Actuel)</option>
+                  )}
+                  {availableGroups.map((grp) => (
+                    <option key={grp.id} value={grp.name}>
+                      {grp.name} {grp.level ? `(${grp.level})` : ''}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+
             {/* Département (Employé / Stagiaire) */}
             {isEmployeeOrStagiaire && (
               <div>

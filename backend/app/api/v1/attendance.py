@@ -256,10 +256,12 @@ def add_learner_to_group(payload: dict, session: SessionDep, current_user: Curre
     if not email:
         raise HTTPException(status_code=400, detail="L'adresse email est obligatoire.")
 
+    from app.api.v1.users import sync_user_group_membership
+
     existing = session.query(User).filter(User.email == email).first()
     if existing:
-        existing.group_name = group_name
         existing.role = role
+        sync_user_group_membership(session, existing, group_name)
         session.commit()
         session.refresh(existing)
         return existing
@@ -268,14 +270,17 @@ def add_learner_to_group(payload: dict, session: SessionDep, current_user: Curre
 
     new_user = User(
         email=email,
+        username=email.split("@")[0],
         hashed_password=get_password_hash("password123"),
         role=role,
-        group_name=group_name,
     )
     session.add(new_user)
+    session.flush()
+    sync_user_group_membership(session, new_user, group_name)
     session.commit()
     session.refresh(new_user)
     return new_user
+
 
 
 # --------------------------------------------------------------------------

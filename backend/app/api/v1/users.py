@@ -9,7 +9,7 @@ from fastapi import APIRouter, File, HTTPException, Query, Request, UploadFile
 from fastapi.responses import Response
 from PIL import Image, ImageOps
 from pydantic import BaseModel
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 
 from app.api.deps import CurrentUser, SessionDep
 from app.core.security import get_password_hash, verify_password
@@ -61,6 +61,46 @@ def slugify_username(nom: str, prenom: str) -> str:
     without_accents = "".join([c for c in nfkd if not unicodedata.combining(c)])
     slug = re.sub(r"[^a-z0-9]+", ".", without_accents).strip(".")
     return slug or "user"
+
+
+def sync_user_group_membership(session, user: User, new_group_name: str | None):
+    """
+    Synchronizes User.group_name and GroupMember table:
+    - If new_group_name is provided, assigns user to that Group (matching case-insensitively or creating if needed).
+    - Reassigns any existing GroupMember row to the new group.
+    - If new_group_name is None, cleans up GroupMember rows.
+    """
+    from app.models.group import Group, GroupMember
+
+    cleaned_name = new_group_name.strip() if new_group_name else None
+
+    if not cleaned_name:
+        user.group_name = None
+        session.query(GroupMember).filter(GroupMember.user_id == user.id).delete(synchronize_session=False)
+        return
+
+    # Look up existing group (case-insensitive)
+    target_grp = session.query(Group).filter(func.lower(Group.name) == cleaned_name.lower()).first()
+    if not target_grp:
+        target_grp = Group(name=cleaned_name, level="Général", description=f"Groupe {cleaned_name}")
+        session.add(target_grp)
+        session.flush()
+
+    user.group_name = target_grp.name
+
+    existing_memberships = session.query(GroupMember).filter(GroupMember.user_id == user.id).all()
+    if not existing_memberships:
+        session.add(GroupMember(group_id=target_grp.id, user_id=user.id))
+    else:
+        already_in = False
+        for m in existing_memberships:
+            if m.group_id == target_grp.id:
+                already_in = True
+            else:
+                session.delete(m)
+        if not already_in:
+            session.add(GroupMember(group_id=target_grp.id, user_id=user.id))
+
 
 
 @router.get("/check-username")
@@ -735,20 +775,30 @@ def admin_create_user(
     session.commit()
     session.refresh(user)
 
-    if user.role.lower() in ["étudiant", "stagiaire", "employer"]:
+    # Group attachment
+    if user_in.group_name:
         try:
-            from app.models.group import Group, GroupMember
-
             with session.begin_nested():
-                default_grp = session.query(Group).first()
-                if default_grp:
-                    session.add(GroupMember(group_id=default_grp.id, user_id=user.id))
-                    user.group_name = default_grp.name
+                sync_user_group_membership(session, user, user_in.group_name)
             session.commit()
             session.refresh(user)
         except Exception as grp_err:
             session.rollback()
             print(f"[Notice] Group attachment skipped: {grp_err}")
+    elif user.role.lower() in ["étudiant", "stagiaire", "employer"]:
+        try:
+            from app.models.group import Group
+
+            with session.begin_nested():
+                default_grp = session.query(Group).first()
+                if default_grp:
+                    sync_user_group_membership(session, user, default_grp.name)
+            session.commit()
+            session.refresh(user)
+        except Exception as grp_err:
+            session.rollback()
+            print(f"[Notice] Group attachment skipped: {grp_err}")
+
 
     # Send automatic welcome message
     send_welcome_message(session, user)
@@ -832,7 +882,7 @@ def update_user_me(
             existing = (
                 session.query(User)
                 .filter(
-                    (User.email == new_email) | (User.username == new_email),
+                    (func.lower(User.email) == new_email) | (func.lower(User.username) == new_email),
                     User.id != current_user.id,
                 )
                 .first()
@@ -874,11 +924,14 @@ def update_user_me(
         current_user.departement = user_in.departement.strip() or None
     if user_in.specialisation is not None:
         current_user.specialisation = user_in.specialisation.strip() or None
+    if "group_name" in user_in.model_fields_set or user_in.group_name is not None:
+        sync_user_group_membership(session, current_user, user_in.group_name)
 
     session.add(current_user)
     session.commit()
     session.refresh(current_user)
     return current_user
+
 
 
 @router.put("/{user_id}", response_model=UserResponse)
@@ -937,7 +990,7 @@ def admin_update_user(
             existing = (
                 session.query(User)
                 .filter(
-                    (User.email == new_email) | (User.username == new_email),
+                    (func.lower(User.email) == new_email) | (func.lower(User.username) == new_email),
                     User.id != user_id,
                 )
                 .first()
@@ -991,8 +1044,8 @@ def admin_update_user(
         user.departement = user_in.departement.strip() or None
     if user_in.specialisation is not None:
         user.specialisation = user_in.specialisation.strip() or None
-    if user_in.group_name is not None:
-        user.group_name = user_in.group_name.strip() or None
+    if "group_name" in user_in.model_fields_set or user_in.group_name is not None:
+        sync_user_group_membership(session, user, user_in.group_name)
 
     if user_in.password and user_in.password.strip():
         pwd_val = user_in.password.strip()

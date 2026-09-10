@@ -78,6 +78,18 @@ def seed_users():
         return
 
     # Development / Demo environment (SEED_DEMO_DATA is True):
+    # Only seed demo accounts if the database has no non-admin user accounts at all.
+    # If custom/edited users already exist, NEVER re-inject missing demo users
+    # so that customized emails, usernames and roles are strictly preserved across restarts!
+    existing_learners_or_staff = db.query(User).filter(
+        User.role.in_(["étudiant", "stagiaire", "employer", "formateur", "dg_rh", "admin_manager"])
+    ).count()
+
+    if existing_learners_or_staff > 0:
+        print(f"[Seed Notice] {existing_learners_or_staff} comptes utilisateurs déjà existants. Seeding démo ignoré pour préserver l'intégrité des modifications (email, groupe, mot de passe).")
+        db.close()
+        return
+
     default_users = [
         {"email": "admin", "password": "Abc1234", "role": "admin"},
         {"email": "admin@eschola.pro", "password": "Abc1234", "role": "admin"},

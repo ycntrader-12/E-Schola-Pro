@@ -80,7 +80,9 @@ interface UserProfile {
   adresse?: string;
   ville?: string;
   pays?: string;
+  group_name?: string;
 }
+
 
 interface CourseItem {
   id: number;
@@ -219,6 +221,9 @@ export default function ProfilePage() {
   const [editNom, setEditNom] = useState('');
   const [editPrenom, setEditPrenom] = useState('');
   const [editRole, setEditRole] = useState('étudiant');
+  const [editGroupName, setEditGroupName] = useState('');
+  const [systemGroups, setSystemGroups] = useState<Array<{ id: number; name: string; level?: string }>>([]);
+  const [newAccountGroupName, setNewAccountGroupName] = useState('');
   const [editTelephone, setEditTelephone] = useState('');
   const [editCin, setEditCin] = useState('');
   const [editDateNaissance, setEditDateNaissance] = useState('');
@@ -238,6 +243,7 @@ export default function ProfilePage() {
     setEditNom(u.nom || '');
     setEditPrenom(u.prenom || '');
     setEditRole(u.role || 'étudiant');
+    setEditGroupName(u.group_name || '');
     setEditTelephone(u.telephone || '');
     setEditCin(u.cin || '');
     setEditDateNaissance(u.date_naissance || '');
@@ -262,6 +268,7 @@ export default function ProfilePage() {
         username: editUsername.trim() || undefined,
         email: editEmail.trim() || undefined,
         role: editRole,
+        group_name: editGroupName.trim(),
         nom: editNom.trim() || undefined,
         prenom: editPrenom.trim() || undefined,
         date_naissance: editDateNaissance || '',
@@ -274,6 +281,7 @@ export default function ProfilePage() {
         specialisation: editSpecialisation || '',
         password: editPassword.trim() || undefined,
       });
+
 
       setAllUsers((prev) => prev.map((u) => (u.id === editingUser.id ? res.data : u)));
       if (user && editingUser.id === user.id) {
@@ -410,6 +418,7 @@ export default function ProfilePage() {
         ville: newAccountVille,
         departement: (newAccountRole === 'employer' || newAccountRole === 'stagiaire') ? newAccountDepartement : undefined,
         specialisation: (newAccountRole === 'étudiant' || newAccountRole === 'stagiaire') ? newAccountSpecialisation : undefined,
+        group_name: newAccountGroupName.trim() || undefined,
         password: newAccountPassword.trim(),
         role: newAccountRole
       });
@@ -421,11 +430,13 @@ export default function ProfilePage() {
       setNewAccountNom('');
       setNewAccountPrenom('');
       setNewAccountUsername('');
+      setNewAccountGroupName('');
       setNewAccountDateNaissance('');
       setNewAccountCin('');
       setNewAccountTelephone('');
       setNewAccountAdresse('');
       setNewAccountRole('étudiant');
+
       setActionMessage({ type: 'success', text: `Compte utilisateur "${res.data.username || res.data.email}" créé avec succès en tant que ${res.data.role}.` });
     } catch (err: any) {
       setCreateAccountError(err?.response?.data?.detail || "Erreur lors de la création de l'utilisateur.");
@@ -495,7 +506,8 @@ export default function ProfilePage() {
 
       const promises: Promise<any>[] = [
         apiClient.get('/courses/').catch(() => ({ data: [] })),
-        apiClient.get('/quizzes/').catch(() => ({ data: [] }))
+        apiClient.get('/quizzes/').catch(() => ({ data: [] })),
+        apiClient.get('/groups/').catch(() => ({ data: [] }))
       ];
       if (isAdm) {
         promises.unshift(apiClient.get('/users/').catch(() => ({ data: [] })));
@@ -506,11 +518,14 @@ export default function ProfilePage() {
         setAllUsers(results[0].data);
         setAllCourses(results[1].data);
         setAllQuizzes(results[2].data);
+        setSystemGroups(Array.isArray(results[3].data) ? results[3].data : []);
       } else {
         setAllCourses(results[0].data);
         setAllQuizzes(results[1].data);
+        setSystemGroups(Array.isArray(results[2].data) ? results[2].data : []);
         setAdminTab('quizzes');
       }
+
     } catch (err) {
       console.error('Failed to load management data:', err);
     } finally {
@@ -837,6 +852,7 @@ export default function ProfilePage() {
                     <tr>
                       <th className="px-6 py-4">Utilisateur</th>
                       <th className="px-6 py-4">Rôle Actuel</th>
+                      <th className="px-6 py-4">Groupe / Classe</th>
                       <th className="px-6 py-4">Changer le Rôle</th>
                       <th className="px-6 py-4 text-right">Actions</th>
                     </tr>
@@ -846,7 +862,11 @@ export default function ProfilePage() {
                       .filter(u => {
                         if (!userSearchQuery) return true;
                         const q = userSearchQuery.toLowerCase();
-                        return u.email.toLowerCase().includes(q) || u.role.toLowerCase().includes(q);
+                        return (
+                          u.email.toLowerCase().includes(q) ||
+                          u.role.toLowerCase().includes(q) ||
+                          (u.group_name && u.group_name.toLowerCase().includes(q))
+                        );
                       })
                       .map((u) => {
                         const isCurrentUser = u.id === user.id;
@@ -883,6 +903,14 @@ export default function ProfilePage() {
                                 {u.role === 'dg_rh' || u.role === 'dg/rh' ? 'DG / RH' : u.role}
                               </span>
                             </td>
+
+                            <td className="px-6 py-4">
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                                <Users size={12} className="text-primary shrink-0" />
+                                <span>{u.group_name || 'Non assigné'}</span>
+                              </span>
+                            </td>
+
 
                             <td className="px-6 py-4">
                               <select
@@ -1838,7 +1866,29 @@ export default function ProfilePage() {
                             </select>
                           </div>
                         )}
+
+                        {/* Groupe pédagogique / Classe */}
+                        {['étudiant', 'stagiaire', 'employer'].includes(newAccountRole) && (
+                          <div>
+                            <label className="block text-[11px] font-semibold text-text-secondary mb-1">
+                              Groupe Pédagogique / Classe <span className="text-text-secondary/60 font-normal">(Optionnel)</span>
+                            </label>
+                            <select
+                              value={newAccountGroupName}
+                              onChange={(e) => setNewAccountGroupName(e.target.value)}
+                              className="w-full px-3 py-2 rounded-xl bg-surface border border-border focus:border-primary outline-none text-xs text-text-primary cursor-pointer"
+                            >
+                              <option value="">-- Assigner automatiquement au groupe par défaut --</option>
+                              {systemGroups.map((g) => (
+                                <option key={g.id} value={g.name}>
+                                  {g.name} {g.level ? `(${g.level})` : ''}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
                       </div>
+
 
                       {/* 4. Mot de passe */}
                       <div className="pt-1">
@@ -2343,6 +2393,33 @@ export default function ProfilePage() {
                         className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 focus:bg-white focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 outline-none transition-all font-medium placeholder:text-slate-400"
                       />
                     </div>
+
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                        <span>Groupe pédagogique / Classe</span>
+                        {editingUser.group_name && (
+                          <span className="text-[11px] text-[#1877f2] font-normal">Actuel : {editingUser.group_name}</span>
+                        )}
+                      </label>
+                      <select
+                        value={editGroupName}
+                        onChange={(e) => setEditGroupName(e.target.value)}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 focus:bg-white focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 outline-none transition-all font-semibold cursor-pointer"
+                      >
+                        <option value="">-- Aucun groupe / Non assigné --</option>
+                        {editingUser.group_name && !systemGroups.some((g) => g.name.toLowerCase() === editingUser.group_name?.toLowerCase()) && (
+                          <option value={editingUser.group_name}>
+                            {editingUser.group_name} (Actuel)
+                          </option>
+                        )}
+                        {systemGroups.map((grp) => (
+                          <option key={grp.id} value={grp.name}>
+                            {grp.name} {grp.level ? `(${grp.level})` : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
 
                     <div className="sm:col-span-2">
                       <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Nouveau mot de passe (optionnel)</label>
