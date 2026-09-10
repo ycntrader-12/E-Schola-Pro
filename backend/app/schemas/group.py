@@ -17,9 +17,18 @@ class GroupMemberResponse(GroupMemberBase):
     # Extra fields for frontend
     user_email: str | None = None
     user_role: str | None = None
+    user_nom: str | None = None
+    user_prenom: str | None = None
+    user_username: str | None = None
+    user_avatar: str | None = None
+    user_departement: str | None = None
 
     class Config:
         from_attributes = True
+
+
+class GroupMembersBatchCreate(BaseModel):
+    user_ids: list[int] = Field(..., description="Liste des IDs d'utilisateurs à ajouter au groupe")
 
 
 class GroupBase(BaseModel):
@@ -39,7 +48,7 @@ class GroupBase(BaseModel):
 
 
 class GroupCreate(GroupBase):
-    pass
+    member_ids: list[int] | None = Field(default=[], description="Liste optionnelle des IDs des utilisateurs à affecter dès la création")
 
 
 class GroupUpdate(BaseModel):

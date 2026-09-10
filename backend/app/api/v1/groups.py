@@ -10,6 +10,7 @@ from app.schemas.group import (
     GroupCreate,
     GroupMemberCreate,
     GroupMemberResponse,
+    GroupMembersBatchCreate,
     GroupResponse,
     GroupUpdate,
 )
@@ -22,6 +23,7 @@ STAFF_ROLES = ["admin", "admin_manager", "formateur", "pedagogique", "dg_rh"]
 LEARNER_ROLES = ["etudiant", "étudiant", "stagiaire", "employer"]
 
 
+@router.get("", response_model=list[GroupResponse])
 @router.get("/", response_model=list[GroupResponse])
 def read_groups(
     session: SessionDep,
@@ -64,6 +66,7 @@ def read_groups(
     return response
 
 
+@router.post("", response_model=GroupResponse)
 @router.post("/", response_model=GroupResponse)
 def create_group(
     *,
@@ -73,6 +76,7 @@ def create_group(
 ) -> Any:
     """
     Create a new group. Admin and formateur only.
+    Allows immediately assigning members via group_in.member_ids.
     """
     user_role = (current_user.role or "").strip().lower()
     if user_role not in STAFF_ROLES:
@@ -98,13 +102,26 @@ def create_group(
     session.commit()
     session.refresh(group)
 
+    members_count = 0
+    if group_in.member_ids:
+        unique_uids = set(group_in.member_ids)
+        for uid in unique_uids:
+            user = session.query(User).filter(User.id == uid).first()
+            if user:
+                member = GroupMember(group_id=group.id, user_id=uid)
+                session.add(member)
+                user.group_name = group.name
+                members_count += 1
+        if members_count > 0:
+            session.commit()
+
     return {
         "id": group.id,
         "name": group.name,
         "level": group.level,
         "description": group.description,
         "created_at": group.created_at,
-        "members_count": 0,
+        "members_count": members_count,
     }
 
 
@@ -204,6 +221,11 @@ def get_group_members(
                 "joined_at": m.joined_at,
                 "user_email": user.email if user else "Inconnu",
                 "user_role": user.role if user else "Inconnu",
+                "user_nom": user.nom if user else None,
+                "user_prenom": user.prenom if user else None,
+                "user_username": user.username if user else None,
+                "user_avatar": user.avatar_url if user else None,
+                "user_departement": user.departement if user else None,
             }
         )
 
@@ -247,6 +269,7 @@ def add_group_member(
 
     member = GroupMember(group_id=group_id, user_id=member_in.user_id)
     session.add(member)
+    user.group_name = group.name
     session.commit()
     session.refresh(member)
 
@@ -257,6 +280,65 @@ def add_group_member(
         "joined_at": member.joined_at,
         "user_email": user.email,
         "user_role": user.role,
+        "user_nom": user.nom,
+        "user_prenom": user.prenom,
+        "user_username": user.username,
+        "user_avatar": user.avatar_url,
+        "user_departement": user.departement,
+    }
+
+
+@router.post("/{group_id}/members/batch")
+def add_group_members_batch(
+    group_id: int,
+    batch_in: GroupMembersBatchCreate,
+    session: SessionDep,
+    current_user: CurrentUser,
+) -> Any:
+    """
+    Add multiple members to a group simultaneously.
+    Admin, formateur and staff only.
+    """
+    if current_user.role.lower() not in STAFF_ROLES:
+        raise HTTPException(status_code=403, detail="Non autorisé.")
+
+    group = session.query(Group).filter(Group.id == group_id).first()
+    if not group:
+        raise HTTPException(status_code=404, detail="Groupe introuvable.")
+
+    added_count = 0
+    unique_uids = set(batch_in.user_ids)
+
+    for uid in unique_uids:
+        user = session.query(User).filter(User.id == uid).first()
+        if not user:
+            continue
+
+        existing = (
+            session.query(GroupMember)
+            .filter(
+                GroupMember.group_id == group_id, GroupMember.user_id == uid
+            )
+            .first()
+        )
+        if existing:
+            continue
+
+        member = GroupMember(group_id=group_id, user_id=uid)
+        session.add(member)
+        user.group_name = group.name
+        added_count += 1
+
+    if added_count > 0:
+        session.commit()
+
+    total_count = session.query(GroupMember).filter(GroupMember.group_id == group_id).count()
+
+    return {
+        "message": f"{added_count} membre(s) ajouté(s) avec succès au groupe '{group.name}'.",
+        "added_count": added_count,
+        "total_members": total_count,
+        "group_id": group_id,
     }
 
 
@@ -290,11 +372,12 @@ def remove_group_member(
 
 
 @router.get("/available-users", response_model=list[dict])
+@router.get("/available-users/", response_model=list[dict])
 def get_available_users(
     session: SessionDep, current_user: CurrentUser, group_id: int = None
 ) -> Any:
     """
-    Get users that can be added to a group.
+    Get users that can be added to a group with rich profile metadata.
     """
     if current_user.role.lower() not in STAFF_ROLES:
         raise HTTPException(status_code=403, detail="Non autorisé.")
@@ -309,4 +392,16 @@ def get_available_users(
         query = query.filter(User.id.notin_(subquery))
 
     users = query.all()
-    return [{"id": u.id, "email": u.email, "role": u.role} for u in users]
+    return [
+        {
+            "id": u.id,
+            "email": u.email,
+            "role": u.role,
+            "nom": u.nom,
+            "prenom": u.prenom,
+            "username": u.username,
+            "avatar_url": u.avatar_url,
+            "departement": u.departement,
+        }
+        for u in users
+    ]

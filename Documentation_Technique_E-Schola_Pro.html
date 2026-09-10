@@ -1211,13 +1211,15 @@ E-Schola Pro/
     <table>
       <thead><tr><th>Méthode</th><th>Endpoint</th><th>Description</th><th>Accès</th></tr></thead>
       <tbody class="endpoint-row">
-        <tr><td><span class="badge badge-get">GET</span></td><td><code>/groups/</code></td><td>Lister tous les groupes</td><td>Admin, Formateur</td></tr>
-        <tr><td><span class="badge badge-post">POST</span></td><td><code>/groups/</code></td><td>Créer un groupe</td><td>Admin, Formateur</td></tr>
-        <tr><td><span class="badge badge-put">PUT</span></td><td><code>/groups/{id}</code></td><td>Modifier un groupe</td><td>Admin, Formateur</td></tr>
-        <tr><td><span class="badge badge-delete">DELETE</span></td><td><code>/groups/{id}</code></td><td>Supprimer un groupe</td><td>Admin, Formateur</td></tr>
-        <tr><td><span class="badge badge-get">GET</span></td><td><code>/groups/{id}/members</code></td><td>Lister les membres</td><td>Admin, Formateur</td></tr>
-        <tr><td><span class="badge badge-post">POST</span></td><td><code>/groups/{id}/members</code></td><td>Ajouter un membre</td><td>Admin, Formateur</td></tr>
-        <tr><td><span class="badge badge-delete">DELETE</span></td><td><code>/groups/{id}/members/{uid}</code></td><td>Retirer un membre</td><td>Admin, Formateur</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/groups</code> · <code>/groups/</code></td><td>Lister tous les groupes (sans redirection 307) avec compteurs de membres</td><td>Admin, Admin Manager, Formateur, Pédagogique, DG/RH</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/groups</code> · <code>/groups/</code></td><td>Créer un groupe avec affectation immédiate optionnelle de membres (champ <code>member_ids: list[int]</code>)</td><td>Admin, Admin Manager, Formateur, Pédagogique, DG/RH</td></tr>
+        <tr><td><span class="badge badge-put">PUT</span></td><td><code>/groups/{id}</code></td><td>Modifier le nom, niveau ou description d'un groupe</td><td>Admin, Admin Manager, Formateur, Pédagogique, DG/RH</td></tr>
+        <tr><td><span class="badge badge-delete">DELETE</span></td><td><code>/groups/{id}</code></td><td>Supprimer un groupe avec dissociation en cascade sécurisée des membres</td><td>Admin, Admin Manager, Formateur, Pédagogique, DG/RH</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/groups/{id}/members</code></td><td>Lister les membres avec profils enrichis (nom, prénom, username, avatar WebP, rôle, département)</td><td>Admin, Admin Manager, Formateur, Pédagogique, DG/RH</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/groups/{id}/members</code></td><td>Ajouter un membre individuel au groupe et synchroniser son profil (<code>group_name</code>)</td><td>Admin, Admin Manager, Formateur, Pédagogique, DG/RH</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/groups/{id}/members/batch</code></td><td>Affecter plusieurs membres simultanément par lot (payload <code>{"user_ids": list[int]}</code>)</td><td>Admin, Admin Manager, Formateur, Pédagogique, DG/RH</td></tr>
+        <tr><td><span class="badge badge-delete">DELETE</span></td><td><code>/groups/{id}/members/{uid}</code></td><td>Retirer un apprenant du groupe sans altération de son compte utilisateur</td><td>Admin, Admin Manager, Formateur, Pédagogique, DG/RH</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/groups/available-users</code></td><td>Lister les utilisateurs éligibles pour affectation avec métadonnées complètes de profil</td><td>Admin, Admin Manager, Formateur, Pédagogique, DG/RH</td></tr>
       </tbody>
     </table>
 
@@ -1565,15 +1567,26 @@ E-Schola Pro/
     <h3>Module 8 — Groupes & Classes</h3>
     <div class="card">
       <p><strong>Route Frontend :</strong> <code>/group</code></p>
-      <p><strong>Contrôle d'accès & Sécurité :</strong> Strictement réservé aux rôles <strong>Formateur</strong> et <strong>Administrateur</strong>. Le bouton de navigation est automatiquement masqué pour les étudiants, stagiaires et employés dans la barre latérale, et tout accès direct est bloqué par un écran de refus d'accès et une erreur HTTP 403 côté API.</p>
+      <p><strong>Contrôle d'accès & Sécurité :</strong> Strictement réservé aux rôles <strong>Formateur</strong>, <strong>Administrateur</strong>, <strong>Pédagogique</strong> et <strong>DG/RH</strong>. Le bouton de navigation est automatiquement masqué pour les étudiants, stagiaires et employés dans la barre latérale, et tout accès direct est bloqué par un écran de refus d'accès et une erreur HTTP 403 côté API.</p>
       <p><strong>Options et propriétés :</strong></p>
       <ul>
-        <li><strong>Design &amp; Ergonomie Modernisée (Fidélité Pixel-Perfect image_04ec85.png) :</strong> Interface épurée avec cartes de groupes neumorphiques, modale de création conformée à l'image modèle (icône bleue 👥 encadrée, libellés exacts <code>NOM DU GROUPE / CLASSE *</code>, <code>NIVEAU ACADÉMIQUE (OPTIONNEL)</code>, <code>DESCRIPTION DÉTAILLÉE (OPTIONNEL)</code> et boutons d'action <em>Annuler</em> / <em>Enregistrer</em>).</li>
+        <li><strong>Affichage Panoramique &amp; Switcher de Vue (Grille / Panoramique) :</strong> Interface adaptative offrant un mode panoramique Master-Detail à 60 FPS (conteneur 1700px) :
+          <ul>
+            <li><em>Panneau Maître gauche :</em> Liste dynamique des promotions avec compteurs de membres, recherche instantanée et indicateur actif de sélection.</li>
+            <li><em>Espace Panoramique principal :</em> En-tête étendu de la promotion, 4 cartes d'indicateurs KPI (Total apprenants, Étudiants, Stagiaires, Salariés/Employés), barre de recherche interne et filtrage par onglets de rôle (Tous, Étudiants, Stagiaires, Employés).</li>
+            <li><em>Tableau Panoramique Haute Fidélité :</em> Affichage complet des membres avec avatar WebP ou initiales dynamiques, nom complet, identifiant (@username), email cliquable, badge de rôle coloré, département et date d'affectation avec retrait immédiat en un clic.</li>
+          </ul>
+        </li>
+        <li><strong>Affectation Immédiate des Membres dès la Création :</strong> Modale de création enrichie d'un sélecteur intégré d'apprenants éligibles avec recherche, cases à cocher multiples, compteur de sélection dynamique et bouton de sélection globale. Le backend persiste le groupe et les adhésions en une seule transaction atomique via <code>member_ids: list[int]</code>.</li>
+        <li><strong>Ajout de Nouveaux Membres au Groupe (Unitaire &amp; Par Lot) :</strong>
+          <ul>
+            <li><em>Ajout unitaire standard :</em> Sélection dans la liste déroulante filtrée excluant automatiquement les membres déjà présents.</li>
+            <li><em>Ajout par lot (Batch Add) :</em> Nouveau mode multi-sélection avec cases à cocher permettant d'affecter simultanément un nombre illimité d'apprenants via l'endpoint dédié <code>POST /api/v1/groups/{id}/members/batch</code>.</li>
+          </ul>
+        </li>
         <li><strong>Création &amp; Édition de Promotion avec Validation Pydantic v2 :</strong> Formulaire modal avec validation en temps réel, désinfection des espaces (<code>strip()</code>), alertes d'erreur in-modal et blocage des noms de groupe vides ou doublons (HTTP 400 <em>"Un groupe ou une classe portant ce nom existe déjà"</em>).</li>
         <li><strong>Suppression &amp; Cascade Sécurisée :</strong> Suppression de groupe avec dissociation automatique de tous les membres sans altération des comptes utilisateurs.</li>
-        <li><strong>Gestion Dynamique des Membres (GroupMembersModal) :</strong> Modale dédiée d'affectation avec sélecteur d'apprenants disponibles dédupliqué (exclusion automatique des utilisateurs déjà membres), indicateurs d'initiales colorés, badges de rôle (<em>étudiant, stagiaire, employer</em>) et retrait individuel en 1 clic.</li>
-        <li><strong>Rafraîchissement &amp; Synchronisation Instantanée :</strong> Mise à jour synchrone et réactive des effectifs totaux de membres affichés sur les cartes de groupes dès la fermeture de la modale de gestion.</li>
-        <li><strong>Protection Anti-Doublon &amp; Intégrité multi-tenant :</strong> Vérification systématique d'unicité insensible à la casse et persistance garantie dans PostgreSQL Railway sans altération des données de production.</li>
+        <li><strong>Protection Anti-Doublon &amp; Intégrité multi-tenant :</strong> Normalisation des routes (support simultané de <code>/groups</code> et <code>/groups/</code> sans redirection HTTP 307), vérification d'unicité insensible à la casse et persistance garantie.</li>
       </ul>
       <div class="screenshot-container">
         <div class="screenshot-header">
