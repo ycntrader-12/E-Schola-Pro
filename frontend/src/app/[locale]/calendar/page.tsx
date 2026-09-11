@@ -822,172 +822,264 @@ export default function CalendarPage() {
       {/* ========================================================================= */}
       {/* MODAL : PLANIFIER UN ÉVÉNEMENT / COURS                                   */}
       {/* ========================================================================= */}
+      {/* ========================================================================= */}
+      {/* MODAL : PLANIFIER UN ÉVÉNEMENT / COURS (PANORAMIQUE & ULTRA-LISIBLE)     */}
+      {/* ========================================================================= */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="glass-card max-w-lg w-full p-6 rounded-3xl border border-primary/30 space-y-4 animate-fade-in-up max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 md:p-8 animate-fade-in">
+          <div className="glass-card max-w-4xl w-full p-6 md:p-8 rounded-3xl border border-primary/30 shadow-2xl shadow-primary/10 animate-fade-in-up max-h-[92vh] flex flex-col bg-background/95 dark:bg-slate-900/95">
             
-            {/* Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-border shrink-0">
-              <div className="flex items-center gap-2 text-primary font-bold text-base">
-                <CalendarIcon size={20} />
-                <h3>{editingEventId ? "Modifier le cours ou planning" : "Planifier un cours ou planning"}</h3>
+            {/* Panoramic Header */}
+            <div className="flex items-center justify-between pb-4 border-b border-border/80 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-primary/10 text-primary border border-primary/20">
+                  <CalendarIcon size={24} />
+                </div>
+                <div>
+                  <h3 className="text-lg md:text-xl font-bold text-text-primary tracking-tight">
+                    {editingEventId ? "Modifier le cours ou planning" : "Planifier un cours ou planning"}
+                  </h3>
+                  <p className="text-xs text-text-secondary mt-0.5">
+                    Définissez l'intitulé, les objectifs, les promotions cibles et les créneaux horaires.
+                  </p>
+                </div>
               </div>
               <button 
                 onClick={() => setShowAddModal(false)}
-                className="text-text-secondary hover:text-text-primary font-bold"
+                className="p-2 rounded-xl text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors"
+                title="Fermer"
               >
-                ✕
+                <X size={22} />
               </button>
             </div>
 
-            <div className="overflow-y-auto custom-scrollbar pr-2 flex-1">
-              <form onSubmit={handleCreateEvent} className="space-y-4 text-xs">
+            {/* Panoramic Content (2 Columns Grid) */}
+            <div className="overflow-y-auto custom-scrollbar pr-1 md:pr-2 py-4 flex-1">
+              <form id="calendar-event-form" onSubmit={handleCreateEvent} className="space-y-6">
                 
                 {/* Notice if selected date is a Moroccan Holiday */}
                 {newStartDate && getMoroccanHolidayForDate(newStartDate) && (
-                  <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-900 dark:text-emerald-200 flex items-start gap-2">
-                    <span className="text-base">🇲🇦</span>
+                  <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-900 dark:text-emerald-200 flex items-center gap-3 text-xs">
+                    <span className="text-2xl leading-none">🇲🇦</span>
                     <div>
-                      <span className="font-bold">Information Férié :</span> La date du {newStartDate} correspond à un jour férié officiel au Maroc (<strong>{getMoroccanHolidayForDate(newStartDate)?.name} - {getMoroccanHolidayForDate(newStartDate)?.nameAr}</strong>).
+                      <span className="font-bold text-emerald-700 dark:text-emerald-300">Jour férié officiel au Maroc :</span>{" "}
+                      La date du <strong>{newStartDate}</strong> correspond à <strong>{getMoroccanHolidayForDate(newStartDate)?.name}</strong> ({getMoroccanHolidayForDate(newStartDate)?.nameAr}).
                     </div>
                   </div>
                 )}
 
-                {/* Titre */}
-                <div>
-                  <label className="block uppercase font-bold text-text-secondary mb-1">
-                    Titre de l'événement *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Ex: Cours d'Intelligence Artificielle, Réunion de suivi..."
-                    value={newTitle}
-                    onChange={(e) => setNewTitle(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-border text-xs outline-none focus:border-primary text-text-primary"
-                  />
-                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                  
+                  {/* LEFT COLUMN: Titre, Description, Public concerné (7 colonnes) */}
+                  <div className="lg:col-span-7 space-y-4">
+                    
+                    {/* Titre */}
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-text-secondary mb-1.5 flex items-center justify-between">
+                        <span>Titre de l'événement ou cours <span className="text-rose-500">*</span></span>
+                        <span className="text-[11px] font-normal text-text-tertiary">Requis</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Ex: Intelligence Artificielle & Big Data - Module 3"
+                        value={newTitle}
+                        onChange={(e) => setNewTitle(e.target.value)}
+                        className="w-full px-4 py-2.5 rounded-xl bg-surface border border-border text-sm font-medium outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-text-primary transition-all min-h-[44px]"
+                      />
+                    </div>
 
-                {/* Description */}
-                <div>
-                  <label className="block uppercase font-bold text-text-secondary mb-1">
-                    Description
-                  </label>
-                  <textarea
-                    rows={3}
-                    placeholder="Objectifs, ordre du jour, lien de visioconférence..."
-                    value={newDescription}
-                    onChange={(e) => setNewDescription(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-border text-xs outline-none focus:border-primary text-text-primary resize-none"
-                  />
-                </div>
+                    {/* Description */}
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-text-secondary mb-1.5">
+                        Description & Objectifs pédagogiques
+                      </label>
+                      <textarea
+                        rows={4}
+                        placeholder="Détaillez les objectifs de la session, le lien visio (Teams/Meet/Zoom), l'ordre du jour ou les prérequis..."
+                        value={newDescription}
+                        onChange={(e) => setNewDescription(e.target.value)}
+                        className="w-full px-4 py-3 rounded-xl bg-surface border border-border text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-text-primary resize-none leading-relaxed transition-all"
+                      />
+                    </div>
 
-                {/* Date & Heure de début */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block uppercase font-bold text-text-secondary mb-1">
-                      Date de début *
-                    </label>
-                    <input
-                      type="date"
-                      required
-                      value={newStartDate}
-                      onChange={(e) => setNewStartDate(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-surface border border-border text-xs outline-none focus:border-primary text-text-primary"
-                    />
+                    {/* Public concerné / Promotion */}
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-text-secondary mb-1.5 flex items-center gap-1.5">
+                        <Users size={14} className="text-primary" />
+                        <span>Public concerné / Promotion cible <span className="text-rose-500">*</span></span>
+                      </label>
+                      <select
+                        value={newRoles}
+                        onChange={(e) => setNewRoles(e.target.value)}
+                        className="w-full px-4 py-2.5 rounded-xl bg-surface border border-border text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-text-primary cursor-pointer font-medium transition-all min-h-[44px]"
+                      >
+                        <optgroup label="Public Général / Rôles">
+                          <option value="étudiant,stagiaire,employer">Tous (Étudiants, Stagiaires, Employés)</option>
+                          <option value="étudiant">Étudiants uniquement</option>
+                          <option value="stagiaire">Stagiaires uniquement</option>
+                          <option value="employer">Employés uniquement</option>
+                          <option value="formateur,admin">Formateurs & Administration</option>
+                        </optgroup>
+
+                        {availableGroups && availableGroups.length > 0 && (
+                          <optgroup label="Groupes & Classes (Ajoutés)">
+                            {availableGroups.map((g) => (
+                              <option key={g.id} value={`Groupe: ${g.name}`}>
+                                👥 Groupe : {g.name} {g.level ? `(${g.level})` : ''}
+                              </option>
+                            ))}
+                          </optgroup>
+                        )}
+                      </select>
+                    </div>
+
                   </div>
-                  <div>
-                    <label className="block uppercase font-bold text-text-secondary mb-1">
-                      Heure de début *
-                    </label>
-                    <input
-                      type="time"
-                      required
-                      value={newStartTime}
-                      onChange={(e) => setNewStartTime(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-surface border border-border text-xs outline-none focus:border-primary text-text-primary"
-                    />
+
+                  {/* RIGHT COLUMN: Planification, Dates & Heures (5 colonnes) */}
+                  <div className="lg:col-span-5">
+                    <div className="bg-surface/50 border border-border/80 rounded-2xl p-4 sm:p-5 space-y-4">
+                      
+                      {/* Section Header */}
+                      <div className="flex items-center justify-between pb-2 border-b border-border/60">
+                        <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-wider">
+                          <Clock size={15} />
+                          <span>Créneau & Horaires</span>
+                        </div>
+                        <span className="text-[11px] font-medium text-text-tertiary">Format 24h</span>
+                      </div>
+
+                      {/* Date & Heure Début */}
+                      <div className="space-y-2">
+                        <span className="block text-xs font-semibold uppercase text-text-secondary">
+                          Début de session <span className="text-rose-500">*</span>
+                        </span>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                          <div>
+                            <input
+                              type="date"
+                              required
+                              value={newStartDate}
+                              onChange={(e) => setNewStartDate(e.target.value)}
+                              className="w-full px-3 py-2 rounded-xl bg-background border border-border text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-text-primary transition-all min-h-[42px]"
+                            />
+                          </div>
+                          <div>
+                            <input
+                              type="time"
+                              required
+                              value={newStartTime}
+                              onChange={(e) => setNewStartTime(e.target.value)}
+                              className="w-full px-3 py-2 rounded-xl bg-background border border-border text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-text-primary transition-all min-h-[42px]"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Date & Heure Fin */}
+                      <div className="space-y-2 pt-2 border-t border-border/40">
+                        <span className="block text-xs font-semibold uppercase text-text-secondary">
+                          Fin de session <span className="text-rose-500">*</span>
+                        </span>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                          <div>
+                            <input
+                              type="date"
+                              required
+                              value={newEndDate}
+                              onChange={(e) => setNewEndDate(e.target.value)}
+                              className="w-full px-3 py-2 rounded-xl bg-background border border-border text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-text-primary transition-all min-h-[42px]"
+                            />
+                          </div>
+                          <div>
+                            <input
+                              type="time"
+                              required
+                              value={newEndTime}
+                              onChange={(e) => setNewEndTime(e.target.value)}
+                              className="w-full px-3 py-2 rounded-xl bg-background border border-border text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-text-primary transition-all min-h-[42px]"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Indicateur de durée dynamique */}
+                      {(() => {
+                        if (!newStartDate || !newStartTime || !newEndDate || !newEndTime) return null;
+                        try {
+                          const start = new Date(`${newStartDate}T${newStartTime}:00`);
+                          const end = new Date(`${newEndDate}T${newEndTime}:00`);
+                          const diffMs = end.getTime() - start.getTime();
+                          if (diffMs < 0) {
+                            return (
+                              <div className="mt-3 p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs flex items-center gap-2">
+                                <AlertCircle size={14} className="shrink-0" />
+                                <span>L'heure de fin doit être après l'heure de début.</span>
+                              </div>
+                            );
+                          }
+                          const totalMinutes = Math.floor(diffMs / (1000 * 60));
+                          const days = Math.floor(totalMinutes / (24 * 60));
+                          const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
+                          const mins = totalMinutes % 60;
+                          let durationStr = "";
+                          if (days > 0) durationStr += `${days} j `;
+                          if (hours > 0) durationStr += `${hours} h `;
+                          if (mins > 0 || (!days && !hours)) durationStr += `${mins} min`;
+
+                          return (
+                            <div className="mt-3 p-2.5 rounded-xl bg-primary/10 border border-primary/20 text-primary text-xs flex items-center justify-between">
+                              <span className="flex items-center gap-1.5 font-medium">
+                                <Clock size={13} />
+                                <span>Durée estimée :</span>
+                              </span>
+                              <span className="font-bold">{durationStr.trim()}</span>
+                            </div>
+                          );
+                        } catch {
+                          return null;
+                        }
+                      })()}
+
+                    </div>
                   </div>
-                </div>
 
-                {/* Date & Heure de fin */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block uppercase font-bold text-text-secondary mb-1">
-                      Date de fin *
-                    </label>
-                    <input
-                      type="date"
-                      required
-                      value={newEndDate}
-                      onChange={(e) => setNewEndDate(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-surface border border-border text-xs outline-none focus:border-primary text-text-primary"
-                    />
-                  </div>
-                  <div>
-                    <label className="block uppercase font-bold text-text-secondary mb-1">
-                      Heure de fin *
-                    </label>
-                    <input
-                      type="time"
-                      required
-                      value={newEndTime}
-                      onChange={(e) => setNewEndTime(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-surface border border-border text-xs outline-none focus:border-primary text-text-primary"
-                    />
-                  </div>
-                </div>
-
-                {/* Rôles cibles */}
-                <div>
-                  <label className="block uppercase font-bold text-text-secondary mb-1">
-                    Public concerné
-                  </label>
-                  <select
-                    value={newRoles}
-                    onChange={(e) => setNewRoles(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-surface border border-border text-xs outline-none focus:border-primary text-text-primary cursor-pointer font-medium"
-                  >
-                    <optgroup label="Public Général / Rôles">
-                      <option value="étudiant,stagiaire,employer">Tous (Étudiants, Stagiaires, Employés)</option>
-                      <option value="étudiant">Étudiants uniquement</option>
-                      <option value="stagiaire">Stagiaires uniquement</option>
-                      <option value="employer">Employés uniquement</option>
-                      <option value="formateur,admin">Formateurs & Administration</option>
-                    </optgroup>
-
-                    {availableGroups && availableGroups.length > 0 && (
-                      <optgroup label="Groupes & Classes (Ajoutés)">
-                        {availableGroups.map((g) => (
-                          <option key={g.id} value={`Groupe: ${g.name}`}>
-                            👥 Groupe : {g.name} {g.level ? `(${g.level})` : ''}
-                          </option>
-                        ))}
-                      </optgroup>
-                    )}
-                  </select>
-                </div>
-
-                {/* Boutons */}
-                <div className="flex items-center gap-3 pt-3">
-                  <button
-                    type="button"
-                    onClick={() => setShowAddModal(false)}
-                    className="w-1/2 py-2.5 bg-surface hover:bg-surface-hover rounded-xl font-semibold border border-border text-text-secondary"
-                  >
-                    Annuler
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-1/2 btn-primary py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-primary/25"
-                  >
-                    {isSubmitting ? <Loader2 size={15} className="animate-spin" /> : editingEventId ? <CheckCircle size={15} /> : <Plus size={15} />}
-                    {editingEventId ? "Sauvegarder" : "Enregistrer"}
-                  </button>
                 </div>
               </form>
             </div>
+
+            {/* Panoramic Footer */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-border/80 shrink-0">
+              <div className="text-xs text-text-tertiary hidden sm:flex items-center gap-2">
+                <Info size={14} className="text-primary/70 shrink-0" />
+                <span>Les créneaux sont automatiquement synchronisés sur l'agenda des participants.</span>
+              </div>
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="flex-1 sm:flex-none px-6 py-2.5 bg-surface hover:bg-surface-hover rounded-xl font-semibold border border-border text-text-secondary text-sm transition-all min-h-[44px]"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  form="calendar-event-form"
+                  disabled={isSubmitting}
+                  className="flex-1 sm:flex-none px-8 py-2.5 btn-primary rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-primary/25 transition-all min-h-[44px]"
+                >
+                  {isSubmitting ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : editingEventId ? (
+                    <CheckCircle size={16} />
+                  ) : (
+                    <Plus size={16} />
+                  )}
+                  {editingEventId ? "Sauvegarder les modifications" : "Enregistrer le cours"}
+                </button>
+              </div>
+            </div>
+
           </div>
         </div>
       )}
