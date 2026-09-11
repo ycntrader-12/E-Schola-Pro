@@ -34,40 +34,40 @@ from app.core.config import is_in_railway, is_production, settings
 from app.core.security import verify_password
 from app.db.base import Base
 from app.db.database import engine
+import app.models  # noqa: F401 - Garantit que tous les modèles ORM sont enregistrés dans Base.metadata
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
-    Non-blocking, non-destructive startup & shutdown lifecycle.
-    Verifies database connectivity without running concurrent or destructive DDL on production.
-    In production, automatic ORM schema synchronization is strictly disabled;
-    schema updates must be executed explicitly via migrations.
+    Cycle de vie de l'application FastAPI (Démarrage et Arrêt).
+    Garantit une persistance stricte des données :
+    - AUCUNE suppression ni vidage de table au démarrage (Base.metadata.drop_all est formellement banni).
+    - Exécute Base.metadata.create_all(bind=engine) pour créer uniquement les tables manquantes (checkfirst=True).
+    - Préserve l'intégralité des données existantes à chaque redémarrage.
     """
     dialect = engine.dialect.name
     try:
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
-        print(f"[Database Health] Connection established successfully on engine: {dialect}")
+        print(f"[Database Health] Connexion vérifiée avec succès sur le moteur : {dialect}")
     except Exception as db_err:
-        print(f"[Database Warning] Startup database connectivity check note: {db_err}")
+        print(f"[Database Warning] Note de vérification de connectivité : {db_err}")
 
-    # Schema Synchronization Control:
-    # Strictly disabled in production to protect data integrity and avoid concurrent DDL locks.
-    if settings.AUTO_SYNC_SCHEMA and not is_production():
-        try:
-            Base.metadata.create_all(bind=engine)
-            print(f"[Database] Local schema synchronization completed (engine: {dialect}).")
-        except Exception as e:
-            print(f"[Database Notice] Local development metadata init note: {e}")
-    else:
+    # Création sécurisée et non destructive des tables manquantes uniquement
+    # SQLAlchemy create_all vérifie l'existence des tables (checkfirst=True par défaut)
+    # et n'altère, ne vide ni ne supprime jamais les tables et données existantes.
+    try:
+        Base.metadata.create_all(bind=engine)
         print(
-            f"[Database] Automatic schema synchronization is DISABLED (engine: {dialect}, env: {settings.ENVIRONMENT}). "
-            "Database migrations must be applied explicitly via Alembic."
+            f"[Database Persistence] Vérification et création des tables manquantes effectuée (moteur: {dialect}). "
+            "Données existantes 100% préservées (aucun drop_all, aucun vidage)."
         )
+    except Exception as e:
+        print(f"[Database Notice] Note d'initialisation des métadonnées : {e}")
 
     yield
-    print("[FastAPI Lifespan] Shutting down application cleanly.")
+    print("[FastAPI Lifespan] Arrêt propre de l'application.")
 
 
 app = FastAPI(
