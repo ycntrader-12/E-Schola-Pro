@@ -63,8 +63,12 @@ async def lifespan(app: FastAPI):
             f"[Database Persistence] Vérification et création des tables manquantes effectuée (moteur: {dialect}). "
             "Données existantes 100% préservées (aucun drop_all, aucun vidage)."
         )
+        from app.db.database import SessionLocal
+        from app.db.init_db import init_db
+        with SessionLocal() as db_session:
+            init_db(db_session)
     except Exception as e:
-        print(f"[Database Notice] Note d'initialisation des métadonnées : {e}")
+        print(f"[Database Notice] Note d'initialisation des métadonnées/comptes : {e}")
 
     yield
     print("[FastAPI Lifespan] Arrêt propre de l'application.")

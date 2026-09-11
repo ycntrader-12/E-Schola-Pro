@@ -1,19 +1,19 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { 
-  Calendar as CalendarIcon, 
-  Clock, 
-  Users, 
-  ArrowRight, 
-  ChevronLeft, 
-  ChevronRight, 
-  Plus, 
-  Trash2, 
+import {
+  Calendar as CalendarIcon,
+  Clock,
+  Users,
+  ArrowRight,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  Trash2,
   Pencil,
   ShieldCheck,
-  CheckCircle, 
-  Radio, 
+  CheckCircle,
+  Radio,
   Sparkles,
   AlertCircle,
   Loader2,
@@ -169,7 +169,7 @@ export default function CalendarPage() {
     setNewStartTime(startDate.toTimeString().substring(0, 5));
     setNewEndDate(formatYMD(endDate));
     setNewEndTime(endDate.toTimeString().substring(0, 5));
-    
+
     // Parse target_roles into role and group
     const rawTarget = event.target_roles || 'étudiant,stagiaire,employer';
     if (rawTarget.includes('Groupe:')) {
@@ -269,15 +269,15 @@ export default function CalendarPage() {
   const monthName = viewDate.toLocaleDateString([], { month: 'long', year: 'numeric' });
 
   // Filter events for selected day (if any)
-  const eventsForSelectedDay = selectedDay 
+  const eventsForSelectedDay = selectedDay
     ? events.filter(e => {
-        const evDate = new Date(e.start_time);
-        return (
-          evDate.getDate() === selectedDay.getDate() &&
-          evDate.getMonth() === selectedDay.getMonth() &&
-          evDate.getFullYear() === selectedDay.getFullYear()
-        );
-      })
+      const evDate = new Date(e.start_time);
+      return (
+        evDate.getDate() === selectedDay.getDate() &&
+        evDate.getMonth() === selectedDay.getMonth() &&
+        evDate.getFullYear() === selectedDay.getFullYear()
+      );
+    })
     : events;
 
   // Selected Day Moroccan Holiday
@@ -285,7 +285,7 @@ export default function CalendarPage() {
 
   // All Moroccan holidays for currently viewed year
   const allYearHolidays = getMoroccanHolidays(currentYear);
-  const filteredHolidays = allYearHolidays.filter(h => 
+  const filteredHolidays = allYearHolidays.filter(h =>
     h.name.toLowerCase().includes(holidaySearchQuery.toLowerCase()) ||
     h.nameAr.includes(holidaySearchQuery) ||
     h.date.includes(holidaySearchQuery) ||
@@ -309,7 +309,7 @@ export default function CalendarPage() {
     const date = new Date(isoString);
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
-  
+
   const formatDateFull = (isoString: string) => {
     const date = new Date(isoString);
     return date.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
@@ -342,7 +342,7 @@ export default function CalendarPage() {
 
   return (
     <div className="min-h-screen px-4 py-24 max-w-7xl mx-auto space-y-8 animate-fade-in">
-      
+
       {/* 1. TOP HERO & LIVE SYSTEM CLOCK (AI TECH SYNCHRONIZED) */}
       <div className="glass-card p-6 md:p-8 rounded-3xl border border-border shadow-xl relative overflow-hidden">
         {/* Background glow effects */}
@@ -371,7 +371,7 @@ export default function CalendarPage() {
                   Horloge Système en Direct
                 </span>
                 <span className="text-2xl sm:text-3xl font-black font-mono tracking-wider text-text-primary text-glow">
-                  {currentTime 
+                  {currentTime
                     ? currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
                     : '--:--:--'}
                 </span>
@@ -385,8 +385,8 @@ export default function CalendarPage() {
                 {currentTime ? currentTime.toLocaleDateString([], { weekday: 'long' }) : '---'}
               </span>
               <span className="text-sm sm:text-base font-bold text-text-primary block capitalize">
-                {currentTime 
-                  ? currentTime.toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' }) 
+                {currentTime
+                  ? currentTime.toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })
                   : 'Chargement...'}
               </span>
               <span className="text-[10px] text-text-secondary font-mono">
@@ -407,7 +407,7 @@ export default function CalendarPage() {
           >
             <ChevronLeft size={18} />
           </button>
-          
+
           <h2 className="text-base sm:text-lg font-bold capitalize min-w-[170px] text-center text-text-primary">
             {monthName}
           </h2>
@@ -459,11 +459,11 @@ export default function CalendarPage() {
 
       {/* 3. MAIN GRID : INTERACTIVE MONTH VIEW & EVENTS LIST */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        
+
         {/* Left : Interactive Month Grid (7 cols) */}
         <div className="lg:col-span-7 space-y-4">
           <div className="glass-card p-5 rounded-2xl border border-border">
-            
+
             {/* Days of Week Header */}
             <div className="grid grid-cols-7 gap-2 mb-3 text-center">
               {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map((d, i) => (
@@ -489,7 +489,7 @@ export default function CalendarPage() {
                 const moroccanHoliday = getMoroccanHolidayForDate(cellDate);
 
                 // Is Today (system date)?
-                const isToday = currentTime && 
+                const isToday = currentTime &&
                   cellDate.getDate() === currentTime.getDate() &&
                   cellDate.getMonth() === currentTime.getMonth() &&
                   cellDate.getFullYear() === currentTime.getFullYear();
@@ -514,25 +514,23 @@ export default function CalendarPage() {
                   <button
                     key={dayNum}
                     onClick={() => setSelectedDay(cellDate)}
-                    className={`min-h-[72px] p-1.5 rounded-xl border flex flex-col justify-between items-start transition-all relative group text-left ${
-                      isSelected
-                        ? 'bg-primary/20 border-primary text-text-primary shadow-md shadow-primary/20 ring-1 ring-primary'
-                        : isToday
+                    className={`min-h-[72px] p-1.5 rounded-xl border flex flex-col justify-between items-start transition-all relative group text-left ${isSelected
+                      ? 'bg-primary/20 border-primary text-text-primary shadow-md shadow-primary/20 ring-1 ring-primary'
+                      : isToday
                         ? 'bg-primary/10 border-blue-500 text-text-primary font-bold'
                         : moroccanHoliday
-                        ? 'bg-emerald-500/10 dark:bg-emerald-950/25 border-emerald-500/40 text-text-primary hover:border-emerald-500'
-                        : 'bg-surface/50 hover:bg-surface border-border text-text-secondary hover:text-text-primary'
-                    }`}
+                          ? 'bg-emerald-500/10 dark:bg-emerald-950/25 border-emerald-500/40 text-text-primary hover:border-emerald-500'
+                          : 'bg-surface/50 hover:bg-surface border-border text-text-secondary hover:text-text-primary'
+                      }`}
                   >
                     <div className="w-full flex items-center justify-between">
                       <div className="flex items-center gap-1">
-                        <span className={`text-xs ${
-                          isToday 
-                            ? 'w-5 h-5 rounded-full bg-primary text-white flex items-center justify-center font-extrabold shadow-xs' 
-                            : moroccanHoliday
+                        <span className={`text-xs ${isToday
+                          ? 'w-5 h-5 rounded-full bg-primary text-white flex items-center justify-center font-extrabold shadow-xs'
+                          : moroccanHoliday
                             ? 'font-extrabold text-emerald-600 dark:text-emerald-400'
                             : 'font-semibold'
-                        }`}>
+                          }`}>
                           {dayNum}
                         </span>
                         {moroccanHoliday && (
@@ -550,8 +548,8 @@ export default function CalendarPage() {
 
                     {/* Moroccan Holiday Micro Badge */}
                     {moroccanHoliday && (
-                      <div 
-                        className="w-full text-[8px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100/80 dark:bg-emerald-900/50 px-1 py-0.5 rounded truncate leading-tight my-0.5" 
+                      <div
+                        className="w-full text-[8px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100/80 dark:bg-emerald-900/50 px-1 py-0.5 rounded truncate leading-tight my-0.5"
                         title={`Jour Férié Officiel : ${moroccanHoliday.name} (${moroccanHoliday.nameAr})`}
                       >
                         {moroccanHoliday.name}
@@ -562,9 +560,9 @@ export default function CalendarPage() {
                     {dayEvents.length > 0 && (
                       <div className="flex items-center gap-1 w-full overflow-hidden mt-auto">
                         {dayEvents.slice(0, 3).map((ev, idx) => (
-                          <span 
-                            key={idx} 
-                            className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-primary to-secondary shrink-0" 
+                          <span
+                            key={idx}
+                            className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-primary to-secondary shrink-0"
                             title={ev.title}
                           />
                         ))}
@@ -583,7 +581,7 @@ export default function CalendarPage() {
 
         {/* Right : Events of the Selected Day (5 cols) */}
         <div className="lg:col-span-5 space-y-4">
-          
+
           {/* Header Card */}
           <div className="glass-card p-5 rounded-2xl border border-border flex items-center justify-between">
             <div>
@@ -591,8 +589,8 @@ export default function CalendarPage() {
                 Événements du jour
               </p>
               <h3 className="text-base font-bold text-text-primary capitalize">
-                {selectedDay 
-                  ? selectedDay.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' }) 
+                {selectedDay
+                  ? selectedDay.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' })
                   : 'Tous les événements'}
               </h3>
             </div>
@@ -616,7 +614,7 @@ export default function CalendarPage() {
                   {selectedDayHoliday.type === 'national' ? 'Fête Nationale' : 'Fête Religieuse'}
                 </span>
               </div>
-              
+
               <div>
                 <div className="flex items-center justify-between flex-wrap gap-1">
                   <h4 className="text-sm font-black text-emerald-900 dark:text-emerald-100">
@@ -651,7 +649,7 @@ export default function CalendarPage() {
                   {selectedDayHoliday ? "Journée de repos (Férié officiel)" : "Aucun événement prévu ce jour-ci"}
                 </p>
                 <p className="text-xs max-w-xs mx-auto">
-                  {selectedDayHoliday 
+                  {selectedDayHoliday
                     ? "Profitez de cette journée fériée nationale !"
                     : "Votre emploi du temps est libre pour cette date."}
                 </p>
@@ -669,7 +667,7 @@ export default function CalendarPage() {
                 const status = getEventStatus(event.start_time, event.end_time);
 
                 return (
-                  <div 
+                  <div
                     key={event.id}
                     className="glass-card p-4 rounded-2xl border border-border hover:border-primary/40 transition-all space-y-3 group"
                   >
@@ -758,7 +756,7 @@ export default function CalendarPage() {
       {showHolidaysModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-4">
           <div className="max-w-2xl w-full p-6 rounded-3xl border border-slate-200 bg-white text-slate-900 shadow-2xl space-y-4 animate-fade-in max-h-[85vh] flex flex-col">
-            
+
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-3 border-b border-slate-200 shrink-0">
               <div className="flex items-center gap-3">
@@ -772,7 +770,7 @@ export default function CalendarPage() {
                   </p>
                 </div>
               </div>
-              <button 
+              <button
                 onClick={() => setShowHolidaysModal(false)}
                 className="p-2 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"
               >
@@ -812,11 +810,10 @@ export default function CalendarPage() {
                         <span className="text-xs font-bold text-emerald-700">
                           {holiday.nameAr}
                         </span>
-                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
-                          holiday.type === 'national' 
-                            ? 'bg-blue-100 text-blue-700 border border-blue-200' 
-                            : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                        }`}>
+                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${holiday.type === 'national'
+                          ? 'bg-blue-100 text-blue-700 border border-blue-200'
+                          : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                          }`}>
                           {holiday.type === 'national' ? 'Fête Civile / Nationale' : 'Fête Religieuse Islamique'}
                         </span>
                       </div>
@@ -869,7 +866,7 @@ export default function CalendarPage() {
       {showAddModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 md:p-6 animate-fade-in overflow-y-auto">
           <div className="max-w-5xl xl:max-w-6xl w-full p-5 md:p-6 rounded-3xl border border-slate-200 bg-white text-slate-900 shadow-2xl shadow-slate-950/20 animate-fade-in-up max-h-[90vh] flex flex-col my-auto">
-            
+
             {/* Panoramic Header - Mode Clair Ajusté */}
             <div className="flex items-center justify-between pb-3 border-b border-slate-200 shrink-0">
               <div className="flex items-center gap-3">
@@ -885,7 +882,7 @@ export default function CalendarPage() {
                   </p>
                 </div>
               </div>
-              <button 
+              <button
                 onClick={() => setShowAddModal(false)}
                 className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
                 title="Fermer"
@@ -897,7 +894,7 @@ export default function CalendarPage() {
             {/* Panoramic Content (2 Columns Grid) - Ajusté & Hautement Lisible */}
             <div className="overflow-y-auto custom-scrollbar pr-1 md:pr-1.5 py-3 flex-1">
               <form id="calendar-event-form" onSubmit={handleCreateEvent} className="space-y-4">
-                
+
                 {/* Notice if selected date is a Moroccan Holiday */}
                 {newStartDate && getMoroccanHolidayForDate(newStartDate) && (
                   <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-950 flex items-center gap-2.5 text-xs shadow-xs">
@@ -910,10 +907,10 @@ export default function CalendarPage() {
                 )}
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 md:gap-6 items-start">
-                  
+
                   {/* LEFT COLUMN: Titre, Description, Public concerné (7 colonnes) */}
                   <div className="lg:col-span-7 space-y-3.5">
-                    
+
                     {/* Titre */}
                     <div>
                       <label className="block text-xs font-bold uppercase tracking-wider text-slate-800 mb-1 flex items-center justify-between">
@@ -947,7 +944,7 @@ export default function CalendarPage() {
                     {/* Public concerné & Ciblage des Groupes */}
                     <div className="space-y-2">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        
+
                         {/* Rôle / Public Cible */}
                         <div>
                           <label className="block text-xs font-bold uppercase tracking-wider text-slate-800 mb-1 flex items-center gap-1.5">
@@ -987,7 +984,7 @@ export default function CalendarPage() {
                             className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 text-xs font-semibold outline-none focus:bg-white focus:border-emerald-600 focus:ring-3 focus:ring-emerald-100 cursor-pointer transition-all min-h-[40px]"
                           >
                             <option value="all">🌐 Tous les groupes (Général)</option>
-                            
+
                             {/* Groupes enregistrés dans le système */}
                             {availableGroups && availableGroups.length > 0 && (
                               <optgroup label="Groupes enregistrés (Base de données)">
@@ -1040,7 +1037,7 @@ export default function CalendarPage() {
                   {/* RIGHT COLUMN: Planification, Dates & Heures (5 colonnes) */}
                   <div className="lg:col-span-5">
                     <div className="bg-slate-50/90 border border-slate-200/90 rounded-2xl p-4 sm:p-4.5 space-y-3 shadow-xs">
-                      
+
                       {/* Section Header */}
                       <div className="flex items-center justify-between pb-2 border-b border-slate-200">
                         <div className="flex items-center gap-1.5 text-blue-700 font-bold text-xs uppercase tracking-wider">
@@ -1187,8 +1184,8 @@ export default function CalendarPage() {
 
       {/* MODAL : LIVRABLES */}
       {deliverablesEvent && (
-        <DeliverablesModal 
-          event={deliverablesEvent} 
+        <DeliverablesModal
+          event={deliverablesEvent}
           currentUser={currentUser}
           onClose={() => setDeliverablesEvent(null)}
         />
