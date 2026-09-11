@@ -48,6 +48,7 @@ class GroupBase(BaseModel):
 
 
 class GroupCreate(GroupBase):
+    instructor_id: int | None = Field(default=None, description="ID du formateur assigné au groupe (par l'administrateur)")
     member_ids: list[int] | None = Field(default=[], description="Liste optionnelle des IDs des utilisateurs à affecter dès la création")
 
 
@@ -55,6 +56,7 @@ class GroupUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=2, max_length=150)
     level: str | None = Field(default=None, max_length=100)
     description: str | None = Field(default=None, max_length=1000)
+    instructor_id: int | None = Field(default=None, description="ID du formateur assigné au groupe")
 
     @field_validator("name", "level", "description", mode="before")
     @classmethod
@@ -69,6 +71,11 @@ class GroupUpdate(BaseModel):
 
 class GroupResponse(GroupBase):
     id: int
+    creator_id: int | None = None
+    instructor_id: int | None = None
+    instructor_name: str | None = None
+    instructor_email: str | None = None
+    creator_name: str | None = None
     created_at: datetime
     members_count: int | None = 0
 

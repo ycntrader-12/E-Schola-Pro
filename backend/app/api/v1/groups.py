@@ -1,7 +1,7 @@
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
-from sqlalchemy import func
+from sqlalchemy import func, or_
 
 from app.api.deps import CurrentUser, SessionDep
 from app.models.group import Group, GroupMember
@@ -19,6 +19,7 @@ router = APIRouter()
 
 
 ADMIN_ROLES = ["admin", "admin_manager"]
+GLOBAL_VIEW_ROLES = ["admin", "admin_manager", "pedagogique", "dg_rh", "dg/rh", "dgrh"]
 STAFF_ROLES = ["admin", "admin_manager", "formateur", "pedagogique", "dg_rh", "dg/rh", "dgrh"]
 LEARNER_ROLES = ["etudiant", "étudiant", "stagiaire", "employer"]
 
@@ -34,6 +35,17 @@ def is_staff_role(role: str | None) -> bool:
     )
 
 
+def is_global_view_role(role: str | None) -> bool:
+    if not role:
+        return False
+    r = role.strip().lower()
+    return (
+        r in GLOBAL_VIEW_ROLES 
+        or r.replace(" ", "_") in GLOBAL_VIEW_ROLES 
+        or r.replace("/", "_") in GLOBAL_VIEW_ROLES
+    )
+
+
 @router.get("", response_model=list[GroupResponse])
 @router.get("/", response_model=list[GroupResponse])
 def read_groups(
@@ -43,31 +55,71 @@ def read_groups(
     limit: int = 200,
 ) -> Any:
     """
-    Retrieve all groups. Formateur, Pédagogique and Admin only.
-    Strictly forbidden for learners (étudiant, stagiaire, employer).
+    Retrieve groups with strict role-based visibility:
+    - Global roles (Admin, Admin Manager, Pédagogique, DG/RH): View all groups across the platform.
+    - Formateurs: View exclusively groups they created OR groups they are assigned to.
+    - Learners (Étudiants, Stagiaires, Employeurs): Strictly forbidden (HTTP 403).
     """
     if not is_staff_role(current_user.role):
         raise HTTPException(
             status_code=403,
             detail="Accès interdit : les étudiants, stagiaires et employés ne sont pas autorisés à consulter les groupes.",
         )
-    groups = (
-        session.query(Group)
-        .order_by(Group.created_at.desc())
-        .offset(skip)
-        .limit(limit)
-        .all()
-    )
 
-    # Attach members_count for each group
+    query = session.query(Group)
+
+    user_role = (current_user.role or "").strip().lower()
+
+    if is_global_view_role(user_role):
+        # 1. Full 360° visibility for global staff roles
+        groups = (
+            query.order_by(Group.created_at.desc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+    elif user_role == "formateur":
+        # 2. Strict scoped visibility: only groups created by or assigned to this formateur
+        groups = (
+            query.filter(
+                or_(
+                    Group.creator_id == current_user.id,
+                    Group.instructor_id == current_user.id,
+                )
+            )
+            .order_by(Group.created_at.desc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+    else:
+        raise HTTPException(status_code=403, detail="Accès non autorisé pour ce profil.")
+
+    # Attach instructor metadata and members_count for each group
     response = []
     for g in groups:
         count = session.query(GroupMember).filter(GroupMember.group_id == g.id).count()
+        inst = session.query(User).filter(User.id == g.instructor_id).first() if g.instructor_id else None
+        creator = session.query(User).filter(User.id == g.creator_id).first() if g.creator_id else None
+
+        inst_name = None
+        if inst:
+            inst_name = f"{inst.prenom or ''} {inst.nom or ''}".strip() or inst.username or inst.email
+
+        creator_name = None
+        if creator:
+            creator_name = f"{creator.prenom or ''} {creator.nom or ''}".strip() or creator.username or creator.email
+
         g_dict = {
             "id": g.id,
             "name": g.name,
             "level": g.level,
             "description": g.description,
+            "creator_id": g.creator_id,
+            "instructor_id": g.instructor_id,
+            "instructor_name": inst_name,
+            "instructor_email": inst.email if inst else None,
+            "creator_name": creator_name,
             "created_at": g.created_at,
             "members_count": count,
         }
@@ -85,8 +137,9 @@ def create_group(
     current_user: CurrentUser,
 ) -> Any:
     """
-    Create a new group. Admin and formateur only.
-    Allows immediately assigning members via group_in.member_ids.
+    Create a new group:
+    - If created by a Formateur: automatically set creator_id = current_user.id and instructor_id = current_user.id.
+    - If created by an Admin / Pédagogique: creator_id = current_user.id and instructor_id = group_in.instructor_id.
     """
     if not is_staff_role(current_user.role):
         raise HTTPException(status_code=403, detail="Accès non autorisé pour la création de groupe.")
@@ -102,10 +155,27 @@ def create_group(
             detail=f"Un groupe ou une classe portant le nom '{clean_name}' existe déjà."
         )
 
+    user_role = (current_user.role or "").strip().lower()
+
+    # Determine assigned instructor
+    assigned_instructor_id = None
+    if user_role == "formateur":
+        # Formateur creates their own group -> auto-assigned
+        assigned_instructor_id = current_user.id
+    elif group_in.instructor_id:
+        # Admin / Staff explicitly assigns a formateur
+        formateur = session.query(User).filter(User.id == group_in.instructor_id).first()
+        if formateur and formateur.role.strip().lower() in ["formateur", "pedagogique", "admin"]:
+            assigned_instructor_id = formateur.id
+        else:
+            assigned_instructor_id = group_in.instructor_id
+
     group = Group(
         name=clean_name,
         level=group_in.level.strip() if group_in.level and group_in.level.strip() else None,
         description=group_in.description.strip() if group_in.description and group_in.description.strip() else None,
+        creator_id=current_user.id,
+        instructor_id=assigned_instructor_id,
     )
     session.add(group)
     session.commit()
@@ -124,11 +194,19 @@ def create_group(
         if members_count > 0:
             session.commit()
 
+    inst = session.query(User).filter(User.id == group.instructor_id).first() if group.instructor_id else None
+    inst_name = f"{inst.prenom or ''} {inst.nom or ''}".strip() or inst.username or inst.email if inst else None
+
     return {
         "id": group.id,
         "name": group.name,
         "level": group.level,
         "description": group.description,
+        "creator_id": group.creator_id,
+        "instructor_id": group.instructor_id,
+        "instructor_name": inst_name,
+        "instructor_email": inst.email if inst else None,
+        "creator_name": f"{current_user.prenom or ''} {current_user.nom or ''}".strip() or current_user.username or current_user.email,
         "created_at": group.created_at,
         "members_count": members_count,
     }
@@ -143,7 +221,9 @@ def update_group(
     current_user: CurrentUser,
 ) -> Any:
     """
-    Update a group. Admin and formateur only.
+    Update a group:
+    - Global staff roles (Admin, Admin Manager, Pédagogique): Can update any group.
+    - Formateurs: Can only update groups they created OR are assigned to.
     """
     if not is_staff_role(current_user.role):
         raise HTTPException(status_code=403, detail="Non autorisé.")
@@ -151,6 +231,14 @@ def update_group(
     group = session.query(Group).filter(Group.id == group_id).first()
     if not group:
         raise HTTPException(status_code=404, detail="Groupe introuvable.")
+
+    user_role = (current_user.role or "").strip().lower()
+    if not is_global_view_role(user_role):
+        if group.creator_id != current_user.id and group.instructor_id != current_user.id:
+            raise HTTPException(
+                status_code=403,
+                detail="Accès interdit : vous n'avez pas les droits de modification sur ce groupe.",
+            )
 
     if group_in.name is not None:
         new_name = group_in.name.strip()
@@ -167,17 +255,27 @@ def update_group(
         group.description = (
             group_in.description.strip() if group_in.description else None
         )
+    if group_in.instructor_id is not None and is_global_view_role(user_role):
+        # Only admin / global staff can reassign the instructor
+        group.instructor_id = group_in.instructor_id
 
     session.commit()
     session.refresh(group)
 
-
     count = session.query(GroupMember).filter(GroupMember.group_id == group.id).count()
+    inst = session.query(User).filter(User.id == group.instructor_id).first() if group.instructor_id else None
+    inst_name = f"{inst.prenom or ''} {inst.nom or ''}".strip() or inst.username or inst.email if inst else None
+
     return {
         "id": group.id,
         "name": group.name,
         "level": group.level,
         "description": group.description,
+        "creator_id": group.creator_id,
+        "instructor_id": group.instructor_id,
+        "instructor_name": inst_name,
+        "instructor_email": inst.email if inst else None,
+        "creator_name": None,
         "created_at": group.created_at,
         "members_count": count,
     }
@@ -190,7 +288,9 @@ def delete_group(
     current_user: CurrentUser,
 ) -> Any:
     """
-    Delete a group. Admin and formateur only.
+    Delete a group:
+    - Global staff roles (Admin, Admin Manager, Pédagogique): Can delete any group.
+    - Formateurs: Can only delete groups they created.
     """
     if not is_staff_role(current_user.role):
         raise HTTPException(status_code=403, detail="Non autorisé.")
@@ -198,6 +298,14 @@ def delete_group(
     group = session.query(Group).filter(Group.id == group_id).first()
     if not group:
         raise HTTPException(status_code=404, detail="Groupe introuvable.")
+
+    user_role = (current_user.role or "").strip().lower()
+    if not is_global_view_role(user_role):
+        if group.creator_id != current_user.id:
+            raise HTTPException(
+                status_code=403,
+                detail="Accès interdit : seul le formateur créateur ou un administrateur peut supprimer ce groupe.",
+            )
 
     session.delete(group)
     session.commit()
@@ -436,4 +544,43 @@ def get_available_users(
         }
         for u in users
     ]
+
+
+@router.get("/instructors", response_model=list[dict])
+@router.get("/instructors/", response_model=list[dict])
+def get_instructors(
+    session: SessionDep,
+    current_user: CurrentUser,
+) -> Any:
+    """
+    Get list of instructors/formateurs and staff members eligible to be assigned to a group.
+    """
+    if not is_staff_role(current_user.role):
+        raise HTTPException(status_code=403, detail="Non autorisé.")
+
+    staff_users = (
+        session.query(User)
+        .filter(
+            func.lower(User.role).in_(
+                ["formateur", "pedagogique", "admin", "admin_manager", "dg_rh", "dg/rh", "dgrh"]
+            )
+        )
+        .order_by(User.nom.asc(), User.prenom.asc(), User.email.asc())
+        .all()
+    )
+
+    return [
+        {
+            "id": u.id,
+            "email": u.email,
+            "role": u.role,
+            "nom": u.nom,
+            "prenom": u.prenom,
+            "username": u.username,
+            "avatar_url": u.avatar_url,
+            "departement": u.departement,
+        }
+        for u in staff_users
+    ]
+
 

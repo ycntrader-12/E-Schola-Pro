@@ -12,9 +12,17 @@ class Group(Base):
     name = Column(String, index=True, nullable=False)
     level = Column(String, index=True, nullable=True)  # e.g., "Licence 1", "Master 2"
     description = Column(String, nullable=True)
+    creator_id = Column(
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    instructor_id = Column(
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    # Relationship to members
+    # Relationships
+    creator = relationship("User", foreign_keys=[creator_id])
+    instructor = relationship("User", foreign_keys=[instructor_id])
     members = relationship(
         "GroupMember", back_populates="group", cascade="all, delete-orphan"
     )

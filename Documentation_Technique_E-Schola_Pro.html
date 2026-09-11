@@ -1014,9 +1014,11 @@ E-Schola Pro/
       <thead><tr><th>Colonne</th><th>Type</th><th>Contraintes</th><th>Description</th></tr></thead>
       <tbody>
         <tr><td><code>id</code></td><td>Integer</td><td>PK</td><td>Identifiant unique</td></tr>
-        <tr><td><code>name</code></td><td>String</td><td>Not Null, Indexé</td><td>Nom du groupe</td></tr>
+        <tr><td><code>name</code></td><td>String</td><td>Not Null, Indexé</td><td>Nom du groupe / classe</td></tr>
         <tr><td><code>level</code></td><td>String</td><td>Nullable, Indexé</td><td>Niveau (Master 1, L3, etc.)</td></tr>
-        <tr><td><code>description</code></td><td>String</td><td>Nullable</td><td>Description</td></tr>
+        <tr><td><code>description</code></td><td>String</td><td>Nullable</td><td>Description et objectifs pédagogiques</td></tr>
+        <tr><td><code>creator_id</code></td><td>Integer</td><td>FK → users.id, Nullable</td><td>Formateur ou Administrateur créateur du groupe</td></tr>
+        <tr><td><code>instructor_id</code></td><td>Integer</td><td>FK → users.id, Nullable</td><td>Formateur / Enseignant référent assigné au groupe</td></tr>
         <tr><td><code>created_at</code></td><td>DateTime</td><td>Auto</td><td>Date de création</td></tr>
       </tbody>
     </table>
@@ -1224,15 +1226,16 @@ E-Schola Pro/
     <table>
       <thead><tr><th>Méthode</th><th>Endpoint</th><th>Description</th><th>Accès</th></tr></thead>
       <tbody class="endpoint-row">
-        <tr><td><span class="badge badge-get">GET</span></td><td><code>/groups</code> · <code>/groups/</code></td><td>Lister tous les groupes (sans redirection 307) avec compteurs de membres</td><td>Admin, Admin Manager, Formateur, Pédagogique, DG/RH</td></tr>
-        <tr><td><span class="badge badge-post">POST</span></td><td><code>/groups</code> · <code>/groups/</code></td><td>Créer un groupe avec affectation immédiate optionnelle de membres (champ <code>member_ids: list[int]</code>)</td><td>Admin, Admin Manager, Formateur, Pédagogique, DG/RH</td></tr>
-        <tr><td><span class="badge badge-put">PUT</span></td><td><code>/groups/{id}</code></td><td>Modifier le nom, niveau ou description d'un groupe</td><td>Admin, Admin Manager, Formateur, Pédagogique, DG/RH</td></tr>
-        <tr><td><span class="badge badge-delete">DELETE</span></td><td><code>/groups/{id}</code></td><td>Supprimer un groupe avec dissociation en cascade sécurisée des membres</td><td>Admin, Admin Manager, Formateur, Pédagogique, DG/RH</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/groups</code> · <code>/groups/</code></td><td>Lister les groupes selon les droits d'accès : visibilité globale pour Admin, Admin Manager, Pédagogique et DG/RH ; visibilité strictement restreinte aux groupes créés ou assignés pour les Formateurs ; accès strictement refusé (HTTP 403) pour les Étudiants, Stagiaires et Employés.</td><td>Admin, Admin Manager, Formateur, Pédagogique, DG/RH</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/groups</code> · <code>/groups/</code></td><td>Créer un groupe avec assignation automatique du formateur créateur (ou sélection d'un formateur référent par l'Admin via <code>instructor_id</code>) et affectation immédiate optionnelle de membres (<code>member_ids: list[int]</code>)</td><td>Admin, Admin Manager, Formateur, Pédagogique, DG/RH</td></tr>
+        <tr><td><span class="badge badge-put">PUT</span></td><td><code>/groups/{id}</code></td><td>Modifier le nom, niveau, description ou formateur assigné d'un groupe (vérification de propriété pour les formateurs)</td><td>Admin, Admin Manager, Formateur (créateur/assigné), Pédagogique, DG/RH</td></tr>
+        <tr><td><span class="badge badge-delete">DELETE</span></td><td><code>/groups/{id}</code></td><td>Supprimer un groupe avec dissociation en cascade des membres (autorisé pour les Admins et pour le Formateur créateur exclusif)</td><td>Admin, Admin Manager, Formateur (créateur), Pédagogique, DG/RH</td></tr>
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/groups/{id}/members</code></td><td>Lister les membres avec profils enrichis (nom, prénom, username, avatar WebP, rôle, département)</td><td>Admin, Admin Manager, Formateur, Pédagogique, DG/RH</td></tr>
         <tr><td><span class="badge badge-post">POST</span></td><td><code>/groups/{id}/members</code></td><td>Ajouter un membre individuel au groupe et synchroniser son profil (<code>group_name</code>)</td><td>Admin, Admin Manager, Formateur, Pédagogique, DG/RH</td></tr>
         <tr><td><span class="badge badge-post">POST</span></td><td><code>/groups/{id}/members/batch</code></td><td>Affecter plusieurs membres simultanément par lot (payload <code>{"user_ids": list[int]}</code>)</td><td>Admin, Admin Manager, Formateur, Pédagogique, DG/RH</td></tr>
         <tr><td><span class="badge badge-delete">DELETE</span></td><td><code>/groups/{id}/members/{uid}</code></td><td>Retirer un apprenant du groupe sans altération de son compte utilisateur</td><td>Admin, Admin Manager, Formateur, Pédagogique, DG/RH</td></tr>
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/groups/available-users</code></td><td>Lister les utilisateurs éligibles pour affectation avec métadonnées complètes de profil</td><td>Admin, Admin Manager, Formateur, Pédagogique, DG/RH</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/groups/instructors</code></td><td>Lister les formateurs et membres du corps enseignant/staff disponibles pour l'assignation de classe</td><td>Admin, Admin Manager, Pédagogique, DG/RH</td></tr>
       </tbody>
     </table>
 
@@ -1340,8 +1343,8 @@ E-Schola Pro/
         <tr><td><strong>Évaluer &amp; noter les devoirs / travaux</strong></td><td>✅</td><td>✅</td><td>✅</td><td>❌</td></tr>
         <tr><td><strong>Pointer &amp; valider les feuilles d'émargement</strong></td><td>✅</td><td>✅</td><td>✅</td><td>❌</td></tr>
         <tr><td><strong>Créer des plannings &amp; événements calendrier</strong></td><td>✅</td><td>✅</td><td>✅</td><td>❌</td></tr>
-        <tr><td><strong>Gérer les groupes &amp; affecter les apprenants</strong></td><td>✅</td><td>✅</td><td>✅</td><td>❌</td></tr>
-        <tr><td><strong>Afficher &amp; accéder au bouton "Groupes" (/group)</strong></td><td>✅</td><td>✅</td><td>✅</td><td>❌ <em>(Masqué &amp; Interdit)</em></td></tr>
+        <tr><td><strong>Visibilité &amp; Gestion des Groupes (/group)</strong></td><td>✅ <em>(360° Tous les groupes)</em></td><td>✅ <em>(360° Tous les groupes)</em></td><td>✅ <em>(Groupes créés ou assignés exclusivement)</em></td><td>❌ <em>(Masqué &amp; HTTP 403)</em></td></tr>
+        <tr><td><strong>Assignation explicite de Formateur à un groupe</strong></td><td>✅</td><td>✅</td><td>❌ <em>(Auto-assigné à la création)</em></td><td>❌</td></tr>
         <tr><td><strong>Créer des salles vidéo conférence &amp; sous-groupes</strong></td><td>✅</td><td>✅</td><td>✅</td><td>❌</td></tr>
         <tr><td><strong>Arrêter / Clôturer la salle vidéo conférence en direct</strong></td><td>✅</td><td>✅</td><td>✅</td><td>❌ <em>(Strictement interdit aux Étudiants, Stagiaires et Employés)</em></td></tr>
         <tr><td><strong>Messagerie interne (Messages personnels &amp; Copie CC local/relais)</strong></td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
@@ -1633,19 +1636,24 @@ E-Schola Pro/
     <h3>Module 8 — Groupes & Classes</h3>
     <div class="card">
       <p><strong>Route Frontend :</strong> <code>/group</code></p>
-      <p><strong>Contrôle d'accès & Sécurité :</strong> Strictement réservé aux rôles <strong>Formateur</strong>, <strong>Administrateur</strong>, <strong>Pédagogique</strong> et <strong>DG/RH</strong>. Le bouton de navigation est automatiquement masqué pour les étudiants, stagiaires et employés dans la barre latérale, et tout accès direct est bloqué par un écran de refus d'accès et une erreur HTTP 403 côté API.</p>
+      <p><strong>Contrôle d'accès & Sécurité ABAC/RBAC :</strong></p>
+      <ul>
+        <li><strong>Rôles à Visibilité Globale (Admin, Admin Manager, Pédagogique, DG/RH) :</strong> Visibilité 360° exhaustive sur l'intégralité des groupes et classes créés sur la plateforme, avec capacité d'assigner ou de modifier le Formateur référent lors de la création ou l'édition.</li>
+        <li><strong>Formateurs &amp; Corps Enseignant :</strong> Accès total et exclusif aux groupes qu'ils ont créés eux-mêmes, ainsi qu'aux groupes auxquels un Administrateur les a explicitement assignés (<code>instructor_id</code>). Les Formateurs ne voient strictement que leurs propres groupes et ceux qui leur sont assignés.</li>
+        <li><strong>Apprenants (Étudiants, Stagiaires, Employés) :</strong> Aucune visibilité sur l'annuaire global des groupes. Le bouton de navigation <code>/group</code> est masqué de la barre latérale, et toute tentative d'accès direct est bloquée par un écran d'accès restreint et une réponse HTTP 403 Forbidden.</li>
+      </ul>
       <p><strong>Options et propriétés :</strong></p>
       <ul>
         <li><strong>Affichage Panoramique &amp; Switcher de Vue (Grille / Panoramique) :</strong> Interface adaptative offrant un mode panoramique Master-Detail à 60 FPS (conteneur 1700px) :
           <ul>
-            <li><em>Panneau Maître gauche :</em> Liste dynamique des promotions avec compteurs de membres, recherche instantanée et indicateur actif de sélection.</li>
-            <li><em>Espace Panoramique principal :</em> En-tête étendu de la promotion, 4 cartes d'indicateurs KPI (Total apprenants, Étudiants, Stagiaires, Salariés/Employés), barre de recherche interne et filtrage par onglets de rôle (Tous, Étudiants, Stagiaires, Employés).</li>
+            <li><em>Panneau Maître gauche :</em> Liste dynamique des promotions avec compteurs de membres, badges du Formateur référent, recherche instantanée et indicateur actif de sélection.</li>
+            <li><em>Espace Panoramique principal :</em> En-tête étendu de la promotion avec badge du Formateur assigné, 4 cartes d'indicateurs KPI (Total apprenants, Étudiants, Stagiaires, Salariés/Employés), barre de recherche interne et filtrage par onglets de rôle (Tous, Étudiants, Stagiaires, Employés).</li>
             <li><em>Tableau Panoramique Haute Fidélité :</em> Affichage complet des membres avec avatar WebP ou initiales dynamiques, nom complet, identifiant (@username), email cliquable, badge de rôle coloré, département et date d'affectation avec retrait immédiat en un clic.</li>
           </ul>
         </li>
-        <li><strong>Boîte Modale de Création en Rectangle Panoramique (Format Paysage 16:9) :</strong> Refonte complète du modal « Créer un nouveau groupe / classe » sous forme d'un rectangle panoramique spacieux (<code>max-w-5xl</code> / <code>max-w-6xl</code>) éliminant tout défilement vertical forcé et améliorant drastiquement la lisibilité :
+        <li><strong>Boîte Modale de Création en Rectangle Panoramique (Format Paysage 16:9) &amp; Assignation Formateur :</strong> Refonte complète du modal « Créer un nouveau groupe / classe » sous forme d'un rectangle panoramique spacieux (<code>max-w-5xl</code> / <code>max-w-6xl</code>) éliminant tout défilement vertical forcé et améliorant drastiquement la lisibilité :
           <ul>
-            <li><em>Colonne Gauche (Paramètres Pédagogiques) :</em> Saisie du nom du groupe, niveau académique optionnel, description détaillée et encart d'affectation immédiate.</li>
+            <li><em>Colonne Gauche (Paramètres Pédagogiques) :</em> Saisie du nom du groupe, niveau académique optionnel, description détaillée, sélecteur de Formateur référent (pour les Administrateurs/Staff via <code>/groups/instructors</code>) et encart d'affectation immédiate.</li>
             <li><em>Colonne Droite (Affectation des Apprenants) :</em> Sélecteur intégré des apprenants éligibles avec recherche textuelle en temps réel, cases à cocher multiples, avatar WebP/initiales, rôles, bouton « Tout sélectionner » et compteur de sélection instantané. Le backend persiste le groupe et les adhésions en une seule transaction atomique via <code>member_ids: list[int]</code>.</li>
             <li><em>Barre d'Action Inférieure Panoramique (Sticky Footer) :</em> Récapitulatif dynamique des membres prêts à être affectés avec boutons ergonomiques « Annuler » et « Créer la promotion ».</li>
           </ul>
@@ -1658,7 +1666,7 @@ E-Schola Pro/
           </ul>
         </li>
         <li><strong>Création &amp; Édition de Promotion avec Validation Pydantic v2 :</strong> Formulaire modal avec validation en temps réel, désinfection des espaces (<code>strip()</code>), alertes d'erreur in-modal et blocage des noms de groupe vides ou doublons (HTTP 400 <em>"Un groupe ou une classe portant ce nom existe déjà"</em>).</li>
-        <li><strong>Suppression &amp; Cascade Sécurisée :</strong> Suppression de groupe avec dissociation automatique de tous les membres sans altération des comptes utilisateurs.</li>
+        <li><strong>Suppression &amp; Cascade Sécurisée :</strong> Suppression de groupe avec dissociation automatique de tous les membres sans altération des comptes utilisateurs (réservée à l'administrateur ou au créateur du groupe).</li>
         <li><strong>Protection Anti-Doublon &amp; Intégrité multi-tenant :</strong> Normalisation des routes (support simultané de <code>/groups</code> et <code>/groups/</code> sans redirection HTTP 307), vérification d'unicité insensible à la casse et persistance garantie.</li>
       </ul>
       <div class="screenshot-container">

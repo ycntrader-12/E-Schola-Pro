@@ -33,6 +33,11 @@ interface Group {
   name: string;
   level: string | null;
   description: string | null;
+  creator_id?: number | null;
+  instructor_id?: number | null;
+  instructor_name?: string | null;
+  instructor_email?: string | null;
+  creator_name?: string | null;
   created_at: string;
   members_count: number;
 }
@@ -87,6 +92,9 @@ export default function GroupPage() {
   const [newName, setNewName] = useState('');
   const [newLevel, setNewLevel] = useState('');
   const [newDescription, setNewDescription] = useState('');
+  const [assignedInstructorId, setAssignedInstructorId] = useState<number | null>(null);
+  const [instructors, setInstructors] = useState<AvailableUser[]>([]);
+  const [isLoadingInstructors, setIsLoadingInstructors] = useState(false);
   const [formError, setFormError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -186,19 +194,40 @@ export default function GroupPage() {
     localStorage.setItem('eschola_group_view_mode', mode);
   };
 
-  const canManage = ['admin', 'admin_manager', 'formateur', 'pedagogique', 'dg_rh', 'dg/rh'].includes(
+  const canManage = ['admin', 'admin_manager', 'formateur', 'pedagogique', 'dg_rh', 'dg/rh', 'dgrh'].includes(
     (currentUser?.role || '').trim().toLowerCase()
   );
+
+  const isGlobalStaff = ['admin', 'admin_manager', 'pedagogique', 'dg_rh', 'dg/rh', 'dgrh'].includes(
+    (currentUser?.role || '').trim().toLowerCase()
+  );
+
+  const fetchInstructors = async () => {
+    setIsLoadingInstructors(true);
+    try {
+      const res = await apiClient.get('/groups/instructors');
+      setInstructors(res.data || []);
+    } catch (err) {
+      console.error("Erreur chargement formateurs:", err);
+    } finally {
+      setIsLoadingInstructors(false);
+    }
+  };
 
   const handleOpenAdd = async () => {
     setEditingGroupId(null);
     setNewName('');
     setNewLevel('');
     setNewDescription('');
+    setAssignedInstructorId(null);
     setFormError('');
     setSelectedCreationMemberIds([]);
     setCreationUserSearch('');
     setShowFormModal(true);
+
+    if (isGlobalStaff) {
+      fetchInstructors();
+    }
 
     // Fetch available users for creation picker
     setIsLoadingCreationUsers(true);
@@ -217,9 +246,14 @@ export default function GroupPage() {
     setNewName(g.name);
     setNewLevel(g.level || '');
     setNewDescription(g.description || '');
+    setAssignedInstructorId(g.instructor_id || null);
     setFormError('');
     setSelectedCreationMemberIds([]);
     setShowFormModal(true);
+
+    if (isGlobalStaff) {
+      fetchInstructors();
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -240,6 +274,10 @@ export default function GroupPage() {
         level: newLevel.trim() || null,
         description: newDescription.trim() || null
       };
+
+      if (isGlobalStaff) {
+        payload.instructor_id = assignedInstructorId || null;
+      }
 
       if (!editingGroupId && selectedCreationMemberIds.length > 0) {
         payload.member_ids = selectedCreationMemberIds;
@@ -610,11 +648,19 @@ export default function GroupPage() {
                         <p className={`text-sm font-extrabold truncate ${isSelected ? 'text-[#1877f2]' : 'text-slate-900'}`}>
                           {group.name}
                         </p>
-                        {group.level && (
-                          <span className="inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-700">
-                            {group.level}
-                          </span>
-                        )}
+                        <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                          {group.level && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-700">
+                              {group.level}
+                            </span>
+                          )}
+                          {group.instructor_name && (
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-blue-50/70 border border-blue-200/70 text-[#1877f2] flex items-center gap-1">
+                              <GraduationCap size={11} />
+                              <span className="truncate max-w-[110px]">{group.instructor_name}</span>
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <ChevronRight size={16} className={`shrink-0 transition-transform ${isSelected ? 'text-[#1877f2] translate-x-1' : 'text-slate-300'}`} />
                     </div>
@@ -653,6 +699,12 @@ export default function GroupPage() {
                         ) : (
                           <span className="px-3 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-500">
                             Niveau non spécifié
+                          </span>
+                        )}
+                        {selectedGroup.instructor_name && (
+                          <span className="px-3 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-[#1877f2] border border-blue-200/80 flex items-center gap-1.5">
+                            <GraduationCap size={13} />
+                            <span>Formateur : <strong>{selectedGroup.instructor_name}</strong></span>
                           </span>
                         )}
                       </div>
@@ -905,15 +957,23 @@ export default function GroupPage() {
                     <h3 className="text-lg font-bold text-slate-900 group-hover:text-[#1877f2] transition-colors truncate" title={group.name}>
                       {group.name}
                     </h3>
-                    {group.level ? (
-                      <span className="inline-block mt-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-blue-50 text-[#1877f2] border border-blue-200/70 tracking-wide uppercase">
-                        {group.level}
-                      </span>
-                    ) : (
-                      <span className="inline-block mt-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-500">
-                        Niveau non spécifié
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2 flex-wrap mt-1.5">
+                      {group.level ? (
+                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-blue-50 text-[#1877f2] border border-blue-200/70 tracking-wide uppercase">
+                          {group.level}
+                        </span>
+                      ) : (
+                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-500">
+                          Niveau non spécifié
+                        </span>
+                      )}
+                      {group.instructor_name && (
+                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-[#1877f2] border border-blue-200/80 flex items-center gap-1">
+                          <GraduationCap size={12} />
+                          <span className="truncate max-w-[130px]">{group.instructor_name}</span>
+                        </span>
+                      )}
+                    </div>
                   </div>
                   
                   {canManage && (
@@ -1063,6 +1123,27 @@ export default function GroupPage() {
                             className="w-full px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-xs text-slate-900 font-medium placeholder:text-slate-400 transition-all outline-none resize-none leading-relaxed"
                           />
                         </div>
+
+                        {isGlobalStaff && (
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                              FORMATEUR / ENSEIGNANT ASSIGNÉ
+                            </label>
+                            <select
+                              value={assignedInstructorId || ''}
+                              onChange={(e) => setAssignedInstructorId(e.target.value ? Number(e.target.value) : null)}
+                              disabled={isLoadingInstructors}
+                              className="w-full px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-xs text-slate-900 font-semibold transition-all outline-none"
+                            >
+                              <option value="">-- Aucun formateur assigné (Optionnel) --</option>
+                              {instructors.map(inst => (
+                                <option key={inst.id} value={inst.id}>
+                                  {getUserDisplayName(inst)} ({inst.role})
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
                       </div>
 
                       {/* Carte informative compacte */}
@@ -1235,6 +1316,27 @@ export default function GroupPage() {
                         className="w-full px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-xs text-slate-900 font-medium placeholder:text-slate-400 transition-all outline-none resize-none leading-relaxed"
                       />
                     </div>
+
+                    {isGlobalStaff && (
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                          FORMATEUR / ENSEIGNANT ASSIGNÉ
+                        </label>
+                        <select
+                          value={assignedInstructorId || ''}
+                          onChange={(e) => setAssignedInstructorId(e.target.value ? Number(e.target.value) : null)}
+                          disabled={isLoadingInstructors}
+                          className="w-full px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-xs text-slate-900 font-semibold transition-all outline-none"
+                        >
+                          <option value="">-- Aucun formateur assigné --</option>
+                          {instructors.map(inst => (
+                            <option key={inst.id} value={inst.id}>
+                              {getUserDisplayName(inst)} ({inst.role})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
 
                     <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 flex items-center gap-2">
                       <Users size={15} className="text-[#1877f2] shrink-0" />
