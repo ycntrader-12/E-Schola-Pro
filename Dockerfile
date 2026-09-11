@@ -54,6 +54,7 @@ ENV SEED_DEMO_DATA=false
 ENV AUTO_SYNC_SCHEMA=false
 ENV SECRET_KEY=supersecretkey_please_change_in_production
 ENV ACCESS_TOKEN_EXPIRE_MINUTES=10080
+ENV DATABASE_URL=postgresql://postgres:UWnrFUZDxtSEMhgyvfRSNKCPDkTzcVsq@postgres.railway.internal:5432/railway
 
 # Port d'écoute dynamique géré par start.sh et Nginx
 EXPOSE 8080
