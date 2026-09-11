@@ -21,19 +21,7 @@ if [ -n "$RAILWAY_VOLUME_MOUNT_PATH" ]; then
     mkdir -p "$RAILWAY_VOLUME_MOUNT_PATH"
 fi
 
-# Application explicite des migrations de base de donnees (PostgreSQL & Alembic)
-echo "Executing explicit database migrations for production deployment..."
-cd /app/backend
-
-python run_migrations.py
-
-# Seeding des comptes administratifs (idempotent, ne reset jamais les comptes modifiés)
-echo "Ensuring administrative access (strictly non-destructive)..."
-python create_admin.py || echo "create_admin notice: continuing startup..."
-
-# Retour au dossier de base
-cd /app
-
-# Demarrage de Supervisor pour orchestrer tous les services
+# Demarrage de Supervisor pour orchestrer tous les services (FastAPI, Next.js, Nginx)
+# Le demarrage se limite strictement au lancement des serveurs web sans toucher a la base de donnees
 echo "Starting Supervisor..."
 exec supervisord -n -c /etc/supervisor/conf.d/supervisord.conf
