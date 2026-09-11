@@ -718,39 +718,39 @@ export default function CalendarPage() {
       {/* MODAL : LISTE COMPLÈTE DES JOURS FÉRIÉS AU MAROC                          */}
       {/* ========================================================================= */}
       {showHolidaysModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="glass-card max-w-2xl w-full p-6 rounded-3xl border border-emerald-500/40 space-y-4 animate-fade-in max-h-[85vh] flex flex-col">
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="max-w-2xl w-full p-6 rounded-3xl border border-slate-200 bg-white text-slate-900 shadow-2xl space-y-4 animate-fade-in max-h-[85vh] flex flex-col">
             
             {/* Modal Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-border shrink-0">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200 shrink-0">
               <div className="flex items-center gap-3">
                 <span className="text-2xl">🇲🇦</span>
                 <div>
-                  <h3 className="font-extrabold text-base text-text-primary flex items-center gap-2">
+                  <h3 className="font-extrabold text-base text-slate-900 flex items-center gap-2">
                     Jours Fériés Officiels au Royaume du Maroc ({currentYear})
                   </h3>
-                  <p className="text-xs text-text-secondary">
+                  <p className="text-xs text-slate-500 font-medium">
                     Calendrier officiel des fêtes nationales et religieuses chômées et payées
                   </p>
                 </div>
               </div>
               <button 
                 onClick={() => setShowHolidaysModal(false)}
-                className="p-1.5 rounded-xl hover:bg-surface text-text-secondary hover:text-text-primary"
+                className="p-2 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"
               >
-                <X size={18} />
+                <X size={20} />
               </button>
             </div>
 
             {/* Search Input */}
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" size={15} />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
               <input
                 type="text"
                 placeholder="Rechercher une fête (ex: Trône, Aïd, Yennayer, Indépendance)..."
                 value={holidaySearchQuery}
                 onChange={(e) => setHolidaySearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 rounded-xl bg-surface border border-border text-xs text-text-primary outline-none focus:border-emerald-500"
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 transition-all"
               />
             </div>
 
@@ -764,36 +764,36 @@ export default function CalendarPage() {
                 return (
                   <div
                     key={holiday.id}
-                    className="p-3.5 rounded-2xl bg-surface hover:bg-emerald-500/5 border border-border hover:border-emerald-500/30 transition-all flex items-center justify-between gap-4"
+                    className="p-3.5 rounded-2xl bg-slate-50 hover:bg-emerald-50/50 border border-slate-200 hover:border-emerald-300 transition-all flex items-center justify-between gap-4"
                   >
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-extrabold text-sm text-text-primary">
+                        <span className="font-extrabold text-sm text-slate-900">
                           {holiday.name}
                         </span>
-                        <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                        <span className="text-xs font-bold text-emerald-700">
                           {holiday.nameAr}
                         </span>
-                        <span className={`px-2 py-0.5 rounded-md text-[9px] font-bold ${
+                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
                           holiday.type === 'national' 
-                            ? 'bg-blue-500/10 text-primary border border-primary/20' 
-                            : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                            ? 'bg-blue-100 text-blue-700 border border-blue-200' 
+                            : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                         }`}>
                           {holiday.type === 'national' ? 'Fête Civile / Nationale' : 'Fête Religieuse Islamique'}
                         </span>
                       </div>
-                      <p className="text-xs text-text-secondary">
+                      <p className="text-xs text-slate-600 font-medium">
                         {holiday.description}
                       </p>
                     </div>
 
                     <div className="flex flex-col items-end gap-2 shrink-0">
-                      <span className="text-xs font-bold text-text-primary font-mono bg-background px-2.5 py-1 rounded-lg border border-border">
+                      <span className="text-xs font-bold text-slate-800 font-mono bg-white px-2.5 py-1 rounded-lg border border-slate-200">
                         {formattedDate}
                       </span>
                       <button
                         onClick={() => handleJumpToHoliday(holiday.date)}
-                        className="px-3 py-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-colors flex items-center gap-1"
+                        className="px-3 py-1 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100 rounded-lg transition-colors flex items-center gap-1"
                       >
                         <span>Afficher</span>
                         <ArrowRight size={12} />
@@ -805,11 +805,11 @@ export default function CalendarPage() {
             </div>
 
             {/* Footer */}
-            <div className="pt-2 border-t border-border flex items-center justify-between text-xs text-text-secondary">
+            <div className="pt-3 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500 font-medium">
               <span>Total : {allYearHolidays.length} jours fériés officiels pour l'année {currentYear}</span>
               <button
                 onClick={() => setShowHolidaysModal(false)}
-                className="px-4 py-2 rounded-xl bg-surface hover:bg-surface-hover border border-border font-bold text-text-primary"
+                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 font-bold text-slate-700 transition-colors"
               >
                 Fermer
               </button>
@@ -825,59 +825,62 @@ export default function CalendarPage() {
       {/* ========================================================================= */}
       {/* MODAL : PLANIFIER UN ÉVÉNEMENT / COURS (PANORAMIQUE & ULTRA-LISIBLE)     */}
       {/* ========================================================================= */}
+      {/* ========================================================================= */}
+      {/* MODAL : PLANIFIER UN ÉVÉNEMENT / COURS (MODE CLAIR & ULTRA-PANORAMIQUE)  */}
+      {/* ========================================================================= */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 md:p-8 animate-fade-in">
-          <div className="glass-card max-w-4xl w-full p-6 md:p-8 rounded-3xl border border-primary/30 shadow-2xl shadow-primary/10 animate-fade-in-up max-h-[92vh] flex flex-col bg-background/95 dark:bg-slate-900/95">
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 md:p-8 animate-fade-in">
+          <div className="max-w-5xl xl:max-w-6xl w-full p-6 md:p-8 rounded-3xl border border-slate-200 bg-white text-slate-900 shadow-2xl shadow-slate-950/25 animate-fade-in-up max-h-[92vh] flex flex-col">
             
-            {/* Panoramic Header */}
-            <div className="flex items-center justify-between pb-4 border-b border-border/80 shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-2xl bg-primary/10 text-primary border border-primary/20">
-                  <CalendarIcon size={24} />
+            {/* Panoramic Header - Mode Clair */}
+            <div className="flex items-center justify-between pb-4 border-b border-slate-200 shrink-0">
+              <div className="flex items-center gap-3.5">
+                <div className="p-3 rounded-2xl bg-blue-50 text-blue-600 border border-blue-100 shadow-sm">
+                  <CalendarIcon size={26} />
                 </div>
                 <div>
-                  <h3 className="text-lg md:text-xl font-bold text-text-primary tracking-tight">
+                  <h3 className="text-xl md:text-2xl font-extrabold text-slate-900 tracking-tight">
                     {editingEventId ? "Modifier le cours ou planning" : "Planifier un cours ou planning"}
                   </h3>
-                  <p className="text-xs text-text-secondary mt-0.5">
+                  <p className="text-xs md:text-sm text-slate-500 font-medium mt-0.5">
                     Définissez l'intitulé, les objectifs, les promotions cibles et les créneaux horaires.
                   </p>
                 </div>
               </div>
               <button 
                 onClick={() => setShowAddModal(false)}
-                className="p-2 rounded-xl text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors"
+                className="p-2.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
                 title="Fermer"
               >
                 <X size={22} />
               </button>
             </div>
 
-            {/* Panoramic Content (2 Columns Grid) */}
+            {/* Panoramic Content (2 Columns Grid) - Mode Clair */}
             <div className="overflow-y-auto custom-scrollbar pr-1 md:pr-2 py-4 flex-1">
               <form id="calendar-event-form" onSubmit={handleCreateEvent} className="space-y-6">
                 
                 {/* Notice if selected date is a Moroccan Holiday */}
                 {newStartDate && getMoroccanHolidayForDate(newStartDate) && (
-                  <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-900 dark:text-emerald-200 flex items-center gap-3 text-xs">
+                  <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-950 flex items-center gap-3 text-xs shadow-xs">
                     <span className="text-2xl leading-none">🇲🇦</span>
                     <div>
-                      <span className="font-bold text-emerald-700 dark:text-emerald-300">Jour férié officiel au Maroc :</span>{" "}
+                      <span className="font-bold text-emerald-800">Jour férié officiel au Maroc :</span>{" "}
                       La date du <strong>{newStartDate}</strong> correspond à <strong>{getMoroccanHolidayForDate(newStartDate)?.name}</strong> ({getMoroccanHolidayForDate(newStartDate)?.nameAr}).
                     </div>
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
                   
                   {/* LEFT COLUMN: Titre, Description, Public concerné (7 colonnes) */}
                   <div className="lg:col-span-7 space-y-4">
                     
                     {/* Titre */}
                     <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-text-secondary mb-1.5 flex items-center justify-between">
-                        <span>Titre de l'événement ou cours <span className="text-rose-500">*</span></span>
-                        <span className="text-[11px] font-normal text-text-tertiary">Requis</span>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 flex items-center justify-between">
+                        <span>Titre de l'événement ou cours <span className="text-rose-600">*</span></span>
+                        <span className="text-[11px] font-semibold text-slate-400">Requis</span>
                       </label>
                       <input
                         type="text"
@@ -885,13 +888,13 @@ export default function CalendarPage() {
                         placeholder="Ex: Intelligence Artificielle & Big Data - Module 3"
                         value={newTitle}
                         onChange={(e) => setNewTitle(e.target.value)}
-                        className="w-full px-4 py-2.5 rounded-xl bg-surface border border-border text-sm font-medium outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-text-primary transition-all min-h-[44px]"
+                        className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 text-sm font-semibold placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-100 transition-all min-h-[46px]"
                       />
                     </div>
 
                     {/* Description */}
                     <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-text-secondary mb-1.5">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
                         Description & Objectifs pédagogiques
                       </label>
                       <textarea
@@ -899,20 +902,20 @@ export default function CalendarPage() {
                         placeholder="Détaillez les objectifs de la session, le lien visio (Teams/Meet/Zoom), l'ordre du jour ou les prérequis..."
                         value={newDescription}
                         onChange={(e) => setNewDescription(e.target.value)}
-                        className="w-full px-4 py-3 rounded-xl bg-surface border border-border text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-text-primary resize-none leading-relaxed transition-all"
+                        className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 text-sm placeholder:text-slate-400 outline-none focus:bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-100 resize-none leading-relaxed transition-all min-h-[120px]"
                       />
                     </div>
 
                     {/* Public concerné / Promotion */}
                     <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-text-secondary mb-1.5 flex items-center gap-1.5">
-                        <Users size={14} className="text-primary" />
-                        <span>Public concerné / Promotion cible <span className="text-rose-500">*</span></span>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 flex items-center gap-1.5">
+                        <Users size={15} className="text-blue-600" />
+                        <span>Public concerné / Promotion cible <span className="text-rose-600">*</span></span>
                       </label>
                       <select
                         value={newRoles}
                         onChange={(e) => setNewRoles(e.target.value)}
-                        className="w-full px-4 py-2.5 rounded-xl bg-surface border border-border text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-text-primary cursor-pointer font-medium transition-all min-h-[44px]"
+                        className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 text-sm font-semibold outline-none focus:bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-100 cursor-pointer transition-all min-h-[46px]"
                       >
                         <optgroup label="Public Général / Rôles">
                           <option value="étudiant,stagiaire,employer">Tous (Étudiants, Stagiaires, Employés)</option>
@@ -938,30 +941,30 @@ export default function CalendarPage() {
 
                   {/* RIGHT COLUMN: Planification, Dates & Heures (5 colonnes) */}
                   <div className="lg:col-span-5">
-                    <div className="bg-surface/50 border border-border/80 rounded-2xl p-4 sm:p-5 space-y-4">
+                    <div className="bg-slate-50/90 border border-slate-200/90 rounded-2xl p-5 md:p-6 space-y-4 shadow-sm">
                       
                       {/* Section Header */}
-                      <div className="flex items-center justify-between pb-2 border-b border-border/60">
-                        <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-wider">
-                          <Clock size={15} />
+                      <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+                        <div className="flex items-center gap-2 text-blue-700 font-bold text-xs uppercase tracking-wider">
+                          <Clock size={16} />
                           <span>Créneau & Horaires</span>
                         </div>
-                        <span className="text-[11px] font-medium text-text-tertiary">Format 24h</span>
+                        <span className="text-xs font-semibold text-slate-500 bg-white px-2.5 py-0.5 rounded-lg border border-slate-200">Format 24h</span>
                       </div>
 
                       {/* Date & Heure Début */}
                       <div className="space-y-2">
-                        <span className="block text-xs font-semibold uppercase text-text-secondary">
-                          Début de session <span className="text-rose-500">*</span>
+                        <span className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                          Début de session <span className="text-rose-600">*</span>
                         </span>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div>
                             <input
                               type="date"
                               required
                               value={newStartDate}
                               onChange={(e) => setNewStartDate(e.target.value)}
-                              className="w-full px-3 py-2 rounded-xl bg-background border border-border text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-text-primary transition-all min-h-[42px]"
+                              className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 text-sm font-medium outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 transition-all min-h-[44px]"
                             />
                           </div>
                           <div>
@@ -970,25 +973,25 @@ export default function CalendarPage() {
                               required
                               value={newStartTime}
                               onChange={(e) => setNewStartTime(e.target.value)}
-                              className="w-full px-3 py-2 rounded-xl bg-background border border-border text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-text-primary transition-all min-h-[42px]"
+                              className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 text-sm font-medium outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 transition-all min-h-[44px]"
                             />
                           </div>
                         </div>
                       </div>
 
                       {/* Date & Heure Fin */}
-                      <div className="space-y-2 pt-2 border-t border-border/40">
-                        <span className="block text-xs font-semibold uppercase text-text-secondary">
-                          Fin de session <span className="text-rose-500">*</span>
+                      <div className="space-y-2 pt-3 border-t border-slate-200">
+                        <span className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                          Fin de session <span className="text-rose-600">*</span>
                         </span>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div>
                             <input
                               type="date"
                               required
                               value={newEndDate}
                               onChange={(e) => setNewEndDate(e.target.value)}
-                              className="w-full px-3 py-2 rounded-xl bg-background border border-border text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-text-primary transition-all min-h-[42px]"
+                              className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 text-sm font-medium outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 transition-all min-h-[44px]"
                             />
                           </div>
                           <div>
@@ -997,7 +1000,7 @@ export default function CalendarPage() {
                               required
                               value={newEndTime}
                               onChange={(e) => setNewEndTime(e.target.value)}
-                              className="w-full px-3 py-2 rounded-xl bg-background border border-border text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-text-primary transition-all min-h-[42px]"
+                              className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 text-sm font-medium outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 transition-all min-h-[44px]"
                             />
                           </div>
                         </div>
@@ -1012,8 +1015,8 @@ export default function CalendarPage() {
                           const diffMs = end.getTime() - start.getTime();
                           if (diffMs < 0) {
                             return (
-                              <div className="mt-3 p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs flex items-center gap-2">
-                                <AlertCircle size={14} className="shrink-0" />
+                              <div className="mt-3 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-2">
+                                <AlertCircle size={15} className="shrink-0 text-rose-600" />
                                 <span>L'heure de fin doit être après l'heure de début.</span>
                               </div>
                             );
@@ -1028,12 +1031,12 @@ export default function CalendarPage() {
                           if (mins > 0 || (!days && !hours)) durationStr += `${mins} min`;
 
                           return (
-                            <div className="mt-3 p-2.5 rounded-xl bg-primary/10 border border-primary/20 text-primary text-xs flex items-center justify-between">
-                              <span className="flex items-center gap-1.5 font-medium">
-                                <Clock size={13} />
+                            <div className="mt-3 p-3 rounded-xl bg-blue-50 border border-blue-200/90 text-blue-900 text-xs flex items-center justify-between shadow-xs">
+                              <span className="flex items-center gap-1.5 font-semibold text-blue-800">
+                                <Clock size={14} className="text-blue-600" />
                                 <span>Durée estimée :</span>
                               </span>
-                              <span className="font-bold">{durationStr.trim()}</span>
+                              <span className="font-extrabold text-blue-700 bg-white px-2.5 py-1 rounded-lg border border-blue-200">{durationStr.trim()}</span>
                             </div>
                           );
                         } catch {
@@ -1048,17 +1051,17 @@ export default function CalendarPage() {
               </form>
             </div>
 
-            {/* Panoramic Footer */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-border/80 shrink-0">
-              <div className="text-xs text-text-tertiary hidden sm:flex items-center gap-2">
-                <Info size={14} className="text-primary/70 shrink-0" />
+            {/* Panoramic Footer - Mode Clair */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-200 shrink-0">
+              <div className="text-xs text-slate-600 font-medium hidden sm:flex items-center gap-2">
+                <Info size={15} className="text-blue-600 shrink-0" />
                 <span>Les créneaux sont automatiquement synchronisés sur l'agenda des participants.</span>
               </div>
               <div className="flex items-center gap-3 w-full sm:w-auto">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="flex-1 sm:flex-none px-6 py-2.5 bg-surface hover:bg-surface-hover rounded-xl font-semibold border border-border text-text-secondary text-sm transition-all min-h-[44px]"
+                  className="flex-1 sm:flex-none px-6 py-2.5 bg-white hover:bg-slate-100 rounded-xl font-bold border border-slate-300 text-slate-700 text-sm transition-all min-h-[46px]"
                 >
                   Annuler
                 </button>
@@ -1066,7 +1069,7 @@ export default function CalendarPage() {
                   type="submit"
                   form="calendar-event-form"
                   disabled={isSubmitting}
-                  className="flex-1 sm:flex-none px-8 py-2.5 btn-primary rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-primary/25 transition-all min-h-[44px]"
+                  className="flex-1 sm:flex-none px-8 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 transition-all min-h-[46px]"
                 >
                   {isSubmitting ? (
                     <Loader2 size={16} className="animate-spin" />
