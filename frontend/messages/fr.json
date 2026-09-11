@@ -258,6 +258,18 @@
     "search_messages": "Rechercher des messages...",
     "unread": "non lu(s)",
     "reply": "Répondre",
+    "report": "Signaler",
+    "report_modal_title": "Signaler ce message",
+    "report_modal_subtitle": "Ce signalement sera transmis immédiatement aux administrateurs et au formateur de votre groupe.",
+    "report_reason_inappropriate": "Contenu inapproprié ou offensant",
+    "report_reason_harassment": "Harcèlement, intimidation ou propos abusifs",
+    "report_reason_spam": "Spam, arnaque ou publicité non sollicitée",
+    "report_reason_privacy": "Divulgation d'informations confidentielles",
+    "report_reason_other": "Autre motif (à préciser)",
+    "report_submit": "Confirmer le signalement",
+    "report_cancel": "Annuler",
+    "report_success": "Signalement transmis avec succès aux administrateurs et au formateur du groupe.",
+    "reported_badge": "Signalé",
     "delete_msg": "Supprimer"
   },
   "Profile": {

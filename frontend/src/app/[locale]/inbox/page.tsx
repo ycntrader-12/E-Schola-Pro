@@ -563,12 +563,29 @@ export default function InboxMessagesPage() {
                 </div>
               </div>
 
-              {/* Subject Title */}
-              <div>
-                <h1 className="text-xl font-bold text-text-primary leading-snug">{selectedMessage.subject}</h1>
-                <div className="flex items-center gap-2 text-xs text-text-secondary mt-1">
-                  <Clock size={13} />
-                  <span>{new Date(selectedMessage.created_at).toLocaleString()}</span>
+              {/* Subject Title & Reported Banner */}
+              <div className="space-y-3">
+                {selectedMessage.is_reported && (
+                  <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-between gap-3 text-xs text-rose-500 font-medium animate-fade-in">
+                    <div className="flex items-center gap-2.5">
+                      <AlertTriangle size={18} className="shrink-0 text-rose-500" />
+                      <span>
+                        <strong>Message signalé</strong> — Motif : <em>« {selectedMessage.report_reason || 'Signalement enregistré'} »</em>. 
+                        Transmis en priorité aux administrateurs et formateur(s) de votre groupe.
+                      </span>
+                    </div>
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-rose-500/20 text-rose-500 border border-rose-500/30 shrink-0">
+                      En cours d'examen
+                    </span>
+                  </div>
+                )}
+
+                <div>
+                  <h1 className="text-xl font-bold text-text-primary leading-snug">{selectedMessage.subject}</h1>
+                  <div className="flex items-center gap-2 text-xs text-text-secondary mt-1">
+                    <Clock size={13} />
+                    <span>{new Date(selectedMessage.created_at).toLocaleString()}</span>
+                  </div>
                 </div>
               </div>
 
@@ -821,6 +838,11 @@ export default function InboxMessagesPage() {
 
                         {/* Subject + Body Snippet Preview */}
                         <div className="flex-1 min-w-0 truncate text-xs flex items-center gap-2">
+                          {msg.is_reported && (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-500/15 text-rose-500 border border-rose-500/30 flex items-center gap-1 shrink-0">
+                              <Flag size={10} /> {t('reported_badge') || 'Signalé'}
+                            </span>
+                          )}
                           <span className={`truncate ${!msg.is_read ? 'font-bold text-text-primary' : 'font-semibold text-text-primary'}`}>
                             {msg.subject}
                           </span>
@@ -829,8 +851,36 @@ export default function InboxMessagesPage() {
                           </span>
                         </div>
 
-                        {/* Attachment indicator & Date */}
-                        <div className="flex items-center gap-3 shrink-0 text-xs text-text-secondary">
+                        {/* Hover Quick Actions & Attachment & Date */}
+                        <div className="flex items-center gap-2 shrink-0 text-xs text-text-secondary">
+                          <div
+                            className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => setReportingMessage(msg)}
+                              className="p-1 rounded-lg hover:bg-rose-500/15 text-text-secondary hover:text-rose-500 transition-colors"
+                              title="Signaler ce message"
+                            >
+                              <Flag size={13} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                try {
+                                  await apiClient.delete(`/messages/${msg.id}`);
+                                  await loadAllMessages();
+                                } catch (err) {
+                                  console.error('Failed to delete message:', err);
+                                }
+                              }}
+                              className="p-1 rounded-lg hover:bg-rose-500/15 text-text-secondary hover:text-rose-500 transition-colors"
+                              title="Supprimer"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
                           {msg.attachment_url && (
                             <Paperclip size={14} className="text-primary shrink-0" />
                           )}
@@ -860,6 +910,141 @@ export default function InboxMessagesPage() {
         onClose={() => setIsAiModalOpen(false)}
         initialPrompt={aiModalPrompt}
       />
+
+      {/* 4. Interactive Report Message Modal */}
+      {reportingMessage && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
+          <div className="max-w-lg w-full p-6 rounded-3xl border border-slate-200 dark:border-border bg-white dark:bg-card text-slate-900 dark:text-slate-100 shadow-2xl space-y-4 animate-fade-in-up">
+            {/* Modal Header */}
+            <div className="flex items-start justify-between pb-3 border-b border-slate-200 dark:border-border">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-rose-500/15 text-rose-500 flex items-center justify-center shrink-0">
+                  <Flag size={20} className="text-rose-500 animate-pulse" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-text-primary">
+                    {t('report_modal_title') || 'Signaler ce message'}
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-text-secondary">
+                    {t('report_modal_subtitle') || 'Ce signalement sera transmis immédiatement aux administrateurs et au formateur de votre groupe.'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setReportingMessage(null);
+                  setCustomReportReason('');
+                }}
+                className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-surface text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Message Context */}
+            <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-surface/60 border border-slate-200 dark:border-border text-xs space-y-1">
+              <div className="font-semibold text-slate-800 dark:text-text-primary truncate">
+                📌 <span className="font-bold">Objet :</span> {reportingMessage.subject}
+              </div>
+              <div className="text-slate-500 dark:text-text-secondary truncate">
+                👤 <span className="font-bold">De :</span> {reportingMessage.sender?.email || 'Inconnu'}
+              </div>
+            </div>
+
+            {/* Reason Selector */}
+            <div className="space-y-2">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-text-secondary">
+                Motif du signalement
+              </label>
+              <div className="space-y-1.5">
+                {[
+                  { id: 'inappropriate', label: t('report_reason_inappropriate') || 'Contenu inapproprié ou offensant' },
+                  { id: 'harassment', label: t('report_reason_harassment') || 'Harcèlement, intimidation ou propos abusifs' },
+                  { id: 'spam', label: t('report_reason_spam') || 'Spam, arnaque ou publicité non sollicitée' },
+                  { id: 'privacy', label: t('report_reason_privacy') || 'Divulgation d\'informations confidentielles' },
+                  { id: 'other', label: t('report_reason_other') || 'Autre motif (à préciser)' },
+                ].map((opt) => (
+                  <label
+                    key={opt.id}
+                    className={`flex items-center gap-3 p-2.5 rounded-xl border cursor-pointer text-xs font-medium transition-all ${
+                      reportReason === opt.label
+                        ? 'bg-rose-500/10 border-rose-500/40 text-rose-600 dark:text-rose-400 shadow-xs font-bold'
+                        : 'bg-white dark:bg-surface/40 border-slate-200 dark:border-border text-slate-700 dark:text-text-primary hover:bg-slate-50 dark:hover:bg-surface'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="reportReasonOption"
+                      checked={reportReason === opt.label}
+                      onChange={() => setReportReason(opt.label)}
+                      className="w-4 h-4 text-rose-600 focus:ring-rose-500 border-slate-300"
+                    />
+                    <span>{opt.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Custom reason input */}
+            {reportReason === (t('report_reason_other') || 'Autre motif (à préciser)') && (
+              <div className="space-y-1.5 animate-fade-in">
+                <label className="block text-xs font-bold text-slate-700 dark:text-text-secondary">
+                  Précisez votre motif
+                </label>
+                <textarea
+                  value={customReportReason}
+                  onChange={(e) => setCustomReportReason(e.target.value)}
+                  placeholder="Expliquez brièvement la raison de votre signalement..."
+                  rows={3}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-border bg-white dark:bg-surface text-xs text-slate-900 dark:text-text-primary outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20 transition-all resize-none"
+                />
+              </div>
+            )}
+
+            {/* Routing Alert Notice */}
+            <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs flex items-center gap-2">
+              <AlertTriangle size={16} className="shrink-0 text-amber-600 dark:text-amber-400" />
+              <span>
+                Ce signalement sera transmis directement aux <strong>administrateurs</strong> et au <strong>formateur</strong> de votre groupe.
+              </span>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-200 dark:border-border">
+              <button
+                type="button"
+                onClick={() => {
+                  setReportingMessage(null);
+                  setCustomReportReason('');
+                }}
+                disabled={isSubmittingReport}
+                className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-surface hover:bg-slate-200 dark:hover:bg-surface-hover text-slate-700 dark:text-text-primary text-xs font-bold transition-colors cursor-pointer"
+              >
+                {t('report_cancel') || 'Annuler'}
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmitReport}
+                disabled={isSubmittingReport}
+                className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-lg shadow-rose-600/25 flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+              >
+                {isSubmittingReport ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" />
+                    <span>Transmission...</span>
+                  </>
+                ) : (
+                  <>
+                    <Flag size={14} />
+                    <span>{t('report_submit') || 'Confirmer le signalement'}</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

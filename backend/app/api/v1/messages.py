@@ -640,11 +640,9 @@ def report_message(
 ) -> Any:
     """
     Report a message for suspicious or inappropriate content.
-    Protected against:
-    - IDOR / Data Leakage: User must be direct recipient, sender, or admin
-    - Self-reporting abuse
-    - Flooding (Rate limited)
-    - XSS in report reason
+    Automatically forwards the report to:
+    1. All administrators ('admin' and 'admin_manager')
+    2. The trainer(s) ('formateur' / 'pedagogique') if the user belongs to their group / promotion / course.
     """
     # 1. Rate Limiting on Reports (Anti-Flooding)
     rate_limiter.check_rate_limit(
@@ -683,51 +681,203 @@ def report_message(
     msg.is_reported = True
     msg.report_reason = clean_reason
 
-    sender_email = msg.sender.email if msg.sender else f"ID #{msg.sender_id}"
-
-    # Find all instructors and administrators to receive direct transmitted report
-    staff_users = (
+    # 4. Resolve Target Recipients:
+    # A) All admins and admin_managers
+    admin_targets = (
         session.query(User)
-        .filter(User.role.in_(["admin", "admin_manager", "formateur", "pedagogique", "dg_rh"]))
+        .filter(User.role.in_(["admin", "admin_manager"]))
         .all()
     )
 
-    alert_subject = (
-        f"🚨 [SIGNALEMENT DIRECT] Message suspect signalé par {current_user.email}"
+    # B) Formateurs matching the user's or author's group / courses
+    from app.models.group import Group, GroupMember
+    from app.models.course import Course
+    from app.models.enrollment import Enrollment
+    from app.services.email_service import send_notification_email
+
+    group_ids = set()
+    group_names = set()
+
+    # Group names from User models
+    if current_user.group_name and current_user.group_name.strip():
+        group_names.add(current_user.group_name.strip().lower())
+    if msg.sender and msg.sender.group_name and msg.sender.group_name.strip():
+        group_names.add(msg.sender.group_name.strip().lower())
+
+    # Group IDs from GroupMember table
+    memberships = (
+        session.query(GroupMember)
+        .filter(GroupMember.user_id.in_([current_user.id, msg.sender_id]))
+        .all()
     )
+    for m in memberships:
+        group_ids.add(m.group_id)
+
+    if group_names:
+        matched_groups = (
+            session.query(Group)
+            .filter(func.lower(Group.name).in_(list(group_names)))
+            .all()
+        )
+        for g in matched_groups:
+            group_ids.add(g.id)
+
+    formateur_targets = set()
+
+    # 1. Formateurs in matching GroupMember
+    if group_ids:
+        grp_formateurs = (
+            session.query(User)
+            .join(GroupMember, GroupMember.user_id == User.id)
+            .filter(
+                GroupMember.group_id.in_(list(group_ids)),
+                User.role.in_(["formateur", "pedagogique"]),
+            )
+            .all()
+        )
+        for f in grp_formateurs:
+            formateur_targets.add(f)
+
+    # 2. Formateurs with matching group_name field
+    if group_names:
+        named_formateurs = (
+            session.query(User)
+            .filter(
+                func.lower(func.coalesce(User.group_name, "")).in_(list(group_names)),
+                User.role.in_(["formateur", "pedagogique"]),
+            )
+            .all()
+        )
+        for f in named_formateurs:
+            formateur_targets.add(f)
+
+    # 3. Formateurs of courses the reporting user or author is enrolled in
+    enrolled_courses = (
+        session.query(Course.instructor_id)
+        .join(Enrollment, Enrollment.course_id == Course.id)
+        .filter(
+            Enrollment.user_id.in_([current_user.id, msg.sender_id]),
+            Course.instructor_id.isnot(None),
+        )
+        .all()
+    )
+    for (inst_id,) in enrolled_courses:
+        if inst_id:
+            inst_user = (
+                session.query(User)
+                .filter(
+                    User.id == inst_id,
+                    User.role.in_(["formateur", "pedagogique"]),
+                )
+                .first()
+            )
+            if inst_user:
+                formateur_targets.add(inst_user)
+
+    # Combine all recipients (deduplicated by user.id)
+    all_recipients_dict = {}
+    for u in admin_targets:
+        if u.id != current_user.id:
+            all_recipients_dict[u.id] = u
+    for u in formateur_targets:
+        if u.id != current_user.id:
+            all_recipients_dict[u.id] = u
+
+    recipient_list = list(all_recipients_dict.values())
+
+    # Build detailed alert report
+    sender_name = f"{msg.sender.prenom or ''} {msg.sender.nom or ''}".strip() if msg.sender else ""
+    sender_email = msg.sender.email if msg.sender else f"ID #{msg.sender_id}"
+    sender_role = msg.sender.role if msg.sender else "Inconnu"
+    sender_group = msg.sender.group_name if msg.sender and msg.sender.group_name else "Aucun groupe"
+
+    reporter_name = (
+        f"{current_user.prenom or ''} {current_user.nom or ''}".strip()
+        or current_user.username
+        or current_user.email
+    )
+    reporter_group = current_user.group_name or "Aucun groupe"
+
+    formatted_date = (
+        msg.created_at.strftime("%d/%m/%Y à %H:%M")
+        if msg.created_at
+        else "Date inconnue"
+    )
+
+    alert_subject = f"🚨 [SIGNALEMENT] Message #{msg.id} signalé par {reporter_name}"
     alert_body = (
         f"=============================================================\n"
-        f"⚠️ RAPPORT DE SIGNALEMENT AUTOMATIQUE DE MESSAGE\n"
+        f"⚠️ RAPPORT OFFICIEL DE SIGNALEMENT DE MESSAGE\n"
         f"=============================================================\n"
-        f"Signalé par : {current_user.email} (ID #{current_user.id}, Rôle : {current_user.role})\n"
-        f"Auteur du message suspect : {sender_email} (ID #{msg.sender_id})\n"
-        f"Date d'envoi du message : {msg.created_at.strftime('%d/%m/%Y à %H:%M')}\n"
-        f"Objet d'origine : {msg.subject}\n"
-        f"Motif du signalement : {clean_reason}\n\n"
+        f"👤 Signalé par : {reporter_name} ({current_user.email})\n"
+        f"   • Rôle : {current_user.role}\n"
+        f"   • Groupe / Promotion : {reporter_group}\n\n"
+        f"✉️ Auteur du message suspect : {sender_name or sender_email} ({sender_email})\n"
+        f"   • Rôle : {sender_role}\n"
+        f"   • Groupe : {sender_group}\n\n"
+        f"📅 Date d'envoi du message : {formatted_date}\n"
+        f"📌 Objet d'origine : {msg.subject}\n"
+        f"🚩 Motif du signalement : {clean_reason}\n\n"
         f"--- CONTENU TRANSMIS DU MESSAGE SIGNALÉ ---\n"
         f"{msg.body}\n"
         f"=============================================================\n"
-        f"Ce message vous est transmis automatiquement car vous êtes formateur ou administrateur."
+        f"Ce signalement vous a été automatiquement transmis en tant qu'administrateur, "
+        f"gestionnaire ou formateur référent du groupe de l'utilisateur."
     )
 
-    for staff in staff_users:
-        if staff.id != current_user.id:
-            alert_msg = Message(
-                sender_id=current_user.id,
-                recipient_id=staff.id,
-                subject=alert_subject,
-                body=alert_body,
-                attachment_url=msg.attachment_url,
-                attachment_name=msg.attachment_name,
-                attachment_type=msg.attachment_type,
-                is_read=False,
-                is_draft=False,
-                is_trash=False,
-            )
-            session.add(alert_msg)
+    for target_user in recipient_list:
+        alert_msg = Message(
+            sender_id=current_user.id,
+            recipient_id=target_user.id,
+            subject=alert_subject,
+            body=alert_body,
+            attachment_url=msg.attachment_url,
+            attachment_name=msg.attachment_name,
+            attachment_type=msg.attachment_type,
+            is_read=False,
+            is_draft=False,
+            is_trash=False,
+            is_reported=True,
+            report_reason=clean_reason,
+            is_broadcast=False,
+            is_welcome_msg=False,
+            is_relay=True,
+        )
+        session.add(alert_msg)
+
+        # Dispatch email notification if SMTP is configured
+        try:
+            if target_user.email and "@" in target_user.email:
+                send_notification_email(
+                    to_email=target_user.email,
+                    subject=f"🚨 [Signalement E-Schola Pro] Message #{msg.id} signalé",
+                    title="Signalement de message suspect",
+                    message_text=(
+                        f"Un message a été signalé par <strong>{reporter_name}</strong> (Groupe: {reporter_group}) "
+                        f"avec le motif suivant : <em>« {clean_reason} »</em>.<br><br>"
+                        f"<strong>Auteur du message :</strong> {sender_name or sender_email} ({sender_role})<br>"
+                        f"<strong>Objet :</strong> {msg.subject}<br><br>"
+                        f"Ce rapport vous est transmis en tant qu'administrateur ou formateur du groupe. "
+                        f"Veuillez vous connecter à votre espace E-Schola Pro pour examiner ce dossier."
+                    ),
+                    action_text="Consulter la messagerie",
+                )
+        except Exception as mail_err:
+            print(f"[WARN] Failed to send report notification email to {target_user.email}: {mail_err}")
 
     session.commit()
+    session.refresh(msg)
+
+    admin_count = len([u for u in recipient_list if u.role in ["admin", "admin_manager"]])
+    formateur_count = len([u for u in recipient_list if u.role in ["formateur", "pedagogique"]])
+
     return {
-        "message": f"Signalement transmis directement aux formateurs et administrateurs ({len(staff_users)} destinataires notifiés).",
+        "message": (
+            f"Signalement transmis avec succès ({admin_count} administrateur(s) et "
+            f"{formateur_count} formateur(s) de groupe notifié(s))."
+        ),
         "reported_message_id": message_id,
+        "admins_notified": admin_count,
+        "formateurs_notified": formateur_count,
+        "total_recipients": len(recipient_list),
     }
