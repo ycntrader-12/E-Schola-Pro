@@ -44,6 +44,12 @@ import {
   ClipboardCheck,
   MessageSquare,
   Folder,
+  FolderOpen,
+  FolderPlus,
+  ChevronDown,
+  ChevronUp,
+  Filter,
+  SlidersHorizontal,
   MapPin,
   Briefcase,
   GraduationCap,
@@ -235,6 +241,237 @@ export default function ProfilePage() {
   const [editPassword, setEditPassword] = useState('');
   const [isUpdatingUser, setIsUpdatingUser] = useState(false);
   const [editUserError, setEditUserError] = useState('');
+
+  // ==========================================
+  // SYSTÈME DE GESTION PAR DOSSIERS DE RÔLES
+  // ==========================================
+  const [selectedRoleFolder, setSelectedRoleFolder] = useState<string>('all');
+  const [folderViewMode, setFolderViewMode] = useState<'focused' | 'accordion'>('focused');
+  const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({
+    etudiant: true,
+    stagiaire: true,
+    employer: true,
+    formateur: true,
+    dg_rh: true,
+    admin: true,
+  });
+  const [userGroupFilter, setUserGroupFilter] = useState<string>('all');
+
+  const uniqueGroupsList = useMemo(() => {
+    const setG = new Set<string>();
+    systemGroups.forEach(g => { if (g.name) setG.add(g.name); });
+    allUsers.forEach(u => { if (u.group_name) setG.add(u.group_name); });
+    return Array.from(setG).sort();
+  }, [systemGroups, allUsers]);
+
+  const ROLE_FOLDERS = useMemo(() => [
+    {
+      id: 'all',
+      name: 'Tous les Dossiers',
+      shortName: 'Tous',
+      subtitle: 'Répertoire Général',
+      description: 'Vue consolidée de l’ensemble des membres, rôles et statuts de l’établissement.',
+      roles: ALL_ROLES,
+      defaultRole: 'étudiant',
+      badgeText: 'Global',
+      count: allUsers.length,
+      icon: Folder,
+      activeIcon: FolderOpen,
+      color: {
+        text: 'text-blue-600',
+        bg: 'bg-blue-50/80',
+        border: 'border-blue-200',
+        activeBorder: 'border-blue-600',
+        ring: 'ring-blue-500/20',
+        badge: 'bg-blue-100 text-blue-700 border-blue-200',
+        gradient: 'from-blue-600/10 via-blue-500/5 to-transparent',
+        tag: 'Tous'
+      }
+    },
+    {
+      id: 'etudiant',
+      name: 'Dossier Étudiants',
+      shortName: 'Étudiants',
+      subtitle: 'Formation Initiale & Supérieure',
+      description: 'Apprenants inscrits aux filières académiques régulières, examens et travaux dirigés.',
+      roles: ['étudiant'],
+      defaultRole: 'étudiant',
+      badgeText: 'Étudiants',
+      count: allUsers.filter(u => u.role === 'étudiant').length,
+      icon: GraduationCap,
+      activeIcon: FolderOpen,
+      color: {
+        text: 'text-indigo-600',
+        bg: 'bg-indigo-50/80',
+        border: 'border-indigo-200',
+        activeBorder: 'border-indigo-600',
+        ring: 'ring-indigo-500/20',
+        badge: 'bg-indigo-100 text-indigo-700 border-indigo-200',
+        gradient: 'from-indigo-600/10 via-indigo-500/5 to-transparent',
+        tag: 'Apprenants'
+      }
+    },
+    {
+      id: 'stagiaire',
+      name: 'Dossier Stagiaires',
+      shortName: 'Stagiaires',
+      subtitle: 'Immersion & PFE',
+      description: 'Stagiaires en immersion pratique d’entreprise, conventionnés ou projets de fin d’études.',
+      roles: ['stagiaire'],
+      defaultRole: 'stagiaire',
+      badgeText: 'Stagiaires',
+      count: allUsers.filter(u => u.role === 'stagiaire').length,
+      icon: Clock,
+      activeIcon: FolderOpen,
+      color: {
+        text: 'text-amber-600',
+        bg: 'bg-amber-50/80',
+        border: 'border-amber-200',
+        activeBorder: 'border-amber-600',
+        ring: 'ring-amber-500/20',
+        badge: 'bg-amber-100 text-amber-800 border-amber-200',
+        gradient: 'from-amber-600/10 via-amber-500/5 to-transparent',
+        tag: 'PFE & Stage'
+      }
+    },
+    {
+      id: 'employer',
+      name: 'Dossier Employés',
+      shortName: 'Employés',
+      subtitle: 'Formation Continue',
+      description: 'Salariés et cadres d’entreprises partenaires en perfectionnement et montée en compétences.',
+      roles: ['employer'],
+      defaultRole: 'employer',
+      badgeText: 'Employés',
+      count: allUsers.filter(u => u.role === 'employer').length,
+      icon: Briefcase,
+      activeIcon: FolderOpen,
+      color: {
+        text: 'text-emerald-600',
+        bg: 'bg-emerald-50/80',
+        border: 'border-emerald-200',
+        activeBorder: 'border-emerald-600',
+        ring: 'ring-emerald-500/20',
+        badge: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+        gradient: 'from-emerald-600/10 via-emerald-500/5 to-transparent',
+        tag: 'Entreprises'
+      }
+    },
+    {
+      id: 'formateur',
+      name: 'Dossier Formateurs & Pédagogie',
+      shortName: 'Formateurs',
+      subtitle: 'Corps Enseignant & Tuteurs',
+      description: 'Professeurs, enseignants-chercheurs, tuteurs de stage et coordonnateurs pédagogiques.',
+      roles: ['formateur', 'pedagogique'],
+      defaultRole: 'formateur',
+      badgeText: 'Pédagogie',
+      count: allUsers.filter(u => ['formateur', 'pedagogique'].includes(u.role)).length,
+      icon: BookOpen,
+      activeIcon: FolderOpen,
+      color: {
+        text: 'text-cyan-600',
+        bg: 'bg-cyan-50/80',
+        border: 'border-cyan-200',
+        activeBorder: 'border-cyan-600',
+        ring: 'ring-cyan-500/20',
+        badge: 'bg-cyan-100 text-cyan-800 border-cyan-200',
+        gradient: 'from-cyan-600/10 via-cyan-500/5 to-transparent',
+        tag: 'Enseignants'
+      }
+    },
+    {
+      id: 'dg_rh',
+      name: 'Dossier Direction & DG / RH',
+      shortName: 'DG / RH',
+      subtitle: 'Gouvernance & RH',
+      description: 'Direction générale, service des ressources humaines et superviseurs de programmes.',
+      roles: ['dg_rh', 'dg/rh'],
+      defaultRole: 'dg_rh',
+      badgeText: 'Direction',
+      count: allUsers.filter(u => ['dg_rh', 'dg/rh'].includes(u.role)).length,
+      icon: ShieldCheck,
+      activeIcon: FolderOpen,
+      color: {
+        text: 'text-purple-600',
+        bg: 'bg-purple-50/80',
+        border: 'border-purple-200',
+        activeBorder: 'border-purple-600',
+        ring: 'ring-purple-500/20',
+        badge: 'bg-purple-100 text-purple-800 border-purple-200',
+        gradient: 'from-purple-600/10 via-purple-500/5 to-transparent',
+        tag: 'Direction'
+      }
+    },
+    {
+      id: 'admin',
+      name: 'Dossier Administrateurs',
+      shortName: 'Admins',
+      subtitle: 'Sécurité & Super-Admins',
+      description: 'Comptes d’administration centrale dotés de privilèges de configuration et sécurité.',
+      roles: ADMIN_ROLES,
+      defaultRole: 'admin',
+      badgeText: 'Admins',
+      count: allUsers.filter(u => ADMIN_ROLES.includes(u.role)).length,
+      icon: Shield,
+      activeIcon: FolderOpen,
+      color: {
+        text: 'text-rose-600',
+        bg: 'bg-rose-50/80',
+        border: 'border-rose-200',
+        activeBorder: 'border-rose-600',
+        ring: 'ring-rose-500/20',
+        badge: 'bg-rose-100 text-rose-800 border-rose-200',
+        gradient: 'from-rose-600/10 via-rose-500/5 to-transparent',
+        tag: 'Sécurité'
+      }
+    }
+  ], [allUsers]);
+
+  const handleOpenCreateUserInFolder = (roleFolderId?: string) => {
+    const targetFolder = ROLE_FOLDERS.find(f => f.id === (roleFolderId || selectedRoleFolder));
+    if (targetFolder && targetFolder.id !== 'all') {
+      setNewAccountRole(targetFolder.defaultRole);
+    } else {
+      setNewAccountRole('étudiant');
+    }
+    setCreateAccountError('');
+    setIsCreateUserModalOpen(true);
+  };
+
+  const filterUsersForFolder = (folderRoles: string[]) => {
+    return allUsers.filter(u => {
+      // 1. Filtrage par rôle de dossier
+      if (!folderRoles.includes(u.role)) return false;
+
+      // 2. Filtrage par Groupe/Promotion
+      if (userGroupFilter !== 'all') {
+        if (userGroupFilter === '__none__' && u.group_name) return false;
+        if (userGroupFilter !== '__none__' && u.group_name !== userGroupFilter) return false;
+      }
+
+      // 3. Recherche textuelle
+      if (userSearchQuery.trim()) {
+        const q = userSearchQuery.toLowerCase().trim();
+        const emailMatch = u.email.toLowerCase().includes(q);
+        const roleMatch = u.role.toLowerCase().includes(q);
+        const groupMatch = u.group_name ? u.group_name.toLowerCase().includes(q) : false;
+        const nomMatch = u.nom ? u.nom.toLowerCase().includes(q) : false;
+        const prenomMatch = u.prenom ? u.prenom.toLowerCase().includes(q) : false;
+        const usernameMatch = u.username ? u.username.toLowerCase().includes(q) : false;
+        return emailMatch || roleMatch || groupMatch || nomMatch || prenomMatch || usernameMatch;
+      }
+
+      return true;
+    });
+  };
+
+  const toggleFolderExpansion = (folderId: string) => {
+    setExpandedFolders(prev => ({
+      ...prev,
+      [folderId]: !prev[folderId]
+    }));
+  };
 
   const handleOpenEditUserModal = (u: UserProfile) => {
     setEditingUser(u);
@@ -782,93 +1019,48 @@ export default function ProfilePage() {
             </div>
           )}
 
-          {/* TAB 1 : GESTION DES UTILISATEURS ET DES RÔLES */}
-          {isAdminUser && adminTab === 'users' && (
-            <div className="space-y-6">
+          {/* TAB 1 : GESTION DES UTILISATEURS ET DES DOSSIERS DE RÔLES */}
+          {isAdminUser && adminTab === 'users' && (() => {
+            const activeFolder = ROLE_FOLDERS.find(f => f.id === selectedRoleFolder) || ROLE_FOLDERS[0];
+            const activeFolderUsers = filterUsersForFolder(activeFolder.roles);
 
-              {/* Stat counters */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div className="p-4 rounded-xl bg-surface/50 border border-border">
-                  <p className="text-xs text-text-secondary font-semibold uppercase">Total Comptes</p>
-                  <p className="text-2xl font-black mt-1 text-primary">{allUsers.length}</p>
-                </div>
-                <div className="p-4 rounded-xl bg-surface/50 border border-border">
-                  <p className="text-xs text-text-secondary font-semibold uppercase">Étudiants & Stagiaires</p>
-                  <p className="text-2xl font-black mt-1 text-text-primary">
-                    {allUsers.filter(u => ['étudiant', 'stagiaire', 'employer'].includes(u.role)).length}
-                  </p>
-                </div>
-                <div className="p-4 rounded-xl bg-surface/50 border border-border">
-                  <p className="text-xs text-text-secondary font-semibold uppercase">Formateurs & DG/RH</p>
-                  <p className="text-2xl font-black mt-1 text-cyan-400">
-                    {allUsers.filter(u => ['formateur', 'pedagogique', 'dg_rh', 'dg/rh'].includes(u.role)).length}
-                  </p>
-                </div>
-                <div className="p-4 rounded-xl bg-surface/50 border border-border">
-                  <p className="text-xs text-text-secondary font-semibold uppercase">Administrateurs</p>
-                  <p className="text-2xl font-black mt-1 text-purple-400">
-                    {allUsers.filter(u => ADMIN_ROLES.includes(u.role)).length}
-                  </p>
-                </div>
-              </div>
+            const renderUserTableRows = (usersList: UserProfile[], currentFolderInfo?: any) => {
+              if (usersList.length === 0) {
+                return (
+                  <div className="py-12 px-6 text-center bg-slate-50/50 dark:bg-surface/30 rounded-2xl border border-dashed border-border/80">
+                    <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 flex items-center justify-center">
+                      <Folder size={28} />
+                    </div>
+                    <p className="text-sm font-bold text-text-primary">Ce dossier est actuellement vide</p>
+                    <p className="text-xs text-text-secondary max-w-sm mx-auto mt-1">
+                      Aucun utilisateur ne correspond aux critères de recherche ou de filtre au sein de ce dossier.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenCreateUserInFolder(currentFolderInfo?.id || activeFolder.id)}
+                      className="mt-4 px-4 py-2 rounded-xl bg-primary text-white text-xs font-bold inline-flex items-center gap-2 shadow hover:opacity-95 transition-all cursor-pointer"
+                    >
+                      <UserPlus size={15} />
+                      <span>Créer un compte {currentFolderInfo?.shortName || activeFolder.shortName}</span>
+                    </button>
+                  </div>
+                );
+              }
 
-              {/* Action bar (Search + Create button) */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
-                <div className="relative flex-1 max-w-md">
-                  <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-secondary" />
-                  <input
-                    type="text"
-                    value={userSearchQuery}
-                    onChange={(e) => setUserSearchQuery(e.target.value)}
-                    placeholder="Filtrer par email ou rôle..."
-                    className="w-full pl-10 pr-4 py-2.5 bg-surface border border-border rounded-xl text-xs outline-none focus:border-primary transition-all"
-                  />
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => fetchAdminData()}
-                    disabled={adminLoading}
-                    className="px-3 py-2 text-xs font-semibold rounded-xl bg-surface border border-border hover:bg-surface-hover transition-colors"
-                  >
-                    {adminLoading ? '...' : 'Actualiser'}
-                  </button>
-                  <button
-                    onClick={() => {
-                      setCreateAccountError('');
-                      setIsCreateUserModalOpen(true);
-                    }}
-                    className="btn-primary px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 shadow"
-                  >
-                    <UserPlus size={16} /> Créer un compte
-                  </button>
-                </div>
-              </div>
-
-              {/* Users Table */}
-              <div className="overflow-x-auto rounded-xl border border-border">
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-surface text-text-secondary text-[11px] uppercase font-bold tracking-wider">
-                    <tr>
-                      <th className="px-6 py-4">Utilisateur</th>
-                      <th className="px-6 py-4">Rôle Actuel</th>
-                      <th className="px-6 py-4">Groupe / Classe</th>
-                      <th className="px-6 py-4">Changer le Rôle</th>
-                      <th className="px-6 py-4 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border bg-surface/30">
-                    {allUsers
-                      .filter(u => {
-                        if (!userSearchQuery) return true;
-                        const q = userSearchQuery.toLowerCase();
-                        return (
-                          u.email.toLowerCase().includes(q) ||
-                          u.role.toLowerCase().includes(q) ||
-                          (u.group_name && u.group_name.toLowerCase().includes(q))
-                        );
-                      })
-                      .map((u) => {
+              return (
+                <div className="overflow-x-auto rounded-2xl border border-border shadow-2xs">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-surface text-text-secondary text-[11px] uppercase font-bold tracking-wider">
+                      <tr>
+                        <th className="px-6 py-3.5">Utilisateur</th>
+                        <th className="px-6 py-3.5">Rôle Actuel</th>
+                        <th className="px-6 py-3.5">Groupe / Classe</th>
+                        <th className="px-6 py-3.5">Changer le Rôle</th>
+                        <th className="px-6 py-3.5 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border bg-surface/30">
+                      {usersList.map((u) => {
                         const isCurrentUser = u.id === user.id;
                         const isTargetAdmin = ADMIN_ROLES.includes(u.role);
                         const canModifyTargetRole = isSuperAdmin ? !isCurrentUser : (!isCurrentUser && !isTargetAdmin);
@@ -879,40 +1071,37 @@ export default function ProfilePage() {
                           ? ALL_ROLES
                           : (isTargetAdmin ? [u.role] : NON_ADMIN_ROLES);
 
+                        // Trouver le dossier correspondant pour la couleur
+                        const userFolder = ROLE_FOLDERS.find(f => f.roles.includes(u.role)) || ROLE_FOLDERS[0];
+
                         return (
                           <tr key={u.id} className="hover:bg-surface/60 transition-colors">
                             <td className="px-6 py-4 flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-xs">
+                              <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${userFolder.color.bg} ${userFolder.color.text} border ${userFolder.color.border}`}>
                                 {u.email.charAt(0).toUpperCase()}
                               </div>
-                              <div>
-                                <p className="font-semibold text-text-primary">{u.email}</p>
-                                <p className="text-[11px] text-text-secondary">ID #{u.id} {isCurrentUser && '(Votre compte)'}</p>
+                              <div className="min-w-0">
+                                <p className="font-semibold text-text-primary truncate">{u.email}</p>
+                                <p className="text-[11px] text-text-secondary">
+                                  ID #{u.id} {u.nom || u.prenom ? `• ${[u.prenom, u.nom].filter(Boolean).join(' ')}` : ''} {isCurrentUser && '(Votre compte)'}
+                                </p>
                               </div>
                             </td>
 
-                            <td className="px-6 py-4">
-                              <span className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${ADMIN_ROLES.includes(u.role)
-                                  ? 'bg-primary/20 text-primary border border-primary/30'
-                                  : u.role === 'dg_rh' || u.role === 'dg/rh'
-                                    ? 'bg-emerald-500/20 text-emerald-600 border border-emerald-500/30'
-                                    : u.role === 'formateur' || u.role === 'pedagogique'
-                                      ? 'bg-cyan-500/20 text-cyan-500 border border-cyan-500/30'
-                                      : 'bg-surface text-text-secondary border border-border'
-                                }`}>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider border ${userFolder.color.badge}`}>
                                 {u.role === 'dg_rh' || u.role === 'dg/rh' ? 'DG / RH' : u.role}
                               </span>
                             </td>
 
-                            <td className="px-6 py-4">
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800/60 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
                                 <Users size={12} className="text-primary shrink-0" />
                                 <span>{u.group_name || 'Non assigné'}</span>
                               </span>
                             </td>
 
-
-                            <td className="px-6 py-4">
+                            <td className="px-6 py-4 whitespace-nowrap">
                               <select
                                 value={u.role}
                                 disabled={!canModifyTargetRole}
@@ -927,14 +1116,14 @@ export default function ProfilePage() {
                               </select>
                             </td>
 
-                            <td className="px-6 py-4 text-right">
-                              <div className="flex items-center justify-end gap-2">
+                            <td className="px-6 py-4 text-right whitespace-nowrap">
+                              <div className="flex items-center justify-end gap-1.5">
                                 <button
                                   onClick={() => handleOpenEditUserModal(u)}
-                                  className="p-2 rounded-lg text-text-secondary hover:text-primary hover:bg-primary/10 transition-colors"
+                                  className="p-2 rounded-lg text-text-secondary hover:text-primary hover:bg-primary/10 transition-colors cursor-pointer"
                                   title="Modifier les informations de cet utilisateur"
                                 >
-                                  <Pencil size={16} />
+                                  <Pencil size={15} />
                                 </button>
                                 {canResetTargetPassword && (
                                   <button
@@ -943,19 +1132,19 @@ export default function ProfilePage() {
                                       setNewResetPassword('');
                                       setResetPasswordError('');
                                     }}
-                                    className="p-2 rounded-lg text-text-secondary hover:text-primary hover:bg-primary/10 transition-colors"
+                                    className="p-2 rounded-lg text-text-secondary hover:text-primary hover:bg-primary/10 transition-colors cursor-pointer"
                                     title="Modifier le mot de passe"
                                   >
-                                    <Key size={16} />
+                                    <Key size={15} />
                                   </button>
                                 )}
                                 {canDeleteTarget && (
                                   <button
                                     onClick={() => handleDeleteUser(u.id, u.email)}
-                                    className="p-2 rounded-lg text-text-secondary hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                                    className="p-2 rounded-lg text-text-secondary hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
                                     title="Supprimer cet utilisateur"
                                   >
-                                    <Trash2 size={16} />
+                                    <Trash2 size={15} />
                                   </button>
                                 )}
                               </div>
@@ -963,11 +1152,298 @@ export default function ProfilePage() {
                           </tr>
                         );
                       })}
-                  </tbody>
-                </table>
+                    </tbody>
+                  </table>
+                </div>
+              );
+            };
+
+            return (
+              <div className="space-y-6 animate-fade-in">
+
+                {/* EN-TÊTE DE SECTION : SYSTÈME DE DOSSIERS DE RÔLES */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 rounded-2xl bg-gradient-to-r from-blue-50/70 via-indigo-50/40 to-slate-50/50 dark:from-blue-950/20 dark:via-indigo-950/10 dark:to-surface/30 border border-blue-200/60 dark:border-blue-900/40">
+                  <div className="flex items-center gap-3">
+                    <div className="w-11 h-11 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20 shrink-0">
+                      <FolderOpen size={22} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-lg font-bold text-slate-900 dark:text-text-primary">
+                          Gestion des Utilisateurs par Dossiers
+                        </h3>
+                        <span className="px-2.5 py-0.5 rounded-full bg-blue-600 text-white text-[10px] font-black tracking-wide">
+                          {allUsers.length} Comptes
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-600 dark:text-text-secondary mt-0.5">
+                        Classement compartimenté par rôle pour une gouvernance administrative claire et sans encombrement.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Bascule de mode d'affichage */}
+                  <div className="flex items-center gap-1.5 p-1 rounded-xl bg-surface border border-border self-start md:self-auto shrink-0 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setFolderViewMode('focused')}
+                      className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                        folderViewMode === 'focused'
+                          ? 'bg-primary text-white shadow-xs'
+                          : 'text-text-secondary hover:text-text-primary'
+                      }`}
+                    >
+                      <Folder size={14} />
+                      <span>Vue Dossier Actif</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFolderViewMode('accordion')}
+                      className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                        folderViewMode === 'accordion'
+                          ? 'bg-primary text-white shadow-xs'
+                          : 'text-text-secondary hover:text-text-primary'
+                      }`}
+                    >
+                      <Layers size={14} />
+                      <span>Vue Tous les Dossiers</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* SÉLECTEUR DE DOSSIERS EN GRILLE (POCHETTES DE DOSSIERS INTERACTIVES) */}
+                <div>
+                  <div className="flex items-center justify-between mb-2.5 px-1">
+                    <span className="text-[11px] font-black uppercase tracking-wider text-text-secondary flex items-center gap-1.5">
+                      <Folder size={13} className="text-primary" />
+                      <span>Sélectionnez un Dossier de Rôle ({ROLE_FOLDERS.length})</span>
+                    </span>
+                    <span className="text-[11px] text-text-secondary">
+                      Dossier actif : <strong className="text-text-primary">{activeFolder.name}</strong>
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-2.5">
+                    {ROLE_FOLDERS.map((f) => {
+                      const isSelected = selectedRoleFolder === f.id;
+                      const FolderIconComp = isSelected ? f.activeIcon : f.icon;
+
+                      return (
+                        <button
+                          key={f.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedRoleFolder(f.id);
+                            if (folderViewMode === 'accordion') {
+                              setExpandedFolders(prev => ({ ...prev, [f.id]: true }));
+                            }
+                          }}
+                          className={`relative text-left p-3 rounded-2xl border transition-all duration-200 group flex flex-col justify-between cursor-pointer min-h-[96px] ${
+                            isSelected
+                              ? `bg-white dark:bg-surface shadow-md ring-2 ${f.color.ring} ${f.color.activeBorder}`
+                              : `bg-slate-50/70 dark:bg-surface/50 hover:bg-white dark:hover:bg-surface/90 hover:shadow-xs ${f.color.border}`
+                          }`}
+                        >
+                          {/* En-tête de la pochette de dossier */}
+                          <div className="flex items-start justify-between gap-1 mb-2">
+                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${f.color.bg} ${f.color.text} shrink-0`}>
+                              <FolderIconComp size={18} />
+                            </div>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                              isSelected
+                                ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
+                                : 'bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
+                            }`}>
+                              {f.count}
+                            </span>
+                          </div>
+
+                          {/* Libellé et sous-titre */}
+                          <div>
+                            <p className={`text-xs font-bold leading-tight truncate ${
+                              isSelected ? f.color.text : 'text-text-primary group-hover:text-primary'
+                            }`}>
+                              {f.name}
+                            </p>
+                            <p className="text-[10px] text-text-secondary truncate mt-0.5">
+                              {f.subtitle}
+                            </p>
+                          </div>
+
+                          {/* Barre d'indicateur actif */}
+                          {isSelected && (
+                            <div className={`absolute bottom-0 left-3 right-3 h-0.5 rounded-full ${f.color.text.replace('text-', 'bg-')}`} />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* BANDEAU DE FILTRAGE & ACTIONS RAPIDES */}
+                <div className="p-4 rounded-2xl bg-surface border border-border space-y-3">
+                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                    
+                    {/* Recherche textuelle en temps réel */}
+                    <div className="relative flex-1 max-w-md">
+                      <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-secondary" />
+                      <input
+                        type="text"
+                        value={userSearchQuery}
+                        onChange={(e) => setUserSearchQuery(e.target.value)}
+                        placeholder={`Rechercher dans ${activeFolder.name} (nom, email, rôle)...`}
+                        className="w-full pl-10 pr-9 py-2 bg-background border border-border rounded-xl text-xs outline-none focus:border-primary transition-all text-text-primary"
+                      />
+                      {userSearchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setUserSearchQuery('')}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text-primary text-xs font-bold"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Filtre secondaire par Promotion/Groupe */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-background border border-border text-xs">
+                        <Users size={13} className="text-text-secondary shrink-0" />
+                        <span className="text-[11px] text-text-secondary font-semibold">Groupe :</span>
+                        <select
+                          value={userGroupFilter}
+                          onChange={(e) => setUserGroupFilter(e.target.value)}
+                          className="bg-transparent text-text-primary font-semibold text-xs outline-none cursor-pointer"
+                        >
+                          <option value="all">Tous les groupes</option>
+                          <option value="__none__">Sans groupe assigné</option>
+                          {uniqueGroupsList.map((g) => (
+                            <option key={g} value={g}>
+                              👥 {g}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => fetchAdminData()}
+                        disabled={adminLoading}
+                        className="px-3 py-2 text-xs font-semibold rounded-xl bg-background border border-border hover:bg-surface-hover transition-colors cursor-pointer"
+                      >
+                        {adminLoading ? '...' : 'Actualiser'}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleOpenCreateUserInFolder(activeFolder.id)}
+                        className="btn-primary px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow cursor-pointer whitespace-nowrap"
+                      >
+                        <UserPlus size={15} />
+                        <span>Créer dans ce dossier</span>
+                      </button>
+                    </div>
+
+                  </div>
+
+                  {/* Résumé contextuel du dossier sélectionné */}
+                  <div className="pt-2 border-t border-border flex flex-col sm:flex-row sm:items-center justify-between text-xs text-text-secondary gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-text-primary">
+                        📂 {activeFolder.name} :
+                      </span>
+                      <span>{activeFolder.description}</span>
+                    </div>
+                    <span className="font-mono text-[11px] bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md self-start sm:self-auto shrink-0">
+                      {activeFolderUsers.length} affiché(s) / {activeFolder.count} total
+                    </span>
+                  </div>
+                </div>
+
+                {/* AFFICHAGE EN MODE FOCALISÉ (Dossier Actif) */}
+                {folderViewMode === 'focused' && (
+                  <div className="space-y-4">
+                    {renderUserTableRows(activeFolderUsers, activeFolder)}
+                  </div>
+                )}
+
+                {/* AFFICHAGE EN MODE CLASSEUR GROUPÉ (Tous les dossiers en accordéon) */}
+                {folderViewMode === 'accordion' && (
+                  <div className="space-y-4">
+                    {ROLE_FOLDERS.filter(f => f.id !== 'all').map((folderItem) => {
+                      const isExpanded = !!expandedFolders[folderItem.id];
+                      const folderUsers = filterUsersForFolder(folderItem.roles);
+                      const FolderIconComponent = isExpanded ? folderItem.activeIcon : folderItem.icon;
+
+                      return (
+                        <div
+                          key={folderItem.id}
+                          className={`rounded-2xl border transition-all ${
+                            isExpanded
+                              ? `bg-surface shadow-xs ${folderItem.color.border}`
+                              : 'bg-surface/50 border-border'
+                          }`}
+                        >
+                          {/* Barre d'en-tête du dossier classeur */}
+                          <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <button
+                              type="button"
+                              onClick={() => toggleFolderExpansion(folderItem.id)}
+                              className="flex items-center gap-3 text-left flex-1 cursor-pointer"
+                            >
+                              <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${folderItem.color.bg} ${folderItem.color.text} shrink-0`}>
+                                <FolderIconComponent size={18} />
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <h4 className="text-sm font-bold text-text-primary">
+                                    {folderItem.name}
+                                  </h4>
+                                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black border ${folderItem.color.badge}`}>
+                                    {folderUsers.length} / {folderItem.count} membre(s)
+                                  </span>
+                                </div>
+                                <p className="text-[11px] text-text-secondary mt-0.5">
+                                  {folderItem.description}
+                                </p>
+                              </div>
+                            </button>
+
+                            <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenCreateUserInFolder(folderItem.id)}
+                                className="px-3 py-1.5 rounded-lg bg-background hover:bg-surface-hover border border-border text-xs font-semibold text-text-primary flex items-center gap-1.5 transition-colors cursor-pointer"
+                              >
+                                <UserPlus size={13} className="text-primary" />
+                                <span>Ajouter</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => toggleFolderExpansion(folderItem.id)}
+                                className="p-2 rounded-lg bg-background hover:bg-surface-hover border border-border text-text-secondary transition-colors cursor-pointer"
+                                title={isExpanded ? 'Réduire le dossier' : 'Déplier le dossier'}
+                              >
+                                {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Contenu du dossier déplié */}
+                          {isExpanded && (
+                            <div className="p-4 pt-0 border-t border-border/60">
+                              {renderUserTableRows(folderUsers, folderItem)}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* TAB 2 : GESTION DES COURS */}
           {adminTab === 'courses' && (
@@ -1547,9 +2023,14 @@ export default function ProfilePage() {
 
                   {/* SÉLECTEUR DE RÔLE (Pilote de formulaire) */}
                   <div className="p-3.5 rounded-xl bg-surface border border-border space-y-2">
-                    <label className="block text-[11px] font-bold uppercase text-text-secondary">
-                      Rôle assigné au compte *
-                    </label>
+                    <div className="flex items-center justify-between">
+                      <label className="block text-[11px] font-bold uppercase text-text-secondary">
+                        Rôle assigné au compte *
+                      </label>
+                      <span className="text-[11px] font-bold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-lg border border-blue-200">
+                        📁 {ROLE_FOLDERS.find(f => f.roles.includes(newAccountRole))?.name || 'Dossier Général'}
+                      </span>
+                    </div>
                     <select
                       value={newAccountRole}
                       onChange={(e) => setNewAccountRole(e.target.value)}
