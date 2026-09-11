@@ -29,19 +29,34 @@ def send_welcome_message(session: Session, new_user: User) -> Message | None:
 
         sender_id = admin_sender.id if admin_sender else new_user.id
 
+        role_labels = {
+            "admin": "Administrateur Système",
+            "admin_manager": "Gestionnaire Administratif",
+            "formateur": "Formateur / Enseignant",
+            "pedagogique": "Responsable Pédagogique",
+            "dg_rh": "DG / RH (Direction Générale / Ressources Humaines)",
+            "étudiant": "Étudiant",
+            "stagiaire": "Stagiaire",
+            "employer": "Partenaire Employeur",
+        }
+        role_display = role_labels.get(
+            (new_user.role or "étudiant").lower().strip(),
+            (new_user.role or "Étudiant").capitalize(),
+        )
+
         welcome_subject = "Bienvenue sur la plateforme E-Schola Pro !"
         welcome_body = (
             f"Bonjour {user_name},\n\n"
-            f"Nous sommes ravis de vous accueillir sur la plateforme d'enseignement E-Schola Pro !\n"
-            f"Votre compte ({new_user.email}) a été créé avec succès avec le rôle '{new_user.role}'.\n\n"
-            f"Vous avez désormais accès à l'ensemble de vos fonctionnalités :\n"
-            f"- Consultation de vos cours, devoirs et ressources pédagogiques\n"
-            f"- Accès au calendrier et au suivi des présences\n"
-            f"- Participation aux salles vidéo conférence en direct\n"
-            f"- Messagerie sécurisée et échanges personnels en direct avec vos formateurs et collègues.\n\n"
-            f"Pour toute assistance, vous pouvez contacter l'équipe d'administration ou poser vos questions via cette messagerie.\n\n"
+            f"Toute l'équipe d'Administration vous souhaite la bienvenue sur E-Schola Pro !\n\n"
+            f"Votre compte ({new_user.email}) est désormais actif avec le rôle '{role_display}'.\n\n"
+            f"Vous pouvez dès à présent accéder à tous vos services :\n"
+            f"• Vos cours et ressources d'apprentissage\n"
+            f"• Vos salles vidéo conférence et le suivi de vos présences\n"
+            f"• Vos devoirs, quiz et évaluations\n"
+            f"• La messagerie interne pour échanger en direct avec vos formateurs et collègues.\n\n"
+            f"Pour toute question, vous pouvez répondre directement à ce message.\n\n"
             f"Bien cordialement,\n"
-            f"L'équipe d'Administration E-Schola Pro"
+            f"L'Administration E-Schola Pro"
         )
 
         welcome_msg = Message(
@@ -73,6 +88,7 @@ def send_welcome_message(session: Session, new_user: User) -> Message | None:
                 to_email=new_user.email,
                 user_name=user_name,
                 role=new_user.role or "étudiant",
+                group_name=getattr(new_user, "group_name", None),
             )
     except Exception as mail_err:
         print(f"[WARN] Failed to dispatch welcome email: {mail_err}")

@@ -206,14 +206,16 @@ def send_welcome_email(
     user_name: str,
     role: str,
     login_url: Optional[str] = None,
+    group_name: Optional[str] = None,
 ) -> bool:
     """
-    Sends a comprehensive welcome email to a new user.
+    Sends a comprehensive welcome email with a short message from the Administration to a new user.
     """
     if not login_url:
-        login_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
-        if not login_url.endswith("/"):
-            login_url += "/login"
+        base_frontend = os.getenv(
+            "FRONTEND_URL", "https://e-schola-pro-production.up.railway.app"
+        ).rstrip("/")
+        login_url = f"{base_frontend}/login"
 
     role_labels = {
         "admin": "Administrateur Système",
@@ -225,37 +227,59 @@ def send_welcome_email(
         "stagiaire": "Stagiaire",
         "employer": "Partenaire Employeur",
     }
-    role_display = role_labels.get(role, role.capitalize())
+    role_display = role_labels.get(role.lower().strip() if role else "étudiant", (role or "Étudiant").capitalize())
 
-    subject = "Bienvenue sur E-Schola Pro - Votre compte est prêt"
+    subject = "🎓 Bienvenue sur E-Schola Pro - Votre compte est actif"
     preheader = f"Bienvenue {user_name} sur E-Schola Pro ! Découvrez vos accès à la plateforme."
+
+    group_badge_html = ""
+    if group_name and group_name.strip():
+        group_badge_html = f"""
+        <span style="display: block; font-size: 13px; color: #475569; margin-top: 4px;">
+            Promotion / Groupe : <strong style="color: #059669;">{group_name.strip()}</strong>
+        </span>
+        """
 
     body_content = f"""
     <p style="margin: 0 0 16px 0;">
         Bonjour <strong>{user_name}</strong>,
     </p>
-    <p style="margin: 0 0 16px 0;">
-        Nous sommes ravis de vous accueillir sur la plateforme d'apprentissage <strong>E-Schola Pro</strong>. Votre profil a été configuré avec succès avec le rôle suivant :
-    </p>
 
-    <div style="background-color: #f1f5f9; border-left: 4px solid #6366f1; padding: 14px 18px; border-radius: 0 8px 8px 0; margin: 20px 0;">
-        <span style="display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; font-weight: 700; margin-bottom: 4px;">Rôle attribué</span>
-        <span style="font-size: 16px; font-weight: 700; color: #312e81;">{role_display}</span>
-        <span style="display: block; font-size: 13px; color: #475569; margin-top: 4px;">Identifiant / Email : <strong>{to_email}</strong></span>
+    <!-- Message Court de l'Administration -->
+    <div style="background-color: #f0fdf4; border-left: 4px solid #16a34a; padding: 16px 20px; border-radius: 0 10px 10px 0; margin: 18px 0; color: #166534;">
+        <p style="margin: 0 0 6px 0; font-weight: 700; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">
+            ✉️ Message de l'Administration
+        </p>
+        <p style="margin: 0; font-size: 14px; line-height: 1.5;">
+            Nous sommes très heureux de vous accueillir au sein de la communauté <strong>E-Schola Pro</strong>. 
+            Votre compte est désormais configuré et prêt à l'emploi. Nous vous souhaitons une excellente expérience d'apprentissage et de collaboration.
+        </p>
+    </div>
+
+    <!-- Récapitulatif du profil et des accès -->
+    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 20px; margin: 20px 0;">
+        <span style="display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; font-weight: 700; margin-bottom: 6px;">Profil & Accès</span>
+        <div style="font-size: 16px; font-weight: 700; color: #312e81; margin-bottom: 6px;">
+            {role_display}
+        </div>
+        <span style="display: block; font-size: 13px; color: #475569; margin-top: 2px;">
+            Identifiant / Email : <strong>{to_email}</strong>
+        </span>
+        {group_badge_html}
     </div>
 
     <p style="margin: 0 0 12px 0; font-weight: 600; color: #1e293b;">
         Vos fonctionnalités disponibles :
     </p>
     <ul style="margin: 0 0 20px 0; padding-left: 20px; color: #475569;">
-        <li style="margin-bottom: 6px;">Accès à vos cours et modules de formation interactive</li>
-        <li style="margin-bottom: 6px;">Participation aux <strong>salles vidéo conférence</strong> en direct et suivi de présence</li>
-        <li style="margin-bottom: 6px;">Dépôt de devoirs, passage de quiz et consultation de vos relevés de notes</li>
-        <li style="margin-bottom: 6px;">Messagerie interne sécurisée avec vos formateurs et collègues</li>
+        <li style="margin-bottom: 6px;">Accès immédiat à vos cours interactifs et supports de formation</li>
+        <li style="margin-bottom: 6px;">Participation aux <strong>salles vidéo conférence</strong> en direct et suivi de vos présences</li>
+        <li style="margin-bottom: 6px;">Dépôt de devoirs, évaluation par quiz et consultation des notes</li>
+        <li style="margin-bottom: 6px;">Messagerie interne sécurisée pour échanger avec vos formateurs et collègues</li>
     </ul>
 
     <p style="margin: 0 0 16px 0;">
-        Cliquez sur le bouton ci-dessous pour vous connecter et commencer votre session :
+        Cliquez sur le bouton ci-dessous pour accéder à votre espace et démarrer votre session :
     </p>
     """
 
@@ -264,7 +288,7 @@ def send_welcome_email(
         preheader=preheader,
         body_content=body_content,
         action_url=login_url,
-        action_text="Accéder à la plateforme",
+        action_text="Accéder à mon espace E-Schola Pro",
     )
 
     return send_email(to_email=to_email, subject=subject, html_content=html)
