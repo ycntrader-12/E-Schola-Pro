@@ -961,179 +961,323 @@ export default function GroupPage() {
         </div>
       )}
 
-      {/* 4. MODAL AJOUTER / MODIFIER UN GROUPE (AVEC SÉLECTEUR DE MEMBRES DÈS LA CRÉATION) */}
+      {/* 4. MODAL AJOUTER / MODIFIER UN GROUPE (EN RECTANGLE PANORAMIQUE BIEN LISIBLE) */}
       {showFormModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white max-w-lg w-full p-6 sm:p-7 rounded-3xl border border-slate-200 shadow-2xl space-y-5 animate-zoom-in text-slate-900 max-h-[92vh] flex flex-col">
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 lg:p-8 overflow-y-auto">
+          <div className={`bg-white w-full ${
+            editingGroupId ? 'max-w-xl' : 'max-w-4xl lg:max-w-5xl xl:max-w-6xl'
+          } rounded-3xl border border-slate-200 shadow-2xl animate-zoom-in text-slate-900 max-h-[92vh] flex flex-col overflow-hidden`}>
             
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
-              <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-blue-50 border border-blue-200/60 text-[#1877f2] flex items-center justify-center font-bold shrink-0">
-                  <Users size={18} />
+            {/* En-tête panoramique du modal */}
+            <div className="px-6 sm:px-8 py-4 bg-slate-50/70 border-b border-slate-200/80 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3.5">
+                <div className="w-11 h-11 rounded-2xl bg-blue-50 border border-blue-200/80 text-[#1877f2] flex items-center justify-center font-bold shrink-0 shadow-2xs">
+                  <Users size={20} />
                 </div>
-                <span>{editingGroupId ? "Modifier le groupe" : "Créer un nouveau groupe"}</span>
-              </h3>
-              <button 
-                onClick={() => { setShowFormModal(false); setFormError(''); }}
-                className="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
-                aria-label="Fermer"
-              >
-                <X size={20} />
-              </button>
+                <div>
+                  <h3 className="text-lg sm:text-xl font-black text-slate-900 flex items-center gap-2">
+                    <span>{editingGroupId ? "Modifier la classe / groupe" : "Créer un nouveau groupe / classe"}</span>
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium mt-0.5">
+                    {editingGroupId 
+                      ? "Mettez à jour les paramètres, le niveau et les objectifs pédagogiques." 
+                      : "Configurez l'intitulé de la promotion et affectez directement ses premiers apprenants."}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {!editingGroupId && (
+                  <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-[#1877f2] border border-blue-200/80 text-[11px] font-extrabold uppercase tracking-wide">
+                    <Maximize2 size={12} /> Format Panoramique
+                  </span>
+                )}
+                <button 
+                  onClick={() => { setShowFormModal(false); setFormError(''); }}
+                  className="text-slate-400 hover:text-slate-700 p-2 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
+                  aria-label="Fermer"
+                >
+                  <X size={20} />
+                </button>
+              </div>
             </div>
 
-            {formError && (
-              <div className="bg-red-50 border border-red-200 text-red-700 p-3.5 rounded-xl font-semibold text-xs flex items-center gap-2 shrink-0">
-                <AlertCircle size={16} className="shrink-0 text-red-600" />
-                <span>{formError}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-4 flex-1 overflow-y-auto pr-1">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  NOM DU GROUPE / CLASSE <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  placeholder="Ex : classe 1, Master 1 - IA, Promotion 2026..."
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 hover:bg-white focus:bg-white border border-slate-300 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-xs text-slate-900 font-medium placeholder:text-slate-400 transition-all outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  NIVEAU ACADÉMIQUE (OPTIONNEL)
-                </label>
-                <input
-                  type="text"
-                  value={newLevel}
-                  onChange={(e) => setNewLevel(e.target.value)}
-                  placeholder="Ex : Débutant, M1, L3, Année 2..."
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 hover:bg-white focus:bg-white border border-slate-300 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-xs text-slate-900 font-medium placeholder:text-slate-400 transition-all outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  DESCRIPTION DÉTAILLÉE (OPTIONNEL)
-                </label>
-                <textarea
-                  rows={2}
-                  value={newDescription}
-                  onChange={(e) => setNewDescription(e.target.value)}
-                  placeholder="Objectifs de la classe, cours ou précisions..."
-                  className="w-full px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-white focus:bg-white border border-slate-300 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-xs text-slate-900 font-medium placeholder:text-slate-400 transition-all outline-none resize-none"
-                />
-              </div>
-
-              {/* SECTION D'AFFECTATION DE MEMBRES DÈS LA CRÉATION */}
-              {!editingGroupId && (
-                <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                      <UserPlus size={14} className="text-[#1877f2]" />
-                      <span>Affecter des membres dès la création</span>
-                    </label>
-                    <span className="text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
-                      {selectedCreationMemberIds.length} sélectionné{selectedCreationMemberIds.length > 1 ? 's' : ''}
-                    </span>
+            {/* Formulaire avec scroll interne et disposition panoramique */}
+            <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0 overflow-hidden">
+              <div className="p-6 sm:p-8 flex-1 overflow-y-auto space-y-6">
+                
+                {formError && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 p-3.5 rounded-2xl font-semibold text-xs flex items-center gap-2 shrink-0">
+                    <AlertCircle size={16} className="shrink-0 text-red-600" />
+                    <span>{formError}</span>
                   </div>
+                )}
 
-                  {isLoadingCreationUsers ? (
-                    <div className="py-4 text-center">
-                      <Loader2 size={20} className="animate-spin text-[#1877f2] mx-auto" />
-                    </div>
-                  ) : availableUsersForCreation.length === 0 ? (
-                    <p className="text-xs text-slate-500 italic py-1">
-                      Aucun apprenant disponible actuellement. Vous pourrez en affecter plus tard.
-                    </p>
-                  ) : (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="relative flex-1">
-                          <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                {!editingGroupId ? (
+                  /* ─── DISPOSITION PANORAMIQUE 2 COLONNES (CRÉATION) ─── */
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-7 items-stretch">
+                    
+                    {/* Colonne Gauche : Paramètres & Métadonnées du groupe */}
+                    <div className="lg:col-span-5 flex flex-col justify-between space-y-4">
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2 text-slate-800 pb-1 border-b border-slate-100">
+                          <Layers size={15} className="text-[#1877f2]" />
+                          <h4 className="text-xs font-black uppercase tracking-wider text-slate-700">Paramètres de la classe</h4>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                            NOM DU GROUPE / CLASSE <span className="text-rose-500">*</span>
+                          </label>
                           <input
                             type="text"
-                            value={creationUserSearch}
-                            onChange={(e) => setCreationUserSearch(e.target.value)}
-                            placeholder="Rechercher par nom ou email..."
-                            className="w-full pl-7 pr-3 py-1 text-xs bg-white border border-slate-200 rounded-lg outline-none focus:border-[#1877f2]"
+                            required
+                            value={newName}
+                            onChange={(e) => setNewName(e.target.value)}
+                            placeholder="Ex : classe 1, Master 1 - IA, Promotion 2026..."
+                            className="w-full px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-xs sm:text-sm text-slate-900 font-semibold placeholder:text-slate-400 transition-all outline-none"
                           />
                         </div>
-                        <button
-                          type="button"
-                          onClick={handleToggleSelectAllCreation}
-                          className="text-[11px] font-bold text-slate-600 hover:text-slate-900 px-2 py-1 bg-white border border-slate-200 rounded-lg cursor-pointer shrink-0"
-                        >
-                          {filteredCreationUsers.every(u => selectedCreationMemberIds.includes(u.id)) ? "Désélectionner tout" : "Tout sélectionner"}
-                        </button>
+
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                            NIVEAU ACADÉMIQUE (OPTIONNEL)
+                          </label>
+                          <input
+                            type="text"
+                            value={newLevel}
+                            onChange={(e) => setNewLevel(e.target.value)}
+                            placeholder="Ex : Débutant, M1, L3, Année 2..."
+                            className="w-full px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-xs sm:text-sm text-slate-900 font-semibold placeholder:text-slate-400 transition-all outline-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                            DESCRIPTION DÉTAILLÉE (OPTIONNEL)
+                          </label>
+                          <textarea
+                            rows={3}
+                            value={newDescription}
+                            onChange={(e) => setNewDescription(e.target.value)}
+                            placeholder="Objectifs pédagogiques de la classe, filière, précisions ou consignes..."
+                            className="w-full px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-xs text-slate-900 font-medium placeholder:text-slate-400 transition-all outline-none resize-none leading-relaxed"
+                          />
+                        </div>
                       </div>
 
-                      <div className="max-h-36 overflow-y-auto space-y-1 pr-1 border border-slate-200/80 rounded-xl p-1.5 bg-white">
-                        {filteredCreationUsers.length === 0 ? (
-                          <p className="text-xs text-slate-400 text-center py-2">Aucun utilisateur trouvé.</p>
-                        ) : (
-                          filteredCreationUsers.map(u => {
-                            const isChecked = selectedCreationMemberIds.includes(u.id);
-                            const displayName = getUserDisplayName(u);
-                            return (
-                              <div
-                                key={u.id}
-                                onClick={() => handleToggleCreationMember(u.id)}
-                                className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors text-xs ${
-                                  isChecked ? 'bg-blue-50/90 border border-blue-200' : 'hover:bg-slate-50 border border-transparent'
-                                }`}
-                              >
-                                <div className="flex items-center gap-2 min-w-0">
-                                  {isChecked ? (
-                                    <CheckSquare size={15} className="text-[#1877f2] shrink-0" />
-                                  ) : (
-                                    <Square size={15} className="text-slate-400 shrink-0" />
-                                  )}
-                                  <div className="min-w-0">
-                                    <p className="font-bold text-slate-900 truncate">{displayName}</p>
-                                    <p className="text-[10px] text-slate-500 truncate">{u.email}</p>
-                                  </div>
-                                </div>
-                                <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-slate-100 text-slate-700 shrink-0">
-                                  {u.role}
-                                </span>
-                              </div>
-                            );
-                          })
-                        )}
+                      {/* Carte informative sur l'affectation immédiate */}
+                      <div className="p-4 rounded-2xl bg-gradient-to-br from-blue-50/80 via-blue-50/40 to-slate-50 border border-blue-200/70 text-xs space-y-1.5 shadow-2xs">
+                        <div className="flex items-center gap-2 font-bold text-slate-900">
+                          <Sparkles size={15} className="text-[#1877f2]" />
+                          <span>Affectation Immédiate Atomique</span>
+                        </div>
+                        <p className="text-[11px] leading-relaxed text-slate-600">
+                          Les apprenants sélectionnés dans le panneau de droite seront automatiquement enregistrés et synchronisés dans cette promotion dès la création.
+                        </p>
                       </div>
                     </div>
+
+                    {/* Colonne Droite : Panneau d'affectation des apprenants */}
+                    <div className="lg:col-span-7 bg-slate-50/80 p-5 rounded-2xl border border-slate-200 flex flex-col justify-between min-h-[380px] shadow-2xs">
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between gap-3 pb-2 border-b border-slate-200">
+                          <div className="flex items-center gap-2">
+                            <UserPlus size={16} className="text-[#1877f2]" />
+                            <h4 className="text-xs font-black uppercase tracking-wider text-slate-800">
+                              Affecter des membres dès la création
+                            </h4>
+                          </div>
+                          <span className="text-xs font-black text-[#1877f2] bg-blue-50 border border-blue-200/80 px-3 py-1 rounded-full shadow-2xs">
+                            {selectedCreationMemberIds.length} sélectionné{selectedCreationMemberIds.length > 1 ? 's' : ''}
+                          </span>
+                        </div>
+
+                        {isLoadingCreationUsers ? (
+                          <div className="py-16 text-center">
+                            <Loader2 size={24} className="animate-spin text-[#1877f2] mx-auto" />
+                            <p className="text-xs text-slate-500 mt-2 font-medium">Chargement des apprenants éligibles...</p>
+                          </div>
+                        ) : availableUsersForCreation.length === 0 ? (
+                          <div className="py-12 text-center bg-white rounded-xl border border-dashed border-slate-200 p-4">
+                            <Users size={28} className="text-slate-300 mx-auto mb-2" />
+                            <p className="text-xs font-bold text-slate-700">Aucun apprenant disponible</p>
+                            <p className="text-[11px] text-slate-500 mt-0.5">
+                              Tous les apprenants actuels sont déjà affectés ou aucun compte n'est disponible.
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="space-y-2.5">
+                            {/* Barre de recherche et bouton de sélection globale */}
+                            <div className="flex items-center justify-between gap-2.5">
+                              <div className="relative flex-1">
+                                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <input
+                                  type="text"
+                                  value={creationUserSearch}
+                                  onChange={(e) => setCreationUserSearch(e.target.value)}
+                                  placeholder="Rechercher par nom, prénom, email ou rôle..."
+                                  className="w-full pl-9 pr-8 py-2 text-xs bg-white border border-slate-200 rounded-xl outline-none focus:border-[#1877f2] focus:ring-1 focus:ring-[#1877f2] transition-all text-slate-900 placeholder:text-slate-400 font-medium"
+                                />
+                                {creationUserSearch && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setCreationUserSearch('')}
+                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 text-xs font-bold"
+                                  >
+                                    ✕
+                                  </button>
+                                )}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={handleToggleSelectAllCreation}
+                                className="text-xs font-bold text-slate-700 hover:text-[#1877f2] hover:border-blue-300 px-3 py-2 bg-white border border-slate-200 rounded-xl cursor-pointer transition-all shadow-2xs shrink-0"
+                              >
+                                {filteredCreationUsers.every(u => selectedCreationMemberIds.includes(u.id)) ? "Désélectionner tout" : "Tout sélectionner"}
+                              </button>
+                            </div>
+
+                            {/* Liste défilante aérée des apprenants */}
+                            <div className="h-[270px] sm:h-[300px] overflow-y-auto space-y-1.5 pr-1.5 border border-slate-200/90 rounded-xl p-2 bg-white shadow-inner">
+                              {filteredCreationUsers.length === 0 ? (
+                                <div className="py-8 text-center text-xs text-slate-400">
+                                  Aucun utilisateur ne correspond à votre recherche.
+                                </div>
+                              ) : (
+                                filteredCreationUsers.map(u => {
+                                  const isChecked = selectedCreationMemberIds.includes(u.id);
+                                  const displayName = getUserDisplayName(u);
+                                  return (
+                                    <div
+                                      key={u.id}
+                                      onClick={() => handleToggleCreationMember(u.id)}
+                                      className={`flex items-center justify-between p-2.5 rounded-xl cursor-pointer transition-all text-xs border ${
+                                        isChecked 
+                                          ? 'bg-blue-50/80 border-blue-300 shadow-2xs' 
+                                          : 'hover:bg-slate-50 border-slate-100'
+                                      }`}
+                                    >
+                                      <div className="flex items-center gap-3 min-w-0">
+                                        <div className="shrink-0">
+                                          {isChecked ? (
+                                            <CheckSquare size={17} className="text-[#1877f2]" />
+                                          ) : (
+                                            <Square size={17} className="text-slate-400" />
+                                          )}
+                                        </div>
+                                        <div className="w-8 h-8 rounded-full bg-blue-50 border border-blue-200 text-[#1877f2] flex items-center justify-center font-bold text-xs shrink-0">
+                                          {u.email.charAt(0).toUpperCase()}
+                                        </div>
+                                        <div className="min-w-0">
+                                          <p className="font-bold text-slate-900 truncate">{displayName}</p>
+                                          <p className="text-[11px] text-slate-500 truncate">{u.email}</p>
+                                        </div>
+                                      </div>
+                                      <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200 shrink-0">
+                                        {u.role}
+                                      </span>
+                                    </div>
+                                  );
+                                })
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Indicateur de bas de liste */}
+                      <div className="pt-2 flex items-center justify-between text-[11px] text-slate-500 font-medium">
+                        <span>{filteredCreationUsers.length} apprenant(s) affiché(s)</span>
+                        <span>{selectedCreationMemberIds.length} affectation(s) sélectionnée(s)</span>
+                      </div>
+                    </div>
+
+                  </div>
+                ) : (
+                  /* ─── DISPOSITION EN MODE MODIFICATION ─── */
+                  <div className="max-w-xl mx-auto space-y-4 py-2">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                        NOM DU GROUPE / CLASSE <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={newName}
+                        onChange={(e) => setNewName(e.target.value)}
+                        placeholder="Ex : classe 1, Master 1 - IA..."
+                        className="w-full px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-xs sm:text-sm text-slate-900 font-semibold placeholder:text-slate-400 transition-all outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                        NIVEAU ACADÉMIQUE (OPTIONNEL)
+                      </label>
+                      <input
+                        type="text"
+                        value={newLevel}
+                        onChange={(e) => setNewLevel(e.target.value)}
+                        placeholder="Ex : Débutant, M1, L3, Année 2..."
+                        className="w-full px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-xs sm:text-sm text-slate-900 font-semibold placeholder:text-slate-400 transition-all outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                        DESCRIPTION DÉTAILLÉE (OPTIONNEL)
+                      </label>
+                      <textarea
+                        rows={4}
+                        value={newDescription}
+                        onChange={(e) => setNewDescription(e.target.value)}
+                        placeholder="Objectifs de la classe, cours ou précisions..."
+                        className="w-full px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-xs text-slate-900 font-medium placeholder:text-slate-400 transition-all outline-none resize-none leading-relaxed"
+                      />
+                    </div>
+
+                    <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 flex items-center gap-2">
+                      <Users size={16} className="text-[#1877f2] shrink-0" />
+                      <span>Pour ajouter ou retirer des membres de cette classe, utilisez l'outil de gestion des membres depuis la vue panoramique.</span>
+                    </div>
+                  </div>
+                )}
+
+              </div>
+
+              {/* Barre d'action inférieure panoramique (Sticky Footer) */}
+              <div className="px-6 sm:px-8 py-4 bg-slate-50/80 border-t border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
+                <div className="text-xs text-slate-500 font-semibold">
+                  {!editingGroupId ? (
+                    <span>{selectedCreationMemberIds.length} membre(s) sélectionné(s) pour cette nouvelle promotion</span>
+                  ) : (
+                    <span>Mise à jour immédiate en base de données</span>
                   )}
                 </div>
-              )}
 
-              <div className="flex items-center gap-3 pt-3 border-t border-slate-100 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => { setShowFormModal(false); setFormError(''); }}
-                  className="w-1/2 py-2.5 bg-slate-100 hover:bg-slate-200 rounded-xl font-bold text-slate-700 text-xs transition-colors cursor-pointer border border-slate-300"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-1/2 btn-primary py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-blue-500/20 disabled:opacity-50"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 size={15} className="animate-spin" />
-                      <span>Enregistrement...</span>
-                    </>
-                  ) : (
-                    <span>Enregistrer</span>
-                  )}
-                </button>
+                <div className="flex items-center gap-3 self-end sm:self-auto">
+                  <button
+                    type="button"
+                    onClick={() => { setShowFormModal(false); setFormError(''); }}
+                    className="px-5 py-2.5 bg-white hover:bg-slate-100 rounded-xl font-bold text-slate-700 text-xs transition-colors cursor-pointer border border-slate-200 shadow-2xs"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="btn-primary px-6 py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-blue-500/20 disabled:opacity-50"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 size={15} className="animate-spin" />
+                        <span>Enregistrement...</span>
+                      </>
+                    ) : (
+                      <span>{editingGroupId ? "Enregistrer les modifications" : "Créer la promotion"}</span>
+                    )}
+                  </button>
+                </div>
               </div>
             </form>
           </div>

@@ -1642,7 +1642,14 @@ E-Schola Pro/
             <li><em>Tableau Panoramique Haute Fidélité :</em> Affichage complet des membres avec avatar WebP ou initiales dynamiques, nom complet, identifiant (@username), email cliquable, badge de rôle coloré, département et date d'affectation avec retrait immédiat en un clic.</li>
           </ul>
         </li>
-        <li><strong>Affectation Immédiate des Membres dès la Création :</strong> Modale de création enrichie d'un sélecteur intégré d'apprenants éligibles avec recherche, cases à cocher multiples, compteur de sélection dynamique et bouton de sélection globale. Le backend persiste le groupe et les adhésions en une seule transaction atomique via <code>member_ids: list[int]</code>.</li>
+        <li><strong>Boîte Modale de Création en Rectangle Panoramique (Format Paysage 16:9) :</strong> Refonte complète du modal « Créer un nouveau groupe / classe » sous forme d'un rectangle panoramique spacieux (<code>max-w-5xl</code> / <code>max-w-6xl</code>) éliminant tout défilement vertical forcé et améliorant drastiquement la lisibilité :
+          <ul>
+            <li><em>Colonne Gauche (Paramètres Pédagogiques) :</em> Saisie du nom du groupe, niveau académique optionnel, description détaillée et encart d'affectation immédiate.</li>
+            <li><em>Colonne Droite (Affectation des Apprenants) :</em> Sélecteur intégré des apprenants éligibles avec recherche textuelle en temps réel, cases à cocher multiples, avatar WebP/initiales, rôles, bouton « Tout sélectionner » et compteur de sélection instantané. Le backend persiste le groupe et les adhésions en une seule transaction atomique via <code>member_ids: list[int]</code>.</li>
+            <li><em>Barre d'Action Inférieure Panoramique (Sticky Footer) :</em> Récapitulatif dynamique des membres prêts à être affectés avec boutons ergonomiques « Annuler » et « Créer la promotion ».</li>
+          </ul>
+        </li>
+        <li><strong>Modale de Gestion des Membres Panoramique :</strong> Extension de la boîte de dialogue de gestion des membres (<code>GroupMembersModal</code>) en format panoramique 2 colonnes (ajout unitaire ou par lot à gauche, liste défilante aérée des membres actuels à droite avec suppression en un clic).</li>
         <li><strong>Ajout de Nouveaux Membres au Groupe (Unitaire &amp; Par Lot) :</strong>
           <ul>
             <li><em>Ajout unitaire standard :</em> Sélection dans la liste déroulante filtrée excluant automatiquement les membres déjà présents.</li>
