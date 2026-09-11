@@ -48,6 +48,10 @@ RUN sed -i 's/\r$//' start.sh
 RUN chmod +x start.sh
 
 # Variables d'environnement par defaut (overridable via Railway)
+ENV ENVIRONMENT=production
+ENV REQUIRE_POSTGRES_IN_RAILWAY=true
+ENV SEED_DEMO_DATA=false
+ENV AUTO_SYNC_SCHEMA=false
 ENV SECRET_KEY=supersecretkey_please_change_in_production
 ENV ACCESS_TOKEN_EXPIRE_MINUTES=10080
 

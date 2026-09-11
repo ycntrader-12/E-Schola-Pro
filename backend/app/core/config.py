@@ -89,9 +89,9 @@ def is_postgres_url_resolvable(url: str) -> bool:
         if "@" in url:
             host_port_part = url.split("@")[-1].split("/")[0].split("?")[0]
             host = host_port_part.split(":")[0]
-            # Fast 1.0s timeout to prevent freezing the server/requests on DNS failures
+            # 3.0s timeout to allow DNS resolution in cloud container networking
             orig_timeout = socket.getdefaulttimeout()
-            socket.setdefaulttimeout(1.0)
+            socket.setdefaulttimeout(3.0)
             try:
                 socket.gethostbyname(host)
                 return True
@@ -128,35 +128,44 @@ def get_default_database_url() -> str:
         auth = f"{pguser}:{pgpassword}@" if pgpassword else f"{pguser}@"
         return f"postgresql+psycopg2://{auth}{pghost}:{pgport}/{pgdatabase}"
 
-    # 3. Railway Persistent Volume auto-detection for file-backed storage
+    # 3. Railway / Cloud Persistent Volume auto-detection for file-backed storage
     railway_vol = os.getenv("RAILWAY_VOLUME_MOUNT_PATH")
     if railway_vol:
         vol_path = Path(railway_vol)
         vol_path.mkdir(parents=True, exist_ok=True)
         return f"sqlite:///{(vol_path / 'eschola.db').as_posix()}"
 
-    # 4. In Railway without a volume: graceful fallback to SQLite with clear warning to ensure 100% uptime
-    if is_in_railway():
-        require_postgres = os.getenv("REQUIRE_POSTGRES_IN_RAILWAY", "false").strip().lower() in ("true", "1", "yes")
-        if require_postgres:
+    # 4. Known persistent mount directories outside ephemeral container root
+    for mount_dir in ["/data", "/app/data", "/app/backend/data"]:
+        if os.path.exists(mount_dir) and os.path.isdir(mount_dir):
+            return f"sqlite:///{(Path(mount_dir) / 'eschola.db').as_posix()}"
+
+    # 5. Fail-Fast in Production (Railway or ENVIRONMENT=production) without persistent database:
+    # Strictly prevent silent fallback to ephemeral container disk which destroys users on every deployment!
+    if is_production():
+        require_postgres = os.getenv("REQUIRE_POSTGRES_IN_RAILWAY", "true").strip().lower() in ("true", "1", "yes")
+        allow_ephemeral = os.getenv("ALLOW_EPHEMERAL_SQLITE", "false").strip().lower() in ("true", "1", "yes")
+        if require_postgres and not allow_ephemeral:
             raise RuntimeError(
-                "Environnement Railway détecté sans base de données PostgreSQL configurée (DATABASE_URL manquante). "
-                "Pour éviter toute perte de données lors des redéploiements, configurez la variable DATABASE_URL "
-                "avec la référence PostgreSQL Railway (ex: ${{Postgres.DATABASE_URL}})."
+                "\n" + "!" * 78 + "\n"
+                "[ERREUR CRITIQUE PERSISTANCE — DÉPLOIEMENT BLOQUÉ]\n"
+                "L'application est exécutée en environnement de PRODUCTION sans base de données permanente !\n"
+                "Aucune variable DATABASE_URL (PostgreSQL) n'est configurée et aucun volume persistant n'est monté.\n"
+                "L'utilisation d'une base SQLite éphémère dans le conteneur provoquerait la SUPPRESSION DE TOUS\n"
+                "LES UTILISATEURS et données au prochain déploiement.\n\n"
+                "Pour résoudre cette erreur :\n"
+                "1. Si vous utilisez PostgreSQL (Recommandé) : dans le tableau de bord Railway/Cloud, configurez la variable :\n"
+                "   DATABASE_URL = ${{Postgres.DATABASE_URL}}\n"
+                "2. Si vous utilisez un volume persistant : montez-le sur /data ou /app/backend/data.\n"
+                "3. Pour tests temporaires uniquement (non persistant, déconseillé) : définissez ALLOW_EPHEMERAL_SQLITE=true.\n"
+                + "!" * 78 + "\n"
             )
         print(
             "\n" + "=" * 76 + "\n"
-            "[AVERTISSEMENT RAILWAY] Aucune base PostgreSQL détectée (DATABASE_URL absente).\n"
-            "Démarrage résilient en mode SQLite pour garantir la continuité du service en ligne (Zéro Crash).\n"
-            "Pour activer la persistance définitive PostgreSQL, ajoutez une base PostgreSQL sur Railway\n"
-            "et configurez la variable : DATABASE_URL = ${{Postgres.DATABASE_URL}}\n"
+            "[AVERTISSEMENT PERSISTANCE] Démarrage en mode SQLite éphémère (ALLOW_EPHEMERAL_SQLITE=true).\n"
+            "Attention : toutes les modifications d'utilisateurs seront perdues au prochain déploiement.\n"
             + "=" * 76 + "\n"
         )
-
-    # 5. Known persistent mount directories outside container root
-    for mount_dir in ["/data", "/app/data"]:
-        if os.path.exists(mount_dir) and os.path.isdir(mount_dir):
-            return f"sqlite:///{(Path(mount_dir) / 'eschola.db').as_posix()}"
 
     # 6. Canonical local SQLite path anchored to backend/eschola.db for local dev
     canonical_db = BACKEND_DIR / "eschola.db"
@@ -170,12 +179,12 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
 
     # Environment & Deployment Control
-    ENVIRONMENT: str = "production" if is_in_railway() else "development"
-    # Seed demo accounts only in local development by default; NEVER overwrite or reseed demo data in production
-    SEED_DEMO_DATA: bool = False if is_in_railway() else True
+    ENVIRONMENT: str = "production" if is_production() else "development"
+    # Strictly disable artificial demo data across all environments
+    SEED_DEMO_DATA: bool = False
     ALLOW_EPHEMERAL_SQLITE: bool = False
     # Disable automatic ORM schema synchronization in production (Railway or explicit production env)
-    AUTO_SYNC_SCHEMA: bool = False if (is_in_railway() or is_production()) else True
+    AUTO_SYNC_SCHEMA: bool = False if is_production() else True
 
     # Canonical default pointing to PostgreSQL or eschola.db
     DATABASE_URL: str = get_default_database_url()
@@ -208,11 +217,11 @@ class Settings(BaseSettings):
             return get_default_database_url()
         v = expand_railway_template_variables(str(v).strip().strip("'\""))
 
-        # Fallback to local SQLite ONLY when running locally (strictly outside Railway) and Railway internal host is unresolvable
-        if not is_in_railway() and "railway.internal" in v and not is_postgres_url_resolvable(v):
+        # Fallback to local SQLite ONLY when running locally in development (strictly outside Railway and outside production)
+        if not is_in_railway() and not is_production() and "railway.internal" in v and not is_postgres_url_resolvable(v):
             print("[Database Notice] 'postgres.railway.internal' est un réseau privé Railway inaccessible hors du cloud.")
             print("                 Pour le dev local : configurez le TCP Proxy Railway (DATABASE_PUBLIC_URL) ou utilisez la base SQLite.")
-            print("                 Basculement automatique sur la base SQLite locale pour garantir la stabilité.")
+            print("                 Basculement automatique sur la base SQLite locale pour garantir la stabilité en développement.")
             canonical_db = (BACKEND_DIR / "eschola.db").resolve()
             return f"sqlite:///{canonical_db.as_posix()}"
 
@@ -236,12 +245,20 @@ class Settings(BaseSettings):
         env = (self.ENVIRONMENT or os.getenv("ENVIRONMENT") or os.getenv("APP_ENV") or "").strip().lower()
         is_prod = is_in_railway() or env in ["production", "prod"]
 
+        if is_prod:
+            self.ENVIRONMENT = "production"
+            self.SEED_DEMO_DATA = False
+            self.AUTO_SYNC_SCHEMA = False
+
         # If running in production mode, auto-sync schema is disabled by default
         explicit_sync_env = os.getenv("AUTO_SYNC_SCHEMA") or os.getenv("DB_AUTO_SYNC")
         if explicit_sync_env is not None and explicit_sync_env.strip() != "":
             self.AUTO_SYNC_SCHEMA = explicit_sync_env.strip().lower() in ("true", "1", "yes", "on")
-        elif is_prod:
-            self.AUTO_SYNC_SCHEMA = False
+
+        explicit_seed_env = os.getenv("SEED_DEMO_DATA")
+        if explicit_seed_env is not None and explicit_seed_env.strip() != "":
+            self.SEED_DEMO_DATA = explicit_seed_env.strip().lower() in ("true", "1", "yes", "on")
+
         return self
 
     @field_validator("SMTP_PORT", mode="before")

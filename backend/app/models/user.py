@@ -29,7 +29,7 @@ class User(Base):
     specialisation = Column(String, nullable=True)
     
     avatar_url = Column(Text, nullable=True)
-    group_name = Column(String, default="Groupe A - Informatique & IA", nullable=True)
+    group_name = Column(String, default=None, nullable=True)
 
     courses_enrolled = relationship(
         "Enrollment", back_populates="user", cascade="all, delete"

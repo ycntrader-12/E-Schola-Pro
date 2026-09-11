@@ -130,7 +130,7 @@ export default function AttendancePage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [newEmail, setNewEmail] = useState('');
   const [newRole, setNewRole] = useState('étudiant');
-  const [newGroup, setNewGroup] = useState('Groupe A - Informatique & IA');
+  const [newGroup, setNewGroup] = useState('');
   const [isAddingLearner, setIsAddingLearner] = useState(false);
 
   const isManager = ['formateur', 'admin', 'admin_manager'].includes(currentUser?.role || '');
@@ -424,7 +424,7 @@ export default function AttendancePage() {
                 </span>
               </div>
               <p className="text-xs text-slate-500 font-medium mt-0.5 flex items-center gap-2">
-                <span>Groupe : <strong className="text-slate-800">{currentUser?.group_name || 'Groupe A - Informatique & IA'}</strong></span>
+                <span>Groupe : <strong className="text-slate-800">{currentUser?.group_name || 'Général'}</strong></span>
                 <span>•</span>
                 <span>ID #{currentUser?.id}</span>
               </p>
@@ -711,7 +711,7 @@ export default function AttendancePage() {
 
   // Filtered learners for roll call
   const filteredLearners = learners.filter(l => {
-    if (selectedGroup !== 'all' && (l.group_name || 'Groupe A - Informatique & IA') !== selectedGroup) return false;
+    if (selectedGroup !== 'all' && (l.group_name || 'Général') !== selectedGroup) return false;
     if (roleFilter !== 'all' && l.role !== roleFilter) return false;
     if (searchFilter && !l.email.toLowerCase().includes(searchFilter.toLowerCase())) return false;
     return true;
@@ -825,7 +825,7 @@ export default function AttendancePage() {
           </button>
 
           {groups.map((grp) => {
-            const count = learners.filter(l => (l.group_name || 'Groupe A - Informatique & IA') === grp).length;
+            const count = learners.filter(l => (l.group_name || 'Général') === grp).length;
             const isSelected = selectedGroup === grp;
             return (
               <button
@@ -1002,7 +1002,7 @@ export default function AttendancePage() {
                       {/* Group Badge */}
                       <td className="py-3 px-2">
                         <span className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-primary/10 text-primary border border-primary/20 whitespace-nowrap">
-                          {learner.group_name || 'Groupe A - Informatique & IA'}
+                          {learner.group_name || 'Général'}
                         </span>
                       </td>
 
@@ -1316,7 +1316,7 @@ export default function AttendancePage() {
                 <input
                   type="text"
                   required
-                  placeholder="Ex: Groupe A - Informatique & IA"
+                  placeholder="Ex: Promotion 2026 / Groupe 1"
                   value={newGroup}
                   onChange={(e) => setNewGroup(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-border text-xs outline-none focus:border-primary text-text-primary"

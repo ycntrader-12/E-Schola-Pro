@@ -251,7 +251,8 @@ def add_learner_to_group(payload: dict, session: SessionDep, current_user: Curre
 
     email = payload.get("email", "").strip().lower()
     role = payload.get("role", "étudiant")
-    group_name = payload.get("group_name", "Groupe A - Informatique & IA").strip()
+    raw_grp = payload.get("group_name", "")
+    group_name = raw_grp.strip() if raw_grp and str(raw_grp).strip() else None
 
     if not email:
         raise HTTPException(status_code=400, detail="L'adresse email est obligatoire.")

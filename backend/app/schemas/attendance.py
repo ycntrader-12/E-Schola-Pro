@@ -40,7 +40,7 @@ class UserSimpleOut(BaseModel):
     id: int
     email: str
     role: str
-    group_name: str | None = "Groupe A - Informatique & IA"
+    group_name: str | None = None
 
     class Config:
         from_attributes = True
