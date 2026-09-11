@@ -961,71 +961,71 @@ export default function GroupPage() {
         </div>
       )}
 
-      {/* 4. MODAL AJOUTER / MODIFIER UN GROUPE (EN RECTANGLE PANORAMIQUE BIEN LISIBLE) */}
+      {/* 4. MODAL AJOUTER / MODIFIER UN GROUPE (EN VÉRITABLE RECTANGLE PANORAMIQUE PAYSAGE) */}
       {showFormModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 lg:p-8 overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs overflow-y-auto p-3 sm:p-5 flex justify-center items-start sm:items-center">
           <div className={`bg-white w-full ${
-            editingGroupId ? 'max-w-xl' : 'max-w-4xl lg:max-w-5xl xl:max-w-6xl'
-          } rounded-3xl border border-slate-200 shadow-2xl animate-zoom-in text-slate-900 max-h-[92vh] flex flex-col overflow-hidden`}>
+            editingGroupId ? 'max-w-lg' : 'max-w-4xl lg:max-w-5xl xl:max-w-[1120px]'
+          } rounded-3xl border border-slate-200 shadow-2xl animate-zoom-in text-slate-900 my-auto flex flex-col overflow-hidden`}>
             
-            {/* En-tête panoramique du modal */}
-            <div className="px-6 sm:px-8 py-4 bg-slate-50/70 border-b border-slate-200/80 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-3.5">
-                <div className="w-11 h-11 rounded-2xl bg-blue-50 border border-blue-200/80 text-[#1877f2] flex items-center justify-center font-bold shrink-0 shadow-2xs">
-                  <Users size={20} />
+            {/* En-tête panoramique compact & élégant */}
+            <div className="px-6 sm:px-8 py-3.5 bg-slate-50/80 border-b border-slate-200/80 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-blue-50 border border-blue-200/80 text-[#1877f2] flex items-center justify-center font-bold shrink-0 shadow-2xs">
+                  <Users size={18} />
                 </div>
                 <div>
-                  <h3 className="text-lg sm:text-xl font-black text-slate-900 flex items-center gap-2">
+                  <h3 className="text-base sm:text-lg font-black text-slate-900 flex items-center gap-2">
                     <span>{editingGroupId ? "Modifier la classe / groupe" : "Créer un nouveau groupe / classe"}</span>
                   </h3>
-                  <p className="text-xs text-slate-500 font-medium mt-0.5">
+                  <p className="text-xs text-slate-500 font-medium">
                     {editingGroupId 
                       ? "Mettez à jour les paramètres, le niveau et les objectifs pédagogiques." 
-                      : "Configurez l'intitulé de la promotion et affectez directement ses premiers apprenants."}
+                      : "Paramétrez l'intitulé de la promotion et affectez directement ses premiers apprenants."}
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 {!editingGroupId && (
                   <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-[#1877f2] border border-blue-200/80 text-[11px] font-extrabold uppercase tracking-wide">
-                    <Maximize2 size={12} /> Format Panoramique
+                    <Maximize2 size={12} /> Rectangle Panoramique
                   </span>
                 )}
                 <button 
                   onClick={() => { setShowFormModal(false); setFormError(''); }}
-                  className="text-slate-400 hover:text-slate-700 p-2 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
+                  className="text-slate-400 hover:text-slate-700 p-1.5 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
                   aria-label="Fermer"
                 >
-                  <X size={20} />
+                  <X size={18} />
                 </button>
               </div>
             </div>
 
-            {/* Formulaire avec scroll interne et disposition panoramique */}
-            <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0 overflow-hidden">
-              <div className="p-6 sm:p-8 flex-1 overflow-y-auto space-y-6">
+            {/* Formulaire panoramique équilibré */}
+            <form onSubmit={handleSubmit} className="flex flex-col overflow-hidden">
+              <div className="p-5 sm:p-6 space-y-4">
                 
                 {formError && (
-                  <div className="bg-red-50 border border-red-200 text-red-700 p-3.5 rounded-2xl font-semibold text-xs flex items-center gap-2 shrink-0">
-                    <AlertCircle size={16} className="shrink-0 text-red-600" />
+                  <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-xl font-semibold text-xs flex items-center gap-2 shrink-0">
+                    <AlertCircle size={15} className="shrink-0 text-red-600" />
                     <span>{formError}</span>
                   </div>
                 )}
 
                 {!editingGroupId ? (
-                  /* ─── DISPOSITION PANORAMIQUE 2 COLONNES (CRÉATION) ─── */
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-7 items-stretch">
+                  /* ─── DISPOSITION EN VÉRITABLE RECTANGLE PANORAMIQUE 2 COLONNES (PAYSAGE) ─── */
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
                     
-                    {/* Colonne Gauche : Paramètres & Métadonnées du groupe */}
-                    <div className="lg:col-span-5 flex flex-col justify-between space-y-4">
-                      <div className="space-y-4">
+                    {/* Colonne Gauche : Paramètres de la promotion */}
+                    <div className="lg:col-span-5 flex flex-col justify-between space-y-3">
+                      <div className="space-y-2.5">
                         <div className="flex items-center gap-2 text-slate-800 pb-1 border-b border-slate-100">
-                          <Layers size={15} className="text-[#1877f2]" />
-                          <h4 className="text-xs font-black uppercase tracking-wider text-slate-700">Paramètres de la classe</h4>
+                          <Layers size={14} className="text-[#1877f2]" />
+                          <h4 className="text-[11px] font-black uppercase tracking-wider text-slate-700">Paramètres de la classe</h4>
                         </div>
 
                         <div>
-                          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                          <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
                             NOM DU GROUPE / CLASSE <span className="text-rose-500">*</span>
                           </label>
                           <input
@@ -1034,12 +1034,12 @@ export default function GroupPage() {
                             value={newName}
                             onChange={(e) => setNewName(e.target.value)}
                             placeholder="Ex : classe 1, Master 1 - IA, Promotion 2026..."
-                            className="w-full px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-xs sm:text-sm text-slate-900 font-semibold placeholder:text-slate-400 transition-all outline-none"
+                            className="w-full px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-xs text-slate-900 font-semibold placeholder:text-slate-400 transition-all outline-none"
                           />
                         </div>
 
                         <div>
-                          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                          <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
                             NIVEAU ACADÉMIQUE (OPTIONNEL)
                           </label>
                           <input
@@ -1047,76 +1047,76 @@ export default function GroupPage() {
                             value={newLevel}
                             onChange={(e) => setNewLevel(e.target.value)}
                             placeholder="Ex : Débutant, M1, L3, Année 2..."
-                            className="w-full px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-xs sm:text-sm text-slate-900 font-semibold placeholder:text-slate-400 transition-all outline-none"
+                            className="w-full px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-xs text-slate-900 font-semibold placeholder:text-slate-400 transition-all outline-none"
                           />
                         </div>
 
                         <div>
-                          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                          <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
                             DESCRIPTION DÉTAILLÉE (OPTIONNEL)
                           </label>
                           <textarea
-                            rows={3}
+                            rows={2}
                             value={newDescription}
                             onChange={(e) => setNewDescription(e.target.value)}
-                            placeholder="Objectifs pédagogiques de la classe, filière, précisions ou consignes..."
-                            className="w-full px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-xs text-slate-900 font-medium placeholder:text-slate-400 transition-all outline-none resize-none leading-relaxed"
+                            placeholder="Objectifs pédagogiques, filière ou précisions..."
+                            className="w-full px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-xs text-slate-900 font-medium placeholder:text-slate-400 transition-all outline-none resize-none leading-relaxed"
                           />
                         </div>
                       </div>
 
-                      {/* Carte informative sur l'affectation immédiate */}
-                      <div className="p-4 rounded-2xl bg-gradient-to-br from-blue-50/80 via-blue-50/40 to-slate-50 border border-blue-200/70 text-xs space-y-1.5 shadow-2xs">
-                        <div className="flex items-center gap-2 font-bold text-slate-900">
-                          <Sparkles size={15} className="text-[#1877f2]" />
+                      {/* Carte informative compacte */}
+                      <div className="p-3 rounded-xl bg-gradient-to-br from-blue-50/80 via-blue-50/40 to-slate-50 border border-blue-200/70 text-[11px] space-y-1 shadow-2xs">
+                        <div className="flex items-center gap-1.5 font-bold text-slate-900">
+                          <Sparkles size={14} className="text-[#1877f2]" />
                           <span>Affectation Immédiate Atomique</span>
                         </div>
-                        <p className="text-[11px] leading-relaxed text-slate-600">
-                          Les apprenants sélectionnés dans le panneau de droite seront automatiquement enregistrés et synchronisés dans cette promotion dès la création.
+                        <p className="leading-relaxed text-slate-600">
+                          Les apprenants sélectionnés à droite seront enregistrés et liés à cette promotion dès validation.
                         </p>
                       </div>
                     </div>
 
-                    {/* Colonne Droite : Panneau d'affectation des apprenants */}
-                    <div className="lg:col-span-7 bg-slate-50/80 p-5 rounded-2xl border border-slate-200 flex flex-col justify-between min-h-[380px] shadow-2xs">
-                      <div className="space-y-3">
+                    {/* Colonne Droite : Affectation des apprenants */}
+                    <div className="lg:col-span-7 bg-slate-50/90 p-4 rounded-2xl border border-slate-200 flex flex-col justify-between shadow-2xs">
+                      <div className="space-y-2.5">
                         <div className="flex items-center justify-between gap-3 pb-2 border-b border-slate-200">
                           <div className="flex items-center gap-2">
-                            <UserPlus size={16} className="text-[#1877f2]" />
-                            <h4 className="text-xs font-black uppercase tracking-wider text-slate-800">
+                            <UserPlus size={15} className="text-[#1877f2]" />
+                            <h4 className="text-[11px] font-black uppercase tracking-wider text-slate-800">
                               Affecter des membres dès la création
                             </h4>
                           </div>
-                          <span className="text-xs font-black text-[#1877f2] bg-blue-50 border border-blue-200/80 px-3 py-1 rounded-full shadow-2xs">
-                            {selectedCreationMemberIds.length} sélectionné{selectedCreationMemberIds.length > 1 ? 's' : ''}
+                          <span className="text-xs font-black text-[#1877f2] bg-blue-50 border border-blue-200/80 px-2.5 py-0.5 rounded-full shadow-2xs">
+                            {selectedCreationMemberIds.length} sélectionné{selectedCreationMemberIds.length > 1 ? 's' : ''} / {availableUsersForCreation.length}
                           </span>
                         </div>
 
                         {isLoadingCreationUsers ? (
-                          <div className="py-16 text-center">
-                            <Loader2 size={24} className="animate-spin text-[#1877f2] mx-auto" />
+                          <div className="py-12 text-center">
+                            <Loader2 size={22} className="animate-spin text-[#1877f2] mx-auto" />
                             <p className="text-xs text-slate-500 mt-2 font-medium">Chargement des apprenants éligibles...</p>
                           </div>
                         ) : availableUsersForCreation.length === 0 ? (
-                          <div className="py-12 text-center bg-white rounded-xl border border-dashed border-slate-200 p-4">
-                            <Users size={28} className="text-slate-300 mx-auto mb-2" />
+                          <div className="py-8 text-center bg-white rounded-xl border border-dashed border-slate-200 p-4">
+                            <Users size={24} className="text-slate-300 mx-auto mb-1.5" />
                             <p className="text-xs font-bold text-slate-700">Aucun apprenant disponible</p>
                             <p className="text-[11px] text-slate-500 mt-0.5">
-                              Tous les apprenants actuels sont déjà affectés ou aucun compte n'est disponible.
+                              Tous les apprenants actuels sont déjà affectés à un groupe.
                             </p>
                           </div>
                         ) : (
-                          <div className="space-y-2.5">
-                            {/* Barre de recherche et bouton de sélection globale */}
-                            <div className="flex items-center justify-between gap-2.5">
+                          <div className="space-y-2">
+                            {/* Barre de recherche et sélection globale */}
+                            <div className="flex items-center justify-between gap-2">
                               <div className="relative flex-1">
-                                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                                 <input
                                   type="text"
                                   value={creationUserSearch}
                                   onChange={(e) => setCreationUserSearch(e.target.value)}
-                                  placeholder="Rechercher par nom, prénom, email ou rôle..."
-                                  className="w-full pl-9 pr-8 py-2 text-xs bg-white border border-slate-200 rounded-xl outline-none focus:border-[#1877f2] focus:ring-1 focus:ring-[#1877f2] transition-all text-slate-900 placeholder:text-slate-400 font-medium"
+                                  placeholder="Filtrer par nom, prénom, email ou rôle..."
+                                  className="w-full pl-8 pr-7 py-1.5 text-xs bg-white border border-slate-200 rounded-lg outline-none focus:border-[#1877f2] focus:ring-1 focus:ring-[#1877f2] transition-all text-slate-900 placeholder:text-slate-400 font-medium"
                                 />
                                 {creationUserSearch && (
                                   <button
@@ -1131,17 +1131,17 @@ export default function GroupPage() {
                               <button
                                 type="button"
                                 onClick={handleToggleSelectAllCreation}
-                                className="text-xs font-bold text-slate-700 hover:text-[#1877f2] hover:border-blue-300 px-3 py-2 bg-white border border-slate-200 rounded-xl cursor-pointer transition-all shadow-2xs shrink-0"
+                                className="text-[11px] font-bold text-slate-700 hover:text-[#1877f2] hover:border-blue-300 px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg cursor-pointer transition-all shadow-2xs shrink-0"
                               >
-                                {filteredCreationUsers.every(u => selectedCreationMemberIds.includes(u.id)) ? "Désélectionner tout" : "Tout sélectionner"}
+                                {filteredCreationUsers.every(u => selectedCreationMemberIds.includes(u.id)) ? "Désélectionner" : "Tout sélectionner"}
                               </button>
                             </div>
 
-                            {/* Liste défilante aérée des apprenants */}
-                            <div className="h-[270px] sm:h-[300px] overflow-y-auto space-y-1.5 pr-1.5 border border-slate-200/90 rounded-xl p-2 bg-white shadow-inner">
+                            {/* Liste défilante compacte et lisible */}
+                            <div className="h-[185px] sm:h-[200px] overflow-y-auto space-y-1 pr-1 border border-slate-200/90 rounded-xl p-1.5 bg-white shadow-inner">
                               {filteredCreationUsers.length === 0 ? (
-                                <div className="py-8 text-center text-xs text-slate-400">
-                                  Aucun utilisateur ne correspond à votre recherche.
+                                <div className="py-6 text-center text-xs text-slate-400">
+                                  Aucun utilisateur correspondant à la recherche.
                                 </div>
                               ) : (
                                 filteredCreationUsers.map(u => {
@@ -1151,29 +1151,29 @@ export default function GroupPage() {
                                     <div
                                       key={u.id}
                                       onClick={() => handleToggleCreationMember(u.id)}
-                                      className={`flex items-center justify-between p-2.5 rounded-xl cursor-pointer transition-all text-xs border ${
+                                      className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-all text-xs border ${
                                         isChecked 
-                                          ? 'bg-blue-50/80 border-blue-300 shadow-2xs' 
+                                          ? 'bg-blue-50/90 border-blue-300 shadow-2xs' 
                                           : 'hover:bg-slate-50 border-slate-100'
                                       }`}
                                     >
-                                      <div className="flex items-center gap-3 min-w-0">
+                                      <div className="flex items-center gap-2.5 min-w-0">
                                         <div className="shrink-0">
                                           {isChecked ? (
-                                            <CheckSquare size={17} className="text-[#1877f2]" />
+                                            <CheckSquare size={16} className="text-[#1877f2]" />
                                           ) : (
-                                            <Square size={17} className="text-slate-400" />
+                                            <Square size={16} className="text-slate-400" />
                                           )}
                                         </div>
-                                        <div className="w-8 h-8 rounded-full bg-blue-50 border border-blue-200 text-[#1877f2] flex items-center justify-center font-bold text-xs shrink-0">
+                                        <div className="w-7 h-7 rounded-full bg-blue-50 border border-blue-200 text-[#1877f2] flex items-center justify-center font-bold text-[11px] shrink-0">
                                           {u.email.charAt(0).toUpperCase()}
                                         </div>
                                         <div className="min-w-0">
-                                          <p className="font-bold text-slate-900 truncate">{displayName}</p>
-                                          <p className="text-[11px] text-slate-500 truncate">{u.email}</p>
+                                          <p className="font-bold text-slate-900 truncate text-xs">{displayName}</p>
+                                          <p className="text-[10px] text-slate-500 truncate">{u.email}</p>
                                         </div>
                                       </div>
-                                      <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200 shrink-0">
+                                      <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 shrink-0">
                                         {u.role}
                                       </span>
                                     </div>
@@ -1186,18 +1186,18 @@ export default function GroupPage() {
                       </div>
 
                       {/* Indicateur de bas de liste */}
-                      <div className="pt-2 flex items-center justify-between text-[11px] text-slate-500 font-medium">
-                        <span>{filteredCreationUsers.length} apprenant(s) affiché(s)</span>
-                        <span>{selectedCreationMemberIds.length} affectation(s) sélectionnée(s)</span>
+                      <div className="pt-2 flex items-center justify-between text-[10px] text-slate-500 font-medium">
+                        <span>{filteredCreationUsers.length} apprenant(s) éligible(s)</span>
+                        <span>{selectedCreationMemberIds.length} sélectionné(s)</span>
                       </div>
                     </div>
 
                   </div>
                 ) : (
                   /* ─── DISPOSITION EN MODE MODIFICATION ─── */
-                  <div className="max-w-xl mx-auto space-y-4 py-2">
+                  <div className="space-y-3.5 py-1">
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                      <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
                         NOM DU GROUPE / CLASSE <span className="text-rose-500">*</span>
                       </label>
                       <input
@@ -1206,12 +1206,12 @@ export default function GroupPage() {
                         value={newName}
                         onChange={(e) => setNewName(e.target.value)}
                         placeholder="Ex : classe 1, Master 1 - IA..."
-                        className="w-full px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-xs sm:text-sm text-slate-900 font-semibold placeholder:text-slate-400 transition-all outline-none"
+                        className="w-full px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-xs text-slate-900 font-semibold placeholder:text-slate-400 transition-all outline-none"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                      <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
                         NIVEAU ACADÉMIQUE (OPTIONNEL)
                       </label>
                       <input
@@ -1219,25 +1219,25 @@ export default function GroupPage() {
                         value={newLevel}
                         onChange={(e) => setNewLevel(e.target.value)}
                         placeholder="Ex : Débutant, M1, L3, Année 2..."
-                        className="w-full px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-xs sm:text-sm text-slate-900 font-semibold placeholder:text-slate-400 transition-all outline-none"
+                        className="w-full px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-xs text-slate-900 font-semibold placeholder:text-slate-400 transition-all outline-none"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                      <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
                         DESCRIPTION DÉTAILLÉE (OPTIONNEL)
                       </label>
                       <textarea
-                        rows={4}
+                        rows={3}
                         value={newDescription}
                         onChange={(e) => setNewDescription(e.target.value)}
                         placeholder="Objectifs de la classe, cours ou précisions..."
-                        className="w-full px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-xs text-slate-900 font-medium placeholder:text-slate-400 transition-all outline-none resize-none leading-relaxed"
+                        className="w-full px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-xs text-slate-900 font-medium placeholder:text-slate-400 transition-all outline-none resize-none leading-relaxed"
                       />
                     </div>
 
-                    <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 flex items-center gap-2">
-                      <Users size={16} className="text-[#1877f2] shrink-0" />
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 flex items-center gap-2">
+                      <Users size={15} className="text-[#1877f2] shrink-0" />
                       <span>Pour ajouter ou retirer des membres de cette classe, utilisez l'outil de gestion des membres depuis la vue panoramique.</span>
                     </div>
                   </div>
@@ -1245,32 +1245,32 @@ export default function GroupPage() {
 
               </div>
 
-              {/* Barre d'action inférieure panoramique (Sticky Footer) */}
-              <div className="px-6 sm:px-8 py-4 bg-slate-50/80 border-t border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
+              {/* Barre d'action inférieure panoramique */}
+              <div className="px-6 sm:px-8 py-3 bg-slate-50/80 border-t border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shrink-0">
                 <div className="text-xs text-slate-500 font-semibold">
                   {!editingGroupId ? (
-                    <span>{selectedCreationMemberIds.length} membre(s) sélectionné(s) pour cette nouvelle promotion</span>
+                    <span>{selectedCreationMemberIds.length} apprenant(s) sélectionné(s) pour cette nouvelle classe</span>
                   ) : (
-                    <span>Mise à jour immédiate en base de données</span>
+                    <span>Mise à jour en direct de la classe</span>
                   )}
                 </div>
 
-                <div className="flex items-center gap-3 self-end sm:self-auto">
+                <div className="flex items-center gap-2.5 self-end sm:self-auto">
                   <button
                     type="button"
                     onClick={() => { setShowFormModal(false); setFormError(''); }}
-                    className="px-5 py-2.5 bg-white hover:bg-slate-100 rounded-xl font-bold text-slate-700 text-xs transition-colors cursor-pointer border border-slate-200 shadow-2xs"
+                    className="px-4 py-2 bg-white hover:bg-slate-100 rounded-xl font-bold text-slate-700 text-xs transition-colors cursor-pointer border border-slate-200 shadow-2xs"
                   >
                     Annuler
                   </button>
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="btn-primary px-6 py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-blue-500/20 disabled:opacity-50"
+                    className="btn-primary px-5 py-2 rounded-xl font-bold text-xs flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-blue-500/20 disabled:opacity-50"
                   >
                     {isSubmitting ? (
                       <>
-                        <Loader2 size={15} className="animate-spin" />
+                        <Loader2 size={14} className="animate-spin" />
                         <span>Enregistrement...</span>
                       </>
                     ) : (
