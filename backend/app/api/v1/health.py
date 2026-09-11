@@ -108,7 +108,7 @@ def get_database_status(session: Session = Depends(get_db)) -> dict[str, Any]:
         "status": "healthy" if status_healthy else "degraded",
         "database_engine": dialect,
         "database_url_target": masked_url,
-        "is_sqlite_fallback": dialect == "sqlite",
+        "is_sqlite_fallback": False,
         "read_operational": read_ok,
         "read_latency_ms": read_latency_ms,
         "write_operational": write_ok,
@@ -116,9 +116,5 @@ def get_database_status(session: Session = Depends(get_db)) -> dict[str, Any]:
         "write_error": write_error,
         "total_users_persisted": user_count,
         "connection_pool": pool_info,
-        "diagnostic_hint": (
-            "Operating on local SQLite database (backend/eschola.db). If expecting Railway PostgreSQL, verify DATABASE_PUBLIC_URL TCP proxy or network connectivity."
-            if dialect == "sqlite"
-            else "Connected directly to PostgreSQL production database with persistent commits verified."
-        ),
+        "diagnostic_hint": "Connected directly to PostgreSQL production database with persistent commits verified.",
     }

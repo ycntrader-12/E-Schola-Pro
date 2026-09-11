@@ -18,11 +18,10 @@ from app.services.email_service import (
 from create_admin import seed_users
 
 
-def test_sqlite_canonical_path():
-    print("[TEST 1] Verifying SQLite canonical path resolution...")
-    posix_path = CFG_BACKEND_DIR.resolve().as_posix()
-    assert posix_path in settings.DATABASE_URL or "postgresql" in settings.DATABASE_URL
-    print("  -> Passed. Canonical DB URL:", settings.DATABASE_URL)
+def test_database_url_postgresql():
+    print("[TEST 1] Verifying PostgreSQL production URL resolution...")
+    assert "postgresql" in settings.DATABASE_URL
+    print("  -> Passed. PostgreSQL DB URL:", settings.DATABASE_URL)
 
 
 def test_email_validation():
@@ -93,7 +92,7 @@ if __name__ == "__main__":
     print("========================================")
     print("RUNNING PERSISTENCE & EMAIL VERIFICATION")
     print("========================================")
-    test_sqlite_canonical_path()
+    test_database_url_postgresql()
     test_email_validation()
     test_email_mock_fallback()
     test_user_persistence_across_seed()
