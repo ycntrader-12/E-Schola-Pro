@@ -75,6 +75,8 @@ export default function CalendarPage() {
   const [newEndDate, setNewEndDate] = useState('');
   const [newEndTime, setNewEndTime] = useState('');
   const [newRoles, setNewRoles] = useState('étudiant,stagiaire,employer');
+  const [newGroupTarget, setNewGroupTarget] = useState('all');
+  const [customGroupName, setCustomGroupName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Deliverables Modal state
@@ -142,6 +144,8 @@ export default function CalendarPage() {
     setNewEndDate(dateString);
     setNewEndTime(`${endH}:00`);
     setNewRoles('étudiant,stagiaire,employer');
+    setNewGroupTarget('all');
+    setCustomGroupName('');
     setShowAddModal(true);
   };
 
@@ -165,7 +169,23 @@ export default function CalendarPage() {
     setNewStartTime(startDate.toTimeString().substring(0, 5));
     setNewEndDate(formatYMD(endDate));
     setNewEndTime(endDate.toTimeString().substring(0, 5));
-    setNewRoles(event.target_roles || 'étudiant,stagiaire,employer');
+    
+    // Parse target_roles into role and group
+    const rawTarget = event.target_roles || 'étudiant,stagiaire,employer';
+    if (rawTarget.includes('Groupe:')) {
+      const parts = rawTarget.split('|').map(s => s.trim());
+      const grpPart = parts.find(p => p.startsWith('Groupe:')) || '';
+      const rolePart = parts.find(p => !p.startsWith('Groupe:')) || 'étudiant,stagiaire,employer';
+      const grpVal = grpPart.replace('Groupe:', '').trim();
+      setNewRoles(rolePart);
+      setNewGroupTarget(grpVal);
+      setCustomGroupName(grpVal);
+    } else {
+      setNewRoles(rawTarget);
+      setNewGroupTarget('all');
+      setCustomGroupName('');
+    }
+
     setShowAddModal(true);
   };
 
@@ -179,13 +199,21 @@ export default function CalendarPage() {
       const startDateTime = new Date(`${newStartDate}T${newStartTime}:00`).toISOString();
       const endDateTime = new Date(`${newEndDate}T${newEndTime}:00`).toISOString();
 
+      let finalTarget = newRoles;
+      if (newGroupTarget && newGroupTarget !== 'all') {
+        const gName = newGroupTarget === 'custom' ? customGroupName.trim() : newGroupTarget;
+        if (gName) {
+          finalTarget = `${newRoles} | Groupe: ${gName}`;
+        }
+      }
+
       if (editingEventId) {
         const res = await apiClient.put(`/events/${editingEventId}`, {
           title: newTitle.trim(),
           description: newDescription.trim(),
           start_time: startDateTime,
           end_time: endDateTime,
-          target_roles: newRoles
+          target_roles: finalTarget
         });
         setEvents(prev => prev.map(e => e.id === editingEventId ? res.data : e).sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()));
       } else {
@@ -194,7 +222,7 @@ export default function CalendarPage() {
           description: newDescription.trim(),
           start_time: startDateTime,
           end_time: endDateTime,
-          target_roles: newRoles
+          target_roles: finalTarget
         });
         setEvents(prev => [...prev, res.data].sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()));
       }
@@ -689,9 +717,19 @@ export default function CalendarPage() {
                         <span>{formatTime(event.start_time)} - {formatTime(event.end_time)}</span>
                       </div>
 
-                      <div className="flex items-center gap-1.5 text-text-secondary">
-                        <Users size={14} />
-                        <span className="capitalize">{event.target_roles || 'Tous'}</span>
+                      <div className="flex items-center gap-1.5 text-text-secondary flex-wrap">
+                        {event.target_roles?.includes('Groupe:') && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                            <span>👥</span>
+                            <span>{event.target_roles.split('Groupe:')[1]?.trim()}</span>
+                          </span>
+                        )}
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                          <Users size={12} />
+                          <span className="capitalize">
+                            {event.target_roles?.split('|')[0]?.trim().replace('étudiant,stagiaire,employer', 'Tous') || 'Tous'}
+                          </span>
+                        </span>
                       </div>
                     </div>
 
@@ -906,35 +944,95 @@ export default function CalendarPage() {
                       />
                     </div>
 
-                    {/* Public concerné / Promotion */}
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-800 mb-1 flex items-center gap-1.5">
-                        <Users size={15} className="text-blue-600" />
-                        <span>Public concerné / Promotion cible <span className="text-rose-600">*</span></span>
-                      </label>
-                      <select
-                        value={newRoles}
-                        onChange={(e) => setNewRoles(e.target.value)}
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 text-sm font-semibold outline-none focus:bg-white focus:border-blue-600 focus:ring-3 focus:ring-blue-100 cursor-pointer transition-all min-h-[42px]"
-                      >
-                        <optgroup label="Public Général / Rôles">
-                          <option value="étudiant,stagiaire,employer">Tous (Étudiants, Stagiaires, Employés)</option>
-                          <option value="étudiant">Étudiants uniquement</option>
-                          <option value="stagiaire">Stagiaires uniquement</option>
-                          <option value="employer">Employés uniquement</option>
-                          <option value="formateur,admin">Formateurs & Administration</option>
-                        </optgroup>
+                    {/* Public concerné & Ciblage des Groupes */}
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        
+                        {/* Rôle / Public Cible */}
+                        <div>
+                          <label className="block text-xs font-bold uppercase tracking-wider text-slate-800 mb-1 flex items-center gap-1.5">
+                            <Users size={14} className="text-blue-600" />
+                            <span>Public cible <span className="text-rose-600">*</span></span>
+                          </label>
+                          <select
+                            value={newRoles}
+                            onChange={(e) => setNewRoles(e.target.value)}
+                            className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 text-xs font-semibold outline-none focus:bg-white focus:border-blue-600 focus:ring-3 focus:ring-blue-100 cursor-pointer transition-all min-h-[40px]"
+                          >
+                            <option value="étudiant,stagiaire,employer">Tous (Étudiants, Stagiaires, Employés)</option>
+                            <option value="étudiant">Étudiants uniquement</option>
+                            <option value="stagiaire">Stagiaires uniquement</option>
+                            <option value="employer">Employés uniquement</option>
+                            <option value="formateur,admin">Formateurs & Administration</option>
+                          </select>
+                        </div>
 
-                        {availableGroups && availableGroups.length > 0 && (
-                          <optgroup label="Groupes & Classes (Ajoutés)">
-                            {availableGroups.map((g) => (
-                              <option key={g.id} value={`Groupe: ${g.name}`}>
-                                👥 Groupe : {g.name} {g.level ? `(${g.level})` : ''}
-                              </option>
-                            ))}
-                          </optgroup>
-                        )}
-                      </select>
+                        {/* Groupe / Promotion Cible */}
+                        <div>
+                          <label className="block text-xs font-bold uppercase tracking-wider text-slate-800 mb-1 flex items-center justify-between">
+                            <span className="flex items-center gap-1.5">
+                              <span className="text-emerald-600 font-bold">👥</span>
+                              <span>Groupe / Classe cible</span>
+                            </span>
+                            <span className="text-[10px] text-slate-500 font-semibold">Ciblage</span>
+                          </label>
+                          <select
+                            value={newGroupTarget}
+                            onChange={(e) => {
+                              setNewGroupTarget(e.target.value);
+                              if (e.target.value !== 'custom') {
+                                setCustomGroupName('');
+                              }
+                            }}
+                            className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 text-xs font-semibold outline-none focus:bg-white focus:border-emerald-600 focus:ring-3 focus:ring-emerald-100 cursor-pointer transition-all min-h-[40px]"
+                          >
+                            <option value="all">🌐 Tous les groupes (Général)</option>
+                            
+                            {/* Groupes enregistrés dans le système */}
+                            {availableGroups && availableGroups.length > 0 && (
+                              <optgroup label="Groupes enregistrés (Base de données)">
+                                {availableGroups.map((g) => (
+                                  <option key={g.id} value={g.name}>
+                                    👥 {g.name} {g.level ? `(${g.level})` : ''}
+                                  </option>
+                                ))}
+                              </optgroup>
+                            )}
+
+                            {/* Classes & Promotions standards */}
+                            <optgroup label="Promotions & Groupes académiques">
+                              <option value="Groupe A">👥 Groupe A</option>
+                              <option value="Groupe B">👥 Groupe B</option>
+                              <option value="Groupe C">👥 Groupe C</option>
+                              <option value="Promotion 2026">👥 Promotion 2026</option>
+                              <option value="Master 1">👥 Master 1</option>
+                              <option value="Master 2">👥 Master 2</option>
+                              <option value="Licence / Bachelor">👥 Licence / Bachelor</option>
+                            </optgroup>
+
+                            <option value="custom">✏️ Saisir un autre groupe...</option>
+                          </select>
+                        </div>
+
+                      </div>
+
+                      {/* Champ conditionnel si saisie libre d'un groupe */}
+                      {newGroupTarget === 'custom' && (
+                        <div className="pt-1 animate-fade-in">
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-emerald-800 mb-1 flex items-center justify-between">
+                            <span>Nom de la promotion / classe personnalisée <span className="text-rose-600">*</span></span>
+                            <span className="text-[10px] text-slate-500">Ex: Dev-Web-2026, Section B...</span>
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            placeholder="Saisissez l'intitulé du groupe ou de la classe..."
+                            value={customGroupName}
+                            onChange={(e) => setCustomGroupName(e.target.value)}
+                            className="w-full px-3 py-2 rounded-xl bg-white border border-emerald-400 text-slate-900 text-xs font-semibold placeholder:text-slate-400 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 transition-all min-h-[38px]"
+                          />
+                        </div>
+                      )}
                     </div>
 
                   </div>
