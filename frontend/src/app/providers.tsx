@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import NotificationManager from '@/components/NotificationManager';
+import RoleGuideAssistant from '@/components/RoleGuideAssistant';
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
@@ -15,6 +16,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   return (
     <>
       <NotificationManager />
+      <RoleGuideAssistant />
       {children}
     </>
   );

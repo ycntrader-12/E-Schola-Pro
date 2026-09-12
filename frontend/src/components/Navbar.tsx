@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Link, usePathname, useRouter } from '@/i18n/routing';
 import Image from 'next/image';
-import { LogOut, User, GraduationCap, MessageSquare, Video, LayoutDashboard } from 'lucide-react';
+import { LogOut, User, GraduationCap, MessageSquare, Video, LayoutDashboard, Compass } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { apiClient } from '@/lib/api';
 import LanguageSwitcher from './LanguageSwitcher';
@@ -210,6 +210,18 @@ export default function Navbar() {
                   </>
                 ) : null}
               </Link>
+
+              {/* Guide Assistant par Rôle */}
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new CustomEvent('open_role_guide'))}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[#1877f2] bg-blue-50/80 hover:bg-blue-100 border border-blue-200/60 text-xs font-bold transition-all shadow-xs group cursor-pointer"
+                title="Guide Assistant & Aide par Rôle"
+                aria-label="Guide Assistant"
+              >
+                <Compass size={16} className="transition-transform group-hover:rotate-45" />
+                <span className="hidden md:inline">Guide</span>
+              </button>
 
               <Link 
                 href="/profile"

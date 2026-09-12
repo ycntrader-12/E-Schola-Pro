@@ -2046,7 +2046,33 @@ E-Schola Pro/
       </ul>
     </div>
   
-    </section>
+    
+    <h3>Guide Assistant & Onboarding Interactif par Rôle</h3>
+    <p>L'application intègre un <strong>Guide Assistant Interactif</strong> accessible en permanence via un widget flottant discret (en bas à droite de l'écran), ainsi que depuis la barre supérieure (Navbar) et le menu latéral (Sidebar). Cet assistant détecte automatiquement le rôle de l'utilisateur connecté et lui propose un parcours d'onboarding structuré :</p>
+    
+    <div class="card-grid">
+      <div class="card">
+        <h4 style="color: #059669;">🎓 Étudiant, Stagiaire & Salarié</h4>
+        <p><strong>Checklist d'embarquement :</strong> Configuration du profil, inscription aux cours, test de visioconférence Jitsi, signature d'émargement dématérialisée, passage des quiz chronométrés et dépôt des devoirs avec suivi de notation.</p>
+        <p style="font-size: 12px; color: var(--text-muted);">Persistance de la progression en <code>localStorage</code>.</p>
+      </div>
+      <div class="card">
+        <h4 style="color: #1877f2;">👨‍🏫 Formateur & Équipe Pédagogique</h4>
+        <p><strong>Création & Animation :</strong> Guide pas-à-pas pour la création de syllabus, l'animation de classes virtuelles WebRTC avec modération, la publication d'évaluations minutées et l'ouverture des feuilles de présence avec code PIN.</p>
+        <p style="font-size: 12px; color: var(--text-muted);">Raccourcis directs vers les modules de création.</p>
+      </div>
+      <div class="card">
+        <h4 style="color: #7c3aed;">🛡️ Super-Admin & Admin Manager</h4>
+        <p><strong>Gouvernance & Sécurité :</strong> Supervision des sessions actives, révocation instantanée de tokens compromis, export de sauvegarde JSON cryptographique SHA256, annuaire des comptes et audit de traçabilité.</p>
+        <p style="font-size: 12px; color: var(--text-muted);">Contrôle d'accès et alertes de sécurité.</p>
+      </div>
+      <div class="card">
+        <h4 style="color: #d97706;">📊 Direction & RH</h4>
+        <p><strong>Conformité & Certification :</strong> Accompagnement au contrôle de conformité, extraction des relevés officiels d'émargement horodatés pour les financeurs (OPCO) et validation des attestations professionnelles.</p>
+        <p style="font-size: 12px; color: var(--text-muted);">Rapports consolidés d'assiduité.</p>
+      </div>
+    </div>
+</section>
 
     <!-- ===================================================================== -->
     <!-- 07 — MODULES FONCTIONNELS & MOCKUPS VISUELS                           -->
@@ -2587,7 +2613,22 @@ E-Schola Pro/
       </ul>
     </div>
   
-    </section>
+    
+    <h3>Module 15 — Guide Assistant & Onboarding Interactif (RoleGuideAssistant)</h3>
+    <div class="card">
+      <p><strong>Composant Frontend :</strong> <code>frontend/src/components/RoleGuideAssistant.tsx</code></p>
+      <p>Le <strong>Guide Assistant Interactif</strong> est un outil universel d'aide à la prise en main conçu pour accompagner chaque utilisateur selon son rôle officiel ou projeté dans l'écosystème E-Schola Pro.</p>
+      <ul>
+        <li><strong>Déclenchement Tri-Canal :</strong> Accessible en permanence via un bouton flottant avec indicateur visuel en bas à droite, via le bouton "Guide" dans la barre supérieure (<a href="#navbar">Navbar</a>) et via le lien dédié dans le menu latéral du tableau de bord (<a href="#sidebar">Sidebar</a>).</li>
+        <li><strong>Détection & Sélecteur Multi-Rôles :</strong> Détecte automatiquement le rôle de la session courante (Étudiant, Formateur, Super-Admin, Admin Manager, Pédagogique, Direction/RH, Stagiaire, Employé) tout en offrant des boutons de bascule pour explorer les prérogatives des autres acteurs.</li>
+        <li><strong>Checklist d'Onboarding Personnalisée :</strong> Liste d'étapes concrètes avec cases à cocher persistantes en <code>localStorage</code> (ex: configuration du profil, exploration des syllabus, test de visioconférence, passage de premier quiz, signature d'émargement).</li>
+        <li><strong>Raccourcis Directs & Fiches Modules :</strong> Présentation des modules pertinents pour le rôle avec description des droits exacts et bouton de redirection immédiate vers l'interface correspondante.</li>
+        <li><strong>Astuces Pédagogiques & Bonnes Pratiques :</strong> Recommandations pour une utilisation optimale (optimisation de bande passante en visioconférence Jitsi, ponctualité d'émargement PIN, notation des devoirs).</li>
+        <li><strong>Foire Aux Questions (FAQ) Filtrable :</strong> Réponses immédiates aux questions techniques et administratives les plus fréquentes.</li>
+        <li><strong>Moteur de Recherche Dédié :</strong> Filtre instantanément l'ensemble des fiches d'aide, checklists et questions de la modale en temps réel.</li>
+      </ul>
+    </div>
+</section>
 
     <!-- ===================================================================== -->
     <!-- 08 — ARCHITECTURE FRONTEND                                            -->
@@ -2795,7 +2836,19 @@ E-Schola Pro/
       </ul>
     </div>
   
-    </section>
+    
+      <div class="card">
+        <h4>RoleGuideAssistant.tsx (Composant Global)</h4>
+        <p>Composant modal et widget flottant autonome d'assistance par rôle (<code>frontend/src/components/RoleGuideAssistant.tsx</code>) :</p>
+        <ul>
+          <li>Détection automatique du rôle utilisateur via token JWT et <code>localStorage</code>.</li>
+          <li>Sélecteur de prévisualisation multi-rôles permettant d'explorer les parcours de l'ensemble des 8 rôles.</li>
+          <li>Checklist d'onboarding interactive avec sauvegarde de la progression locale par utilisateur.</li>
+          <li>Moteur de recherche interne instantané filtrant tâches, modules et questions fréquentes.</li>
+          <li>Intégration universelle dans <code>Providers</code> (actif sur toutes les routes) avec déclencheurs dans <code>Navbar.tsx</code> et <code>Sidebar.tsx</code>.</li>
+        </ul>
+      </div>
+</section>
 
     <!-- ===================================================================== -->
     <!-- 09 — GUIDE D'INSTALLATION                                             -->

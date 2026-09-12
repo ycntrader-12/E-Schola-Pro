@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { usePathname, Link } from '@/i18n/routing';
 import Image from 'next/image';
-import { LayoutDashboard, Inbox, BookOpen, CheckSquare, Settings, Video, Award, UserCheck, Calendar, X, GraduationCap, Users, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, Inbox, BookOpen, CheckSquare, Settings, Video, Award, UserCheck, Calendar, X, GraduationCap, Users, ShieldCheck, Compass } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { apiClient } from '@/lib/api';
 
@@ -217,8 +217,32 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
           })}
         </nav>
 
+        {/* Guide Assistant par Rôle */}
+        <div className="px-3 shrink-0 mb-1 border-t border-white/10 pt-3">
+          <button
+            type="button"
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent('open_role_guide'));
+              if (setIsOpen) setIsOpen(false);
+            }}
+            className="w-full group flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all text-sm font-medium text-slate-200 hover:bg-white/10 hover:text-white cursor-pointer"
+            title="Ouvrir le Guide Assistant par Rôle"
+          >
+            <div className="flex items-center gap-3">
+              <Compass 
+                size={19} 
+                className="text-blue-200/80 group-hover:text-white transition-transform group-hover:rotate-45" 
+              />
+              <span>Guide Assistant</span>
+            </div>
+            <span className="px-1.5 py-0.5 rounded-full text-[9.5px] font-black bg-blue-500/30 text-blue-200 border border-blue-400/30 uppercase">
+              Aide
+            </span>
+          </button>
+        </div>
+
         {/* Settings Footer (Paramètres) */}
-        <div className="px-6 mb-2 mt-4 text-[11px] font-bold text-blue-200/70 uppercase tracking-wider shrink-0 border-t border-white/10 pt-4">
+        <div className="px-6 mb-2 text-[11px] font-bold text-blue-200/70 uppercase tracking-wider shrink-0">
           {t('settings')}
         </div>
         <div className="px-3 shrink-0">
