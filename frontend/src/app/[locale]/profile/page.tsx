@@ -73,7 +73,8 @@ import {
   FolderTree,
   Radio,
   FileCheck,
-  UserCog
+  UserCog,
+  Zap
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import BackButton from '@/components/BackButton';
@@ -265,7 +266,7 @@ export default function ProfilePage() {
   // 3D Centered Confirmation Dialog State
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
-    type: 'status_toggle' | 'delete_user' | 'delete_course' | 'delete_quiz';
+    type: 'status_toggle' | 'bulk_status_toggle' | 'delete_user' | 'delete_course' | 'delete_quiz';
     targetUser?: UserProfile;
     targetId?: number;
     targetTitle?: string;
@@ -879,6 +880,15 @@ export default function ProfilePage() {
     });
   };
 
+  const handleRequestBulkToggleStatus = (newStatus: boolean) => {
+    setConfirmModal({
+      isOpen: true,
+      type: 'bulk_status_toggle',
+      targetNewStatus: newStatus,
+      isProcessing: false,
+    });
+  };
+
   const handleRequestDeleteUser = (targetUser: UserProfile) => {
     setConfirmModal({
       isOpen: true,
@@ -926,6 +936,18 @@ export default function ProfilePage() {
         setActionMessage({
           type: 'success',
           text: `Compte "${targetUser.email}" ${newStatus ? 'réactivé (connexion autorisée)' : 'suspendu et désactivé'} avec succès.`,
+        });
+      } else if (confirmModal.type === 'bulk_status_toggle') {
+        const newStatus = confirmModal.targetNewStatus ?? true;
+        const res = await apiClient.put('/users/batch/status', {
+          is_active: newStatus,
+        });
+        setAllUsers((prev) =>
+          prev.map((u) => (ADMIN_ROLES.includes(u.role) || isRootAdmin(u) ? u : { ...u, is_active: newStatus }))
+        );
+        setActionMessage({
+          type: 'success',
+          text: res.data?.message || `Tous les utilisateurs non-administrateurs ont été ${newStatus ? 'activés (connexion autorisée)' : 'suspendus'}.`,
         });
       } else if (confirmModal.type === 'delete_user' && confirmModal.targetId) {
         await apiClient.delete(`/users/${confirmModal.targetId}`);
@@ -1073,6 +1095,7 @@ export default function ProfilePage() {
 
             const enabledUsersCount = allUsers.filter(u => u.is_active !== false).length;
             const disabledUsersCount = allUsers.filter(u => u.is_active === false).length;
+            const nonAdminUsersCount = allUsers.filter(u => !ADMIN_ROLES.includes(u.role) && !isRootAdmin(u)).length;
 
             const isSelectedUserRoot = selectedDirectoryUser ? isRootAdmin(selectedDirectoryUser) : false;
             const isSelectedUserCurrent = selectedDirectoryUser ? selectedDirectoryUser.id === user.id : false;
@@ -1243,6 +1266,35 @@ export default function ProfilePage() {
                       >
                         <Trash2 size={13} className="text-rose-500" />
                         <span>Supprimer</span>
+                      </button>
+                    </div>
+
+                    {/* Actions de masse sur l'annuaire (Bulk Operations) */}
+                    <div className="flex items-center gap-1.5 pl-2 border-l border-slate-200 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => handleRequestBulkToggleStatus(true)}
+                        className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs hover:shadow-xs active:scale-[0.98]"
+                        title="Activer la connexion pour tous les utilisateurs (sauf les comptes admin et admin_manager)"
+                      >
+                        <Zap size={13} className="text-emerald-600 fill-emerald-600" />
+                        <span>Activer Tous</span>
+                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-emerald-200/60 text-emerald-900 font-semibold">
+                          sauf admins
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleRequestBulkToggleStatus(false)}
+                        className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs hover:shadow-xs active:scale-[0.98]"
+                        title="Suspendre la connexion pour tous les utilisateurs (sauf les comptes admin et admin_manager)"
+                      >
+                        <Power size={13} className="text-rose-600" />
+                        <span>Suspendre Tous</span>
+                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-rose-200/60 text-rose-900 font-semibold">
+                          sauf admins
+                        </span>
                       </button>
                     </div>
 
@@ -3353,7 +3405,6 @@ export default function ProfilePage() {
                       </select>
                     </div>
 
-
                     <div className="sm:col-span-2">
                       <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Nouveau mot de passe (optionnel)</label>
                       <input
@@ -3409,14 +3460,14 @@ export default function ProfilePage() {
                     <button
                       type="button"
                       onClick={() => { setIsEditUserModalOpen(false); setEditingUser(null); }}
-                      className="w-1/2 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold border border-slate-300 transition-colors"
+                      className="w-1/2 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold border border-slate-300 transition-colors cursor-pointer"
                     >
                       Annuler
                     </button>
                     <button
                       type="submit"
                       disabled={isUpdatingUser}
-                      className="w-1/2 btn-primary py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-md shadow-blue-500/20"
+                      className="w-1/2 btn-primary py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-md shadow-blue-500/20 cursor-pointer"
                     >
                       {isUpdatingUser ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
                       <span>Enregistrer les modifications</span>
@@ -3436,7 +3487,17 @@ export default function ProfilePage() {
                 
                 {/* 3D Floating Glowing Icon Badge */}
                 <div className="flex justify-center -mt-2">
-                  {confirmModal.type === 'status_toggle' ? (
+                  {confirmModal.type === 'bulk_status_toggle' ? (
+                    confirmModal.targetNewStatus ? (
+                      <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-emerald-500 to-emerald-600 text-white flex items-center justify-center shadow-lg shadow-emerald-500/35 ring-8 ring-emerald-50 transform rotate-3 hover:rotate-0 transition-transform">
+                        <Zap size={30} className="drop-shadow-sm fill-white" />
+                      </div>
+                    ) : (
+                      <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-rose-500 to-rose-600 text-white flex items-center justify-center shadow-lg shadow-rose-500/35 ring-8 ring-rose-50 transform -rotate-3 hover:rotate-0 transition-transform">
+                        <Power size={30} className="drop-shadow-sm" />
+                      </div>
+                    )
+                  ) : confirmModal.type === 'status_toggle' ? (
                     confirmModal.targetNewStatus ? (
                       <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-emerald-500 to-emerald-600 text-white flex items-center justify-center shadow-lg shadow-emerald-500/35 ring-8 ring-emerald-50 transform rotate-3 hover:rotate-0 transition-transform">
                         <Power size={30} className="drop-shadow-sm" />
@@ -3456,33 +3517,58 @@ export default function ProfilePage() {
                 {/* Security Chip Badge */}
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200/80 text-[#1877f2] text-[10px] font-extrabold uppercase tracking-wider shadow-2xs">
                   <Cpu size={13} className="text-[#1877f2] animate-pulse" />
-                  <span>E-Schola Pro Sécurité</span>
+                  <span>
+                    {confirmModal.type === 'bulk_status_toggle'
+                      ? 'Gouvernance Active Directory • Traitement Global'
+                      : 'E-Schola Pro Sécurité'}
+                  </span>
                 </div>
 
                 {/* Title & Description */}
                 <div className="space-y-2">
                   <h3 className="text-xl font-black text-slate-900 tracking-tight">
-                    {confirmModal.type === 'status_toggle'
+                    {confirmModal.type === 'bulk_status_toggle'
                       ? confirmModal.targetNewStatus
-                        ? "Réactiver l'Accès Compte"
-                        : "Suspendre la Connexion Compte"
-                      : confirmModal.type === 'delete_user'
-                        ? "Supprimer cet Utilisateur"
-                        : confirmModal.type === 'delete_course'
-                          ? "Supprimer ce Cours"
-                          : "Supprimer ce Quiz"}
+                        ? "Activer Tous les Utilisateurs"
+                        : "Suspendre Tous les Utilisateurs"
+                      : confirmModal.type === 'status_toggle'
+                        ? confirmModal.targetNewStatus
+                          ? "Réactiver l'Accès Compte"
+                          : "Suspendre la Connexion Compte"
+                        : confirmModal.type === 'delete_user'
+                          ? "Supprimer cet Utilisateur"
+                          : confirmModal.type === 'delete_course'
+                            ? "Supprimer ce Cours"
+                            : "Supprimer ce Quiz"}
                   </h3>
                   <p className="text-xs sm:text-sm text-slate-500 leading-relaxed max-w-sm mx-auto">
-                    {confirmModal.type === 'status_toggle'
+                    {confirmModal.type === 'bulk_status_toggle'
                       ? confirmModal.targetNewStatus
-                        ? `Confirmez-vous vouloir réactiver la connexion et rétablir tous les accès pour ce compte ?`
-                        : `Confirmez-vous vouloir suspendre et désactiver la connexion pour ce compte utilisateur ?`
-                      : `Êtes-vous certain de vouloir supprimer définitivement cet élément ? Cette action est irréversible.`}
+                        ? "Confirmez-vous vouloir réactiver la connexion et rétablir tous les accès pour TOUS les utilisateurs du système (sauf administrateurs) ?"
+                        : "Confirmez-vous vouloir suspendre et désactiver la connexion pour TOUS les utilisateurs du système (sauf administrateurs) ?"
+                      : confirmModal.type === 'status_toggle'
+                        ? confirmModal.targetNewStatus
+                          ? "Confirmez-vous vouloir réactiver la connexion et rétablir tous les accès pour ce compte ?"
+                          : "Confirmez-vous vouloir suspendre et désactiver la connexion pour ce compte utilisateur ?"
+                        : "Êtes-vous certain de vouloir supprimer définitivement cet élément ? Cette action est irréversible."}
                   </p>
                 </div>
 
+                {/* Protection administrative explicite pour les opérations de masse */}
+                {confirmModal.type === 'bulk_status_toggle' && (
+                  <div className="p-3.5 rounded-2xl bg-blue-50/90 border border-blue-200/90 text-left space-y-1.5 shadow-2xs">
+                    <div className="flex items-center gap-2 text-blue-950 font-bold text-xs">
+                      <ShieldCheck size={16} className="text-blue-600 shrink-0" />
+                      <span>Protection des Administrateurs Garantie</span>
+                    </div>
+                    <p className="text-[11px] text-blue-800 leading-relaxed">
+                      Les comptes dotés des rôles <strong>admin</strong>, <strong>admin_manager</strong> et le compte racine <strong>admin_first</strong> sont <u>strictement exclus</u> et resteront toujours actifs et sécurisés.
+                    </p>
+                  </div>
+                )}
+
                 {/* 3D Recessed Target Preview Card */}
-                {confirmModal.targetUser && (
+                {confirmModal.targetUser && confirmModal.type !== 'bulk_status_toggle' && (
                   <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center gap-3 text-left shadow-inner">
                     <div className="w-10 h-10 rounded-xl bg-blue-100/70 border border-blue-200 text-[#1877f2] font-bold flex items-center justify-center text-sm shrink-0 shadow-xs">
                       {confirmModal.targetUser.email.charAt(0).toUpperCase()}
@@ -3496,7 +3582,7 @@ export default function ProfilePage() {
                   </div>
                 )}
 
-                {confirmModal.targetTitle && !confirmModal.targetUser && (
+                {confirmModal.targetTitle && !confirmModal.targetUser && confirmModal.type !== 'bulk_status_toggle' && (
                   <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80 text-left shadow-inner">
                     <p className="font-bold text-xs text-slate-900 truncate">{confirmModal.targetTitle}</p>
                     <p className="text-[11px] text-slate-500">ID #{confirmModal.targetId}</p>
@@ -3504,11 +3590,13 @@ export default function ProfilePage() {
                 )}
 
                 {/* Impact Warning */}
-                {confirmModal.type === 'status_toggle' && !confirmModal.targetNewStatus && (
+                {((confirmModal.type === 'status_toggle' || confirmModal.type === 'bulk_status_toggle') && !confirmModal.targetNewStatus) && (
                   <div className="p-3 rounded-xl bg-rose-50/80 border border-rose-200 text-rose-800 text-[11px] text-left flex items-start gap-2">
                     <ShieldAlert size={16} className="text-rose-600 shrink-0 mt-0.5" />
                     <p className="leading-snug">
-                      L'utilisateur ne pourra plus s'authentifier. Un message l'orientant vers <strong>contact@eschola.pro</strong> lui sera présenté.
+                      {confirmModal.type === 'bulk_status_toggle'
+                        ? "Tous les utilisateurs non-administrateurs ne pourront plus se connecter. Un écran les orientant vers contact@eschola.pro leur sera affiché."
+                        : "L'utilisateur ne pourra plus s'authentifier. Un message l'orientant vers contact@eschola.pro lui sera présenté."}
                     </p>
                   </div>
                 )}
@@ -3528,7 +3616,7 @@ export default function ProfilePage() {
                     disabled={confirmModal.isProcessing}
                     onClick={handleExecuteConfirmAction}
                     className={`w-1/2 py-3 active:scale-[0.98] text-white rounded-2xl font-extrabold transition-all text-xs flex items-center justify-center gap-2 cursor-pointer shadow-md ${
-                      confirmModal.type === 'status_toggle'
+                      confirmModal.type === 'bulk_status_toggle' || confirmModal.type === 'status_toggle'
                         ? confirmModal.targetNewStatus
                           ? 'bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 shadow-emerald-500/25'
                           : 'bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-700 hover:to-rose-600 shadow-rose-500/25'
@@ -3541,11 +3629,15 @@ export default function ProfilePage() {
                       <Check size={16} />
                     )}
                     <span>
-                      {confirmModal.type === 'status_toggle'
+                      {confirmModal.type === 'bulk_status_toggle'
                         ? confirmModal.targetNewStatus
-                          ? "Confirmer l'activation"
-                          : "Confirmer la suspension"
-                        : "Confirmer la suppression"}
+                          ? "⚡ Confirmer l'activation globale"
+                          : "🔒 Confirmer la suspension globale"
+                        : confirmModal.type === 'status_toggle'
+                          ? confirmModal.targetNewStatus
+                            ? "Confirmer l'activation"
+                            : "Confirmer la suspension"
+                          : "Confirmer la suppression"}
                     </span>
                   </button>
                 </div>

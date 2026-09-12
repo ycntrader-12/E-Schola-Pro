@@ -598,6 +598,59 @@ def update_user_role(
     return user
 
 
+class BulkStatusUpdate(BaseModel):
+    is_active: bool
+    target_role: str | None = None
+
+
+@router.put("/batch/status")
+def bulk_update_users_status(
+    status_in: BulkStatusUpdate,
+    session: SessionDep,
+    current_user: CurrentUser,
+) -> Any:
+    """
+    Activer ou désactiver (suspendre) l'accès en masse de tous les utilisateurs non-administrateurs.
+    Autorisé aux rôles 'admin' et 'admin_manager'.
+    Règles de sécurité strictes :
+    - Les comptes 'admin', 'admin_manager' et le compte racine 'admin_first' sont STRICTEMENT EXCLUS et restent protégés.
+    """
+    if current_user.role.lower() not in ADMIN_ROLES:
+        raise HTTPException(
+            status_code=403,
+            detail="Droits insuffisants. Seuls les administrateurs et directeurs peuvent modifier le statut en masse.",
+        )
+
+    query = session.query(User).filter(
+        ~func.lower(User.role).in_(ADMIN_ROLES),
+        ~func.lower(User.username).in_(PROTECTED_ROOT_USERNAMES),
+        ~func.lower(User.email).in_(PROTECTED_ROOT_EMAILS),
+    )
+
+    if status_in.target_role and status_in.target_role != "all":
+        query = query.filter(func.lower(User.role) == status_in.target_role.lower())
+
+    users_to_update = query.all()
+    count = 0
+    for u in users_to_update:
+        u.is_active = status_in.is_active
+        session.add(u)
+        count += 1
+
+    session.commit()
+
+    action_text = "activés (connexion autorisée)" if status_in.is_active else "suspendus (connexion désactivée)"
+    print(
+        f"[Audit Statut en Masse] L'administrateur ID {current_user.id} ({current_user.email}) "
+        f"a mis à jour le statut de {count} utilisateur(s) -> is_active={status_in.is_active}."
+    )
+    return {
+        "message": f"{count} compte(s) utilisateur(s) ont été {action_text} avec succès. Les administrateurs restent protégés.",
+        "updated_count": count,
+        "is_active": status_in.is_active,
+    }
+
+
 @router.put("/{user_id}/status", response_model=UserResponse)
 def update_user_status(
     user_id: int,
