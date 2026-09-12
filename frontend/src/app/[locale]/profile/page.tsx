@@ -505,20 +505,19 @@ export default function ProfilePage() {
         email: editEmail.trim() || undefined,
         role: editRole,
         is_active: editIsActive,
-        group_name: editGroupName.trim(),
+        group_name: editGroupName.trim() || undefined,
         nom: editNom.trim() || undefined,
         prenom: editPrenom.trim() || undefined,
-        date_naissance: editDateNaissance || '',
-        cin: editCin.trim() || '',
-        telephone: editTelephone.trim() || '',
-        adresse: editAdresse.trim() || '',
-        ville: editVille || '',
-        pays: editPays || '',
-        departement: editDepartement || '',
-        specialisation: editSpecialisation || '',
+        date_naissance: (editDateNaissance || '').trim() || undefined,
+        cin: (editCin || '').trim() || undefined,
+        telephone: (editTelephone || '').trim() || undefined,
+        adresse: (editAdresse || '').trim() || undefined,
+        ville: (editVille || '').trim() || undefined,
+        pays: (editPays || '').trim() || undefined,
+        departement: (editDepartement || '').trim() || undefined,
+        specialisation: (editSpecialisation || '').trim() || undefined,
         password: editPassword.trim() || undefined,
       });
-
 
       setAllUsers((prev) => prev.map((u) => (u.id === editingUser.id ? res.data : u)));
       if (user && editingUser.id === user.id) {
@@ -532,7 +531,31 @@ export default function ProfilePage() {
       setEditingUser(null);
       setActionMessage({ type: 'success', text: `Compte utilisateur "${res.data.username || res.data.email}" modifié avec succès.` });
     } catch (err: any) {
-      setEditUserError(err?.response?.data?.detail || "Erreur lors de la modification de l'utilisateur.");
+      let msg = "Erreur lors de la modification de l'utilisateur.";
+      if (err?.response?.data) {
+        const d = err.response.data;
+        if (typeof d === 'string') {
+          msg = d;
+        } else if (typeof d.detail === 'string') {
+          msg = d.detail;
+        } else if (Array.isArray(d.detail)) {
+          msg = d.detail
+            .map((item: any) => {
+              if (typeof item === 'string') return item;
+              if (item?.loc && item?.msg) {
+                const field = item.loc[item.loc.length - 1];
+                return `${field}: ${item.msg}`;
+              }
+              return item?.msg || JSON.stringify(item);
+            })
+            .join(' | ');
+        } else if (d.message) {
+          msg = d.message;
+        }
+      } else if (err?.message) {
+        msg = err.message;
+      }
+      setEditUserError(msg);
     } finally {
       setIsUpdatingUser(false);
     }
@@ -3247,8 +3270,9 @@ export default function ProfilePage() {
                 </div>
 
                 {editUserError && (
-                  <div className="p-3.5 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs flex items-center gap-2 font-semibold">
-                    <AlertCircle size={16} className="shrink-0 text-red-600" /> {editUserError}
+                  <div className="p-3.5 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs flex items-start gap-2 font-semibold">
+                    <AlertCircle size={16} className="shrink-0 text-red-600 mt-0.5" />
+                    <span className="break-words leading-relaxed">{String(editUserError)}</span>
                   </div>
                 )}
 

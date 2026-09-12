@@ -72,36 +72,43 @@ def sync_user_group_membership(session, user: User, new_group_name: str | None):
     - Reassigns any existing GroupMember row to the new group.
     - If new_group_name is None, cleans up GroupMember rows.
     """
-    from app.models.group import Group, GroupMember
+    try:
+        from app.models.group import Group, GroupMember
 
-    cleaned_name = new_group_name.strip() if new_group_name else None
+        cleaned_name = new_group_name.strip() if new_group_name else None
 
-    if not cleaned_name:
-        user.group_name = None
-        session.query(GroupMember).filter(GroupMember.user_id == user.id).delete(synchronize_session=False)
-        return
+        if not cleaned_name:
+            user.group_name = None
+            try:
+                session.query(GroupMember).filter(GroupMember.user_id == user.id).delete(synchronize_session=False)
+            except Exception as del_err:
+                print(f"[WARN Group Member Delete] {del_err}")
+            return
 
-    # Look up existing group (case-insensitive)
-    target_grp = session.query(Group).filter(func.lower(Group.name) == cleaned_name.lower()).first()
-    if not target_grp:
-        target_grp = Group(name=cleaned_name, level="Général", description=f"Groupe {cleaned_name}")
-        session.add(target_grp)
-        session.flush()
+        # Look up existing group (case-insensitive)
+        target_grp = session.query(Group).filter(func.lower(Group.name) == cleaned_name.lower()).first()
+        if not target_grp:
+            target_grp = Group(name=cleaned_name, level="Général", description=f"Groupe {cleaned_name}")
+            session.add(target_grp)
+            session.flush()
 
-    user.group_name = target_grp.name
+        user.group_name = target_grp.name
 
-    existing_memberships = session.query(GroupMember).filter(GroupMember.user_id == user.id).all()
-    if not existing_memberships:
-        session.add(GroupMember(group_id=target_grp.id, user_id=user.id))
-    else:
-        already_in = False
-        for m in existing_memberships:
-            if m.group_id == target_grp.id:
-                already_in = True
-            else:
-                session.delete(m)
-        if not already_in:
+        existing_memberships = session.query(GroupMember).filter(GroupMember.user_id == user.id).all()
+        if not existing_memberships:
             session.add(GroupMember(group_id=target_grp.id, user_id=user.id))
+        else:
+            already_in = False
+            for m in existing_memberships:
+                if m.group_id == target_grp.id:
+                    already_in = True
+                else:
+                    session.delete(m)
+            if not already_in:
+                session.add(GroupMember(group_id=target_grp.id, user_id=user.id))
+    except Exception as grp_err:
+        print(f"[WARN sync_user_group_membership] {grp_err}")
+        user.group_name = new_group_name.strip() if new_group_name else None
 
 
 
@@ -1071,9 +1078,16 @@ def update_user_me(
     if "group_name" in user_in.model_fields_set or user_in.group_name is not None:
         sync_user_group_membership(session, current_user, user_in.group_name)
 
-    session.add(current_user)
-    session.commit()
-    session.refresh(current_user)
+    try:
+        session.add(current_user)
+        session.commit()
+        session.refresh(current_user)
+    except Exception as db_err:
+        session.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erreur de base de données lors de la mise à jour de votre profil: {str(db_err)}"
+        )
     return current_user
 
 
@@ -1089,7 +1103,8 @@ def admin_update_user(
     """
     Update any user's profile details and role (Admin and Admin Manager with restrictions).
     """
-    if current_user.role.lower() not in ADMIN_ROLES:
+    current_role = (current_user.role or "").strip().lower()
+    if current_role not in ADMIN_ROLES:
         raise HTTPException(
             status_code=403, detail="Seul un administrateur peut modifier des comptes d'utilisateurs."
         )
@@ -1105,7 +1120,8 @@ def admin_update_user(
             detail="Le compte administrateur racine 'admin_first' est intouchable et ne peut pas être modifié par un autre gestionnaire ou administrateur.",
         )
 
-    if current_user.role.lower() == "admin_manager" and user.role.lower() in ADMIN_ROLES and current_user.id != user.id:
+    target_user_role = (user.role or "").strip().lower()
+    if current_role == "admin_manager" and target_user_role in ADMIN_ROLES and current_user.id != user.id:
         raise HTTPException(
             status_code=403,
             detail="Un ADMIN_MANAGER ne peut pas modifier un compte administrateur.",
@@ -1118,7 +1134,7 @@ def admin_update_user(
             existing = (
                 session.query(User)
                 .filter(
-                    (User.username == new_username) | (User.email == new_username),
+                    (func.lower(User.username) == new_username) | (func.lower(User.email) == new_username),
                     User.id != user_id,
                 )
                 .first()
@@ -1166,7 +1182,7 @@ def admin_update_user(
             "dg-rh": "dg_rh",
         }
         normalized_role = role_map.get(raw_role, raw_role)
-        if current_user.role.lower() == "admin_manager" and normalized_role in ADMIN_ROLES:
+        if current_role == "admin_manager" and normalized_role in ADMIN_ROLES:
             raise HTTPException(status_code=403, detail="Un ADMIN_MANAGER ne peut pas accorder de rôle administrateur.")
         if normalized_role != old_role:
             role_changed = True
@@ -1203,7 +1219,7 @@ def admin_update_user(
                 status_code=400,
                 detail="Vous ne pouvez pas désactiver votre propre compte.",
             )
-        if current_user.role.lower() == "admin_manager" and user.role.lower() in ADMIN_ROLES:
+        if current_role == "admin_manager" and target_user_role in ADMIN_ROLES:
             raise HTTPException(
                 status_code=403,
                 detail="Un ADMIN_MANAGER ne peut pas désactiver un compte administrateur.",
@@ -1220,9 +1236,16 @@ def admin_update_user(
         user.hashed_password = get_password_hash(pwd_val)
         print(f"[Audit Mot de passe] Mot de passe de l'utilisateur ID {user.id} mis à jour par l'administrateur ID {current_user.id}.")
 
-    session.add(user)
-    session.commit()
-    session.refresh(user)
+    try:
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+    except Exception as db_err:
+        session.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erreur de base de données lors de la modification de l'utilisateur: {str(db_err)}"
+        )
 
     if role_changed:
         print(

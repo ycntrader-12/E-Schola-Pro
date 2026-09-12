@@ -5,8 +5,8 @@ from pydantic import BaseModel
 class UserBase(BaseModel):
     username: Optional[str] = None
     email: Optional[str] = None
-    role: str = "étudiant"
-    is_active: bool = True
+    role: Optional[str] = "étudiant"
+    is_active: Optional[bool] = True
     nom: Optional[str] = None
     prenom: Optional[str] = None
     date_naissance: Optional[str] = None
@@ -36,8 +36,8 @@ class UserMinimalRead(BaseModel):
     id: Union[int, str]
     full_name: str
     email: Optional[str] = None
-    role: str = "étudiant"
-    is_active: bool = True
+    role: Optional[str] = "étudiant"
+    is_active: Optional[bool] = True
     avatar_url: Optional[str] = None
 
     class Config:
