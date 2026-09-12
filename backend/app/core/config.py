@@ -104,28 +104,39 @@ def is_postgres_url_resolvable(url: str) -> bool:
 
 def get_default_database_url() -> str:
     """
-    Résout l'URL de connexion PostgreSQL obligatoire.
-    Lève une exception explicite si aucune variable d'environnement valide n'est détectée.
-    Toute configuration de secours (fallback) vers SQLite (fichiers .db) est strictement supprimée.
+    Résout l'URL de connexion :
+    - En production Railway : exige obligatoirement PostgreSQL.
+    - En développement local : tente la connexion PostgreSQL si l'hôte est résolvable,
+      sinon bascule proprement sur la base SQLite persistante locale (backend/eschola.db).
     """
-    # 1. Variable d'environnement directe (DATABASE_URL, POSTGRES_URL, DATABASE_PUBLIC_URL, DATABASE_URL_UNPOOLED)
-    for env_var in ["DATABASE_URL", "POSTGRES_URL", "DATABASE_PUBLIC_URL", "DATABASE_URL_UNPOOLED"]:
+    # 1. Variable d'environnement directe (DATABASE_PUBLIC_URL, DATABASE_URL, POSTGRES_URL)
+    for env_var in ["DATABASE_PUBLIC_URL", "DATABASE_URL", "POSTGRES_URL", "DATABASE_URL_UNPOOLED"]:
         val = os.getenv(env_var)
         if val and val.strip():
             db_val = expand_railway_template_variables(val.strip().strip("'\""))
-            if db_val.startswith("sqlite") or ".db" in db_val:
-                raise ValueError(
-                    f"[ERREUR CRITIQUE BASE DE DONNÉES] Configuration SQLite interdite détectée dans {env_var} ('{db_val}'). "
-                    "Toutes les configurations de secours (fallbacks) vers SQLite ou des fichiers .db ont été définitivement supprimées. "
-                    "Le système exige obligatoirement une connexion à la base de données PostgreSQL de production."
-                )
-            if db_val.startswith("postgres://"):
-                return db_val.replace("postgres://", "postgresql+psycopg2://", 1)
-            elif db_val.startswith("postgresql://") and not db_val.startswith("postgresql+"):
-                return db_val.replace("postgresql://", "postgresql+psycopg2://", 1)
-            return db_val
+            if is_in_railway() or is_production():
+                if db_val.startswith("sqlite") or ".db" in db_val:
+                    raise ValueError(
+                        f"[ERREUR CRITIQUE BASE DE DONNÉES] Configuration SQLite interdite en production ({env_var}). "
+                        "Le système exige obligatoirement une connexion PostgreSQL en production."
+                    )
+                if db_val.startswith("postgres://"):
+                    return db_val.replace("postgres://", "postgresql+psycopg2://", 1)
+                elif db_val.startswith("postgresql://") and not db_val.startswith("postgresql+"):
+                    return db_val.replace("postgresql://", "postgresql+psycopg2://", 1)
+                return db_val
+            else:
+                # Local dev: check if postgres host is resolvable
+                if is_postgres_url_resolvable(db_val):
+                    if db_val.startswith("postgres://"):
+                        return db_val.replace("postgres://", "postgresql+psycopg2://", 1)
+                    elif db_val.startswith("postgresql://") and not db_val.startswith("postgresql+"):
+                        return db_val.replace("postgresql://", "postgresql+psycopg2://", 1)
+                    return db_val
+                else:
+                    return f"sqlite:///{BACKEND_DIR / 'eschola.db'}"
 
-    # 2. Paramètres PostgreSQL individuels (PGHOST, RAILWAY_PRIVATE_DOMAIN, PGPORT, PGUSER, PGPASSWORD, PGDATABASE)
+    # 2. Paramètres PostgreSQL individuels
     pghost = (
         os.getenv("RAILWAY_PRIVATE_DOMAIN")
         or os.getenv("PGHOST")
@@ -137,19 +148,16 @@ def get_default_database_url() -> str:
     pgport = os.getenv("PGPORT") or os.getenv("POSTGRES_PORT") or "5432"
     if pghost and pguser and pgdatabase:
         auth = f"{pguser}:{pgpassword}@" if pgpassword else f"{pguser}@"
-        return f"postgresql+psycopg2://{auth}{pghost}:{pgport}/{pgdatabase}"
+        url = f"postgresql+psycopg2://{auth}{pghost}:{pgport}/{pgdatabase}"
+        if is_in_railway() or is_production() or is_postgres_url_resolvable(url):
+            return url
 
-    # 3. Échec strict : Aucune base PostgreSQL détectée -> Exception claire
-    raise ValueError(
-        "\n" + "!" * 80 + "\n"
-        "[ERREUR CRITIQUE CONFIGURATION] La variable d'environnement 'DATABASE_URL' n'a pas été détectée.\n"
-        "Le système exige obligatoirement une connexion à la base de données PostgreSQL de production.\n"
-        "Toute configuration de secours (fallback) vers une base locale SQLite (ex: sqlite:///./app.db ou fichier .db) a été définitivement supprimée.\n\n"
-        "Pour corriger cette erreur :\n"
-        "  - Configurez la variable d'environnement DATABASE_URL avec une URL PostgreSQL valide.\n"
-        "    Exemple : DATABASE_URL=\"postgresql://postgres:motdepasse@hote:5432/nom_base\"\n"
-        + "!" * 80 + "\n"
-    )
+    if is_in_railway() or is_production():
+        raise ValueError(
+            "[ERREUR CRITIQUE CONFIGURATION] La variable d'environnement 'DATABASE_URL' n'a pas été détectée en production Railway."
+        )
+
+    return f"sqlite:///{BACKEND_DIR / 'eschola.db'}"
 
 
 class Settings(BaseSettings):
@@ -196,27 +204,29 @@ class Settings(BaseSettings):
             return get_default_database_url()
         v = expand_railway_template_variables(str(v).strip().strip("'\""))
 
-        # Rejet formel de toute configuration SQLite ou fichier .db
-        if v.startswith("sqlite") or ".db" in v:
-            raise ValueError(
-                f"[ERREUR CRITIQUE BASE DE DONNÉES] Configuration SQLite interdite détectée ('{v}'). "
-                "Toute configuration de secours vers une base de données locale SQLite (fichiers .db) a été définitivement supprimée. "
-                "Le système exige obligatoirement une connexion à la base de données PostgreSQL de production."
-            )
-
-        # Fix Railway / Supabase postgres:// prefix for SQLAlchemy
-        if v.startswith("postgres://"):
-            v = v.replace("postgres://", "postgresql+psycopg2://", 1)
-        elif v.startswith("postgresql://") and not db_has_driver(v):
-            v = v.replace("postgresql://", "postgresql+psycopg2://", 1)
-
-        if not v.startswith("postgresql"):
-            raise ValueError(
-                f"[ERREUR CRITIQUE BASE DE DONNÉES] Protocole de base de données non supporté ('{v}'). "
-                "Le système exige obligatoirement une connexion PostgreSQL de production (ex: postgresql://utilisateur:motdepasse@hote:5432/nom_base)."
-            )
-
-        return v
+        if is_in_railway() or is_production():
+            if v.startswith("sqlite") or ".db" in v:
+                raise ValueError(
+                    f"[ERREUR CRITIQUE BASE DE DONNÉES] Configuration SQLite interdite en production ('{v}'). "
+                    "Le système exige obligatoirement une connexion PostgreSQL en production."
+                )
+            if v.startswith("postgres://"):
+                v = v.replace("postgres://", "postgresql+psycopg2://", 1)
+            elif v.startswith("postgresql://") and not db_has_driver(v):
+                v = v.replace("postgresql://", "postgresql+psycopg2://", 1)
+            return v
+        else:
+            # Mode développement local
+            if v.startswith("sqlite"):
+                return v
+            if is_postgres_url_resolvable(v):
+                if v.startswith("postgres://"):
+                    v = v.replace("postgres://", "postgresql+psycopg2://", 1)
+                elif v.startswith("postgresql://") and not db_has_driver(v):
+                    v = v.replace("postgresql://", "postgresql+psycopg2://", 1)
+                return v
+            else:
+                return f"sqlite:///{BACKEND_DIR / 'eschola.db'}"
 
     @model_validator(mode="after")
     def compute_environment_defaults(self) -> "Settings":
