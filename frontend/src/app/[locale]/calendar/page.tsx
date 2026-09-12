@@ -323,7 +323,7 @@ export default function CalendarPage() {
     const now = currentTime.getTime();
 
     if (now >= start && now <= end) {
-      return { label: 'EN COURS', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 animate-pulse' };
+      return { label: 'EN COURS', color: 'bg-primary/20 text-primary border-primary/30 animate-pulse' };
     } else if (now > end) {
       return { label: 'TERMINÉ', color: 'bg-slate-500/20 text-text-secondary border-slate-500/30' };
     } else {
@@ -429,12 +429,12 @@ export default function CalendarPage() {
 
           <button
             onClick={() => setShowHolidaysModal(true)}
-            className="px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+            className="px-3 py-1.5 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
             title="Voir tous les jours fériés officiels au Maroc"
           >
             <span>🇲🇦</span>
             <span>Jours Fériés Maroc</span>
-            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-extrabold ml-0.5">
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-primary/20 text-primary font-extrabold ml-0.5">
               {allYearHolidays.length}
             </span>
           </button>
@@ -519,7 +519,7 @@ export default function CalendarPage() {
                       : isToday
                         ? 'bg-primary/10 border-blue-500 text-text-primary font-bold'
                         : moroccanHoliday
-                          ? 'bg-emerald-500/10 dark:bg-emerald-950/25 border-emerald-500/40 text-text-primary hover:border-emerald-500'
+                          ? 'bg-blue-500/10 dark:bg-blue-950/25 border-blue-400/40 dark:border-blue-500/40 text-text-primary hover:border-blue-500 hover:bg-blue-500/15'
                           : 'bg-surface/50 hover:bg-surface border-border text-text-secondary hover:text-text-primary'
                       }`}
                   >
@@ -528,7 +528,7 @@ export default function CalendarPage() {
                         <span className={`text-xs ${isToday
                           ? 'w-5 h-5 rounded-full bg-primary text-white flex items-center justify-center font-extrabold shadow-xs'
                           : moroccanHoliday
-                            ? 'font-extrabold text-emerald-600 dark:text-emerald-400'
+                            ? 'font-extrabold text-[#1877f2] dark:text-blue-400'
                             : 'font-semibold'
                           }`}>
                           {dayNum}
@@ -549,7 +549,7 @@ export default function CalendarPage() {
                     {/* Moroccan Holiday Micro Badge */}
                     {moroccanHoliday && (
                       <div
-                        className="w-full text-[8px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100/80 dark:bg-emerald-900/50 px-1 py-0.5 rounded truncate leading-tight my-0.5"
+                        className="w-full text-[8px] font-bold text-blue-700 dark:text-blue-300 bg-blue-100/90 dark:bg-blue-900/50 border border-blue-200/60 dark:border-blue-800/60 px-1 py-0.5 rounded truncate leading-tight my-0.5 shadow-2xs"
                         title={`Jour Férié Officiel : ${moroccanHoliday.name} (${moroccanHoliday.nameAr})`}
                       >
                         {moroccanHoliday.name}
@@ -602,34 +602,34 @@ export default function CalendarPage() {
 
           {/* 🇲🇦 Moroccan Public Holiday Highlight Card */}
           {selectedDayHoliday && (
-            <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-950 dark:text-emerald-100 space-y-2 animate-fade-in shadow-xs">
+            <div className="p-4 rounded-2xl bg-gradient-to-br from-blue-50 to-blue-100/60 dark:from-blue-950/40 dark:to-blue-900/30 border border-blue-200 dark:border-blue-800 text-blue-950 dark:text-blue-100 space-y-2 animate-fade-in shadow-xs">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="text-xl">🇲🇦</span>
-                  <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">
+                  <span className="text-[11px] font-bold text-[#1877f2] dark:text-blue-400 uppercase tracking-wider">
                     Jour Férié Officiel au Maroc
                   </span>
                 </div>
-                <span className="px-2.5 py-0.5 rounded-full text-[9px] font-extrabold bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+                <span className="px-2.5 py-0.5 rounded-full text-[9px] font-extrabold bg-blue-500/15 text-[#1877f2] dark:text-blue-300 border border-blue-500/25">
                   {selectedDayHoliday.type === 'national' ? 'Fête Nationale' : 'Fête Religieuse'}
                 </span>
               </div>
 
               <div>
                 <div className="flex items-center justify-between flex-wrap gap-1">
-                  <h4 className="text-sm font-black text-emerald-900 dark:text-emerald-100">
+                  <h4 className="text-sm font-black text-slate-900 dark:text-white">
                     {selectedDayHoliday.name}
                   </h4>
-                  <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                  <span className="text-xs font-bold text-[#1877f2] dark:text-blue-400">
                     {selectedDayHoliday.nameAr}
                   </span>
                 </div>
-                <p className="text-xs text-emerald-800/90 dark:text-emerald-300/90 mt-1">
+                <p className="text-xs text-slate-600 dark:text-blue-200/90 mt-1">
                   {selectedDayHoliday.description}
                 </p>
-                <div className="mt-2 pt-2 border-t border-emerald-500/20 flex items-center justify-between text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold">
+                <div className="mt-2 pt-2 border-t border-blue-200/60 dark:border-blue-800/60 flex items-center justify-between text-[10px] text-slate-600 dark:text-blue-300 font-semibold">
                   <span>Statut</span>
-                  <span className="font-bold">Jour chômé et payé (Maroc)</span>
+                  <span className="font-bold text-[#1877f2] dark:text-blue-300">Jour chômé et payé (Maroc)</span>
                 </div>
               </div>
             </div>
@@ -717,7 +717,7 @@ export default function CalendarPage() {
 
                       <div className="flex items-center gap-1.5 text-text-secondary flex-wrap">
                         {event.target_roles?.includes('Groupe:') && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
                             <span>👥</span>
                             <span>{event.target_roles.split('Groupe:')[1]?.trim()}</span>
                           </span>
@@ -786,7 +786,7 @@ export default function CalendarPage() {
                 placeholder="Rechercher une fête (ex: Trône, Aïd, Yennayer, Indépendance)..."
                 value={holidaySearchQuery}
                 onChange={(e) => setHolidaySearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 transition-all"
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 transition-all"
               />
             </div>
 
@@ -800,19 +800,19 @@ export default function CalendarPage() {
                 return (
                   <div
                     key={holiday.id}
-                    className="p-3.5 rounded-2xl bg-slate-50 hover:bg-emerald-50/50 border border-slate-200 hover:border-emerald-300 transition-all flex items-center justify-between gap-4"
+                    className="p-3.5 rounded-2xl bg-slate-50 hover:bg-blue-50/60 border border-slate-200 hover:border-blue-300 transition-all flex items-center justify-between gap-4"
                   >
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-extrabold text-sm text-slate-900">
                           {holiday.name}
                         </span>
-                        <span className="text-xs font-bold text-emerald-700">
+                        <span className="text-xs font-bold text-[#1877f2]">
                           {holiday.nameAr}
                         </span>
                         <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${holiday.type === 'national'
-                          ? 'bg-blue-100 text-blue-700 border border-blue-200'
-                          : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                          ? 'bg-blue-100 text-[#1877f2] border border-blue-200'
+                          : 'bg-indigo-100 text-indigo-800 border border-indigo-200'
                           }`}>
                           {holiday.type === 'national' ? 'Fête Civile / Nationale' : 'Fête Religieuse Islamique'}
                         </span>
@@ -828,7 +828,7 @@ export default function CalendarPage() {
                       </span>
                       <button
                         onClick={() => handleJumpToHoliday(holiday.date)}
-                        className="px-3 py-1 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100 rounded-lg transition-colors flex items-center gap-1"
+                        className="px-3 py-1 text-[11px] font-bold text-[#1877f2] hover:bg-blue-100 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
                       >
                         <span>Afficher</span>
                         <ArrowRight size={12} />
@@ -897,10 +897,10 @@ export default function CalendarPage() {
 
                 {/* Notice if selected date is a Moroccan Holiday */}
                 {newStartDate && getMoroccanHolidayForDate(newStartDate) && (
-                  <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-950 flex items-center gap-2.5 text-xs shadow-xs">
+                  <div className="p-3 rounded-2xl bg-blue-50 border border-blue-200 text-blue-950 flex items-center gap-2.5 text-xs shadow-xs">
                     <span className="text-xl leading-none">🇲🇦</span>
                     <div>
-                      <span className="font-bold text-emerald-800">Jour férié officiel au Maroc :</span>{" "}
+                      <span className="font-bold text-[#1877f2]">Jour férié officiel au Maroc :</span>{" "}
                       La date du <strong>{newStartDate}</strong> correspond à <strong>{getMoroccanHolidayForDate(newStartDate)?.name}</strong> ({getMoroccanHolidayForDate(newStartDate)?.nameAr}).
                     </div>
                   </div>
@@ -968,7 +968,7 @@ export default function CalendarPage() {
                         <div>
                           <label className="block text-xs font-bold uppercase tracking-wider text-slate-800 mb-1 flex items-center justify-between">
                             <span className="flex items-center gap-1.5">
-                              <span className="text-emerald-600 font-bold">👥</span>
+                              <span className="text-[#1877f2] font-bold">👥</span>
                               <span>Groupe / Classe cible</span>
                             </span>
                             <span className="text-[10px] text-slate-500 font-semibold">Ciblage</span>
@@ -981,7 +981,7 @@ export default function CalendarPage() {
                                 setCustomGroupName('');
                               }
                             }}
-                            className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 text-xs font-semibold outline-none focus:bg-white focus:border-emerald-600 focus:ring-3 focus:ring-emerald-100 cursor-pointer transition-all min-h-[40px]"
+                            className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 text-xs font-semibold outline-none focus:bg-white focus:border-[#1877f2] focus:ring-3 focus:ring-blue-100 cursor-pointer transition-all min-h-[40px]"
                           >
                             <option value="all">🌐 Tous les groupes (Général)</option>
 
@@ -1016,7 +1016,7 @@ export default function CalendarPage() {
                       {/* Champ conditionnel si saisie libre d'un groupe */}
                       {newGroupTarget === 'custom' && (
                         <div className="pt-1 animate-fade-in">
-                          <label className="block text-[11px] font-bold uppercase tracking-wider text-emerald-800 mb-1 flex items-center justify-between">
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-blue-800 mb-1 flex items-center justify-between">
                             <span>Nom de la promotion / classe personnalisée <span className="text-rose-600">*</span></span>
                             <span className="text-[10px] text-slate-500">Ex: Dev-Web-2026, Section B...</span>
                           </label>
@@ -1026,7 +1026,7 @@ export default function CalendarPage() {
                             placeholder="Saisissez l'intitulé du groupe ou de la classe..."
                             value={customGroupName}
                             onChange={(e) => setCustomGroupName(e.target.value)}
-                            className="w-full px-3 py-2 rounded-xl bg-white border border-emerald-400 text-slate-900 text-xs font-semibold placeholder:text-slate-400 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 transition-all min-h-[38px]"
+                            className="w-full px-3 py-2 rounded-xl bg-white border border-blue-400 text-slate-900 text-xs font-semibold placeholder:text-slate-400 outline-none focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 transition-all min-h-[38px]"
                           />
                         </div>
                       )}
