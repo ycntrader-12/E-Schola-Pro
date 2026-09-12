@@ -1084,77 +1084,85 @@ export default function ProfilePage() {
             return (
               <div className="space-y-6 animate-fade-in">
 
-                {/* BANNIÈRE ACTIVE DIRECTORY & TÉLÉMÉTRIE DE FORÊT */}
-                <div className="p-6 rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-blue-950 text-white shadow-lg border border-slate-700/50 space-y-5">
+                {/* BANNIÈRE ACTIVE DIRECTORY & TÉLÉMÉTRIE DE FORÊT (THÈME OFFICIEL DE L'APPLICATION) */}
+                <div className="p-6 rounded-3xl bg-gradient-to-r from-blue-50/90 via-sky-50/50 to-indigo-50/40 text-slate-900 shadow-sm border border-blue-200/80 space-y-5">
                   <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                     <div className="flex items-center gap-3.5">
-                      <div className="w-12 h-12 rounded-2xl bg-blue-600/90 text-white flex items-center justify-center shadow-md shadow-blue-500/30 ring-2 ring-blue-400/30 shrink-0">
+                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#1877f2] to-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-500/25 ring-2 ring-blue-400/20 shrink-0">
                         <Network size={24} />
                       </div>
                       <div>
                         <div className="flex items-center gap-2.5 flex-wrap">
-                          <h3 className="text-xl font-black text-white tracking-tight">
+                          <h3 className="text-xl font-black text-slate-900 tracking-tight">
                             Active Directory & Entra ID Web Console
                           </h3>
-                          <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-black uppercase tracking-wider flex items-center gap-1">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                          <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black uppercase tracking-wider flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                             AD DS Online
                           </span>
                         </div>
-                        <p className="text-xs text-slate-300 mt-1 flex items-center gap-2 flex-wrap font-mono">
-                          <span>Forêt : <strong className="text-blue-300 font-bold">DC=eschola,DC=pro</strong></span>
+                        <p className="text-xs text-slate-600 mt-1 flex items-center gap-2 flex-wrap font-mono">
+                          <span>Forêt : <strong className="text-[#1877f2] font-bold">DC=eschola,DC=pro</strong></span>
                           <span>•</span>
-                          <span>Contrôleur : <strong className="text-slate-200">DC01.eschola.pro</strong></span>
+                          <span>Contrôleur : <strong className="text-slate-800 font-semibold">DC01.eschola.pro</strong></span>
                           <span>•</span>
-                          <span>Schéma : <strong className="text-slate-200">v2026.3 Active</strong></span>
+                          <span>Schéma : <strong className="text-slate-800 font-semibold">v2026.3 Active</strong></span>
                         </p>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-2 self-start lg:self-center">
-                      <span className="text-[11px] px-3 py-1.5 rounded-xl bg-slate-800/90 border border-slate-700 text-slate-300 font-mono flex items-center gap-1.5">
-                        <Terminal size={13} className="text-blue-400" />
+                      <span className="text-[11px] px-3 py-1.5 rounded-xl bg-white border border-blue-200/80 text-slate-700 font-mono shadow-2xs flex items-center gap-1.5">
+                        <Terminal size={13} className="text-[#1877f2]" />
                         <span>LDAP://127.0.0.1:389</span>
                       </span>
                     </div>
                   </div>
 
-                  {/* 4 CARTES KPI TÉLÉMÉTRIQUES ACTIVE DIRECTORY */}
+                  {/* 4 CARTES KPI TÉLÉMÉTRIQUES ACTIVE DIRECTORY (THÈME CLAIR & 3D) */}
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
-                    <div className="p-3.5 rounded-2xl bg-slate-800/80 border border-slate-700/80 shadow-xs">
-                      <div className="flex items-center justify-between text-slate-400 mb-1">
+                    <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs hover:border-blue-300 transition-all">
+                      <div className="flex items-center justify-between text-slate-500 mb-1.5">
                         <span className="text-[11px] font-bold uppercase tracking-wider">Objets Utilisateurs</span>
-                        <Users size={16} className="text-blue-400" />
+                        <div className="w-7 h-7 rounded-lg bg-blue-50 text-[#1877f2] flex items-center justify-center">
+                          <Users size={15} />
+                        </div>
                       </div>
-                      <p className="text-2xl font-black text-white tracking-tight">{allUsers.length}</p>
-                      <p className="text-[10px] text-slate-400 mt-0.5">Total comptes annuaire</p>
+                      <p className="text-2xl font-black text-slate-900 tracking-tight">{allUsers.length}</p>
+                      <p className="text-[10px] text-slate-500 mt-0.5 font-medium">Total comptes annuaire</p>
                     </div>
 
-                    <div className="p-3.5 rounded-2xl bg-slate-800/80 border border-slate-700/80 shadow-xs">
-                      <div className="flex items-center justify-between text-slate-400 mb-1">
+                    <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs hover:border-emerald-300 transition-all">
+                      <div className="flex items-center justify-between text-slate-500 mb-1.5">
                         <span className="text-[11px] font-bold uppercase tracking-wider">Comptes Activés (0x0200)</span>
-                        <UserCheck size={16} className="text-emerald-400" />
+                        <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                          <UserCheck size={15} />
+                        </div>
                       </div>
-                      <p className="text-2xl font-black text-emerald-400 tracking-tight">{enabledUsersCount}</p>
-                      <p className="text-[10px] text-slate-400 mt-0.5">Connexion autorisée</p>
+                      <p className="text-2xl font-black text-emerald-600 tracking-tight">{enabledUsersCount}</p>
+                      <p className="text-[10px] text-slate-500 mt-0.5 font-medium">Connexion autorisée</p>
                     </div>
 
-                    <div className="p-3.5 rounded-2xl bg-slate-800/80 border border-slate-700/80 shadow-xs">
-                      <div className="flex items-center justify-between text-slate-400 mb-1">
+                    <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs hover:border-rose-300 transition-all">
+                      <div className="flex items-center justify-between text-slate-500 mb-1.5">
                         <span className="text-[11px] font-bold uppercase tracking-wider">Comptes Suspendus (0x0202)</span>
-                        <UserX size={16} className="text-rose-400" />
+                        <div className="w-7 h-7 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
+                          <UserX size={15} />
+                        </div>
                       </div>
-                      <p className="text-2xl font-black text-rose-400 tracking-tight">{disabledUsersCount}</p>
-                      <p className="text-[10px] text-slate-400 mt-0.5">Accès verrouillé</p>
+                      <p className="text-2xl font-black text-rose-600 tracking-tight">{disabledUsersCount}</p>
+                      <p className="text-[10px] text-slate-500 mt-0.5 font-medium">Accès verrouillé</p>
                     </div>
 
-                    <div className="p-3.5 rounded-2xl bg-slate-800/80 border border-slate-700/80 shadow-xs">
-                      <div className="flex items-center justify-between text-slate-400 mb-1">
+                    <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs hover:border-blue-300 transition-all">
+                      <div className="flex items-center justify-between text-slate-500 mb-1.5">
                         <span className="text-[11px] font-bold uppercase tracking-wider">Unités d'Org. (OU)</span>
-                        <FolderTree size={16} className="text-blue-400" />
+                        <div className="w-7 h-7 rounded-lg bg-blue-50 text-[#1877f2] flex items-center justify-center">
+                          <FolderTree size={15} />
+                        </div>
                       </div>
-                      <p className="text-2xl font-black text-white tracking-tight">{ROLE_FOLDERS.length - 1} OU</p>
-                      <p className="text-[10px] text-slate-400 mt-0.5">{uniqueGroupsList.length} Groupes de Sécurité</p>
+                      <p className="text-2xl font-black text-[#1877f2] tracking-tight">{ROLE_FOLDERS.length - 1} OU</p>
+                      <p className="text-[10px] text-slate-500 mt-0.5 font-medium">{uniqueGroupsList.length} Groupes de Sécurité</p>
                     </div>
                   </div>
                 </div>
