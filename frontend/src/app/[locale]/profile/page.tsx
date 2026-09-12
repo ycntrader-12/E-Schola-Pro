@@ -59,7 +59,21 @@ import {
   Power,
   UserCheck,
   UserX,
-  ShieldAlert
+  ShieldAlert,
+  Network,
+  RefreshCw,
+  ChevronRight,
+  Copy,
+  CheckCheck,
+  Info,
+  Laptop,
+  Building2,
+  Hash,
+  Activity,
+  FolderTree,
+  Radio,
+  FileCheck,
+  UserCog
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import BackButton from '@/components/BackButton';
@@ -263,8 +277,19 @@ export default function ProfilePage() {
   });
 
   // ==========================================
-  // SYSTÈME DE GESTION PAR DOSSIERS DE RÔLES
+  // ACTIVE DIRECTORY & ENTRA ID WEB CONSOLE STATE
   // ==========================================
+  const [selectedDirectoryUserId, setSelectedDirectoryUserId] = useState<number | null>(null);
+  const [directoryStatusFilter, setDirectoryStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [directoryInspectorTab, setDirectoryInspectorTab] = useState<'attributes' | 'groups' | 'security'>('attributes');
+  const [isCopiedUpn, setIsCopiedUpn] = useState<string | null>(null);
+  const [isInspectorOpen, setIsInspectorOpen] = useState<boolean>(true);
+  const [treeExpanded, setTreeExpanded] = useState<{ domain: boolean; ous: boolean; groups: boolean }>({
+    domain: true,
+    ous: true,
+    groups: true
+  });
+
   const [selectedRoleFolder, setSelectedRoleFolder] = useState<string>('all');
   const [folderViewMode, setFolderViewMode] = useState<'focused' | 'accordion'>('focused');
   const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({
@@ -277,6 +302,14 @@ export default function ProfilePage() {
   });
   const [userGroupFilter, setUserGroupFilter] = useState<string>('all');
 
+  const handleCopyText = (text: string, label: string) => {
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+      setIsCopiedUpn(label);
+      setTimeout(() => setIsCopiedUpn(null), 2000);
+    }
+  };
+
   const uniqueGroupsList = useMemo(() => {
     const setG = new Set<string>();
     systemGroups.forEach(g => { if (g.name) setG.add(g.name); });
@@ -288,10 +321,11 @@ export default function ProfilePage() {
     {
       id: 'all',
       name: 'Tous les comptes',
-      fullName: 'Tous les Dossiers',
+      fullName: 'Tous les Objets (Forêt)',
       shortName: 'Tous',
-      subtitle: 'Vue globale',
-      description: 'Vue consolidée de l’ensemble des comptes et statuts de l’établissement.',
+      ouPath: 'DC=eschola,DC=pro',
+      subtitle: 'Annuaire global',
+      description: 'Vue consolidée de l’ensemble des objets utilisateurs de la forêt Active Directory.',
       roles: ALL_ROLES,
       defaultRole: 'étudiant',
       count: allUsers.length,
@@ -299,51 +333,27 @@ export default function ProfilePage() {
       activeIcon: FolderOpen,
     },
     {
-      id: 'etudiant',
-      name: 'Étudiants',
-      fullName: 'Dossier Étudiants',
-      shortName: 'Étudiants',
-      subtitle: 'Formation Initiale',
-      description: 'Apprenants inscrits aux filières académiques régulières et examens.',
-      roles: ['étudiant'],
-      defaultRole: 'étudiant',
-      count: allUsers.filter(u => u.role === 'étudiant').length,
-      icon: GraduationCap,
-      activeIcon: FolderOpen,
-    },
-    {
-      id: 'stagiaire',
-      name: 'Stagiaires',
-      fullName: 'Dossier Stagiaires',
-      shortName: 'Stagiaires',
-      subtitle: 'Immersion & PFE',
-      description: 'Stagiaires en immersion pratique d’entreprise et projets de fin d’études.',
-      roles: ['stagiaire'],
-      defaultRole: 'stagiaire',
-      count: allUsers.filter(u => u.role === 'stagiaire').length,
-      icon: Clock,
-      activeIcon: FolderOpen,
-    },
-    {
-      id: 'employer',
-      name: 'Employés',
-      fullName: 'Dossier Employés',
-      shortName: 'Employés',
-      subtitle: 'Formation Pro',
-      description: 'Salariés et cadres d’entreprises partenaires en perfectionnement continu.',
-      roles: ['employer'],
-      defaultRole: 'employer',
-      count: allUsers.filter(u => u.role === 'employer').length,
-      icon: Briefcase,
+      id: 'admin',
+      name: 'Administrateurs',
+      fullName: 'OU=Administration',
+      shortName: 'Admins',
+      ouPath: 'OU=Administration,DC=eschola,DC=pro',
+      subtitle: 'Privileged Accounts',
+      description: 'Comptes dotés de privilèges d’administration centrale et de gouvernance système.',
+      roles: ADMIN_ROLES,
+      defaultRole: 'admin',
+      count: allUsers.filter(u => ADMIN_ROLES.includes(u.role)).length,
+      icon: Shield,
       activeIcon: FolderOpen,
     },
     {
       id: 'formateur',
-      name: 'Formateurs',
-      fullName: 'Dossier Formateurs',
+      name: 'Formateurs & Pédagogie',
+      fullName: 'OU=Faculty_Staff',
       shortName: 'Formateurs',
+      ouPath: 'OU=Faculty_Staff,DC=eschola,DC=pro',
       subtitle: 'Corps Enseignant',
-      description: 'Professeurs, formateurs experts et tuteurs de promotion.',
+      description: 'Professeurs, formateurs experts, coordinateurs et tuteurs pédagogiques.',
       roles: ['formateur', 'pedagogique'],
       defaultRole: 'formateur',
       count: allUsers.filter(u => ['formateur', 'pedagogique'].includes(u.role)).length,
@@ -353,10 +363,11 @@ export default function ProfilePage() {
     {
       id: 'dg_rh',
       name: 'Direction & RH',
-      fullName: 'Dossier Direction & RH',
+      fullName: 'OU=Governance_HR',
       shortName: 'DG / RH',
-      subtitle: 'Supervision',
-      description: 'Direction générale et responsables des ressources humaines.',
+      ouPath: 'OU=Governance_HR,DC=eschola,DC=pro',
+      subtitle: 'Supervision & RH',
+      description: 'Membres de la direction générale et responsables des ressources humaines.',
       roles: ['dg_rh', 'dg/rh'],
       defaultRole: 'dg_rh',
       count: allUsers.filter(u => ['dg_rh', 'dg/rh'].includes(u.role)).length,
@@ -364,16 +375,45 @@ export default function ProfilePage() {
       activeIcon: FolderOpen,
     },
     {
-      id: 'admin',
-      name: 'Administrateurs',
-      fullName: 'Dossier Administrateurs',
-      shortName: 'Admins',
-      subtitle: 'Gouvernance',
-      description: 'Comptes d’administration centrale dotés de tous les privilèges système.',
-      roles: ADMIN_ROLES,
-      defaultRole: 'admin',
-      count: allUsers.filter(u => ADMIN_ROLES.includes(u.role)).length,
-      icon: Shield,
+      id: 'etudiant',
+      name: 'Étudiants',
+      fullName: 'OU=Learners_Students',
+      shortName: 'Étudiants',
+      ouPath: 'OU=Learners_Students,DC=eschola,DC=pro',
+      subtitle: 'Formation Initiale',
+      description: 'Apprenants inscrits aux filières académiques et cycles réguliers.',
+      roles: ['étudiant'],
+      defaultRole: 'étudiant',
+      count: allUsers.filter(u => u.role === 'étudiant').length,
+      icon: GraduationCap,
+      activeIcon: FolderOpen,
+    },
+    {
+      id: 'stagiaire',
+      name: 'Stagiaires',
+      fullName: 'OU=Learners_Interns',
+      shortName: 'Stagiaires',
+      ouPath: 'OU=Learners_Interns,DC=eschola,DC=pro',
+      subtitle: 'Immersion & PFE',
+      description: 'Stagiaires en immersion professionnelle d’entreprise et projets de fin d’études.',
+      roles: ['stagiaire'],
+      defaultRole: 'stagiaire',
+      count: allUsers.filter(u => u.role === 'stagiaire').length,
+      icon: Clock,
+      activeIcon: FolderOpen,
+    },
+    {
+      id: 'employer',
+      name: 'Employés & Partenaires',
+      fullName: 'OU=Learners_Corporate',
+      shortName: 'Employés',
+      ouPath: 'OU=Learners_Corporate,DC=eschola,DC=pro',
+      subtitle: 'Formation Continue',
+      description: 'Salariés et cadres d’entreprises en cycle de montée en compétences.',
+      roles: ['employer'],
+      defaultRole: 'employer',
+      count: allUsers.filter(u => u.role === 'employer').length,
+      icon: Briefcase,
       activeIcon: FolderOpen,
     }
   ], [allUsers]);
@@ -394,22 +434,29 @@ export default function ProfilePage() {
       // 1. Filtrage par rôle de dossier
       if (!folderRoles.includes(u.role)) return false;
 
-      // 2. Filtrage par Groupe/Promotion
+      // 2. Filtrage par Statut Compte AD (UAC)
+      if (directoryStatusFilter === 'active' && u.is_active === false) return false;
+      if (directoryStatusFilter === 'inactive' && u.is_active !== false) return false;
+
+      // 3. Filtrage par Groupe/Promotion
       if (userGroupFilter !== 'all') {
         if (userGroupFilter === '__none__' && u.group_name) return false;
         if (userGroupFilter !== '__none__' && u.group_name !== userGroupFilter) return false;
       }
 
-      // 3. Recherche textuelle
+      // 4. Recherche textuelle LDAP
       if (userSearchQuery.trim()) {
         const q = userSearchQuery.toLowerCase().trim();
-        const emailMatch = u.email.toLowerCase().includes(q);
-        const roleMatch = u.role.toLowerCase().includes(q);
+        const emailMatch = u.email?.toLowerCase().includes(q);
+        const roleMatch = u.role?.toLowerCase().includes(q);
         const groupMatch = u.group_name ? u.group_name.toLowerCase().includes(q) : false;
         const nomMatch = u.nom ? u.nom.toLowerCase().includes(q) : false;
         const prenomMatch = u.prenom ? u.prenom.toLowerCase().includes(q) : false;
         const usernameMatch = u.username ? u.username.toLowerCase().includes(q) : false;
-        return emailMatch || roleMatch || groupMatch || nomMatch || prenomMatch || usernameMatch;
+        const deptMatch = u.departement ? u.departement.toLowerCase().includes(q) : false;
+        const specMatch = u.specialisation ? u.specialisation.toLowerCase().includes(q) : false;
+        const cinMatch = u.cin ? u.cin.toLowerCase().includes(q) : false;
+        return !!(emailMatch || roleMatch || groupMatch || nomMatch || prenomMatch || usernameMatch || deptMatch || specMatch || cinMatch);
       }
 
       return true;
@@ -919,7 +966,7 @@ export default function ProfilePage() {
   const isStaffUser = isAdminUser || ['formateur', 'pedagogique', 'dg_rh', 'dg/rh'].includes(user.role);
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 px-4 sm:px-8 pt-24 sm:pt-28 pb-16 space-y-8 max-w-5xl mx-auto animate-fade-in-up">
+    <div className="min-h-screen bg-white text-slate-900 px-4 sm:px-8 pt-24 sm:pt-28 pb-16 space-y-8 max-w-7xl mx-auto animate-fade-in-up">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -1018,324 +1065,219 @@ export default function ProfilePage() {
             </div>
           )}
 
-          {/* TAB 1 : GESTION DES UTILISATEURS ET DES DOSSIERS DE RÔLES */}
+          {/* TAB 1 : CONSOLE ACTIVE DIRECTORY & ENTRA ID (GESTION DES OBJETS ET ANNUAIRE) */}
           {isAdminUser && adminTab === 'users' && (() => {
             const activeFolder = ROLE_FOLDERS.find(f => f.id === selectedRoleFolder) || ROLE_FOLDERS[0];
             const activeFolderUsers = filterUsersForFolder(activeFolder.roles);
+            const selectedDirectoryUser = (selectedDirectoryUserId !== null ? allUsers.find(u => u.id === selectedDirectoryUserId) : null) || activeFolderUsers[0] || null;
 
-            const renderUserTableRows = (usersList: UserProfile[], currentFolderInfo?: any) => {
-              if (usersList.length === 0) {
-                return (
-                  <div className="py-12 px-6 text-center bg-white rounded-2xl border border-dashed border-slate-200">
-                    <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
-                      <Folder size={28} />
-                    </div>
-                    <p className="text-sm font-bold text-slate-800">Ce dossier est actuellement vide</p>
-                    <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1">
-                      Aucun compte utilisateur ne correspond aux critères de recherche ou de filtre au sein de ce dossier.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => handleOpenCreateUserInFolder(currentFolderInfo?.id || activeFolder.id)}
-                      className="mt-4 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold inline-flex items-center gap-2 shadow-xs transition-all cursor-pointer"
-                    >
-                      <UserPlus size={15} />
-                      <span>Créer un compte {currentFolderInfo?.shortName || activeFolder.shortName}</span>
-                    </button>
-                  </div>
-                );
-              }
+            const enabledUsersCount = allUsers.filter(u => u.is_active !== false).length;
+            const disabledUsersCount = allUsers.filter(u => u.is_active === false).length;
 
-              return (
-                <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-2xs">
-                  <table className="w-full text-left text-sm">
-                    <thead className="bg-slate-50 text-slate-500 text-[11px] uppercase font-bold tracking-wider border-b border-slate-200">
-                      <tr>
-                        <th className="px-6 py-3.5">Utilisateur</th>
-                        <th className="px-6 py-3.5">Rôle Actuel</th>
-                        <th className="px-6 py-3.5">Groupe / Classe</th>
-                        <th className="px-6 py-3.5">Changer le Rôle</th>
-                        <th className="px-6 py-3.5">Statut Connexion</th>
-                        <th className="px-6 py-3.5 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {usersList.map((u) => {
-                        const isCurrentUser = u.id === user.id;
-                        const isTargetAdmin = ADMIN_ROLES.includes(u.role);
-                        const isRoot = isRootAdmin(u);
-                        const canModifyTargetRole = isSuperAdmin ? (!isCurrentUser && !isRoot) : (!isCurrentUser && !isTargetAdmin && !isRoot);
-                        const canToggleStatus = isSuperAdmin ? (!isCurrentUser && !isRoot) : (!isCurrentUser && !isTargetAdmin && !isRoot);
-                        const canDeleteTarget = isSuperAdmin ? (!isCurrentUser && !isRoot) : (!isCurrentUser && !isTargetAdmin && !isRoot);
-                        const canResetTargetPassword = isSuperAdmin ? true : !isTargetAdmin;
-
-                        const selectableRoles = isSuperAdmin
-                          ? ALL_ROLES
-                          : (isTargetAdmin ? [u.role] : NON_ADMIN_ROLES);
-
-                        const isLeadershipRole = ADMIN_ROLES.includes(u.role) || u.role === 'dg_rh' || u.role === 'dg/rh' || u.role === 'formateur' || u.role === 'pedagogique';
-
-                        return (
-                          <tr key={u.id} className="hover:bg-slate-50/70 transition-colors">
-                            <td className="px-6 py-4 flex items-center gap-3">
-                              <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs shrink-0 bg-blue-50 text-blue-600 border border-blue-200">
-                                {u.email.charAt(0).toUpperCase()}
-                              </div>
-                              <div className="min-w-0">
-                                <p className="font-semibold text-slate-900 truncate">{u.email}</p>
-                                <p className="text-[11px] text-slate-500">
-                                  ID #{u.id} {u.nom || u.prenom ? `• ${[u.prenom, u.nom].filter(Boolean).join(' ')}` : ''} {isCurrentUser && '(Votre compte)'}
-                                </p>
-                              </div>
-                            </td>
-
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider border ${
-                                isLeadershipRole
-                                  ? 'bg-blue-50 text-blue-700 border-blue-200'
-                                  : 'bg-slate-100 text-slate-700 border border-slate-200'
-                              }`}>
-                                {u.role === 'dg_rh' || u.role === 'dg/rh' ? 'DG / RH' : u.role}
-                              </span>
-                            </td>
-
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-50 text-slate-700 border border-slate-200">
-                                <Users size={12} className="text-slate-400 shrink-0" />
-                                <span>{u.group_name || 'Non assigné'}</span>
-                              </span>
-                            </td>
-
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <select
-                                value={u.role}
-                                disabled={!canModifyTargetRole}
-                                onChange={(e) => handleRoleChange(u.id, e.target.value)}
-                                className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-xs text-slate-800 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                              >
-                                {selectableRoles.map((roleOpt) => (
-                                  <option key={roleOpt} value={roleOpt} className="bg-white">
-                                    {roleOpt === 'dg_rh' ? 'DG / RH' : roleOpt.charAt(0).toUpperCase() + roleOpt.slice(1)}
-                                  </option>
-                                ))}
-                              </select>
-                            </td>
-
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="flex items-center gap-2">
-                                {u.is_active !== false ? (
-                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                    <span>Actif</span>
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                                    <span>Suspendu</span>
-                                  </span>
-                                )}
-
-                                {canToggleStatus && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleRequestToggleStatus(u)}
-                                    className={`px-2 py-1 rounded-lg text-[10px] font-bold border transition-all cursor-pointer inline-flex items-center gap-1 ${
-                                      u.is_active !== false
-                                        ? 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100 hover:border-rose-300'
-                                        : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300'
-                                    }`}
-                                    title={u.is_active !== false ? "Suspendre l'accès et désactiver la connexion" : "Réactiver l'accès et la connexion"}
-                                  >
-                                    <Power size={11} />
-                                    <span>{u.is_active !== false ? 'Désactiver' : 'Activer'}</span>
-                                  </button>
-                                )}
-                              </div>
-                            </td>
-
-                            <td className="px-6 py-4 text-right whitespace-nowrap">
-                              <div className="flex items-center justify-end gap-1.5">
-                                <button
-                                  onClick={() => handleOpenEditUserModal(u)}
-                                  className="p-2 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
-                                  title="Modifier les informations de cet utilisateur"
-                                >
-                                  <Pencil size={15} />
-                                </button>
-                                {canResetTargetPassword && (
-                                  <button
-                                    onClick={() => {
-                                      setResetPasswordUser(u);
-                                      setNewResetPassword('');
-                                      setResetPasswordError('');
-                                    }}
-                                    className="p-2 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
-                                    title="Modifier le mot de passe"
-                                  >
-                                    <Key size={15} />
-                                  </button>
-                                )}
-                                {canDeleteTarget && (
-                                  <button
-                                    onClick={() => handleRequestDeleteUser(u)}
-                                    className="p-2 rounded-lg text-slate-500 hover:text-red-500 hover:bg-red-50 transition-colors cursor-pointer"
-                                    title="Supprimer cet utilisateur"
-                                  >
-                                    <Trash2 size={15} />
-                                  </button>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              );
-            };
+            const isSelectedUserRoot = selectedDirectoryUser ? isRootAdmin(selectedDirectoryUser) : false;
+            const isSelectedUserCurrent = selectedDirectoryUser ? selectedDirectoryUser.id === user.id : false;
+            const isSelectedUserAdmin = selectedDirectoryUser ? ADMIN_ROLES.includes(selectedDirectoryUser.role) : false;
+            const canModifySelected = selectedDirectoryUser
+              ? (isSuperAdmin ? (!isSelectedUserCurrent && !isSelectedUserRoot) : (!isSelectedUserCurrent && !isSelectedUserAdmin && !isSelectedUserRoot))
+              : false;
 
             return (
               <div className="space-y-6 animate-fade-in">
 
-                {/* EN-TÊTE DE SECTION : SYSTÈME DE DOSSIERS DE RÔLES */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 rounded-2xl bg-gradient-to-r from-blue-50/70 via-blue-50/30 to-slate-50/50 border border-blue-200/70">
-                  <div className="flex items-center gap-3">
-                    <div className="w-11 h-11 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20 shrink-0">
-                      <FolderOpen size={22} />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-lg font-bold text-slate-900">
-                          Gestion des Utilisateurs par Dossiers
-                        </h3>
-                        <span className="px-2.5 py-0.5 rounded-full bg-blue-600 text-white text-[10px] font-black tracking-wide">
-                          {allUsers.length} Comptes
-                        </span>
+                {/* BANNIÈRE ACTIVE DIRECTORY & TÉLÉMÉTRIE DE FORÊT */}
+                <div className="p-6 rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-blue-950 text-white shadow-lg border border-slate-700/50 space-y-5">
+                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3.5">
+                      <div className="w-12 h-12 rounded-2xl bg-blue-600/90 text-white flex items-center justify-center shadow-md shadow-blue-500/30 ring-2 ring-blue-400/30 shrink-0">
+                        <Network size={24} />
                       </div>
-                      <p className="text-xs text-slate-600 mt-0.5">
-                        Classement compartimenté par rôle pour une gouvernance administrative claire et sans encombrement.
-                      </p>
+                      <div>
+                        <div className="flex items-center gap-2.5 flex-wrap">
+                          <h3 className="text-xl font-black text-white tracking-tight">
+                            Active Directory & Entra ID Web Console
+                          </h3>
+                          <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-black uppercase tracking-wider flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                            AD DS Online
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-300 mt-1 flex items-center gap-2 flex-wrap font-mono">
+                          <span>Forêt : <strong className="text-blue-300 font-bold">DC=eschola,DC=pro</strong></span>
+                          <span>•</span>
+                          <span>Contrôleur : <strong className="text-slate-200">DC01.eschola.pro</strong></span>
+                          <span>•</span>
+                          <span>Schéma : <strong className="text-slate-200">v2026.3 Active</strong></span>
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 self-start lg:self-center">
+                      <span className="text-[11px] px-3 py-1.5 rounded-xl bg-slate-800/90 border border-slate-700 text-slate-300 font-mono flex items-center gap-1.5">
+                        <Terminal size={13} className="text-blue-400" />
+                        <span>LDAP://127.0.0.1:389</span>
+                      </span>
                     </div>
                   </div>
 
-                  {/* Bascule de mode d'affichage */}
-                  <div className="flex items-center gap-1.5 p-1 rounded-xl bg-white border border-slate-200 self-start md:self-auto shrink-0 text-xs shadow-2xs">
-                    <button
-                      type="button"
-                      onClick={() => setFolderViewMode('focused')}
-                      className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
-                        folderViewMode === 'focused'
-                          ? 'bg-blue-600 text-white shadow-xs'
-                          : 'text-slate-600 hover:text-slate-900'
-                      }`}
-                    >
-                      <Folder size={14} />
-                      <span>Vue Dossier Actif</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setFolderViewMode('accordion')}
-                      className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
-                        folderViewMode === 'accordion'
-                          ? 'bg-blue-600 text-white shadow-xs'
-                          : 'text-slate-600 hover:text-slate-900'
-                      }`}
-                    >
-                      <Layers size={14} />
-                      <span>Vue Tous les Dossiers</span>
-                    </button>
+                  {/* 4 CARTES KPI TÉLÉMÉTRIQUES ACTIVE DIRECTORY */}
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
+                    <div className="p-3.5 rounded-2xl bg-slate-800/80 border border-slate-700/80 shadow-xs">
+                      <div className="flex items-center justify-between text-slate-400 mb-1">
+                        <span className="text-[11px] font-bold uppercase tracking-wider">Objets Utilisateurs</span>
+                        <Users size={16} className="text-blue-400" />
+                      </div>
+                      <p className="text-2xl font-black text-white tracking-tight">{allUsers.length}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">Total comptes annuaire</p>
+                    </div>
+
+                    <div className="p-3.5 rounded-2xl bg-slate-800/80 border border-slate-700/80 shadow-xs">
+                      <div className="flex items-center justify-between text-slate-400 mb-1">
+                        <span className="text-[11px] font-bold uppercase tracking-wider">Comptes Activés (0x0200)</span>
+                        <UserCheck size={16} className="text-emerald-400" />
+                      </div>
+                      <p className="text-2xl font-black text-emerald-400 tracking-tight">{enabledUsersCount}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">Connexion autorisée</p>
+                    </div>
+
+                    <div className="p-3.5 rounded-2xl bg-slate-800/80 border border-slate-700/80 shadow-xs">
+                      <div className="flex items-center justify-between text-slate-400 mb-1">
+                        <span className="text-[11px] font-bold uppercase tracking-wider">Comptes Suspendus (0x0202)</span>
+                        <UserX size={16} className="text-rose-400" />
+                      </div>
+                      <p className="text-2xl font-black text-rose-400 tracking-tight">{disabledUsersCount}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">Accès verrouillé</p>
+                    </div>
+
+                    <div className="p-3.5 rounded-2xl bg-slate-800/80 border border-slate-700/80 shadow-xs">
+                      <div className="flex items-center justify-between text-slate-400 mb-1">
+                        <span className="text-[11px] font-bold uppercase tracking-wider">Unités d'Org. (OU)</span>
+                        <FolderTree size={16} className="text-blue-400" />
+                      </div>
+                      <p className="text-2xl font-black text-white tracking-tight">{ROLE_FOLDERS.length - 1} OU</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">{uniqueGroupsList.length} Groupes de Sécurité</p>
+                    </div>
                   </div>
                 </div>
 
-                {/* SÉLECTEUR DE DOSSIERS EN GRILLE (POCHETTES DE DOSSIERS INTERACTIVES) */}
-                <div>
-                  <div className="flex items-center justify-between mb-2.5 px-1">
-                    <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-                      <Folder size={13} className="text-blue-600" />
-                      <span>Sélectionnez un Dossier de Rôle ({ROLE_FOLDERS.length})</span>
-                    </span>
-                    <span className="text-[11px] text-slate-500">
-                      Dossier actif : <strong className="text-blue-600 font-bold">{activeFolder.fullName}</strong>
-                    </span>
+                {/* RUBAN DE COMMANDES ACTIVE DIRECTORY (ACTION BAR) */}
+                <div className="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-3">
+                  <div className="flex items-center justify-between gap-2 flex-wrap pb-2 border-b border-slate-100">
+                    {/* Actions de l'objet sélectionné */}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenCreateUserInFolder(activeFolder.id)}
+                        className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+                      >
+                        <UserPlus size={14} />
+                        <span>+ Nouvel Objet</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={!selectedDirectoryUser || !canModifySelected}
+                        onClick={() => selectedDirectoryUser && handleRequestToggleStatus(selectedDirectoryUser)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 transition-all ${
+                          !selectedDirectoryUser || !canModifySelected
+                            ? 'bg-slate-50 text-slate-400 border-slate-200 cursor-not-allowed opacity-60'
+                            : selectedDirectoryUser.is_active !== false
+                              ? 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100 cursor-pointer'
+                              : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 cursor-pointer'
+                        }`}
+                        title={
+                          !selectedDirectoryUser
+                            ? 'Sélectionnez un utilisateur'
+                            : selectedDirectoryUser.is_active !== false
+                              ? 'Suspendre le compte sélectionné'
+                              : 'Activer le compte sélectionné'
+                        }
+                      >
+                        <Power size={13} />
+                        <span>
+                          {selectedDirectoryUser && selectedDirectoryUser.is_active === false ? 'Activer Compte' : 'Désactiver Compte'}
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={!selectedDirectoryUser || (isSuperAdmin ? false : isSelectedUserAdmin)}
+                        onClick={() => {
+                          if (selectedDirectoryUser) {
+                            setResetPasswordUser(selectedDirectoryUser);
+                            setNewResetPassword('');
+                            setResetPasswordError('');
+                          }
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Réinitialiser le mot de passe de l'utilisateur"
+                      >
+                        <Key size={13} className="text-blue-600" />
+                        <span>Mot de passe</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={!selectedDirectoryUser}
+                        onClick={() => selectedDirectoryUser && handleOpenEditUserModal(selectedDirectoryUser)}
+                        className="px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Modifier les attributs LDAP et propriétés"
+                      >
+                        <Pencil size={13} className="text-slate-600" />
+                        <span>Propriétés</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={!selectedDirectoryUser || !canModifySelected}
+                        onClick={() => selectedDirectoryUser && handleRequestDeleteUser(selectedDirectoryUser)}
+                        className="px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-rose-50 text-slate-700 hover:text-rose-700 border border-slate-200 hover:border-rose-200 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Supprimer l'objet de l'annuaire"
+                      >
+                        <Trash2 size={13} className="text-rose-500" />
+                        <span>Supprimer</span>
+                      </button>
+                    </div>
+
+                    {/* Contrôles utilitaires */}
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => fetchAdminData()}
+                        disabled={adminLoading}
+                        className="px-2.5 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
+                        title="Actualiser la liste Active Directory"
+                      >
+                        <RefreshCw size={13} className={adminLoading ? 'animate-spin text-blue-600' : 'text-slate-500'} />
+                        <span className="hidden sm:inline">Actualiser</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setIsInspectorOpen(prev => !prev)}
+                        className={`px-2.5 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                          isInspectorOpen
+                            ? 'bg-blue-50 text-blue-700 border-blue-200'
+                            : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                        }`}
+                        title="Afficher/Masquer le volet des attributs LDAP"
+                      >
+                        <SlidersHorizontal size={13} />
+                        <span className="hidden sm:inline">Inspecteur LDAP</span>
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-2.5">
-                    {ROLE_FOLDERS.map((f) => {
-                      const isSelected = selectedRoleFolder === f.id;
-                      const FolderIconComp = isSelected ? f.activeIcon : f.icon;
-
-                      return (
-                        <button
-                          key={f.id}
-                          type="button"
-                          onClick={() => {
-                            setSelectedRoleFolder(f.id);
-                            if (folderViewMode === 'accordion') {
-                              setExpandedFolders(prev => ({ ...prev, [f.id]: true }));
-                            }
-                          }}
-                          className={`relative text-left p-3.5 rounded-2xl border transition-all duration-200 group flex flex-col justify-between cursor-pointer min-h-[94px] ${
-                            isSelected
-                              ? 'bg-blue-50/70 border-blue-600 shadow-xs ring-2 ring-blue-500/20'
-                              : 'bg-white hover:bg-slate-50/80 border-slate-200 hover:border-blue-300'
-                          }`}
-                        >
-                          {/* En-tête de la pochette de dossier */}
-                          <div className="flex items-start justify-between gap-1 mb-2">
-                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
-                              isSelected
-                                ? 'bg-blue-600 text-white shadow-xs'
-                                : 'bg-slate-100 text-slate-600 group-hover:bg-blue-50 group-hover:text-blue-600'
-                            }`}>
-                              <FolderIconComp size={16} />
-                            </div>
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-black transition-colors ${
-                              isSelected
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-slate-100 text-slate-700 border border-slate-200/80'
-                            }`}>
-                              {f.count}
-                            </span>
-                          </div>
-
-                          {/* Libellé et sous-titre */}
-                          <div>
-                            <p className={`text-xs font-bold leading-tight ${
-                              isSelected ? 'text-blue-700 font-black' : 'text-slate-800 group-hover:text-blue-600'
-                            }`}>
-                              {f.name}
-                            </p>
-                            <p className={`text-[10px] mt-0.5 ${
-                              isSelected ? 'text-blue-600/80 font-medium' : 'text-slate-500'
-                            }`}>
-                              {f.subtitle}
-                            </p>
-                          </div>
-
-                          {/* Barre d'indicateur actif */}
-                          {isSelected && (
-                            <div className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full bg-blue-600" />
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* BANDEAU DE FILTRAGE & ACTIONS RAPIDES */}
-                <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-3">
-                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-                    
-                    {/* Recherche textuelle en temps réel */}
-                    <div className="relative flex-1 max-w-md">
-                      <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  {/* BARRE DE RECHERCHE LDAP & FILTRES RAPIDES */}
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5">
+                    {/* Champ de recherche LDAP */}
+                    <div className="relative flex-1">
+                      <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                       <input
                         type="text"
                         value={userSearchQuery}
                         onChange={(e) => setUserSearchQuery(e.target.value)}
-                        placeholder={`Rechercher dans ${activeFolder.fullName} (nom, email, rôle)...`}
-                        className="w-full pl-10 pr-9 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition-all text-slate-900 placeholder:text-slate-400"
+                        placeholder={`Filtre LDAP dans ${activeFolder.fullName} (sAMAccountName, mail, nom, prénom, UPN)...`}
+                        className="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition-all text-slate-900 placeholder:text-slate-400 font-mono"
                       />
                       {userSearchQuery && (
                         <button
@@ -1348,18 +1290,33 @@ export default function ProfilePage() {
                       )}
                     </div>
 
-                    {/* Filtre secondaire par Promotion/Groupe */}
-                    <div className="flex items-center gap-2 flex-wrap">
+                    {/* Filtre de statut UAC */}
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs">
-                        <Users size={13} className="text-slate-400 shrink-0" />
+                        <Power size={12} className="text-slate-400" />
+                        <span className="text-[11px] text-slate-500 font-semibold">UAC :</span>
+                        <select
+                          value={directoryStatusFilter}
+                          onChange={(e) => setDirectoryStatusFilter(e.target.value as any)}
+                          className="bg-transparent text-slate-800 font-semibold text-xs outline-none cursor-pointer"
+                        >
+                          <option value="all">Tous statuts</option>
+                          <option value="active">🟢 Activés (0x0200)</option>
+                          <option value="inactive">🔴 Suspendus (0x0202)</option>
+                        </select>
+                      </div>
+
+                      {/* Filtre par groupe de sécurité */}
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+                        <Users size={12} className="text-slate-400" />
                         <span className="text-[11px] text-slate-500 font-semibold">Groupe :</span>
                         <select
                           value={userGroupFilter}
                           onChange={(e) => setUserGroupFilter(e.target.value)}
-                          className="bg-transparent text-slate-800 font-semibold text-xs outline-none cursor-pointer"
+                          className="bg-transparent text-slate-800 font-semibold text-xs outline-none cursor-pointer max-w-[150px] truncate"
                         >
                           <option value="all">Tous les groupes</option>
-                          <option value="__none__">Sans groupe assigné</option>
+                          <option value="__none__">Sans groupe</option>
                           {uniqueGroupsList.map((g) => (
                             <option key={g} value={g}>
                               👥 {g}
@@ -1367,126 +1324,566 @@ export default function ProfilePage() {
                           ))}
                         </select>
                       </div>
-
-                      <button
-                        type="button"
-                        onClick={() => fetchAdminData()}
-                        disabled={adminLoading}
-                        className="px-3 py-2 text-xs font-semibold rounded-xl bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-700 transition-colors cursor-pointer"
-                      >
-                        {adminLoading ? '...' : 'Actualiser'}
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleOpenCreateUserInFolder(activeFolder.id)}
-                        className="px-3.5 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1.5 shadow-xs transition-all cursor-pointer whitespace-nowrap"
-                      >
-                        <UserPlus size={15} />
-                        <span>Créer dans ce dossier</span>
-                      </button>
                     </div>
-
-                  </div>
-
-                  {/* Résumé contextuel du dossier sélectionné */}
-                  <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between text-xs text-slate-600 gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-slate-900">
-                        📂 {activeFolder.fullName} :
-                      </span>
-                      <span className="text-slate-600">{activeFolder.description}</span>
-                    </div>
-                    <span className="font-semibold text-[11px] bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-0.5 rounded-full self-start sm:self-auto shrink-0">
-                      {activeFolderUsers.length} affiché(s) / {activeFolder.count} total
-                    </span>
                   </div>
                 </div>
 
-                {/* AFFICHAGE EN MODE FOCALISÉ (Dossier Actif) */}
-                {folderViewMode === 'focused' && (
-                  <div className="space-y-4">
-                    {renderUserTableRows(activeFolderUsers, activeFolder)}
-                  </div>
-                )}
+                {/* POSTE DE TRAVAIL EN 2 COLONNES (ARBORESCENCE OU + GRILLE D'OBJETS) */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
 
-                {/* AFFICHAGE EN MODE CLASSEUR GROUPÉ (Tous les dossiers en accordéon) */}
-                {folderViewMode === 'accordion' && (
-                  <div className="space-y-4">
-                    {ROLE_FOLDERS.filter(f => f.id !== 'all').map((folderItem) => {
-                      const isExpanded = !!expandedFolders[folderItem.id];
-                      const folderUsers = filterUsersForFolder(folderItem.roles);
-                      const FolderIconComponent = isExpanded ? folderItem.activeIcon : folderItem.icon;
+                  {/* COLONNE GAUCHE : ARBORESCENCE ACTIVE DIRECTORY (OU & GROUPES) */}
+                  <div className="lg:col-span-4 xl:col-span-3 space-y-4">
+                    <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-3">
+                      
+                      {/* Noeud Racine Domaine */}
+                      <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                        <div className="flex items-center gap-2">
+                          <Network size={16} className="text-blue-600" />
+                          <span className="text-xs font-black text-slate-900 font-mono">DC=eschola,DC=pro</span>
+                        </div>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                          {allUsers.length}
+                        </span>
+                      </div>
 
-                      return (
-                        <div
-                          key={folderItem.id}
-                          className={`rounded-2xl border transition-all ${
-                            isExpanded
-                              ? 'bg-white shadow-xs border-blue-300 ring-1 ring-blue-500/10'
-                              : 'bg-white border-slate-200 hover:border-blue-200'
-                          }`}
-                        >
-                          {/* Barre d'en-tête du dossier classeur */}
-                          <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      {/* Section Unités d'Organisation (OU) */}
+                      <div>
+                        <div className="flex items-center justify-between text-[11px] font-black uppercase tracking-wider text-slate-400 mb-2 px-1">
+                          <span className="flex items-center gap-1.5">
+                            <FolderTree size={12} className="text-slate-500" />
+                            <span>Unités d'Organisation (OU)</span>
+                          </span>
+                        </div>
+
+                        <div className="space-y-1">
+                          {ROLE_FOLDERS.map((folder) => {
+                            const isSelected = selectedRoleFolder === folder.id;
+                            const FolderIcon = isSelected ? folder.activeIcon : folder.icon;
+
+                            return (
+                              <button
+                                key={folder.id}
+                                type="button"
+                                onClick={() => setSelectedRoleFolder(folder.id)}
+                                className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between transition-all cursor-pointer ${
+                                  isSelected
+                                    ? 'bg-blue-50 text-blue-700 font-bold border border-blue-200 shadow-2xs ring-1 ring-blue-500/10'
+                                    : 'text-slate-700 hover:bg-slate-50 border border-transparent'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <FolderIcon
+                                    size={15}
+                                    className={isSelected ? 'text-blue-600 shrink-0' : 'text-slate-400 group-hover:text-slate-600 shrink-0'}
+                                  />
+                                  <div className="min-w-0">
+                                    <p className="truncate text-xs font-medium leading-tight">{folder.name}</p>
+                                    <p className="text-[10px] text-slate-400 font-mono truncate">{folder.ouPath}</p>
+                                  </div>
+                                </div>
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ml-1 ${
+                                  isSelected ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'
+                                }`}>
+                                  {folder.count}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Section Groupes de Sécurité (memberOf) */}
+                      {uniqueGroupsList.length > 0 && (
+                        <div className="pt-2 border-t border-slate-100">
+                          <div className="flex items-center justify-between text-[11px] font-black uppercase tracking-wider text-slate-400 mb-2 px-1">
+                            <span className="flex items-center gap-1.5">
+                              <ShieldCheck size={12} className="text-slate-500" />
+                              <span>Groupes de Sécurité</span>
+                            </span>
+                            <span className="text-[10px] font-bold text-slate-400">{uniqueGroupsList.length}</span>
+                          </div>
+
+                          <div className="space-y-1 max-h-48 overflow-y-auto pr-1">
                             <button
                               type="button"
-                              onClick={() => toggleFolderExpansion(folderItem.id)}
-                              className="flex items-center gap-3 text-left flex-1 cursor-pointer group"
+                              onClick={() => setUserGroupFilter('all')}
+                              className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between cursor-pointer ${
+                                userGroupFilter === 'all'
+                                  ? 'bg-slate-100 font-bold text-slate-900'
+                                  : 'text-slate-600 hover:bg-slate-50'
+                              }`}
                             >
-                              <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
-                                isExpanded
-                                  ? 'bg-blue-600 text-white'
-                                  : 'bg-slate-100 text-slate-600 group-hover:bg-blue-50 group-hover:text-blue-600'
-                              }`}>
-                                <FolderIconComponent size={18} />
-                              </div>
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <h4 className="text-sm font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
-                                    {folderItem.fullName}
-                                  </h4>
-                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
-                                    {folderUsers.length} / {folderItem.count} membre(s)
-                                  </span>
-                                </div>
-                                <p className="text-[11px] text-slate-500 mt-0.5">
-                                  {folderItem.description}
-                                </p>
-                              </div>
+                              <span className="truncate">Tous les groupes</span>
+                              <span className="text-[10px] text-slate-400">{allUsers.length}</span>
                             </button>
 
-                            <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
-                              <button
-                                type="button"
-                                onClick={() => handleOpenCreateUserInFolder(folderItem.id)}
-                                className="px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-200 text-xs font-semibold text-slate-700 hover:text-blue-700 flex items-center gap-1.5 transition-colors cursor-pointer"
-                              >
-                                <UserPlus size={13} className="text-blue-600" />
-                                <span>Ajouter</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => toggleFolderExpansion(folderItem.id)}
-                                className="p-2 rounded-lg bg-slate-50 hover:bg-blue-50 border border-slate-200 text-slate-600 hover:text-blue-700 transition-colors cursor-pointer"
-                                title={isExpanded ? 'Réduire le dossier' : 'Déplier le dossier'}
-                              >
-                                {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                              </button>
+                            {uniqueGroupsList.map((grp) => {
+                              const isGrpActive = userGroupFilter === grp;
+                              const grpCount = allUsers.filter(u => u.group_name === grp).length;
+
+                              return (
+                                <button
+                                  key={grp}
+                                  type="button"
+                                  onClick={() => setUserGroupFilter(grp)}
+                                  className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between cursor-pointer ${
+                                    isGrpActive
+                                      ? 'bg-blue-50 text-blue-700 font-bold border border-blue-200'
+                                      : 'text-slate-600 hover:bg-slate-50'
+                                  }`}
+                                >
+                                  <span className="truncate flex items-center gap-1.5 font-mono text-[11px]">
+                                    <Users size={11} className="text-slate-400" />
+                                    {grp}
+                                  </span>
+                                  <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-slate-100 text-slate-600">
+                                    {grpCount}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Métadonnées de Sécurité Active Directory */}
+                      <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-500 space-y-1 font-mono">
+                        <div className="flex items-center justify-between">
+                          <span>Auth Provider :</span>
+                          <span className="font-bold text-slate-700">JWT + SQLite LDAP</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span>Sync Mode :</span>
+                          <span className="font-bold text-emerald-600">Direct In-Memory</span>
+                        </div>
+                      </div>
+
+                    </div>
+                  </div>
+
+                  {/* COLONNE DROITE : GRILLE DE DONNÉES DES OBJETS ACTIVE DIRECTORY */}
+                  <div className="lg:col-span-8 xl:col-span-9 space-y-4">
+                    
+                    {/* Fil d'Ariane LDAP / Chemin de l'Objet */}
+                    <div className="flex items-center justify-between text-xs px-1 text-slate-500">
+                      <div className="flex items-center gap-1.5 font-mono">
+                        <FolderOpen size={13} className="text-blue-600" />
+                        <span className="text-slate-900 font-bold">LDAP://DC=eschola,DC=pro</span>
+                        <span>/</span>
+                        <span className="text-blue-600 font-bold">{activeFolder.ouPath}</span>
+                      </div>
+                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                        {activeFolderUsers.length} Objet(s) affiché(s)
+                      </span>
+                    </div>
+
+                    {/* TABLEAU DES OBJETS ACTIVE DIRECTORY */}
+                    {activeFolderUsers.length === 0 ? (
+                      <div className="py-14 px-6 text-center bg-white rounded-2xl border border-dashed border-slate-200">
+                        <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                          <Network size={28} />
+                        </div>
+                        <p className="text-sm font-bold text-slate-800">Aucun objet Active Directory trouvé</p>
+                        <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1">
+                          Aucun compte ne correspond aux filtres ou à la recherche dans l'unité d'organisation <strong>{activeFolder.ouPath}</strong>.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenCreateUserInFolder(activeFolder.id)}
+                          className="mt-4 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold inline-flex items-center gap-2 shadow-xs transition-all cursor-pointer"
+                        >
+                          <UserPlus size={15} />
+                          <span>Créer un compte {activeFolder.shortName}</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-2xs">
+                        <table className="w-full text-left text-xs">
+                          <thead className="bg-slate-50 text-slate-500 text-[11px] uppercase font-bold tracking-wider border-b border-slate-200">
+                            <tr>
+                              <th className="px-4 py-3.5">Objet / Display Name (cn)</th>
+                              <th className="px-4 py-3.5">User Principal Name (UPN)</th>
+                              <th className="px-4 py-3.5">Object Class / Rôle</th>
+                              <th className="px-4 py-3.5">Groupe (memberOf)</th>
+                              <th className="px-4 py-3.5">État Compte (UAC)</th>
+                              <th className="px-4 py-3.5 text-right">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                            {activeFolderUsers.map((u) => {
+                              const isSelected = selectedDirectoryUserId === u.id || (selectedDirectoryUserId === null && selectedDirectoryUser?.id === u.id);
+                              const isCurrentUser = u.id === user.id;
+                              const isTargetAdmin = ADMIN_ROLES.includes(u.role);
+                              const isRoot = isRootAdmin(u);
+                              const canModifyTargetRole = isSuperAdmin ? (!isCurrentUser && !isRoot) : (!isCurrentUser && !isTargetAdmin && !isRoot);
+                              const canToggleStatus = isSuperAdmin ? (!isCurrentUser && !isRoot) : (!isCurrentUser && !isTargetAdmin && !isRoot);
+                              const canDeleteTarget = isSuperAdmin ? (!isCurrentUser && !isRoot) : (!isCurrentUser && !isTargetAdmin && !isRoot);
+                              const canResetTargetPassword = isSuperAdmin ? true : !isTargetAdmin;
+
+                              const selectableRoles = isSuperAdmin
+                                ? ALL_ROLES
+                                : (isTargetAdmin ? [u.role] : NON_ADMIN_ROLES);
+
+                              const isLeadershipRole = ADMIN_ROLES.includes(u.role) || u.role === 'dg_rh' || u.role === 'dg/rh' || u.role === 'formateur' || u.role === 'pedagogique';
+
+                              return (
+                                <tr
+                                  key={u.id}
+                                  onClick={() => setSelectedDirectoryUserId(u.id)}
+                                  className={`transition-all cursor-pointer ${
+                                    isSelected
+                                      ? 'bg-blue-50/70 border-l-4 border-l-blue-600 font-medium'
+                                      : 'hover:bg-slate-50/70 border-l-4 border-l-transparent'
+                                  }`}
+                                >
+                                  {/* Colonne 1: Objet & Display Name */}
+                                  <td className="px-4 py-3">
+                                    <div className="flex items-center gap-2.5">
+                                      {/* Radio indicator */}
+                                      <div className={`w-3 h-3 rounded-full border flex items-center justify-center shrink-0 transition-colors ${
+                                        isSelected ? 'border-blue-600 bg-blue-600' : 'border-slate-300 bg-white'
+                                      }`}>
+                                        {isSelected && <div className="w-1 h-1 rounded-full bg-white" />}
+                                      </div>
+
+                                      {/* Avatar */}
+                                      <div className="relative shrink-0">
+                                        <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs bg-blue-50 text-blue-600 border border-blue-200">
+                                          {u.email.charAt(0).toUpperCase()}
+                                        </div>
+                                        <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white ${
+                                          u.is_active !== false ? 'bg-emerald-500' : 'bg-rose-500'
+                                        }`} />
+                                      </div>
+
+                                      <div className="min-w-0">
+                                        <p className="font-bold text-slate-900 truncate">
+                                          {[u.prenom, u.nom].filter(Boolean).join(' ') || u.email.split('@')[0]}
+                                        </p>
+                                        <p className="text-[10px] text-slate-500 font-mono truncate">
+                                          @{u.username || u.email.split('@')[0]} • ID #{u.id} {isCurrentUser && '(Vous)'}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </td>
+
+                                  {/* Colonne 2: UPN */}
+                                  <td className="px-4 py-3 whitespace-nowrap">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="font-mono text-slate-700 text-xs truncate max-w-[180px]">
+                                        {u.email}
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleCopyText(u.email, `upn-${u.id}`);
+                                        }}
+                                        className="p-1 text-slate-400 hover:text-blue-600 transition-colors rounded"
+                                        title="Copier le UserPrincipalName"
+                                      >
+                                        {isCopiedUpn === `upn-${u.id}` ? <CheckCheck size={12} className="text-emerald-500" /> : <Copy size={12} />}
+                                      </button>
+                                    </div>
+                                  </td>
+
+                                  {/* Colonne 3: Object Class / Rôle */}
+                                  <td className="px-4 py-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                                    <div className="flex items-center gap-1.5">
+                                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${
+                                        isLeadershipRole
+                                          ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                          : 'bg-slate-100 text-slate-700 border-slate-200'
+                                      }`}>
+                                        {u.role === 'dg_rh' || u.role === 'dg/rh' ? 'DG / RH' : u.role}
+                                      </span>
+
+                                      {canModifyTargetRole && (
+                                        <select
+                                          value={u.role}
+                                          onChange={(e) => handleRoleChange(u.id, e.target.value)}
+                                          className="px-2 py-1 rounded bg-white border border-slate-200 text-[10px] text-slate-700 outline-none focus:border-blue-600 transition-all cursor-pointer"
+                                        >
+                                          {selectableRoles.map((r) => (
+                                            <option key={r} value={r}>
+                                              {r === 'dg_rh' ? 'DG / RH' : r}
+                                            </option>
+                                          ))}
+                                        </select>
+                                      )}
+                                    </div>
+                                  </td>
+
+                                  {/* Colonne 4: Groupe / memberOf */}
+                                  <td className="px-4 py-3 whitespace-nowrap">
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-mono bg-slate-50 text-slate-700 border border-slate-200">
+                                      <Users size={11} className="text-slate-400 shrink-0" />
+                                      <span className="truncate max-w-[120px]">{u.group_name || 'Non assigné'}</span>
+                                    </span>
+                                  </td>
+
+                                  {/* Colonne 5: État Compte (UAC) */}
+                                  <td className="px-4 py-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                                    <div className="flex items-center gap-2">
+                                      {u.is_active !== false ? (
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                          <span>0x0200 Activé</span>
+                                        </span>
+                                      ) : (
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                                          <span>0x0202 Suspendu</span>
+                                        </span>
+                                      )}
+
+                                      {canToggleStatus && (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleRequestToggleStatus(u)}
+                                          className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border transition-all cursor-pointer inline-flex items-center gap-1 shadow-2xs ${
+                                            u.is_active !== false
+                                              ? 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100'
+                                              : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                                          }`}
+                                          title={u.is_active !== false ? "Suspendre l'accès utilisateur" : "Réactiver l'accès utilisateur"}
+                                        >
+                                          <Power size={10} />
+                                          <span>{u.is_active !== false ? 'Désactiver' : 'Activer'}</span>
+                                        </button>
+                                      )}
+                                    </div>
+                                  </td>
+
+                                  {/* Colonne 6: Actions rapides */}
+                                  <td className="px-4 py-3 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                                    <div className="flex items-center justify-end gap-1">
+                                      <button
+                                        onClick={() => handleOpenEditUserModal(u)}
+                                        className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
+                                        title="Modifier les propriétés de cet objet"
+                                      >
+                                        <Pencil size={14} />
+                                      </button>
+                                      {canResetTargetPassword && (
+                                        <button
+                                          onClick={() => {
+                                            setResetPasswordUser(u);
+                                            setNewResetPassword('');
+                                            setResetPasswordError('');
+                                          }}
+                                          className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
+                                          title="Modifier le mot de passe"
+                                        >
+                                          <Key size={14} />
+                                        </button>
+                                      )}
+                                      {canDeleteTarget && (
+                                        <button
+                                          onClick={() => handleRequestDeleteUser(u)}
+                                          className="p-1.5 rounded-lg text-slate-500 hover:text-red-500 hover:bg-red-50 transition-colors cursor-pointer"
+                                          title="Supprimer cet objet de l'annuaire"
+                                        >
+                                          <Trash2 size={14} />
+                                        </button>
+                                      )}
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+
+                    {/* VOLET D'INSPECTION D'OBJET ACTIVE DIRECTORY (LDAP PROPERTY INSPECTOR) */}
+                    {isInspectorOpen && selectedDirectoryUser && (
+                      <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-4 animate-fade-in">
+                        
+                        {/* En-tête de l'inspecteur */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                          <div className="flex items-center gap-3">
+                            <div className="w-11 h-11 rounded-2xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center font-black text-base shrink-0">
+                              {selectedDirectoryUser.email.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h4 className="text-base font-black text-slate-900">
+                                  {[selectedDirectoryUser.prenom, selectedDirectoryUser.nom].filter(Boolean).join(' ') || selectedDirectoryUser.email}
+                                </h4>
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                  selectedDirectoryUser.is_active !== false
+                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                    : 'bg-rose-50 text-rose-700 border border-rose-200'
+                                }`}>
+                                  {selectedDirectoryUser.is_active !== false ? '● Compte Activé' : '● Compte Suspendu'}
+                                </span>
+                              </div>
+                              <p className="text-xs text-slate-500 font-mono flex items-center gap-1.5 mt-0.5">
+                                <span>CN={selectedDirectoryUser.username || selectedDirectoryUser.email.split('@')[0]},OU={selectedDirectoryUser.role},DC=eschola,DC=pro</span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleCopyText(`CN=${selectedDirectoryUser.username || selectedDirectoryUser.email.split('@')[0]},OU=${selectedDirectoryUser.role},DC=eschola,DC=pro`, 'dn')}
+                                  className="text-slate-400 hover:text-blue-600 transition-colors"
+                                  title="Copier le Distinguished Name"
+                                >
+                                  {isCopiedUpn === 'dn' ? <CheckCheck size={12} className="text-emerald-500" /> : <Copy size={12} />}
+                                </button>
+                              </p>
                             </div>
                           </div>
 
-                          {/* Contenu du dossier déplié */}
-                          {isExpanded && (
-                            <div className="p-4 pt-0 border-t border-slate-200">
-                              {renderUserTableRows(folderUsers, folderItem)}
-                            </div>
-                          )}
+                          {/* Onglets de l'inspecteur */}
+                          <div className="flex items-center gap-1 p-1 bg-slate-50 border border-slate-200 rounded-xl text-xs self-start sm:self-auto">
+                            <button
+                              type="button"
+                              onClick={() => setDirectoryInspectorTab('attributes')}
+                              className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                                directoryInspectorTab === 'attributes'
+                                  ? 'bg-white text-blue-600 shadow-2xs'
+                                  : 'text-slate-600 hover:text-slate-900'
+                              }`}
+                            >
+                              Attributs LDAP
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setDirectoryInspectorTab('groups')}
+                              className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                                directoryInspectorTab === 'groups'
+                                  ? 'bg-white text-blue-600 shadow-2xs'
+                                  : 'text-slate-600 hover:text-slate-900'
+                              }`}
+                            >
+                              Groupes (memberOf)
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setDirectoryInspectorTab('security')}
+                              className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                                directoryInspectorTab === 'security'
+                                  ? 'bg-white text-blue-600 shadow-2xs'
+                                  : 'text-slate-600 hover:text-slate-900'
+                              }`}
+                            >
+                              Sécurité & Contrôle
+                            </button>
+                          </div>
                         </div>
-                      );
-                    })}
+
+                        {/* Contenu de l'onglet : Attributs LDAP */}
+                        {directoryInspectorTab === 'attributes' && (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                            <div className="p-3 rounded-xl bg-slate-50/70 border border-slate-200 space-y-1">
+                              <span className="text-[10px] font-mono uppercase font-bold text-slate-400">sAMAccountName</span>
+                              <p className="font-mono font-bold text-slate-800">{selectedDirectoryUser.username || selectedDirectoryUser.email.split('@')[0]}</p>
+                            </div>
+
+                            <div className="p-3 rounded-xl bg-slate-50/70 border border-slate-200 space-y-1">
+                              <span className="text-[10px] font-mono uppercase font-bold text-slate-400">userPrincipalName (UPN)</span>
+                              <p className="font-mono font-bold text-slate-800">{selectedDirectoryUser.email}</p>
+                            </div>
+
+                            <div className="p-3 rounded-xl bg-slate-50/70 border border-slate-200 space-y-1">
+                              <span className="text-[10px] font-mono uppercase font-bold text-slate-400">givenName / sn (Prénom & Nom)</span>
+                              <p className="font-bold text-slate-800">
+                                {[selectedDirectoryUser.prenom, selectedDirectoryUser.nom].filter(Boolean).join(' ') || 'Non renseigné'}
+                              </p>
+                            </div>
+
+                            <div className="p-3 rounded-xl bg-slate-50/70 border border-slate-200 space-y-1">
+                              <span className="text-[10px] font-mono uppercase font-bold text-slate-400">telephoneNumber</span>
+                              <p className="font-mono font-bold text-slate-800">{selectedDirectoryUser.telephone || 'Non renseigné'}</p>
+                            </div>
+
+                            <div className="p-3 rounded-xl bg-slate-50/70 border border-slate-200 space-y-1">
+                              <span className="text-[10px] font-mono uppercase font-bold text-slate-400">department / title</span>
+                              <p className="font-bold text-slate-800">
+                                {[selectedDirectoryUser.departement, selectedDirectoryUser.specialisation].filter(Boolean).join(' • ') || selectedDirectoryUser.role}
+                              </p>
+                            </div>
+
+                            <div className="p-3 rounded-xl bg-slate-50/70 border border-slate-200 space-y-1">
+                              <span className="text-[10px] font-mono uppercase font-bold text-slate-400">userAccountControl (UAC)</span>
+                              <p className="font-mono font-bold text-slate-800">
+                                {selectedDirectoryUser.is_active !== false ? '0x0200 (NORMAL_ACCOUNT - ENABLED)' : '0x0202 (ACCOUNTDISABLE)'}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Contenu de l'onglet : Groupes (memberOf) */}
+                        {directoryInspectorTab === 'groups' && (
+                          <div className="space-y-3">
+                            <p className="text-xs text-slate-500">
+                              Appartenances aux groupes de sécurité et rôles pour l'objet <strong>{selectedDirectoryUser.email}</strong> :
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                              <span className="px-3 py-1.5 rounded-xl bg-blue-50 text-blue-700 border border-blue-200 text-xs font-mono font-bold flex items-center gap-1.5">
+                                <ShieldCheck size={14} />
+                                <span>CN=Role-{selectedDirectoryUser.role},OU=Roles,DC=eschola,DC=pro</span>
+                              </span>
+
+                              {selectedDirectoryUser.group_name && (
+                                <span className="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-800 border border-slate-200 text-xs font-mono font-bold flex items-center gap-1.5">
+                                  <Users size={14} />
+                                  <span>CN={selectedDirectoryUser.group_name},OU=SecurityGroups,DC=eschola,DC=pro</span>
+                                </span>
+                              )}
+
+                              <span className="px-3 py-1.5 rounded-xl bg-slate-50 text-slate-600 border border-slate-200 text-xs font-mono flex items-center gap-1.5">
+                                <Network size={14} />
+                                <span>CN=Domain Users,CN=Users,DC=eschola,DC=pro</span>
+                              </span>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Contenu de l'onglet : Sécurité & Contrôle */}
+                        {directoryInspectorTab === 'security' && (
+                          <div className="space-y-4">
+                            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                              <div>
+                                <h5 className="text-xs font-bold text-slate-900">Statut de la connexion & Contrôle d'accès</h5>
+                                <p className="text-[11px] text-slate-500 mt-0.5">
+                                  {selectedDirectoryUser.is_active !== false
+                                    ? "L'utilisateur peut actuellement se connecter et accéder à tous ses modules."
+                                    : "L'accès de cet utilisateur est suspendu. La connexion est immédiatement bloquée."}
+                                </p>
+                              </div>
+
+                              {canModifySelected && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleRequestToggleStatus(selectedDirectoryUser)}
+                                  className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
+                                    selectedDirectoryUser.is_active !== false
+                                      ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200'
+                                      : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'
+                                  }`}
+                                >
+                                  <Power size={14} />
+                                  <span>{selectedDirectoryUser.is_active !== false ? 'Suspendre la Connexion' : 'Autoriser la Connexion'}</span>
+                                </button>
+                              )}
+                            </div>
+
+                            {isSelectedUserRoot && (
+                              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center gap-2">
+                                <ShieldAlert size={16} className="text-amber-600 shrink-0" />
+                                <span>Cet objet est un Administrateur Racine protégé en écriture. Son statut et son rôle ne peuvent pas être altérés.</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                      </div>
+                    )}
+
                   </div>
-                )}
+
+                </div>
 
               </div>
             );
