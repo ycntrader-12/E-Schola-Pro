@@ -164,22 +164,22 @@ export const GoogleAiAssistModal: React.FC<GoogleAiAssistModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="glass-card max-w-2xl w-full p-6 sm:p-7 rounded-3xl border border-purple-500/30 space-y-5 animate-fade-in-up shadow-2xl bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300 flex items-center justify-center shadow-xs">
+    <div className="fixed inset-0 z-50 bg-slate-950/40 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="max-w-2xl w-full p-6 sm:p-7 rounded-3xl border border-purple-200 bg-white text-slate-900 shadow-2xl space-y-5 animate-fade-in-up max-h-[90vh] overflow-y-auto">
+        {/* Header Mode Clair */}
+        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-2xl bg-purple-50 text-purple-600 border border-purple-200 flex items-center justify-center shadow-xs">
               <Sparkles size={18} className="animate-pulse" />
             </div>
             <div>
-              <h3 className="font-extrabold text-sm sm:text-base text-purple-600 dark:text-purple-300 flex items-center gap-1.5">
+              <h3 className="font-extrabold text-sm sm:text-base text-slate-900 flex items-center gap-2">
                 Assistant IA Google Gemini
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-200 border border-purple-300 dark:border-purple-700">
+                <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-700 border border-purple-200 shadow-2xs">
                   Mode IA
                 </span>
               </h3>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              <p className="text-[11px] text-slate-500 font-medium">
                 Génération de réponses intelligentes, explications de cours, résumés et traductions
               </p>
             </div>
@@ -187,22 +187,22 @@ export const GoogleAiAssistModal: React.FC<GoogleAiAssistModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            className="text-slate-400 hover:text-slate-700 p-2 rounded-xl hover:bg-slate-100 border border-transparent hover:border-slate-200 transition-colors cursor-pointer"
             title="Fermer"
           >
             <X size={18} />
           </button>
         </div>
 
-        {/* Mode Selector Tabs */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700/60">
+        {/* Mode Selector Tabs Mode Clair */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1.5 bg-slate-100/90 rounded-2xl border border-slate-200">
           <button
             type="button"
             onClick={() => setMode('ask')}
             className={`py-2 px-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               mode === 'ask'
                 ? 'bg-purple-600 text-white shadow-sm'
-                : 'text-slate-600 dark:text-slate-300 hover:text-purple-600 hover:bg-white/60 dark:hover:bg-slate-700/60'
+                : 'text-slate-600 hover:text-purple-700 hover:bg-white/80 font-medium'
             }`}
           >
             <Lightbulb size={14} /> Questions & Cours
@@ -214,7 +214,7 @@ export const GoogleAiAssistModal: React.FC<GoogleAiAssistModalProps> = ({
             className={`py-2 px-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               mode === 'compose'
                 ? 'bg-purple-600 text-white shadow-sm'
-                : 'text-slate-600 dark:text-slate-300 hover:text-purple-600 hover:bg-white/60 dark:hover:bg-slate-700/60'
+                : 'text-slate-600 hover:text-purple-700 hover:bg-white/80 font-medium'
             }`}
           >
             <MessageSquare size={14} /> Rédaction
@@ -226,7 +226,7 @@ export const GoogleAiAssistModal: React.FC<GoogleAiAssistModalProps> = ({
             className={`py-2 px-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               mode === 'summarize'
                 ? 'bg-purple-600 text-white shadow-sm'
-                : 'text-slate-600 dark:text-slate-300 hover:text-purple-600 hover:bg-white/60 dark:hover:bg-slate-700/60'
+                : 'text-slate-600 hover:text-purple-700 hover:bg-white/80 font-medium'
             }`}
           >
             <FileText size={14} /> Résumé IA
@@ -238,16 +238,16 @@ export const GoogleAiAssistModal: React.FC<GoogleAiAssistModalProps> = ({
             className={`py-2 px-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               mode === 'translate'
                 ? 'bg-purple-600 text-white shadow-sm'
-                : 'text-slate-600 dark:text-slate-300 hover:text-purple-600 hover:bg-white/60 dark:hover:bg-slate-700/60'
+                : 'text-slate-600 hover:text-purple-700 hover:bg-white/80 font-medium'
             }`}
           >
             <Languages size={14} /> Traduction
           </button>
         </div>
 
-        {/* Prompt Input Form */}
+        {/* Prompt Input Form Mode Clair */}
         <form onSubmit={handleGenerate} className="space-y-3">
-          <label className="block text-xs font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider">
+          <label className="block text-[11px] font-extrabold uppercase text-slate-600 tracking-wider">
             {mode === 'ask'
               ? 'Posez votre question ou indiquez le concept à expliquer :'
               : mode === 'summarize'
@@ -271,18 +271,19 @@ export const GoogleAiAssistModal: React.FC<GoogleAiAssistModalProps> = ({
                   ? 'Entrez votre texte à traduire...'
                   : 'Ex: Rédige une demande de validation de stage pédagogique...'
               }
-              className="w-full p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 dark:focus:ring-purple-900/30 text-xs sm:text-sm outline-none leading-relaxed resize-none text-slate-900 dark:text-slate-100 transition-all"
+              className="w-full p-3.5 rounded-2xl bg-slate-50 focus:bg-white border border-slate-300 focus:border-purple-600 focus:ring-4 focus:ring-purple-100 text-xs sm:text-sm outline-none leading-relaxed resize-none text-slate-900 placeholder:text-slate-400 transition-all shadow-2xs"
             />
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
-            <span className="text-[11px] text-slate-400 order-2 sm:order-1">
-              Appuyez sur Générer pour obtenir une réponse instantanée propulsée par Gemini
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-2.5 pt-1">
+            <span className="text-[11px] text-slate-500 font-medium order-2 sm:order-1 flex items-center gap-1">
+              <Sparkles size={13} className="text-purple-500" />
+              Réponse instantanée générée par le modèle Gemini
             </span>
             <button
               type="submit"
               disabled={isLoading || !prompt.trim()}
-              className="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-purple-600/25 transition-all disabled:opacity-50 cursor-pointer shrink-0 order-1 sm:order-2"
+              className="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-purple-600/20 hover:shadow-lg transition-all disabled:opacity-50 cursor-pointer shrink-0 order-1 sm:order-2"
             >
               {isLoading ? (
                 <>
@@ -297,20 +298,20 @@ export const GoogleAiAssistModal: React.FC<GoogleAiAssistModalProps> = ({
           </div>
         </form>
 
-        {/* Generated Result Section */}
+        {/* Generated Result Section Mode Clair */}
         {generatedText && (
-          <div className="space-y-3 animate-fade-in-up pt-3 border-t border-slate-200 dark:border-slate-800">
+          <div className="space-y-3 animate-fade-in-up pt-3 border-t border-slate-100">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-purple-600 dark:text-purple-300 flex items-center gap-1.5">
-                <Sparkles size={14} /> Réponse générée :
+              <span className="text-xs font-extrabold text-purple-900 flex items-center gap-1.5">
+                <Sparkles size={14} className="text-purple-600" /> Réponse générée :
               </span>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={handleCopy}
-                  className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-[11px] font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5 transition-colors cursor-pointer"
+                  className="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-[11px] font-bold text-slate-700 flex items-center gap-1.5 transition-colors shadow-2xs cursor-pointer"
                 >
-                  {copied ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
+                  {copied ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
                   {copied ? 'Copié !' : 'Copier'}
                 </button>
 
@@ -321,7 +322,7 @@ export const GoogleAiAssistModal: React.FC<GoogleAiAssistModalProps> = ({
                       onInsertText(generatedText);
                       onClose();
                     }}
-                    className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-[11px] font-bold flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
+                    className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-[11px] font-bold flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
                   >
                     Insérer dans le message
                   </button>
@@ -329,7 +330,7 @@ export const GoogleAiAssistModal: React.FC<GoogleAiAssistModalProps> = ({
               </div>
             </div>
 
-            <div className="p-4 rounded-2xl bg-purple-50/50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800/40 text-xs sm:text-sm text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-wrap font-normal">
+            <div className="p-4 sm:p-5 rounded-2xl bg-purple-50/70 border border-purple-200/90 text-xs sm:text-sm text-slate-800 leading-relaxed whitespace-pre-wrap font-normal shadow-2xs">
               {generatedText}
             </div>
           </div>
