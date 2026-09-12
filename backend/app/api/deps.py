@@ -64,3 +64,16 @@ def get_current_admin_user(current_user: CurrentUser) -> User:
 
 
 CurrentAdminUser = Annotated[User, Depends(get_current_admin_user)]
+
+
+def get_current_super_admin_user(current_user: CurrentUser) -> User:
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Seul le rôle administrateur principal (admin) dispose des privilèges requis pour cette opération.",
+        )
+    return current_user
+
+
+CurrentSuperAdminUser = Annotated[User, Depends(get_current_super_admin_user)]
+

@@ -74,24 +74,28 @@ class TestRailwayPostgreSQLPersistence(unittest.TestCase):
             "POSTGRES_PASSWORD": "",
             "PGDATABASE": "",
             "POSTGRES_DB": "",
+            "ENVIRONMENT": "production",
         }, clear=False):
             with self.assertRaises(ValueError) as ctx:
                 get_default_database_url()
             self.assertIn("DATABASE_URL", str(ctx.exception))
 
     def test_sqlite_fallback_strictly_banned(self):
-        """Any attempt to configure a SQLite database or .db file must raise ValueError."""
-        with self.assertRaises(ValueError) as ctx:
-            Settings.normalize_database_url("sqlite:///./app.db")
-        self.assertIn("SQLite", str(ctx.exception))
+        """Any attempt to configure a SQLite database or .db file in production must raise ValueError."""
+        with patch.dict(os.environ, {"ENVIRONMENT": "production"}):
+            with self.assertRaises(ValueError) as ctx:
+                Settings.normalize_database_url("sqlite:///./app.db")
+            self.assertIn("SQLite", str(ctx.exception))
 
-        with self.assertRaises(ValueError) as ctx2:
-            Settings.normalize_database_url("sqlite:///./eschola.db")
-        self.assertIn("SQLite", str(ctx2.exception))
+            with self.assertRaises(ValueError) as ctx2:
+                Settings.normalize_database_url("sqlite:///./eschola.db")
+            self.assertIn("SQLite", str(ctx2.exception))
 
     def test_postgres_url_normalization(self):
-        normalized = Settings.normalize_database_url("postgres://user:pass@host:5432/db")
-        self.assertTrue(normalized.startswith("postgresql+psycopg2://"))
+        with patch.dict(os.environ, {"ENVIRONMENT": "production"}):
+            normalized = Settings.normalize_database_url("postgres://user:pass@host:5432/db")
+            self.assertTrue(normalized.startswith("postgresql+psycopg2://"))
+
 
 
 class TestUserAndAdminPersistenceAcrossRestarts(unittest.TestCase):

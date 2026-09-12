@@ -1,7 +1,9 @@
-"""
-Test exhaustif des autorisations et prérogatives du rôle DG/RH (dg_rh).
-Vérifie la conformité absolue avec le rôle Formateur.
-"""
+import sys
+if sys.platform == "win32":
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
+
 from fastapi.testclient import TestClient
 from app.main import app
 from app.db.database import SessionLocal
@@ -12,6 +14,22 @@ client = TestClient(app)
 
 
 def run_all_tests():
+    db = SessionLocal()
+    dgrh_user = db.query(User).filter(User.email == "dgrh@eschola.pro").first()
+    if not dgrh_user:
+        dgrh_user = User(
+            username="dgrh_test",
+            email="dgrh@eschola.pro",
+            hashed_password=get_password_hash("password"),
+            role="dg_rh",
+            nom="Directeur",
+            prenom="RH",
+            is_active=True,
+        )
+        db.add(dgrh_user)
+        db.commit()
+    db.close()
+
     print("\n🚀 [TEST 1] Connexion et récupération de profil pour dgrh@eschola.pro...")
     response = client.post(
         "/api/v1/login/access-token",

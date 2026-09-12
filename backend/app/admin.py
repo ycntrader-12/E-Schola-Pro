@@ -1,6 +1,7 @@
 from sqladmin import ModelView
 
 from app.models.attendance import Attendance
+from app.models.audit_log import AuditLog
 from app.models.classroom import Classroom
 from app.models.classroom_invitation import ClassroomInvitation
 from app.models.course import Course
@@ -10,8 +11,12 @@ from app.models.event import Event, EventDeliverable
 from app.models.group import Group, GroupMember
 from app.models.message import Message
 from app.models.quiz import Quiz, QuizAttempt, QuizQuestion
+from app.models.system_setting import SystemSetting
 from app.models.task import Task, TaskSubmission
 from app.models.user import User
+from app.models.user_invitation import UserInvitation
+from app.models.user_session import UserSession
+
 
 
 class UserAdmin(ModelView, model=User):
@@ -242,3 +247,69 @@ class TaskSubmissionAdmin(ModelView, model=TaskSubmission):
     name = "Soumission de Devoir"
     name_plural = "Soumissions de Devoirs"
     icon = "fa-solid fa-file-circle-check"
+
+
+class AuditLogAdmin(ModelView, model=AuditLog):
+    column_list = [
+        AuditLog.id,
+        AuditLog.action,
+        AuditLog.user_email,
+        AuditLog.resource_type,
+        AuditLog.status,
+        AuditLog.ip_address,
+        AuditLog.created_at,
+    ]
+    column_searchable_list = [AuditLog.action, AuditLog.user_email, AuditLog.resource_type, AuditLog.details]
+    column_sortable_list = [AuditLog.id, AuditLog.created_at, AuditLog.action]
+    name = "Journal d'Audit"
+    name_plural = "Journaux d'Audit"
+    icon = "fa-solid fa-clipboard-list"
+
+
+class UserSessionAdmin(ModelView, model=UserSession):
+    column_list = [
+        UserSession.id,
+        UserSession.user_id,
+        UserSession.device_info,
+        UserSession.ip_address,
+        UserSession.is_active,
+        UserSession.last_activity,
+        UserSession.created_at,
+    ]
+    column_searchable_list = [UserSession.ip_address, UserSession.device_info]
+    column_sortable_list = [UserSession.id, UserSession.last_activity, UserSession.created_at]
+    name = "Session Active"
+    name_plural = "Sessions Actives"
+    icon = "fa-solid fa-laptop"
+
+
+class UserInvitationAdmin(ModelView, model=UserInvitation):
+    column_list = [
+        UserInvitation.id,
+        UserInvitation.email,
+        UserInvitation.role,
+        UserInvitation.status,
+        UserInvitation.expires_at,
+        UserInvitation.created_at,
+    ]
+    column_searchable_list = [UserInvitation.email, UserInvitation.status, UserInvitation.role]
+    column_sortable_list = [UserInvitation.id, UserInvitation.created_at, UserInvitation.expires_at]
+    name = "Invitation Utilisateur"
+    name_plural = "Invitations Utilisateurs"
+    icon = "fa-solid fa-envelope"
+
+
+class SystemSettingAdmin(ModelView, model=SystemSetting):
+    column_list = [
+        SystemSetting.id,
+        SystemSetting.key,
+        SystemSetting.value,
+        SystemSetting.category,
+        SystemSetting.updated_at,
+    ]
+    column_searchable_list = [SystemSetting.key, SystemSetting.value, SystemSetting.category]
+    column_sortable_list = [SystemSetting.id, SystemSetting.key, SystemSetting.updated_at]
+    name = "Paramètre Système"
+    name_plural = "Paramètres Système"
+    icon = "fa-solid fa-sliders"
+

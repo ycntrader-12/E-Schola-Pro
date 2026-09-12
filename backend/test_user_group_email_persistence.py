@@ -34,9 +34,38 @@ class TestUserGroupEmailPersistence(unittest.TestCase):
         cls.admin_token = create_access_token(cls.admin.id)
         cls.admin_headers = {"Authorization": f"Bearer {cls.admin_token}"}
 
+        # Ensure groups exist
+        grp_cyber = cls.db.query(Group).filter(Group.name.ilike("%Cybersécurité%")).first()
+        if not grp_cyber:
+            grp_cyber = Group(name="Cybersécurité & Réseaux M1", level="Master 1", description="Sécurité réseau", creator_id=cls.admin.id)
+            cls.db.add(grp_cyber)
+        grp_ai = cls.db.query(Group).filter(Group.name.ilike("%Intelligence Artificielle%")).first()
+        if not grp_ai:
+            grp_ai = Group(name="Intelligence Artificielle & Data M2", level="Master 2", description="IA & Data", creator_id=cls.admin.id)
+            cls.db.add(grp_ai)
+        grp_data = cls.db.query(Group).filter(Group.name.ilike("%Data Science%")).first()
+        if not grp_data:
+            grp_data = Group(name="Data Science & Big Data M1", level="Master 1", description="Data Science", creator_id=cls.admin.id)
+            cls.db.add(grp_data)
+        cls.db.commit()
+
         # Find or create test student
         cls.student = cls.db.query(User).filter(User.role.in_(["étudiant", "stagiaire"])).first()
-        assert cls.student is not None, "Student user must exist"
+        if not cls.student:
+            from app.core.security import get_password_hash
+            cls.student = User(
+                username="student_persistence_test",
+                email="student_persistence@eschola.pro",
+                hashed_password=get_password_hash("password"),
+                role="étudiant",
+                nom="Testeur",
+                prenom="Etudiant",
+                is_active=True,
+            )
+            cls.db.add(cls.student)
+            cls.db.commit()
+            cls.db.refresh(cls.student)
+
         cls.student_token = create_access_token(cls.student.id)
         cls.student_headers = {"Authorization": f"Bearer {cls.student_token}"}
 

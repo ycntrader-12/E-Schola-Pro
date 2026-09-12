@@ -1062,8 +1062,18 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* Onglets de navigation */}
-            <div className="flex items-center bg-surface p-1 rounded-xl border border-border flex-wrap gap-1">
+            {isAdminUser && (
+              <Link
+                href="/admin"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#1877f2] to-[#2563eb] hover:from-[#166fe5] hover:to-[#1d4ed8] text-white font-bold text-sm shadow-sm hover:shadow-md transition-all self-start md:self-center shrink-0 cursor-pointer"
+              >
+                <ShieldCheck size={18} /> Console d'Administration Complète &rarr;
+              </Link>
+            )}
+          </div>
+
+          {/* Onglets de navigation */}
+          <div className="flex items-center bg-surface p-1 rounded-xl border border-border flex-wrap gap-1">
               {isAdminUser && (
                 <button
                   onClick={() => setAdminTab('users')}
@@ -1097,7 +1107,6 @@ export default function ProfilePage() {
                 </button>
               )}
             </div>
-          </div>
 
           {/* Feedback messages */}
           {actionMessage && (

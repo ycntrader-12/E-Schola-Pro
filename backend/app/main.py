@@ -12,6 +12,7 @@ from sqlalchemy import text
 
 from app.admin import (
     AttendanceAdmin,
+    AuditLogAdmin,
     ClassroomAdmin,
     ClassroomInvitationAdmin,
     CourseAdmin,
@@ -25,9 +26,12 @@ from app.admin import (
     QuizAdmin,
     QuizAttemptAdmin,
     QuizQuestionAdmin,
+    SystemSettingAdmin,
     TaskAdmin,
     TaskSubmissionAdmin,
     UserAdmin,
+    UserInvitationAdmin,
+    UserSessionAdmin,
 )
 from app.api.main import api_router
 from app.core.config import is_in_railway, is_production, settings
@@ -65,8 +69,25 @@ async def lifespan(app: FastAPI):
         )
         from app.db.database import SessionLocal
         from app.db.init_db import init_db
+        from app.models.system_setting import SystemSetting
         with SessionLocal() as db_session:
             init_db(db_session)
+            # Initialisation non destructive des paramètres système par défaut
+            default_settings = [
+                ("site_name", "E-Schola Pro", "Nom officiel de l'établissement / plateforme", "general"),
+                ("allow_registration", "true", "Autoriser les inscriptions publiques des étudiants", "general"),
+                ("maintenance_mode", "false", "Mode maintenance (restreint l'accès aux administrateurs)", "general"),
+                ("max_upload_size_mb", "50", "Taille maximale autorisée pour les dépôts et documents (Mo)", "storage"),
+                ("session_timeout_minutes", "10080", "Durée de validité des sessions actives (en minutes, 7 jours = 10080)", "security"),
+                ("default_locale", "fr", "Langue système par défaut (fr, en, ar, es, de)", "general"),
+                ("email_notifications_enabled", "true", "Activer les notifications transactionnelles par email", "email"),
+                ("require_strong_passwords", "true", "Exiger des mots de passe robustes (majuscules, chiffres)", "security"),
+            ]
+            for key, val, desc, cat in default_settings:
+                existing_st = db_session.query(SystemSetting).filter(SystemSetting.key == key).first()
+                if not existing_st:
+                    db_session.add(SystemSetting(key=key, value=val, description=desc, category=cat))
+            db_session.commit()
 
         # Safe non-destructive column check for quizzes.target_group, users.is_active, and messages.read_at
         with engine.connect() as conn:
@@ -87,10 +108,21 @@ async def lifespan(app: FastAPI):
                         conn.execute(text("ALTER TABLE messages ADD COLUMN read_at DATETIME"))
                         conn.commit()
                         print("[Database Migration] Colonne read_at ajoutée avec succès sur la table messages.")
+                    grp_cols = [row[1] for row in conn.execute(text("PRAGMA table_info(groups)")).fetchall()]
+                    if grp_cols and "creator_id" not in grp_cols:
+                        conn.execute(text("ALTER TABLE groups ADD COLUMN creator_id INTEGER REFERENCES users(id)"))
+                        conn.commit()
+                        print("[Database Migration] Colonne creator_id ajoutée avec succès sur la table groups.")
+                    if grp_cols and "instructor_id" not in grp_cols:
+                        conn.execute(text("ALTER TABLE groups ADD COLUMN instructor_id INTEGER REFERENCES users(id)"))
+                        conn.commit()
+                        print("[Database Migration] Colonne instructor_id ajoutée avec succès sur la table groups.")
                 elif dialect == "postgresql":
                     conn.execute(text("ALTER TABLE quizzes ADD COLUMN IF NOT EXISTS target_group VARCHAR DEFAULT 'all'"))
                     conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE"))
                     conn.execute(text("ALTER TABLE messages ADD COLUMN IF NOT EXISTS read_at TIMESTAMP"))
+                    conn.execute(text("ALTER TABLE groups ADD COLUMN IF NOT EXISTS creator_id INTEGER REFERENCES users(id)"))
+                    conn.execute(text("ALTER TABLE groups ADD COLUMN IF NOT EXISTS instructor_id INTEGER REFERENCES users(id)"))
                     conn.commit()
             except Exception as mig_err:
                 print(f"[Database Migration Notice] {mig_err}")
@@ -212,6 +244,10 @@ admin.add_view(GroupAdmin)
 admin.add_view(GroupMemberAdmin)
 admin.add_view(TaskAdmin)
 admin.add_view(TaskSubmissionAdmin)
+admin.add_view(AuditLogAdmin)
+admin.add_view(UserSessionAdmin)
+admin.add_view(UserInvitationAdmin)
+admin.add_view(SystemSettingAdmin)
 
 
 @app.get("/api/v1/debug-users")

@@ -15,7 +15,8 @@
     "logout": "Déconnexion",
     "sign_in": "Se Connecter",
     "sign_up": "Créer un Compte",
-    "profile": "Mon Profil"
+    "profile": "Mon Profil",
+    "administration": "Administration"
   },
   "Common": {
     "loading": "Chargement...",

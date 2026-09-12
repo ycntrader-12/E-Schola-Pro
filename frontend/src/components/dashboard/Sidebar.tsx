@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { usePathname, Link } from '@/i18n/routing';
 import Image from 'next/image';
-import { LayoutDashboard, Inbox, BookOpen, CheckSquare, Settings, Video, Award, UserCheck, Calendar, X, GraduationCap, Users } from 'lucide-react';
+import { LayoutDashboard, Inbox, BookOpen, CheckSquare, Settings, Video, Award, UserCheck, Calendar, X, GraduationCap, Users, ShieldCheck } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { apiClient } from '@/lib/api';
 
@@ -112,10 +112,12 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
   const normalizedRole = (userRole || '').trim().toLowerCase();
   const isLearner = ['etudiant', 'étudiant', 'stagiaire', 'employer'].includes(normalizedRole);
   const isStaff = ['admin', 'admin_manager', 'formateur', 'pedagogique', 'dg_rh', 'dg/rh', 'dgrh'].includes(normalizedRole);
+  const isAdmin = ['admin', 'admin_manager'].includes(normalizedRole);
   const canViewGroups = isStaff && !isLearner;
 
   const navItems = [
     { name: t('dashboard'), href: '/dashboard', icon: LayoutDashboard },
+    ...(isAdmin ? [{ name: t('administration'), href: '/admin', icon: ShieldCheck }] : []),
     ...(canViewGroups ? [{ name: t('group'), href: '/group', icon: Users }] : []),
     { name: t('calendar'), href: '/calendar', icon: Calendar },
     { name: t('virtual_classroom'), href: '/classroom', icon: Video },

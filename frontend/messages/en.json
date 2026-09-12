@@ -15,7 +15,8 @@
     "logout": "Sign Out",
     "sign_in": "Sign In",
     "sign_up": "Sign Up",
-    "profile": "My Profile"
+    "profile": "My Profile",
+    "administration": "Administration"
   },
   "Common": {
     "loading": "Loading...",

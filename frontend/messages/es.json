@@ -15,7 +15,8 @@
     "logout": "Cerrar Sesión",
     "sign_in": "Iniciar Sesión",
     "sign_up": "Crear Cuenta",
-    "profile": "Mi Perfil"
+    "profile": "Mi Perfil",
+    "administration": "Administración"
   },
   "Common": {
     "loading": "Cargando...",

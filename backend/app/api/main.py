@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from app.api.v1 import (
+    admin,
     attendance,
     classrooms,
     courses,
@@ -18,6 +19,7 @@ from app.api.v1 import (
 )
 
 api_router = APIRouter()
+api_router.include_router(admin.router, prefix="/admin", tags=["admin"])
 api_router.include_router(health.router, prefix="/health", tags=["health"])
 api_router.include_router(login.router, tags=["login"])
 api_router.include_router(users.router, prefix="/users", tags=["users"])
@@ -34,3 +36,4 @@ api_router.include_router(attendance.router, prefix="/attendance", tags=["attend
 api_router.include_router(groups.router, prefix="/groups", tags=["groups"])
 api_router.include_router(tasks.router, prefix="/tasks", tags=["tasks"])
 api_router.include_router(email.router, prefix="/email", tags=["email"])
+

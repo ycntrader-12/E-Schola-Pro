@@ -15,7 +15,8 @@
     "logout": "Abmelden",
     "sign_in": "Anmelden",
     "sign_up": "Registrieren",
-    "profile": "Mein Profil"
+    "profile": "Mein Profil",
+    "administration": "Verwaltung"
   },
   "Common": {
     "loading": "Wird geladen...",

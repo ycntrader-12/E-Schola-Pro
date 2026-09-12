@@ -534,24 +534,31 @@
 
     <div class="card-grid">
       <div class="stat-card">
-        <div class="stat-value">12</div>
+        <div class="stat-value">14</div>
         <div class="stat-label">Modules API</div>
       </div>
       <div class="stat-card">
-        <div class="stat-value">12</div>
+        <div class="stat-value">13</div>
         <div class="stat-label">Pages Frontend</div>
       </div>
       <div class="stat-card">
-        <div class="stat-value">10</div>
+        <div class="stat-value">14</div>
         <div class="stat-label">Tables DB</div>
       </div>
       <div class="stat-card">
-        <div class="stat-value">7</div>
+        <div class="stat-value">8</div>
         <div class="stat-label">Rôles Utilisateur</div>
       </div>
     </div>
 
     <h3>Fonctionnalités Principales</h3>
+    <div class="feature-card">
+      <div class="feature-icon" style="background: rgba(37,99,235,0.1);">🛡️</div>
+      <div>
+        <h4>Console d'Administration & Sécurité</h4>
+        <p>Console complète de gouvernance : statistiques consolidées en temps réel, gestion des sessions actives et révocation, journal d'audit filtrable, supervision des visioconférences et quiz, invitations par e-mail sécurisé, paramètres système modifiables à chaud et exports de sauvegarde JSON SHA256.</p>
+      </div>
+    </div>
     <div class="feature-card">
       <div class="feature-icon" style="background: rgba(220,38,38,0.1);">📚</div>
       <div>
@@ -1073,6 +1080,75 @@ E-Schola Pro/
         <tr><td><code>submitted_at</code></td><td>DateTime</td><td>Auto</td><td>Date et heure de transmission</td></tr>
       </tbody>
     </table>
+
+    <!-- AUDIT LOG -->
+    <h3>AuditLog (Journal d'Audit & Sécurité)</h3>
+    <table>
+      <thead><tr><th>Colonne</th><th>Type</th><th>Contraintes</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code></td><td>Integer</td><td>PK, Auto-increment</td><td>Identifiant unique de l'événement d'audit</td></tr>
+        <tr><td><code>user_id</code></td><td>Integer</td><td>FK → users.id, Nullable</td><td>Utilisateur acteur de l'action (ou NULL si système/anonyme)</td></tr>
+        <tr><td><code>user_email</code></td><td>String</td><td>Nullable, Indexé</td><td>Adresse email de l'acteur au moment de l'événement</td></tr>
+        <tr><td><code>action</code></td><td>String</td><td>Not Null, Indexé</td><td>Type d'action (LOGIN_SUCCESS, LOGIN_FAILED, ROLE_CHANGE, USER_CREATE, SESSION_REVOKE, SETTINGS_UPDATE...)</td></tr>
+        <tr><td><code>resource_type</code></td><td>String</td><td>Nullable, Indexé</td><td>Type d'entité ciblée (user, quiz, course, classroom, system_settings...)</td></tr>
+        <tr><td><code>resource_id</code></td><td>Integer</td><td>Nullable</td><td>Identifiant de l'entité ciblée</td></tr>
+        <tr><td><code>details</code></td><td>Text</td><td>Nullable</td><td>Détails contextuels, métadonnées ou résumé JSON de la modification</td></tr>
+        <tr><td><code>ip_address</code></td><td>String</td><td>Nullable, Indexé</td><td>Adresse IP de provenance de la requête cliente</td></tr>
+        <tr><td><code>user_agent</code></td><td>Text</td><td>Nullable</td><td>Signature navigateur / appareil client (User-Agent)</td></tr>
+        <tr><td><code>status</code></td><td>String</td><td>Default: "SUCCESS"</td><td>Résultat de l'opération (SUCCESS, FAILED, WARNING)</td></tr>
+        <tr><td><code>created_at</code></td><td>DateTime</td><td>Auto, Indexé</td><td>Horodatage précis de l'événement</td></tr>
+      </tbody>
+    </table>
+
+    <!-- USER SESSION -->
+    <h3>UserSession (Sessions Actives & Tokens)</h3>
+    <table>
+      <thead><tr><th>Colonne</th><th>Type</th><th>Contraintes</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code></td><td>Integer</td><td>PK, Auto-increment</td><td>Identifiant unique de la session</td></tr>
+        <tr><td><code>user_id</code></td><td>Integer</td><td>FK → users.id, CASCADE</td><td>Utilisateur propriétaire de la session</td></tr>
+        <tr><td><code>session_token</code></td><td>String</td><td>Indexé, Not Null</td><td>Empreinte / fragment unique du token JWT de session</td></tr>
+        <tr><td><code>ip_address</code></td><td>String</td><td>Nullable</td><td>Dernière adresse IP cliente observée</td></tr>
+        <tr><td><code>user_agent</code></td><td>Text</td><td>Nullable</td><td>Chaîne User-Agent de l'appareil connecté</td></tr>
+        <tr><td><code>device_info</code></td><td>String</td><td>Nullable</td><td>Libellé synthétique normalisé (Navigateur + OS)</td></tr>
+        <tr><td><code>is_active</code></td><td>Boolean</td><td>Default: True, Indexé</td><td>Statut d'activité (False si révoquée ou déconnectée)</td></tr>
+        <tr><td><code>last_activity</code></td><td>DateTime</td><td>Auto</td><td>Horodatage de la dernière interaction</td></tr>
+        <tr><td><code>expires_at</code></td><td>DateTime</td><td>Not Null, Indexé</td><td>Date et heure d'expiration automatique du token</td></tr>
+        <tr><td><code>created_at</code></td><td>DateTime</td><td>Auto</td><td>Date et heure d'ouverture de session</td></tr>
+      </tbody>
+    </table>
+
+    <!-- USER INVITATION -->
+    <h3>UserInvitation (Invitations par Email)</h3>
+    <table>
+      <thead><tr><th>Colonne</th><th>Type</th><th>Contraintes</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code></td><td>Integer</td><td>PK, Auto-increment</td><td>Identifiant unique de l'invitation</td></tr>
+        <tr><td><code>email</code></td><td>String</td><td>Not Null, Indexé</td><td>Adresse e-mail du futur utilisateur invité</td></tr>
+        <tr><td><code>role</code></td><td>String</td><td>Default: "étudiant"</td><td>Rôle pré-assigné à la création de compte</td></tr>
+        <tr><td><code>group_name</code></td><td>String</td><td>Nullable</td><td>Groupe / Promotion pré-attribué</td></tr>
+        <tr><td><code>token</code></td><td>String</td><td>Unique, Indexé, Not Null</td><td>Jeton cryptographique sécurisé (URL-safe) d'activation</td></tr>
+        <tr><td><code>status</code></td><td>String</td><td>Default: "pending", Indexé</td><td>Statut (pending, accepted, expired, revoked)</td></tr>
+        <tr><td><code>invited_by_id</code></td><td>Integer</td><td>FK → users.id, Nullable</td><td>Administrateur émetteur de l'invitation</td></tr>
+        <tr><td><code>expires_at</code></td><td>DateTime</td><td>Not Null</td><td>Date limite de validité du lien d'invitation (7 jours)</td></tr>
+        <tr><td><code>created_at</code></td><td>DateTime</td><td>Auto</td><td>Date et heure de création et d'expédition</td></tr>
+      </tbody>
+    </table>
+
+    <!-- SYSTEM SETTING -->
+    <h3>SystemSetting (Configuration Système Globale)</h3>
+    <table>
+      <thead><tr><th>Colonne</th><th>Type</th><th>Contraintes</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code></td><td>Integer</td><td>PK, Auto-increment</td><td>Identifiant unique du paramètre</td></tr>
+        <tr><td><code>key</code></td><td>String</td><td>Unique, Indexé, Not Null</td><td>Clé technique (site_name, allow_registration, maintenance_mode, max_upload_size_mb...)</td></tr>
+        <tr><td><code>value</code></td><td>Text</td><td>Not Null</td><td>Valeur configurée (chaîne, booléen sous forme 'true'/'false', entier)</td></tr>
+        <tr><td><code>description</code></td><td>String</td><td>Nullable</td><td>Description fonctionnelle du paramètre dans la console</td></tr>
+        <tr><td><code>category</code></td><td>String</td><td>Default: "general", Indexé</td><td>Catégorie (general, security, storage, email)</td></tr>
+        <tr><td><code>updated_by_id</code></td><td>Integer</td><td>FK → users.id, Nullable</td><td>Dernier super-administrateur ayant modifié la clé</td></tr>
+        <tr><td><code>updated_at</code></td><td>DateTime</td><td>Auto</td><td>Date de dernière mise à jour</td></tr>
+      </tbody>
+    </table>
   </section>
 
   <!-- ═══════════════════════════════════════════════════════════════ -->
@@ -1275,6 +1351,33 @@ E-Schola Pro/
       <tbody class="endpoint-row">
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/email/status</code></td><td>Consulter le statut du service email, hôte SMTP configuré, ports TLS/SSL et mode actif (Production vs Dev Mock)</td><td>Authentifié</td></tr>
         <tr><td><span class="badge badge-post">POST</span></td><td><code>/email/test</code></td><td>Diagnostiquer en direct la connectivité SMTP (DNS, poignée de main TCP, STARTTLS/SSL, authentification) et envoyer un email de test optionnel</td><td>Admin, Admin Manager</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Console d'Administration & Supervision Sécurité (/admin)</h3>
+    <table>
+      <thead><tr><th>Méthode</th><th>Endpoint</th><th>Description</th><th>Accès</th></tr></thead>
+      <tbody class="endpoint-row">
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/admin/dashboard/stats</code></td><td>Statistiques consolidées globales (utilisateurs, cours, quiz, présences, sessions actives, latence DB, santé système)</td><td>Admin, Admin Manager</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/admin/audit-logs</code></td><td>Journal d'audit de sécurité complet avec pagination, filtres par action, statut et recherche textuelle</td><td>Admin, Admin Manager</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/admin/sessions</code></td><td>Liste en temps réel des sessions utilisateurs actives avec IP, appareil, date d'ouverture et expiration</td><td>Admin, Admin Manager</td></tr>
+        <tr><td><span class="badge badge-delete">DELETE</span></td><td><code>/admin/sessions/{session_id}</code></td><td>Révocation unitaire immédiate et déconnexion forcée d'une session active</td><td>Admin, Admin Manager</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/admin/sessions/revoke-all-user/{user_id}</code></td><td>Révocation globale de l'ensemble des sessions ouvertes d'un utilisateur cible</td><td>Admin, Admin Manager</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/admin/security/events</code></td><td>Surveillance des alertes de sécurité (échecs de connexion récents 24h, comptes suspendus, IPs suspectes)</td><td>Admin, Admin Manager</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/admin/invitations</code></td><td>Liste de toutes les invitations envoyées avec statut dynamique (pending, accepted, expired, revoked)</td><td>Admin, Admin Manager</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/admin/invitations</code></td><td>Création et expédition d'une invitation par email avec token sécurisé et pré-affectation de rôle et de groupe</td><td>Admin, Admin Manager</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/admin/invitations/{invite_id}/resend</code></td><td>Renouvellement du token d'invitation et réexpédition de l'email (validité 7 jours)</td><td>Admin, Admin Manager</td></tr>
+        <tr><td><span class="badge badge-delete">DELETE</span></td><td><code>/admin/invitations/{invite_id}</code></td><td>Révocation définitive d'une invitation en attente</td><td>Admin, Admin Manager</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/admin/settings</code></td><td>Lecture de l'ensemble des paramètres configurables de la plateforme</td><td>Admin, Admin Manager</td></tr>
+        <tr><td><span class="badge badge-put">PUT</span></td><td><code>/admin/settings</code></td><td>Mise à jour à chaud des paramètres globaux de la plateforme (nom, inscriptions, maintenance, stockage, sécurité)</td><td>Admin (Super-Admin exclusif)</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/admin/system/status</code></td><td>Statut de santé détaillé des composants : latence PostgreSQL, espace disque uploads, uptime et charge mémoire</td><td>Admin, Admin Manager</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/admin/system/logs</code></td><td>Consultation des logs applicatifs récents avec masquage automatique systématique des mots de passe et tokens</td><td>Admin, Admin Manager</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/admin/backup/export</code></td><td>Exportation intégrale structurée au format JSON de toutes les tables avec empreinte SHA256 d'intégrité</td><td>Admin (Super-Admin exclusif)</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/admin/backup/snapshot</code></td><td>Génération et sauvegarde d'un fichier snapshot horodaté sur le serveur (<code>uploads/backups/</code>)</td><td>Admin (Super-Admin exclusif)</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/admin/classrooms/supervision</code></td><td>Supervision administrative des salles de visioconférence en direct et nombre d'invitations</td><td>Admin, Admin Manager</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/admin/classrooms/{room_id}/terminate</code></td><td>Arrêt forcé d'urgence d'une salle de visioconférence</td><td>Admin, Admin Manager</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/admin/quizzes/supervision</code></td><td>Synthèse globale des évaluations, taux de complétion, moyennes et dernières tentatives en direct</td><td>Admin, Admin Manager</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/admin (SQLAdmin GUI)</code></td><td>Interface web d'administration de données SQLAlchemy native (CRUD direct, gestion des 14 modèles ORM)</td><td>Admin, Admin Manager</td></tr>
       </tbody>
     </table>
   </section>
@@ -1847,6 +1950,23 @@ E-Schola Pro/
         <li><strong>Suppression de compte :</strong> Enregistrement de la suppression définitive d'un compte utilisateur avec suivi du nettoyage en cascade.</li>
       </ul>
     </div>
+
+    <h3>Module 14 — Console d'Administration &amp; Supervision de Sécurité</h3>
+    <div class="card">
+      <p><strong>Routes Frontend :</strong> <code>/admin</code> (Console d'administration interactive) · <code>/admin (SQLAdmin GUI)</code></p>
+      <p><strong>Fonctionnalités avancées et gouvernance :</strong></p>
+      <ul>
+        <li><strong>Tableau de Bord Exécutif &amp; KPI Temps Réel :</strong> Vue consolidée de 10 métriques clés (utilisateurs totaux/actifs/suspendus, cours & vidéos, quiz & moyennes générales, présences globales, salles actives, latence base de données et uptime serveur).</li>
+        <li><strong>Annuaire Utilisateurs &amp; Suspension Immédiate (Kill Switch) :</strong> Liste complète avec filtres dynamiques, modification des profils et bascule d'activation/suspension de compte en 1 clic bloquant instantanément tout accès non autorisé.</li>
+        <li><strong>Gestion des Sessions Actives &amp; Révocation Forcée :</strong> Détection de tous les appareils connectés avec adresse IP, navigateur et horodatage, permettant la révocation unitaire ou la déconnexion globale d'un utilisateur suspect.</li>
+        <li><strong>Journal d'Audit Filtrable &amp; Recherche Rapide :</strong> Flux chronologique en temps réel de tous les événements de sécurité (authentifications, modifications de rôles, suppressions, révocations) avec tiroir d'inspection JSON détaillé.</li>
+        <li><strong>Invitations Sécurisées avec Tokens Cryptographiques :</strong> Expédition d'invitations par e-mail avec liens d'activation uniques (validité 7 jours), suivi des statuts (en attente, acceptée, expirée) et possibilité de relance automatique.</li>
+        <li><strong>Supervision des Visioconférences &amp; Arrêt d'Urgence :</strong> Surveillance des salles actives avec liste des participants et commande d'arrêt forcé d'urgence immédiate.</li>
+        <li><strong>Supervision des Évaluations &amp; Quiz :</strong> Classement, taux de complétion et consultation en direct des dernières tentatives d'examen soumises.</li>
+        <li><strong>Paramètres Système Modifiables à Chaud :</strong> Ajustement instantané des configurations de la plateforme (nom du site, ouverture des inscriptions publiques, mode maintenance, quota de stockage, politique de sécurité) sans redémarrage serveur.</li>
+        <li><strong>Export de Sauvegarde Intégrale JSON avec Empreinte SHA256 :</strong> Sauvegarde complète de toutes les tables avec hachage cryptographique pour archivage et intégrité des données institutionnelles.</li>
+      </ul>
+    </div>
   </section>
 
   <!-- ═══════════════════════════════════════════════════════════════ -->
@@ -1859,21 +1979,22 @@ E-Schola Pro/
 
     <h3>Navigation (Sidebar)</h3>
     <div class="card">
-      <p>La navigation principale est gérée par un <strong>Sidebar fixe</strong> de 256px de large, contenant les liens suivants dans l'ordre :</p>
+      <p>La navigation principale est gérée par un <strong>Sidebar fixe</strong> de 256px de large, adaptatif et conditionné selon le rôle de l'utilisateur :</p>
       <ol>
         <li>🏠 <strong>Tableau de bord</strong> → <code>/dashboard</code></li>
-        <li>📅 <strong>Calendrier</strong> → <code>/calendar</code></li>
+        <li>🛡️ <strong>Administration</strong> (réservé aux rôles <code>admin</code> &amp; <code>admin_manager</code>) → <code>/admin</code></li>
+        <li>👥 <strong>Groupes &amp; Classes</strong> (affiché pour les formateurs et staff) → <code>/group</code></li>
+        <li>📅 <strong>Calendrier &amp; Planning</strong> → <code>/calendar</code></li>
         <li>🎥 <strong>Salles Vidéo Conférence</strong> → <code>/classroom</code></li>
-        <li>💬 <strong>Boîte de réception</strong> → <code>/inbox</code> (avec badge non-lus)</li>
-        <li>📚 <strong>Cours</strong> → <code>/courses</code></li>
-        <li>🏆 <strong>Quiz & Tests</strong> → <code>/quizzes</code></li>
-        <li>✅ <strong>Présences</strong> → <code>/attendance</code></li>
-        <li>📋 <strong>Tâches</strong> → <code>/tasks</code></li>
-        <li>👥 <strong>Groupes</strong> → <code>/group</code></li>
+        <li>💬 <strong>Boîte de réception</strong> → <code>/inbox</code> (avec badge de notifications en direct)</li>
+        <li>📚 <strong>Cours &amp; Ressources</strong> → <code>/courses</code></li>
+        <li>🏆 <strong>Quiz &amp; Tests</strong> → <code>/quizzes</code></li>
+        <li>✅ <strong>Présences &amp; Émargement</strong> → <code>/attendance</code></li>
+        <li>📋 <strong>Tâches &amp; Devoirs</strong> → <code>/tasks</code></li>
       </ol>
       <p>Section inférieure séparée :</p>
-      <ol start="10">
-        <li>⚙️ <strong>Paramètres</strong> → <code>/profile</code></li>
+      <ol start="11">
+        <li>⚙️ <strong>Mon Profil</strong> → <code>/profile</code></li>
       </ol>
     </div>
 

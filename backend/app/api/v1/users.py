@@ -954,6 +954,18 @@ def admin_create_user(
     # Send automatic welcome message
     send_welcome_message(session, user)
 
+    from app.services.audit_service import log_audit_event
+    log_audit_event(
+        session,
+        action="USER_CREATE",
+        user_id=current_user.id,
+        user_email=current_user.email,
+        resource_type="user",
+        resource_id=user.id,
+        details=f"Création du compte {user.email} (rôle: {user.role})",
+        status="SUCCESS",
+    )
+
     return user
 
 
@@ -994,6 +1006,19 @@ def admin_reset_password(
     session.add(user)
     session.commit()
     session.refresh(user)
+
+    from app.services.audit_service import log_audit_event
+    log_audit_event(
+        session,
+        action="PASSWORD_RESET",
+        user_id=current_user.id,
+        user_email=current_user.email,
+        resource_type="user",
+        resource_id=user.id,
+        details=f"Réinitialisation du mot de passe pour le compte {user.email}",
+        status="SUCCESS",
+    )
+
     return {"message": "Mot de passe mis à jour avec succès.", "id": user_id}
 
 
@@ -1264,5 +1289,18 @@ def admin_update_user(
         except Exception as mail_err:
             print(f"[WARN] Impossible d'expédier l'email de notification de rôle à {user.email}: {mail_err}")
 
+    from app.services.audit_service import log_audit_event
+    log_audit_event(
+        session,
+        action="ROLE_CHANGE" if role_changed else "USER_UPDATE",
+        user_id=current_user.id,
+        user_email=current_user.email,
+        resource_type="user",
+        resource_id=user.id,
+        details=f"Mise à jour du profil {user.email} (rôle: {user.role}, actif: {getattr(user, 'is_active', True)})",
+        status="SUCCESS",
+    )
+
     return user
+
 

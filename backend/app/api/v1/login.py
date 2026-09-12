@@ -89,6 +89,15 @@ async def login_access_token(
     )
 
     if not user or not security.verify_password(str(password), user.hashed_password):
+        from app.services.audit_service import log_audit_event
+        log_audit_event(
+            session,
+            action="LOGIN_FAILED",
+            user_email=uname,
+            details="Échec d'authentification : identifiant ou mot de passe incorrect",
+            status="FAILED",
+            request=request,
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Identifiants incorrects (email ou mot de passe)",
@@ -96,6 +105,16 @@ async def login_access_token(
 
     # Vérification du statut d'activation du compte
     if hasattr(user, "is_active") and user.is_active is False:
+        from app.services.audit_service import log_audit_event
+        log_audit_event(
+            session,
+            action="LOGIN_BLOCKED",
+            user_id=user.id,
+            user_email=user.email,
+            details="Tentative de connexion sur un compte utilisateur désactivé",
+            status="FAILED",
+            request=request,
+        )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Votre compte a été désactivé par l'administration. Veuillez contacter l'administration pour réactiver votre accès (contact@eschola.pro).",
@@ -104,4 +123,30 @@ async def login_access_token(
     access_token = security.create_access_token(
         subject=user.id, role=user.role, email=user.email
     )
+
+    # Enregistrement de la session active et de l'événement d'audit
+    from datetime import datetime, timedelta
+    from app.core.config import settings
+    from app.services.audit_service import log_audit_event, register_user_session
+
+    expires_at = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    register_user_session(
+        session,
+        user_id=user.id,
+        session_token=access_token[-24:],
+        expires_at=expires_at,
+        request=request,
+    )
+    log_audit_event(
+        session,
+        action="LOGIN_SUCCESS",
+        user_id=user.id,
+        user_email=user.email,
+        resource_type="user",
+        resource_id=user.id,
+        details=f"Authentification réussie (rôle: {user.role})",
+        status="SUCCESS",
+        request=request,
+    )
+
     return Token(access_token=access_token, token_type="bearer")
