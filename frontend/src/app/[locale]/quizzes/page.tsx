@@ -39,6 +39,7 @@ interface Quiz {
   description?: string;
   creator_email?: string;
   target_roles: string;
+  target_group?: string;
   time_limit_minutes: number;
   question_count: number;
   total_points: number;
@@ -72,9 +73,11 @@ interface QuizAttempt {
 }
 
 export default function QuizzesPage() {
-  const [currentUser, setCurrentUser] = useState<{ id: number; email: string; role: string } | null>(null);
+  const [currentUser, setCurrentUser] = useState<{ id: number; email: string; role: string; group_name?: string } | null>(null);
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [myAttempts, setMyAttempts] = useState<QuizAttempt[]>([]);
+  const [availableGroups, setAvailableGroups] = useState<Array<{ id: number; name: string; level?: string }>>([]);
+  const [selectedGroupFilter, setSelectedGroupFilter] = useState<string>('all');
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'available' | 'history' | 'manage'>('available');
   const [isExportingPdf, setIsExportingPdf] = useState<number | null>(null);
@@ -93,6 +96,7 @@ export default function QuizzesPage() {
   const [newDescription, setNewDescription] = useState('');
   const [newTimeLimit, setNewTimeLimit] = useState(15);
   const [newRoles, setNewRoles] = useState('étudiant,stagiaire,employer');
+  const [newTargetGroup, setNewTargetGroup] = useState('all');
   const [newQuestions, setNewQuestions] = useState<Array<{
     question_text: string;
     options: string[];
@@ -114,17 +118,21 @@ export default function QuizzesPage() {
 
   const canManage = ['formateur', 'pedagogique', 'dg_rh', 'dg/rh', 'admin', 'admin_manager'].includes(currentUser?.role || '');
 
-  // 1. Fetch User, Quizzes & Personal Attempts
+  // 1. Fetch User, Quizzes, Groups & Personal Attempts
   const fetchQuizzes = async () => {
     try {
-      const [userRes, quizRes, attemptsRes] = await Promise.all([
+      const [userRes, quizRes, attemptsRes, groupsRes] = await Promise.all([
         apiClient.get('/users/me').catch(() => null),
         apiClient.get('/quizzes/'),
-        apiClient.get('/quizzes/attempts/my').catch(() => ({ data: [] }))
+        apiClient.get('/quizzes/attempts/my').catch(() => ({ data: [] })),
+        apiClient.get('/groups/').catch(() => ({ data: [] }))
       ]);
       if (userRes?.data) setCurrentUser(userRes.data);
       setQuizzes(quizRes.data);
       if (attemptsRes?.data) setMyAttempts(attemptsRes.data);
+      if (groupsRes?.data && Array.isArray(groupsRes.data)) {
+        setAvailableGroups(groupsRes.data);
+      }
     } catch (err) {
       console.error('Error fetching quizzes:', err);
     } finally {
@@ -302,12 +310,14 @@ export default function QuizzesPage() {
         description: newDescription.trim() || undefined,
         time_limit_minutes: newTimeLimit,
         target_roles: newRoles,
+        target_group: newTargetGroup,
         questions: newQuestions
       });
 
       setShowCreateModal(false);
       setNewTitle('');
       setNewDescription('');
+      setNewTargetGroup('all');
       setNewQuestions([{
         question_text: '',
         options: ['', '', '', ''],
@@ -414,17 +424,57 @@ export default function QuizzesPage() {
       {/* ========================================================================= */}
       {activeTab === 'available' && (
         <div className="space-y-6">
+          {/* Group Filter Bar for Staff & Admins */}
+          {canManage && availableGroups.length > 0 && (
+            <div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-2xl bg-surface border border-border">
+              <div className="flex items-center gap-2">
+                <GraduationCap size={16} className="text-primary" />
+                <span className="text-xs font-bold text-text-primary">Filtrer les évaluations par Groupe :</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <select
+                  value={selectedGroupFilter}
+                  onChange={(e) => setSelectedGroupFilter(e.target.value)}
+                  className="px-3 py-1.5 rounded-xl bg-background border border-border text-xs font-semibold outline-none focus:border-primary text-text-primary transition-all cursor-pointer"
+                >
+                  <option value="all">🌐 Tous les groupes</option>
+                  {availableGroups.map((grp) => (
+                    <option key={grp.id} value={grp.name}>
+                      👥 {grp.name} {grp.level ? `(${grp.level})` : ''}
+                    </option>
+                  ))}
+                </select>
+                {selectedGroupFilter !== 'all' && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedGroupFilter('all')}
+                    className="text-xs text-primary font-bold hover:underline px-2 py-1 cursor-pointer"
+                  >
+                    Réinitialiser
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
           {quizzes.length === 0 ? (
             <div className="glass-card p-12 text-center text-text-secondary space-y-3">
               <HelpCircle size={40} className="mx-auto opacity-30 text-primary" />
               <p className="font-bold text-base text-text-primary">Aucun quiz disponible pour le moment</p>
               <p className="text-xs max-w-sm mx-auto">
-                Les formateurs n'ont pas encore publié d'évaluation pour votre profil. Revenez très bientôt !
+                Les formateurs n'ont pas encore publié d'évaluation pour votre groupe ou profil. Revenez très bientôt !
               </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {quizzes.map((quiz) => (
+              {quizzes
+                .filter((quiz) => {
+                  if (selectedGroupFilter === 'all') return true;
+                  const qGrp = (quiz.target_group || 'all').toLowerCase();
+                  if (qGrp === 'all') return true;
+                  return qGrp.includes(selectedGroupFilter.toLowerCase());
+                })
+                .map((quiz) => (
                 <div 
                   key={quiz.id} 
                   className="glass-card p-6 flex flex-col justify-between space-y-5 hover:border-primary/50 transition-all group"
@@ -454,6 +504,17 @@ export default function QuizzesPage() {
                     <p className="text-xs text-text-secondary line-clamp-2 leading-relaxed">
                       {quiz.description || "Évaluation des compétences sur les notions abordées en cours."}
                     </p>
+
+                    {/* Group & Roles Target Badges */}
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-primary/10 text-primary border border-primary/20 flex items-center gap-1">
+                        <GraduationCap size={10} />
+                        {quiz.target_group && quiz.target_group !== 'all' ? `Groupe : ${quiz.target_group}` : '🌐 Tous les groupes'}
+                      </span>
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                        {quiz.target_roles ? quiz.target_roles.split(',').join(', ') : 'Tous rôles'}
+                      </span>
+                    </div>
 
                     <div className="pt-2 flex items-center gap-3 text-xs text-text-secondary">
                       <span className="flex items-center gap-1">
@@ -588,7 +649,7 @@ export default function QuizzesPage() {
       {/* SECTION 3 : VUE FORMATEUR & ADMIN (Gestion & Export Global)               */}
       {/* ========================================================================= */}
       {activeTab === 'manage' && canManage && (
-        <div className="glass-card rounded-3xl border border-border overflow-hidden">
+        <div className="glass-card rounded-3xl border border-border overflow-hidden space-y-4">
           <div className="p-6 bg-surface border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="space-y-1">
               <h3 className="font-extrabold text-base text-text-primary flex items-center gap-2">
@@ -599,12 +660,29 @@ export default function QuizzesPage() {
                 Auditez les notes de chaque apprenant et exportez les procès-verbaux d'évaluation en PDF.
               </p>
             </div>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="btn-primary px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0"
-            >
-              <Plus size={14} /> Créer un Quiz
-            </button>
+            <div className="flex flex-wrap items-center gap-3">
+              {availableGroups.length > 0 && (
+                <select
+                  value={selectedGroupFilter}
+                  onChange={(e) => setSelectedGroupFilter(e.target.value)}
+                  className="px-3 py-2 rounded-xl bg-background border border-border text-xs font-semibold outline-none focus:border-primary text-text-primary transition-all cursor-pointer"
+                >
+                  <option value="all">🌐 Tous les groupes</option>
+                  {availableGroups.map((grp) => (
+                    <option key={grp.id} value={grp.name}>
+                      👥 {grp.name} {grp.level ? `(${grp.level})` : ''}
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="btn-primary px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0 cursor-pointer"
+              >
+                <Plus size={14} /> Créer un Quiz
+              </button>
+            </div>
           </div>
 
           <div className="divide-y divide-border">
@@ -613,16 +691,29 @@ export default function QuizzesPage() {
                 Aucun quiz créé pour le moment. Cliquez sur "Créer un Quiz" pour commencer.
               </div>
             ) : (
-              quizzes.map((quiz) => (
+              quizzes
+                .filter((quiz) => {
+                  if (selectedGroupFilter === 'all') return true;
+                  const qGrp = (quiz.target_group || 'all').toLowerCase();
+                  if (qGrp === 'all') return true;
+                  return qGrp.includes(selectedGroupFilter.toLowerCase());
+                })
+                .map((quiz) => (
                 <div key={quiz.id} className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-surface/50 transition-colors">
-                  <div className="space-y-1">
-                    <h4 className="text-sm font-bold text-text-primary">{quiz.title}</h4>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-sm font-bold text-text-primary">{quiz.title}</h4>
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-primary/10 text-primary border border-primary/20 flex items-center gap-1">
+                        <GraduationCap size={10} />
+                        {quiz.target_group && quiz.target_group !== 'all' ? `Groupe : ${quiz.target_group}` : '🌐 Tous groupes'}
+                      </span>
+                    </div>
                     <div className="flex flex-wrap items-center gap-3 text-xs text-text-secondary">
                       <span>{quiz.question_count} questions ({quiz.total_points} pts)</span>
                       <span>•</span>
                       <span>Durée : {quiz.time_limit_minutes} min</span>
                       <span>•</span>
-                      <span className="capitalize">Public : {quiz.target_roles.split(',').join(', ')}</span>
+                      <span className="capitalize">Public : {quiz.target_roles ? quiz.target_roles.split(',').join(', ') : 'Tous'}</span>
                     </div>
                   </div>
 
@@ -1088,6 +1179,32 @@ export default function QuizzesPage() {
                         <option value="employer">Employés uniquement</option>
                       </select>
                     </div>
+                  </div>
+
+                  {/* Group / Class Target selector */}
+                  <div>
+                    <label className="block text-[11px] font-bold text-text-secondary uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                      <span className="flex items-center gap-1">
+                        <GraduationCap size={13} className="text-primary" />
+                        <span>Groupe / Promotion Cible *</span>
+                      </span>
+                      <span className="text-[10px] text-text-secondary font-normal">Cloisonnement strict</span>
+                    </label>
+                    <select
+                      value={newTargetGroup}
+                      onChange={(e) => setNewTargetGroup(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-border text-xs font-semibold outline-none focus:border-primary text-text-primary transition-all shadow-sm cursor-pointer"
+                    >
+                      <option value="all">🌐 Tous les groupes (Général / Promotion entière)</option>
+                      {availableGroups.map((grp) => (
+                        <option key={grp.id} value={grp.name}>
+                          👥 {grp.name} {grp.level ? `(${grp.level})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-[10px] text-text-secondary mt-1">
+                      Les apprenants n'appartenant pas à ce groupe ne pourront ni voir ni passer ce quiz. Les administrateurs y ont toujours accès complet.
+                    </p>
                   </div>
 
                   {/* Panoramic Live Summary Card */}

@@ -15,6 +15,7 @@ class Quiz(Base):
     course_id = Column(Integer, ForeignKey("courses.id"), nullable=True)
     created_by_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     target_roles = Column(String, default="étudiant,stagiaire,employer")
+    target_group = Column(String, default="all", nullable=True)
     time_limit_minutes = Column(Integer, default=15)
     created_at = Column(DateTime, default=datetime.utcnow)
 

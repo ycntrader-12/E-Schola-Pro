@@ -119,10 +119,11 @@ class QuizAdmin(ModelView, model=Quiz):
         Quiz.title,
         Quiz.created_by_id,
         Quiz.target_roles,
+        Quiz.target_group,
         Quiz.time_limit_minutes,
         Quiz.created_at,
     ]
-    column_searchable_list = [Quiz.title]
+    column_searchable_list = [Quiz.title, Quiz.target_group]
     name = "Quiz"
     name_plural = "Quiz"
     icon = "fa-solid fa-award"

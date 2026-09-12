@@ -899,6 +899,7 @@ E-Schola Pro/
         <tr><td><code>course_id</code></td><td>Integer</td><td>FK → courses.id, Nullable</td><td>Cours lié (optionnel)</td></tr>
         <tr><td><code>created_by_id</code></td><td>Integer</td><td>FK → users.id</td><td>Créateur du quiz</td></tr>
         <tr><td><code>target_roles</code></td><td>String</td><td>Default: "étudiant,stagiaire,employer"</td><td>Public cible</td></tr>
+        <tr><td><code>target_group</code></td><td>String</td><td>Default: "all"</td><td>Groupe / Promotion ciblée (ou "all" pour l'ensemble des groupes)</td></tr>
         <tr><td><code>time_limit_minutes</code></td><td>Integer</td><td>Default: 15</td><td>Durée maximale (minutes)</td></tr>
         <tr><td><code>created_at</code></td><td>DateTime</td><td>Auto</td><td>Date de création</td></tr>
       </tbody>
@@ -1150,15 +1151,15 @@ E-Schola Pro/
     <table>
       <thead><tr><th>Méthode</th><th>Endpoint</th><th>Description</th><th>Accès</th></tr></thead>
       <tbody class="endpoint-row">
-        <tr><td><span class="badge badge-get">GET</span></td><td><code>/quizzes/</code></td><td>Lister tous les quiz disponibles pour le rôle de l'utilisateur</td><td>Authentifié</td></tr>
-        <tr><td><span class="badge badge-get">GET</span></td><td><code>/quizzes/{id}</code></td><td>Détail d'un quiz avec questions (anti-triche : réponses masquées aux apprenants)</td><td>Authentifié</td></tr>
-        <tr><td><span class="badge badge-post">POST</span></td><td><code>/quizzes/</code></td><td>Créer un nouveau quiz avec son barème et ses questions</td><td>Admin, Formateur, DG-RH</td></tr>
-        <tr><td><span class="badge badge-post">POST</span></td><td><code>/quizzes/{id}/submit</code></td><td>Soumettre les réponses, calculer la note et enregistrer la tentative</td><td>Étudiant, Stagiaire, Employé</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/quizzes/</code></td><td>Lister les quiz avec <strong>cloisonnement strict par groupe et rôle</strong> pour les apprenants (filtrage automatique par <code>target_group</code> et <code>target_roles</code>). <strong>Accès total universel 360° garanti pour <code>admin</code> et <code>admin_manager</code></strong> sur tous les groupes. Paramètre optionnel <code>?group=</code> pour filtrage par le staff.</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/quizzes/{id}</code></td><td>Détail d'un quiz avec questions (anti-triche : réponses masquées aux apprenants ; vérification d'appartenance au groupe assigné avec rejet HTTP 403 en cas de non-concordance)</td><td>Authentifié (Contrôle de groupe &amp; rôle)</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/quizzes/</code></td><td>Créer un nouveau quiz avec son barème, ses questions, son public cible et son <strong>groupe / promotion cible</strong> (<code>target_group</code>)</td><td>Admin, Admin Manager, Formateur, DG-RH</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/quizzes/{id}/submit</code></td><td>Soumettre les réponses, calculer la note et enregistrer la tentative (vérification de sécurité : l'apprenant doit appartenir au groupe assigné)</td><td>Étudiant, Stagiaire, Employé</td></tr>
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/quizzes/attempts/my</code></td><td>Historique de toutes les tentatives personnelles de l'utilisateur</td><td>Authentifié</td></tr>
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/quizzes/attempts/{attempt_id}/details</code></td><td>Relevé complet d'une tentative avec correction question par question pour génération du PDF (<strong>Contrôle strict :</strong> Apprenants autorisés uniquement sur leurs propres tentatives ; Formateurs/Admins autorisés sur tous)</td><td>Authentifié (Contrôle RBAC strict)</td></tr>
-        <tr><td><span class="badge badge-get">GET</span></td><td><code>/quizzes/{id}/results</code></td><td>Consulter la liste de toutes les tentatives des apprenants pour ce quiz</td><td>Admin, Formateur, DG-RH, Pédagogique</td></tr>
-        <tr><td><span class="badge badge-get">GET</span></td><td><code>/quizzes/{id}/report-data</code></td><td>Données agrégées et synthèse statistique de la promotion pour export du Procès-Verbal Global PDF</td><td>Admin, Formateur, DG-RH, Pédagogique</td></tr>
-        <tr><td><span class="badge badge-delete">DELETE</span></td><td><code>/quizzes/{id}</code></td><td>Supprimer un quiz et ses questions en cascade</td><td>Admin, Formateur</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/quizzes/{id}/results</code></td><td>Consulter la liste de toutes les tentatives des apprenants pour ce quiz</td><td>Admin, Admin Manager, Formateur, DG-RH, Pédagogique</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/quizzes/{id}/report-data</code></td><td>Données agrégées et synthèse statistique de la promotion pour export du Procès-Verbal Global PDF</td><td>Admin, Admin Manager, Formateur, DG-RH, Pédagogique</td></tr>
+        <tr><td><span class="badge badge-delete">DELETE</span></td><td><code>/quizzes/{id}</code></td><td>Supprimer un quiz et ses questions en cascade</td><td>Admin, Admin Manager, Formateur</td></tr>
       </tbody>
     </table>
 
@@ -1336,8 +1337,8 @@ E-Schola Pro/
       <tbody>
         <tr><td><strong>Créer/Modifier/Supprimer des cours &amp; vidéos</strong></td><td>✅</td><td>✅</td><td>✅</td><td>❌</td></tr>
         <tr><td><strong>Consulter les cours &amp; supports</strong></td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
-        <tr><td><strong>Créer, générer &amp; lancer des quiz</strong></td><td>✅</td><td>✅</td><td>✅</td><td>❌</td></tr>
-        <tr><td><strong>Passer un quiz &amp; consulter son bilan</strong></td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+        <tr><td><strong>Créer, générer &amp; lancer des quiz (Ciblage par Groupe)</strong></td><td>✅ <em>(Tous les groupes)</em></td><td>✅ <em>(Tous les groupes)</em></td><td>✅ <em>(Groupes assignés/tous)</em></td><td>❌</td></tr>
+        <tr><td><strong>Passer un quiz &amp; consulter son bilan</strong></td><td>✅</td><td>✅</td><td>✅</td><td>✅ <em>(Restreint à son propre groupe)</em></td></tr>
         <tr><td><strong>Créer &amp; attribuer des devoirs / tâches</strong></td><td>✅</td><td>✅</td><td>✅</td><td>❌</td></tr>
         <tr><td><strong>Consulter &amp; soumettre des livrables de devoirs</strong></td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
         <tr><td><strong>Évaluer &amp; noter les devoirs / travaux</strong></td><td>✅</td><td>✅</td><td>✅</td><td>❌</td></tr>
@@ -1447,13 +1448,20 @@ E-Schola Pro/
       </div>
     </div>
 
-    <h3>Module 3 — Quiz & Évaluations</h3>
+    <h3>Module 3 — Quiz & Évaluations (Cloisonnement par Groupe & Accès Admin Universel)</h3>
     <div class="card">
       <p><strong>Route Frontend :</strong> <code>/quizzes</code></p>
       <p><strong>Options et propriétés :</strong></p>
       <ul>
-        <li><strong>Studio de Création Panoramique (Widescreen Rectangulaire 2 Colonnes) :</strong> Interface panoramique plein écran en 2 colonnes scindées (colonne latérale de métadonnées et synthèse du barème en direct + colonne principale de composition modulaire des questions QCM en grille 2x2), éliminant tout défilement vertical contraignant.</li>
-        <li><strong>Création :</strong> Titre, description, cours associé (optionnel), rôles cibles (Étudiants, Stagiaires, Employés), durée limite et barème dynamique par question</li>
+        <li><strong>Studio de Création Panoramique (Widescreen Rectangulaire 2 Colonnes) :</strong> Interface panoramique plein écran en 2 colonnes scindées (colonne latérale de configuration avec titre, consignes, durée, public cible, <strong>sélecteur de groupe / promotion assignée</strong> et barème dynamique en direct + colonne principale de composition modulaire des questions QCM en grille 2x2).</li>
+        <li><strong>Cloisonnement Strict par Groupe (Group-Based Access Control) :</strong>
+          <ul>
+            <li><strong>Apprenants (Étudiants, Stagiaires, Employés) :</strong> Visibilité et passage strictement limités aux quiz créés pour leur propre groupe ou pour l'ensemble des groupes (<code>target_group="all"</code>). Tentative d'accès direct bloquée avec HTTP 403 Forbidden.</li>
+            <li><strong>Formateurs &amp; Équipe Pédagogique :</strong> Création ciblée par groupe, filtre interactif par groupe et supervision des résultats de leurs promotions.</li>
+            <li><strong>Administrateurs (<code>admin</code>, <code>admin_manager</code>) :</strong> Accès total 360°, universel et sans restriction à l'ensemble des quiz, résultats, statistiques et exports de tous les groupes.</li>
+          </ul>
+        </li>
+        <li><strong>Badges de Groupe &amp; Filtrage Dynamique :</strong> Affichage d'un badge visuel distinctif <code>👥 Groupe : {Nom}</code> ou <code>🌐 Tous les groupes</code> sur chaque carte d'évaluation, et barre de filtrage instantanée par groupe pour les gestionnaires.</li>
         <li><strong>Questions &amp; Barème :</strong> QCM à 4 choix, points personnalisables par question, validation interactive visuelle de la bonne réponse</li>
         <li><strong>Timer &amp; Soumission :</strong> Compte à rebours temps réel avec auto-soumission à expiration du délai</li>
         <li><strong>Correction Immédiate :</strong> Calcul automatique de la note, pourcentage, mention d'excellence et révision détaillée question par question</li>

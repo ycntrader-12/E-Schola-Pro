@@ -22,33 +22,94 @@ ADMIN_ROLES = ["admin", "admin_manager"]
 STAFF_ROLES = ["admin", "admin_manager", "formateur", "pedagogique", "dg_rh"]
 
 
+def check_user_quiz_access(current_user: Any, quiz: Quiz, session: Any) -> bool:
+    """
+    Check if current_user has access to the given quiz based on role and group:
+    - Admins & Admin Managers: Unrestricted universal 360° access.
+    - Other staff (formateurs, pedagogique, dg_rh): Full viewing access.
+    - Learners (étudiant, stagiaire, employer):
+      1. Must match target_roles (if restricted and not 'all')
+      2. Must match target_group:
+         - 'all', empty or None -> accessible.
+         - Otherwise user.group_name or GroupMember table must match.
+    """
+    user_role = (current_user.role or "").strip().lower()
+    
+    # 1. Staff and Admins have global access
+    if user_role in STAFF_ROLES:
+        return True
+        
+    # 2. Check Role targeting
+    target_roles = [r.strip().lower() for r in (quiz.target_roles or "").split(",") if r.strip()]
+    if target_roles and "all" not in target_roles and user_role not in target_roles:
+        return False
+        
+    # 3. Check Group targeting
+    target_group_str = (quiz.target_group or "all").strip().lower()
+    if not target_group_str or target_group_str == "all":
+        return True
+        
+    target_groups = [g.strip().lower() for g in target_group_str.split(",") if g.strip()]
+    if "all" in target_groups:
+        return True
+        
+    # Check current_user.group_name
+    user_group_name = (current_user.group_name or "").strip().lower()
+    if user_group_name and user_group_name in target_groups:
+        return True
+        
+    # Check GroupMember table
+    try:
+        from app.models.group import Group, GroupMember
+        memberships = (
+            session.query(GroupMember)
+            .filter(GroupMember.user_id == current_user.id)
+            .all()
+        )
+        for m in memberships:
+            if str(m.group_id).lower() in target_groups:
+                return True
+            if m.group and m.group.name and m.group.name.strip().lower() in target_groups:
+                return True
+    except Exception as e:
+        print(f"[Quiz Access Warning] Error checking group memberships: {e}")
+        
+    return False
+
+
 @router.get("/", response_model=list[QuizResponse])
 def get_quizzes(
-    session: SessionDep, current_user: CurrentUser, skip: int = 0, limit: int = 100
+    session: SessionDep,
+    current_user: CurrentUser,
+    group: str | None = None,
+    skip: int = 0,
+    limit: int = 100,
 ) -> Any:
     """
     List all quizzes available for the current user.
+    - Admins & Admin Managers have unrestricted universal access across all groups.
+    - Formateurs see all or can filter by specific group.
+    - Learners (students/interns/employees) only see quizzes matching their own group & role.
     """
+    query = session.query(Quiz)
+    
+    # Optional group filter if provided by staff
+    if group and group.strip() and group.lower() != "all" and current_user.role in STAFF_ROLES:
+        cleaned_grp = group.strip().lower()
+        query = query.filter(
+            (Quiz.target_group.ilike(f"%{cleaned_grp}%")) | (Quiz.target_group == "all") | (Quiz.target_group.is_(None))
+        )
+        
     quizzes = (
-        session.query(Quiz)
-        .order_by(Quiz.created_at.desc())
+        query.order_by(Quiz.created_at.desc())
         .offset(skip)
         .limit(limit)
         .all()
     )
 
-    # Filter by user role if student/intern/employee
+    # Filter for learners based on role and group assignment
     if current_user.role not in STAFF_ROLES:
-        filtered = []
-        for q in quizzes:
-            target_list = [r.strip().lower() for r in (q.target_roles or "").split(",")]
-            if (
-                current_user.role.lower() in target_list
-                or "all" in target_list
-                or not q.target_roles
-            ):
-                filtered.append(q)
-        quizzes = filtered
+        quizzes = [q for q in quizzes if check_user_quiz_access(current_user, q, session)]
 
     # Fetch attempts for current user to indicate completion status
     user_attempts = (
@@ -76,6 +137,7 @@ def get_quizzes(
                 created_by_id=q.created_by_id,
                 creator_email=creator_email,
                 target_roles=q.target_roles or "étudiant,stagiaire,employer",
+                target_group=q.target_group or "all",
                 time_limit_minutes=q.time_limit_minutes,
                 created_at=q.created_at,
                 question_count=len(q.questions),
@@ -96,10 +158,17 @@ def get_quiz_detail(
     """
     Get quiz details with questions.
     Anti-cheat: correct answer indices are omitted for students taking the test.
+    Strictly enforces group and role isolation for learners.
     """
     quiz = session.query(Quiz).filter(Quiz.id == quiz_id).first()
     if not quiz:
         raise HTTPException(status_code=404, detail="Quiz introuvable.")
+
+    if not check_user_quiz_access(current_user, quiz, session):
+        raise HTTPException(
+            status_code=403,
+            detail="Accès refusé. Cette évaluation est strictement réservée aux membres du groupe assigné.",
+        )
 
     is_manager = current_user.role in STAFF_ROLES
 
@@ -138,6 +207,7 @@ def get_quiz_detail(
         created_by_id=quiz.created_by_id,
         creator_email=quiz.creator.email if quiz.creator else None,
         target_roles=quiz.target_roles or "étudiant,stagiaire,employer",
+        target_group=quiz.target_group or "all",
         time_limit_minutes=quiz.time_limit_minutes,
         created_at=quiz.created_at,
         question_count=len(quiz.questions),
@@ -169,12 +239,14 @@ def create_quiz(
             status_code=400, detail="Un quiz doit comporter au moins une question."
         )
 
+    target_grp = quiz_in.target_group.strip() if quiz_in.target_group and quiz_in.target_group.strip() else "all"
     quiz = Quiz(
         title=quiz_in.title.strip(),
         description=quiz_in.description.strip() if quiz_in.description else None,
         course_id=quiz_in.course_id,
         created_by_id=current_user.id,
         target_roles=quiz_in.target_roles or "étudiant,stagiaire,employer",
+        target_group=target_grp,
         time_limit_minutes=quiz_in.time_limit_minutes,
     )
     session.add(quiz)
@@ -204,6 +276,7 @@ def create_quiz(
         created_by_id=quiz.created_by_id,
         creator_email=current_user.email,
         target_roles=quiz.target_roles,
+        target_group=quiz.target_group or "all",
         time_limit_minutes=quiz.time_limit_minutes,
         created_at=quiz.created_at,
         question_count=len(quiz.questions),
@@ -246,10 +319,17 @@ def submit_quiz(
 ) -> Any:
     """
     Submit answers for a quiz. Calculate score, record attempt, and return detailed review.
+    Enforces role and group membership check.
     """
     quiz = session.query(Quiz).filter(Quiz.id == quiz_id).first()
     if not quiz:
         raise HTTPException(status_code=404, detail="Quiz introuvable.")
+
+    if not check_user_quiz_access(current_user, quiz, session):
+        raise HTTPException(
+            status_code=403,
+            detail="Accès refusé. Vous ne faites pas partie du groupe assigné à cette évaluation.",
+        )
 
     score = 0
     max_score = 0
@@ -524,6 +604,7 @@ def get_quiz_global_report_for_pdf(
         created_at=quiz.created_at,
         creator_email=quiz.creator.email if quiz.creator else None,
         target_roles=quiz.target_roles or "Tous",
+        target_group=quiz.target_group or "all",
         total_points=total_pts,
         total_attempts=total_attempts,
         passed_count=passed_count,

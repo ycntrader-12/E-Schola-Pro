@@ -23,6 +23,7 @@ class QuizCreate(BaseModel):
     description: str | None = None
     course_id: int | None = None
     target_roles: str | None = "étudiant,stagiaire,employer"
+    target_group: str | None = "all"
     time_limit_minutes: int = 15
     questions: list[QuizQuestionCreate]
 
@@ -35,6 +36,7 @@ class QuizResponse(BaseModel):
     created_by_id: int
     creator_email: str | None = None
     target_roles: str
+    target_group: str | None = "all"
     time_limit_minutes: int
     created_at: datetime
     question_count: int = 0
@@ -106,6 +108,7 @@ class QuizGlobalReportResponse(BaseModel):
     created_at: datetime
     creator_email: str | None = None
     target_roles: str
+    target_group: str | None = "all"
     total_points: int
     total_attempts: int
     passed_count: int
