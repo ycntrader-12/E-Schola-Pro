@@ -2005,6 +2005,7 @@ E-Schola Pro/
         <li><strong>Sécurisation des Helpers Utilitaires :</strong> Déplacement des fonctions pures au niveau module (ex: <code>axiosIsCancel</code> dans <code>RecipientInput.tsx</code>) afin d'éviter toute fermeture lexicale prématurée.</li>
         <li><strong>Conformité ESLint 9 &amp; Next.js 16 :</strong> Paramétrage ciblé dans <code>eslint.config.mjs</code> pour la prise en charge native des apostrophes françaises (<code>react/no-unescaped-entities: off</code>) et gestion bienveillante des types souples sans casser les pipelines d'intégration continue (0 erreur bloquante).</li>
         <li><strong>Lecteur Vidéo Résilient :</strong> Détection automatique intelligente des vidéos hébergées sur YouTube via extraction regex de l'identifiant (11 caractères) et bascule transparente entre iframe responsive et lecteur HTML5 avec contrôles multimédia personnalisés.</li>
+        <li><strong>Zéro Avertissement CSS &amp; Linter Tailwind v4 :</strong> Configuration de l'environnement de développement (<code>.vscode/settings.json</code>) avec <code>css.lint.unknownAtRules: "ignore"</code> et refactorisation des directives <code>@apply</code> résiduelles en propriétés CSS pures et déclaratives dans <code>globals.css</code> (pour <code>.glass-card</code>, <code>.btn-primary</code>, <code>.btn-navy</code>, <code>.badge-in-progress</code>, <code>.badge-soft-blue</code>), éliminant 100% des alertes du linter <code>css(unknownAtRules)</code>.</li>
       </ul>
     </div>
 

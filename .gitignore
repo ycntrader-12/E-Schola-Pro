@@ -27,7 +27,8 @@ frontend/out/
 frontend/build/
 
 # IDEs and OS
-.vscode/
+.vscode/*
+!.vscode/settings.json
 .idea/
 .DS_Store
 Thumbs.db
