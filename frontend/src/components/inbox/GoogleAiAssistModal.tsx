@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import {
   Sparkles,
   X,
@@ -169,8 +170,14 @@ export const GoogleAiAssistModal: React.FC<GoogleAiAssistModalProps> = ({
         {/* Header - Thème Officiel E-Schola Pro (Bleu #1877f2) */}
         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-2xl bg-blue-50 text-[#1877f2] border border-blue-200 flex items-center justify-center shadow-xs">
-              <Sparkles size={18} className="animate-pulse" />
+            <div className="w-9 h-9 rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-center p-1.5 shadow-xs overflow-hidden shrink-0">
+              <Image 
+                src="/images/logo_icon_transparent.png" 
+                alt="E-Schola Pro Logo" 
+                width={28} 
+                height={28} 
+                className="w-full h-full object-contain"
+              />
             </div>
             <div>
               <h3 className="font-extrabold text-sm sm:text-base text-slate-900 flex items-center gap-2">
