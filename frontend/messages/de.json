@@ -246,7 +246,17 @@
     "report_cancel": "Abbrechen",
     "report_success": "Meldung erfolgreich an Administratoren und Dozenten übermittelt.",
     "reported_badge": "Gemeldet",
-    "delete_msg": "Löschen"
+    "delete_msg": "Löschen",
+    "read_receipt": "Empfangsbestätigung",
+    "read_receipt_confirmed": "Lesebestätigung erhalten",
+    "read_receipt_pending": "Warten auf Lesebestätigung",
+    "read_status_read": "Gelesen",
+    "read_status_unread": "Ungelesen",
+    "read_at_label": "Gelesen am",
+    "mark_unread": "Als ungelesen markieren",
+    "mark_as_read": "Als gelesen markieren",
+    "read_by_recipient": "Vom Empfänger gelesen",
+    "pending_receipt": "Warten auf Öffnen durch Empfänger"
   },
   "Profile": {
     "page_title": "Konto- & Profileinstellungen",

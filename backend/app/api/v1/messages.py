@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
@@ -527,12 +528,64 @@ def get_message_detail(
         raise HTTPException(status_code=403, detail="Accès non autorisé à ce message.")
 
     # Mark as read if opened by recipient
-    if msg.recipient_id == current_user.id and not msg.is_read and not msg.is_draft:
-        msg.is_read = True
-        session.commit()
-        session.refresh(msg)
+    if msg.recipient_id == current_user.id and not msg.is_draft:
+        if not msg.is_read:
+            msg.is_read = True
+            if not msg.read_at:
+                msg.read_at = datetime.utcnow()
+            session.commit()
+            session.refresh(msg)
 
     return msg
+
+
+@router.put("/{message_id}/read")
+def mark_message_as_read(
+    message_id: int,
+    session: SessionDep,
+    current_user: CurrentUser,
+) -> Any:
+    """
+    Mark a message as read.
+    Allowed for recipient or admin.
+    """
+    msg = session.query(Message).filter(Message.id == message_id).first()
+    if not msg:
+        raise HTTPException(status_code=404, detail="Message introuvable.")
+
+    if msg.recipient_id != current_user.id and current_user.role not in ADMIN_ROLES:
+        raise HTTPException(status_code=403, detail="Accès non autorisé.")
+
+    msg.is_read = True
+    if not msg.read_at:
+        msg.read_at = datetime.utcnow()
+    session.commit()
+    session.refresh(msg)
+    return {"message_id": message_id, "is_read": True, "read_at": msg.read_at}
+
+
+@router.put("/{message_id}/unread")
+def mark_message_as_unread(
+    message_id: int,
+    session: SessionDep,
+    current_user: CurrentUser,
+) -> Any:
+    """
+    Mark a message as unread.
+    Allowed for recipient or admin.
+    """
+    msg = session.query(Message).filter(Message.id == message_id).first()
+    if not msg:
+        raise HTTPException(status_code=404, detail="Message introuvable.")
+
+    if msg.recipient_id != current_user.id and current_user.role not in ADMIN_ROLES:
+        raise HTTPException(status_code=403, detail="Accès non autorisé.")
+
+    msg.is_read = False
+    msg.read_at = None
+    session.commit()
+    session.refresh(msg)
+    return {"message_id": message_id, "is_read": False, "read_at": None}
 
 
 @router.put("/{message_id}/star")

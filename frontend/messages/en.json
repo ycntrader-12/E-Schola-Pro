@@ -269,7 +269,17 @@
     "report_cancel": "Cancel",
     "report_success": "Report forwarded successfully to administrators and group trainer.",
     "reported_badge": "Reported",
-    "delete_msg": "Delete"
+    "delete_msg": "Delete",
+    "read_receipt": "Read Receipt",
+    "read_receipt_confirmed": "Read Receipt Confirmed",
+    "read_receipt_pending": "Pending Read Receipt",
+    "read_status_read": "Read",
+    "read_status_unread": "Unread",
+    "read_at_label": "Read on",
+    "mark_unread": "Mark as unread",
+    "mark_as_read": "Mark as read",
+    "read_by_recipient": "Read by recipient",
+    "pending_receipt": "Awaiting opening by recipient"
   },
   "Profile": {
     "page_title": "Account & Profile Settings",

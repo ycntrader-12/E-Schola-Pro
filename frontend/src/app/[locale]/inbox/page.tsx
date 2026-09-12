@@ -49,6 +49,11 @@ import {
   ChevronLeft,
   ChevronRight,
   SlidersHorizontal,
+  CheckCheck,
+  Check,
+  MailOpen,
+  MailCheck,
+  Eye,
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { InboxHeader, SearchMode } from '@/components/inbox/InboxHeader';
@@ -76,6 +81,7 @@ interface MessageItem {
   attachment_name?: string;
   attachment_type?: string;
   is_read: boolean;
+  read_at?: string;
   is_starred?: boolean;
   is_draft?: boolean;
   is_trash?: boolean;
@@ -241,6 +247,80 @@ export default function InboxMessagesPage() {
     }
   };
 
+  // Toggle Read/Unread status handler with optimistic UI and sync
+  const handleToggleRead = async (msgId: number, targetStatus: boolean, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const nowIso = new Date().toISOString();
+    const updateFn = (m: MessageItem) =>
+      m.id === msgId
+        ? { ...m, is_read: targetStatus, read_at: targetStatus ? (m.read_at || nowIso) : undefined }
+        : m;
+
+    setInboxMessages((prev) => prev.map(updateFn));
+    setSentMessages((prev) => prev.map(updateFn));
+    setDraftMessages((prev) => prev.map(updateFn));
+    setTrashMessages((prev) => prev.map(updateFn));
+
+    if (selectedMessage && selectedMessage.id === msgId) {
+      setSelectedMessage((prev) => (prev ? updateFn(prev) : null));
+    }
+
+    try {
+      if (targetStatus) {
+        await apiClient.put(`/messages/${msgId}/read`);
+      } else {
+        await apiClient.put(`/messages/${msgId}/unread`);
+      }
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('messages_updated'));
+      }
+    } catch (err) {
+      console.error('Failed to toggle read status:', err);
+    }
+  };
+
+  // Bulk Mark as Read / Unread
+  const handleBulkMarkRead = async (targetStatus: boolean) => {
+    if (selectedMessageIds.size === 0) return;
+    const nowIso = new Date().toISOString();
+    const targetIds = Array.from(selectedMessageIds);
+
+    const updateFn = (m: MessageItem) =>
+      selectedMessageIds.has(m.id)
+        ? { ...m, is_read: targetStatus, read_at: targetStatus ? (m.read_at || nowIso) : undefined }
+        : m;
+
+    setInboxMessages((prev) => prev.map(updateFn));
+    setSentMessages((prev) => prev.map(updateFn));
+    setDraftMessages((prev) => prev.map(updateFn));
+    setTrashMessages((prev) => prev.map(updateFn));
+
+    if (selectedMessage && selectedMessageIds.has(selectedMessage.id)) {
+      setSelectedMessage((prev) => (prev ? updateFn(prev) : null));
+    }
+
+    for (const msgId of targetIds) {
+      try {
+        if (targetStatus) {
+          await apiClient.put(`/messages/${msgId}/read`);
+        } else {
+          await apiClient.put(`/messages/${msgId}/unread`);
+        }
+      } catch (err) {
+        console.error(`Failed to mark read message #${msgId}:`, err);
+      }
+    }
+
+    setSelectedMessageIds(new Set());
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('messages_updated'));
+    }
+    setActionMessage({
+      type: 'success',
+      text: targetStatus ? 'Messages marqués comme lus.' : 'Messages marqués comme non lus.',
+    });
+  };
+
   // Get active message list based on current folder
   const currentFolderList = useMemo(() => {
     let list: MessageItem[] = [];
@@ -281,15 +361,18 @@ export default function InboxMessagesPage() {
 
   // Handle select single message
   const handleSelectMessage = async (msg: MessageItem) => {
+    const nowIso = new Date().toISOString();
     setSelectedMessage(msg);
 
     if ((activeFolder === 'inbox' || activeFolder === 'all') && !msg.is_read) {
       try {
         await apiClient.get(`/messages/${msg.id}`);
         setInboxMessages((prev) =>
-          prev.map((m) => (m.id === msg.id ? { ...m, is_read: true } : m))
+          prev.map((m) => (m.id === msg.id ? { ...m, is_read: true, read_at: m.read_at || nowIso } : m))
         );
-        setSelectedMessage((prev) => (prev && prev.id === msg.id ? { ...prev, is_read: true } : prev));
+        setSelectedMessage((prev) =>
+          prev && prev.id === msg.id ? { ...prev, is_read: true, read_at: prev.read_at || nowIso } : prev
+        );
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new Event('messages_updated'));
         }
@@ -514,198 +597,269 @@ export default function InboxMessagesPage() {
             />
           ) : selectedMessage ? (
             /* MESSAGE DETAIL VIEW */
-            <div className="flex-1 p-6 overflow-y-auto space-y-6 animate-fade-in-up">
-              {/* Header Actions */}
-              <div className="flex items-center justify-between pb-4 border-b border-border">
-                <button
-                  type="button"
-                  onClick={() => setSelectedMessage(null)}
-                  className="text-xs text-text-secondary hover:text-text-primary flex items-center gap-1 font-semibold"
-                >
-                  <ArrowLeft size={16} /> Retour à la liste
-                </button>
+            (() => {
+              const isSender = selectedMessage.sender_id === currentUser?.id || activeFolder === 'sent';
+              const isRecipient = selectedMessage.recipient_id === currentUser?.id;
 
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleReply(selectedMessage)}
-                    className="px-3 py-1.5 rounded-xl bg-primary/15 hover:bg-primary/25 border border-primary/30 text-primary text-xs font-bold flex items-center gap-1.5 transition-colors"
-                  >
-                    <Reply size={14} /> Répondre
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAiModalPrompt(`Résume le message suivant :\nSujet: ${selectedMessage.subject}\nCorps: ${selectedMessage.body}`);
-                      setIsAiModalOpen(true);
-                    }}
-                    className="px-3 py-1.5 rounded-xl bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/30 text-purple-300 text-xs font-bold flex items-center gap-1.5 transition-colors"
-                  >
-                    <Sparkles size={14} /> Résumé par IA Gemini
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleToggleStar(selectedMessage.id)}
-                    className="p-2 rounded-xl bg-surface hover:bg-surface-hover border border-border text-text-secondary transition-colors"
-                  >
-                    <Star size={16} className={selectedMessage.is_starred ? 'text-amber-400 fill-amber-400' : ''} />
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setReportingMessage(selectedMessage)}
-                    className="px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 text-xs font-semibold flex items-center gap-1.5 transition-colors"
-                  >
-                    <Flag size={14} /> Signaler
-                  </button>
-                </div>
-              </div>
-
-              {/* Subject Title & Reported Banner */}
-              <div className="space-y-3">
-                {selectedMessage.is_reported && (
-                  <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-between gap-3 text-xs text-rose-500 font-medium animate-fade-in">
-                    <div className="flex items-center gap-2.5">
-                      <AlertTriangle size={18} className="shrink-0 text-rose-500" />
-                      <span>
-                        <strong>Message signalé</strong> — Motif : <em>« {selectedMessage.report_reason || 'Signalement enregistré'} »</em>. 
-                        Transmis en priorité aux administrateurs et formateur(s) de votre groupe.
-                      </span>
-                    </div>
-                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-rose-500/20 text-rose-500 border border-rose-500/30 shrink-0">
-                      En cours d'examen
-                    </span>
-                  </div>
-                )}
-
-                <div>
-                  <h1 className="text-xl font-bold text-text-primary leading-snug">{selectedMessage.subject}</h1>
-                  <div className="flex items-center gap-2 text-xs text-text-secondary mt-1">
-                    <Clock size={13} />
-                    <span>{new Date(selectedMessage.created_at).toLocaleString()}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Sender & Recipient Box */}
-              <div className="p-4 rounded-2xl bg-surface/60 border border-border flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-sm">
-                    {(selectedMessage.sender?.email || 'U').charAt(0).toUpperCase()}
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-text-primary">
-                      De : {selectedMessage.sender?.email || 'Utilisateur'}
-                    </p>
-                    <p className="text-[11px] text-text-secondary">
-                      À : {selectedMessage.recipient?.email || 'Vous'}
-                    </p>
-                  </div>
-                </div>
-
-                <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-primary/10 text-primary border border-primary/20">
-                  {selectedMessage.sender?.role || 'Utilisateur'}
-                </span>
-              </div>
-
-              {/* Message Body */}
-              <div className="p-5 rounded-2xl bg-surface/30 border border-border text-sm leading-relaxed whitespace-pre-wrap text-text-primary min-h-[160px]">
-                {selectedMessage.body}
-              </div>
-
-              {/* Virtual Classroom Invitation Action Banner */}
-              {(selectedMessage.subject?.toLowerCase().includes('invitation salle vidéo conférence') ||
-                selectedMessage.subject?.toLowerCase().includes('invitation classe virtuelle') ||
-                selectedMessage.body?.toLowerCase().includes('code de la salle')) && (
-                <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 space-y-3">
-                  <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs">
-                    <Video size={16} />
-                    <span>Invitation Directe à la Salle vidéo conférence</span>
-                  </div>
-                  <p className="text-xs text-text-secondary">
-                    Vous pouvez accepter cette invitation et rejoindre la session en direct immédiatement depuis l'espace des Salles vidéo conférence.
-                  </p>
-                  <div className="flex items-center gap-3 pt-1">
+              return (
+                <div className="flex-1 p-6 overflow-y-auto space-y-6 animate-fade-in-up">
+                  {/* Header Actions */}
+                  <div className="flex items-center justify-between pb-4 border-b border-border flex-wrap gap-2">
                     <button
                       type="button"
-                      onClick={() => router.push('/classroom')}
-                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow-md flex items-center gap-1.5 transition-colors"
+                      onClick={() => setSelectedMessage(null)}
+                      className="text-xs text-text-secondary hover:text-text-primary flex items-center gap-1 font-semibold"
                     >
-                      <CheckCircle2 size={14} /> Accepter &amp; Accéder à la Salle vidéo conférence
+                      <ArrowLeft size={16} /> Retour à la liste
+                    </button>
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {/* Mark Read/Unread Toggle */}
+                      {isRecipient && (
+                        <button
+                          type="button"
+                          onClick={() => handleToggleRead(selectedMessage.id, !selectedMessage.is_read)}
+                          className={`px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-colors ${
+                            selectedMessage.is_read
+                              ? 'bg-surface hover:bg-surface-hover border-border text-text-secondary hover:text-text-primary'
+                              : 'bg-primary/15 hover:bg-primary/25 border-primary/30 text-primary font-bold'
+                          }`}
+                        >
+                          {selectedMessage.is_read ? (
+                            <>
+                              <Mail size={14} /> <span>{t('mark_unread') || 'Marquer non lu'}</span>
+                            </>
+                          ) : (
+                            <>
+                              <CheckCheck size={14} className="text-sky-400" /> <span>{t('mark_as_read') || 'Marquer lu'}</span>
+                            </>
+                          )}
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => handleReply(selectedMessage)}
+                        className="px-3 py-1.5 rounded-xl bg-primary/15 hover:bg-primary/25 border border-primary/30 text-primary text-xs font-bold flex items-center gap-1.5 transition-colors"
+                      >
+                        <Reply size={14} /> Répondre
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAiModalPrompt(`Résume le message suivant :\nSujet: ${selectedMessage.subject}\nCorps: ${selectedMessage.body}`);
+                          setIsAiModalOpen(true);
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/30 text-purple-300 text-xs font-bold flex items-center gap-1.5 transition-colors"
+                      >
+                        <Sparkles size={14} /> Résumé par IA Gemini
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleToggleStar(selectedMessage.id)}
+                        className="p-2 rounded-xl bg-surface hover:bg-surface-hover border border-border text-text-secondary transition-colors"
+                      >
+                        <Star size={16} className={selectedMessage.is_starred ? 'text-amber-400 fill-amber-400' : ''} />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setReportingMessage(selectedMessage)}
+                        className="px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                      >
+                        <Flag size={14} /> Signaler
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Accusé de Réception / Read Receipt Status Card */}
+                  {isSender ? (
+                    <div
+                      className={`p-4 rounded-2xl border transition-all ${
+                        selectedMessage.is_read
+                          ? 'bg-gradient-to-r from-sky-500/15 via-blue-500/5 to-transparent border-sky-500/30 text-sky-400 shadow-sm'
+                          : 'bg-gradient-to-r from-amber-500/15 via-amber-500/5 to-transparent border-amber-500/30 text-amber-400 shadow-sm'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3 flex-wrap">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 shadow-inner ${
+                              selectedMessage.is_read
+                                ? 'bg-sky-500/20 text-sky-400 border border-sky-500/40'
+                                : 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
+                            }`}
+                          >
+                            {selectedMessage.is_read ? (
+                              <CheckCheck size={24} className="text-sky-400" />
+                            ) : (
+                              <Clock size={20} className="text-amber-400 animate-pulse" />
+                            )}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h4 className="text-xs font-bold text-text-primary">
+                                {selectedMessage.is_read
+                                  ? (t('read_receipt_confirmed') || 'Accusé de lecture confirmé')
+                                  : (t('read_receipt_pending') || 'En attente de lecture')}
+                              </h4>
+                              <span
+                                className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider border ${
+                                  selectedMessage.is_read
+                                    ? 'bg-sky-500/20 text-sky-400 border-sky-500/40'
+                                    : 'bg-amber-500/20 text-amber-400 border-amber-500/40'
+                                }`}
+                              >
+                                {selectedMessage.is_read ? '✓✓ Lu' : '⏳ Distribué'}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-text-secondary mt-0.5 leading-relaxed">
+                              {selectedMessage.is_read ? (
+                                <>
+                                  Ce message a été ouvert et lu par le destinataire (
+                                  <strong className="text-text-primary">
+                                    {selectedMessage.recipient?.email || 'Destinataire'}
+                                  </strong>
+                                  )
+                                  {selectedMessage.read_at && (
+                                    <>
+                                      {' '}le{' '}
+                                      <strong className="text-text-primary">
+                                        {new Date(selectedMessage.read_at).toLocaleString()}
+                                      </strong>
+                                    </>
+                                  )}
+                                  .
+                                </>
+                              ) : (
+                                <>
+                                  Le message a été distribué à la boîte de réception de{' '}
+                                  <strong className="text-text-primary">
+                                    {selectedMessage.recipient?.email || 'Destinataire'}
+                                  </strong>
+                                  . L'accusé de lecture s'activera dès son ouverture.
+                                </>
+                              )}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between px-4 py-2.5 rounded-2xl bg-surface/40 border border-border text-xs">
+                      <div className="flex items-center gap-2 text-text-secondary">
+                        <CheckCheck size={16} className="text-sky-400" />
+                        <span>
+                          {selectedMessage.read_at
+                            ? `Message lu le ${new Date(selectedMessage.read_at).toLocaleString()}`
+                            : 'Message ouvert et lu'}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleToggleRead(selectedMessage.id, false)}
+                        className="text-[11px] font-bold text-primary hover:underline flex items-center gap-1 cursor-pointer"
+                      >
+                        <Mail size={13} /> {t('mark_unread') || 'Marquer comme non lu'}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Virtual Classroom Invitation Action Banner */}
+                  {(selectedMessage.subject?.toLowerCase().includes('invitation salle vidéo conférence') ||
+                    selectedMessage.subject?.toLowerCase().includes('invitation classe virtuelle') ||
+                    selectedMessage.body?.toLowerCase().includes('code de la salle')) && (
+                    <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 space-y-3">
+                      <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs">
+                        <Video size={16} />
+                        <span>Invitation Directe à la Salle vidéo conférence</span>
+                      </div>
+                      <p className="text-xs text-text-secondary">
+                        Vous pouvez accepter cette invitation et rejoindre la session en direct immédiatement depuis l'espace des Salles vidéo conférence.
+                      </p>
+                      <div className="flex items-center gap-3 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => router.push('/classroom')}
+                          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow-md flex items-center gap-1.5 transition-colors"
+                        >
+                          <CheckCircle2 size={14} /> Accepter &amp; Accéder à la Salle vidéo conférence
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Attachments */}
+                  {selectedMessage.attachment_url && (
+                    <div className="space-y-2 pt-2 border-t border-border">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-text-secondary flex items-center gap-2">
+                        <Paperclip size={14} className="text-primary" /> Pièce Jointe
+                      </h4>
+                      {(() => {
+                        const cleanUrl = (selectedMessage.attachment_url || '').trim().toLowerCase();
+                        const isSafe =
+                          cleanUrl.startsWith('http://') ||
+                          cleanUrl.startsWith('https://') ||
+                          cleanUrl.startsWith('/uploads/') ||
+                          (cleanUrl.startsWith('data:image/') && cleanUrl.includes(';base64,'));
+
+                        if (!isSafe) {
+                          return (
+                            <div className="flex items-center gap-2 p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-xs text-rose-400 font-medium">
+                              <AlertTriangle size={15} />
+                              <span>Pièce jointe désactivée par mesure de sécurité (protocole ou URL non sécurisé).</span>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <a
+                            href={selectedMessage.attachment_url}
+                            target="_blank"
+                            rel="noopener noreferrer nofollow"
+                            download={selectedMessage.attachment_name}
+                            className="flex items-center justify-between p-3.5 bg-surface hover:bg-surface-hover rounded-xl border border-border transition-colors"
+                          >
+                            <span className="text-xs font-bold text-text-primary truncate">
+                              {selectedMessage.attachment_name || 'Fichier joint'}
+                            </span>
+                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-primary/10 text-primary text-xs font-semibold">
+                              <Download size={14} /> Télécharger
+                            </span>
+                          </a>
+                        );
+                      })()}
+                    </div>
+                  )}
+
+                  {/* Reply and Forward Quick Action Buttons */}
+                  <div className="flex items-center gap-3 pt-4 border-t border-border">
+                    <button
+                      type="button"
+                      onClick={() => handleReply(selectedMessage)}
+                      className="px-4 py-2.5 rounded-xl bg-primary text-white text-xs font-bold flex items-center gap-2 shadow-md shadow-primary/25 hover:bg-primary-hover transition-colors"
+                    >
+                      <Reply size={15} /> Répondre
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleForward(selectedMessage)}
+                      className="px-4 py-2.5 rounded-xl bg-surface hover:bg-surface-hover border border-border text-text-primary text-xs font-semibold flex items-center gap-2 transition-colors"
+                    >
+                      <Forward size={15} /> Transférer
                     </button>
                   </div>
                 </div>
-              )}
-
-              {/* Attachments */}
-              {selectedMessage.attachment_url && (
-                <div className="space-y-2 pt-2 border-t border-border">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-text-secondary flex items-center gap-2">
-                    <Paperclip size={14} className="text-primary" /> Pièce Jointe
-                  </h4>
-                  {(() => {
-                    const cleanUrl = (selectedMessage.attachment_url || '').trim().toLowerCase();
-                    const isSafe =
-                      cleanUrl.startsWith('http://') ||
-                      cleanUrl.startsWith('https://') ||
-                      cleanUrl.startsWith('/uploads/') ||
-                      (cleanUrl.startsWith('data:image/') && cleanUrl.includes(';base64,'));
-
-                    if (!isSafe) {
-                      return (
-                        <div className="flex items-center gap-2 p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-xs text-rose-400 font-medium">
-                          <AlertTriangle size={15} />
-                          <span>Pièce jointe désactivée par mesure de sécurité (protocole ou URL non sécurisé).</span>
-                        </div>
-                      );
-                    }
-
-                    return (
-                      <a
-                        href={selectedMessage.attachment_url}
-                        target="_blank"
-                        rel="noopener noreferrer nofollow"
-                        download={selectedMessage.attachment_name}
-                        className="flex items-center justify-between p-3.5 bg-surface hover:bg-surface-hover rounded-xl border border-border transition-colors"
-                      >
-                        <span className="text-xs font-bold text-text-primary truncate">
-                          {selectedMessage.attachment_name || 'Fichier joint'}
-                        </span>
-                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-primary/10 text-primary text-xs font-semibold">
-                          <Download size={14} /> Télécharger
-                        </span>
-                      </a>
-                    );
-                  })()}
-                </div>
-              )}
-
-              {/* Reply and Forward Quick Action Buttons */}
-              <div className="flex items-center gap-3 pt-4 border-t border-border">
-                <button
-                  type="button"
-                  onClick={() => handleReply(selectedMessage)}
-                  className="px-4 py-2.5 rounded-xl bg-primary text-white text-xs font-bold flex items-center gap-2 shadow-md shadow-primary/25 hover:bg-primary-hover transition-colors"
-                >
-                  <Reply size={15} /> Répondre
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleForward(selectedMessage)}
-                  className="px-4 py-2.5 rounded-xl bg-surface hover:bg-surface-hover border border-border text-text-primary text-xs font-semibold flex items-center gap-2 transition-colors"
-                >
-                  <Forward size={15} /> Transférer
-                </button>
-              </div>
-            </div>
+              );
+            })()
           ) : (
             /* MAIN MESSAGES LIST VIEW WITH GMAIL LAYOUT */
             <div className="flex-1 flex flex-col min-h-0">
               {/* 1. Gmail-Style Action Toolbar */}
-              <div className="px-4 py-3 border-b border-border/80 flex items-center justify-between bg-background/50">
-                <div className="flex items-center gap-3">
+              <div className="px-4 py-3 border-b border-border/80 flex items-center justify-between bg-background/50 flex-wrap gap-2">
+                <div className="flex items-center gap-2">
                   {/* Select All Checkbox */}
                   <input
                     type="checkbox"
@@ -723,21 +877,43 @@ export default function InboxMessagesPage() {
                     onClick={loadAllMessages}
                     disabled={isRefreshing}
                     className="p-2 rounded-xl hover:bg-surface text-text-secondary hover:text-text-primary transition-colors"
-                    title="Actualiser"
+                    title={t('refresh') || 'Actualiser'}
                   >
                     <RefreshCw size={16} className={isRefreshing ? 'animate-spin text-primary' : ''} />
                   </button>
 
-                  {/* Bulk Delete */}
+                  {/* Bulk Actions when selected */}
                   {selectedMessageIds.size > 0 && (
-                    <button
-                      type="button"
-                      onClick={handleBulkDelete}
-                      className="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-colors"
-                      title="Supprimer la sélection"
-                    >
-                      <Trash2 size={16} />
-                    </button>
+                    <div className="flex items-center gap-1.5 animate-fade-in">
+                      <button
+                        type="button"
+                        onClick={() => handleBulkMarkRead(true)}
+                        className="px-2.5 py-1.5 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                        title={t('mark_as_read') || 'Marquer comme lu'}
+                      >
+                        <CheckCheck size={14} className="text-sky-400" />
+                        <span className="hidden sm:inline">{t('mark_as_read') || 'Marquer lu'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleBulkMarkRead(false)}
+                        className="px-2.5 py-1.5 rounded-xl bg-surface hover:bg-surface-hover text-text-secondary hover:text-text-primary text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                        title={t('mark_unread') || 'Marquer comme non lu'}
+                      >
+                        <Mail size={14} />
+                        <span className="hidden sm:inline">{t('mark_unread') || 'Marquer non lu'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleBulkDelete}
+                        className="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-colors cursor-pointer"
+                        title={t('delete_msg') || 'Supprimer la sélection'}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
                   )}
                 </div>
 
@@ -792,14 +968,21 @@ export default function InboxMessagesPage() {
                 ) : (
                   currentFolderList.map((msg) => {
                     const isSelected = selectedMessageIds.has(msg.id);
-                    const senderName = msg.sender?.email ? msg.sender.email.split('@')[0] : 'Utilisateur';
+                    const isSentFolder = activeFolder === 'sent' || msg.sender_id === currentUser?.id;
+                    const displayName = isSentFolder
+                      ? msg.recipient?.email
+                        ? `À: ${msg.recipient.email.split('@')[0]}`
+                        : msg.recipient_id ? `À: Utilisateur #${msg.recipient_id}` : 'À: Tous'
+                      : msg.sender?.email
+                        ? msg.sender.email.split('@')[0]
+                        : 'Utilisateur';
 
                     return (
                       <div
                         key={msg.id}
                         onClick={() => handleSelectMessage(msg)}
                         className={`px-4 py-3 cursor-pointer flex items-center justify-between gap-4 transition-all group hover:bg-surface/80 ${
-                          !msg.is_read ? 'bg-primary/5 font-extrabold' : 'bg-transparent'
+                          !msg.is_read && !isSentFolder ? 'bg-primary/5 font-extrabold' : 'bg-transparent'
                         } ${isSelected ? 'bg-primary/15' : ''}`}
                       >
                         {/* Checkbox & Star */}
@@ -817,7 +1000,7 @@ export default function InboxMessagesPage() {
                           <button
                             type="button"
                             onClick={(e) => handleToggleStar(msg.id, e)}
-                            className="text-text-secondary hover:text-amber-400 transition-colors p-1"
+                            className="text-text-secondary hover:text-amber-400 transition-colors p-1 cursor-pointer"
                           >
                             <Star
                               size={16}
@@ -826,13 +1009,16 @@ export default function InboxMessagesPage() {
                           </button>
                         </div>
 
-                        {/* Sender Name */}
+                        {/* Sender/Recipient Display */}
                         <div className="w-44 shrink-0 flex items-center gap-2 truncate">
+                          {!isSentFolder && !msg.is_read && (
+                            <span className="w-2 h-2 rounded-full bg-primary shrink-0 animate-pulse" />
+                          )}
                           <div className="w-7 h-7 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-[10px] shrink-0">
-                            {senderName.charAt(0).toUpperCase()}
+                            {displayName.replace('À: ', '').charAt(0).toUpperCase()}
                           </div>
-                          <span className={`text-xs truncate ${!msg.is_read ? 'font-bold text-text-primary' : 'font-medium text-text-secondary'}`}>
-                            {senderName}
+                          <span className={`text-xs truncate ${!msg.is_read && !isSentFolder ? 'font-bold text-text-primary' : 'font-medium text-text-secondary'}`}>
+                            {displayName}
                           </span>
                         </div>
 
@@ -843,7 +1029,7 @@ export default function InboxMessagesPage() {
                               <Flag size={10} /> {t('reported_badge') || 'Signalé'}
                             </span>
                           )}
-                          <span className={`truncate ${!msg.is_read ? 'font-bold text-text-primary' : 'font-semibold text-text-primary'}`}>
+                          <span className={`truncate ${!msg.is_read && !isSentFolder ? 'font-bold text-text-primary' : 'font-semibold text-text-primary'}`}>
                             {msg.subject}
                           </span>
                           <span className="text-text-secondary/60 truncate font-normal">
@@ -851,16 +1037,53 @@ export default function InboxMessagesPage() {
                           </span>
                         </div>
 
+                        {/* Read Receipt Badge for Sent Messages */}
+                        {isSentFolder && (
+                          <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+                            {msg.is_read ? (
+                              <div
+                                className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-sky-500/15 border border-sky-500/30 text-sky-400 text-[11px] font-bold shadow-xs"
+                                title={
+                                  msg.read_at
+                                    ? `Accusé de lecture : Lu par le destinataire le ${new Date(msg.read_at).toLocaleString()}`
+                                    : 'Accusé de lecture confirmé (Message lu)'
+                                }
+                              >
+                                <CheckCheck size={14} className="text-sky-400" />
+                                <span className="hidden md:inline">Lu</span>
+                              </div>
+                            ) : (
+                              <div
+                                className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-surface/80 border border-border text-text-secondary text-[11px] font-medium"
+                                title="Accusé de lecture : En attente d'ouverture par le destinataire"
+                              >
+                                <Check size={13} className="text-text-secondary" />
+                                <span className="hidden md:inline">Non lu</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
                         {/* Hover Quick Actions & Attachment & Date */}
                         <div className="flex items-center gap-2 shrink-0 text-xs text-text-secondary">
                           <div
                             className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
                             onClick={(e) => e.stopPropagation()}
                           >
+                            {/* Toggle Read/Unread quick button */}
+                            <button
+                              type="button"
+                              onClick={(e) => handleToggleRead(msg.id, !msg.is_read, e)}
+                              className="p-1 rounded-lg hover:bg-primary/15 text-text-secondary hover:text-primary transition-colors cursor-pointer"
+                              title={msg.is_read ? (t('mark_unread') || 'Marquer comme non lu') : (t('mark_as_read') || 'Marquer comme lu')}
+                            >
+                              {msg.is_read ? <Mail size={13} /> : <CheckCheck size={13} className="text-sky-400" />}
+                            </button>
+
                             <button
                               type="button"
                               onClick={() => setReportingMessage(msg)}
-                              className="p-1 rounded-lg hover:bg-rose-500/15 text-text-secondary hover:text-rose-500 transition-colors"
+                              className="p-1 rounded-lg hover:bg-rose-500/15 text-text-secondary hover:text-rose-500 transition-colors cursor-pointer"
                               title="Signaler ce message"
                             >
                               <Flag size={13} />
@@ -875,7 +1098,7 @@ export default function InboxMessagesPage() {
                                   console.error('Failed to delete message:', err);
                                 }
                               }}
-                              className="p-1 rounded-lg hover:bg-rose-500/15 text-text-secondary hover:text-rose-500 transition-colors"
+                              className="p-1 rounded-lg hover:bg-rose-500/15 text-text-secondary hover:text-rose-500 transition-colors cursor-pointer"
                               title="Supprimer"
                             >
                               <Trash2 size={13} />

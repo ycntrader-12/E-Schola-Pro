@@ -246,7 +246,17 @@
     "report_cancel": "Cancelar",
     "report_success": "Denuncia transmitida con éxito a los administradores y formador del grupo.",
     "reported_badge": "Denunciado",
-    "delete_msg": "Eliminar"
+    "delete_msg": "Eliminar",
+    "read_receipt": "Acuse de recibo",
+    "read_receipt_confirmed": "Acuse de lectura confirmado",
+    "read_receipt_pending": "Pendiente de lectura",
+    "read_status_read": "Leído",
+    "read_status_unread": "No leído",
+    "read_at_label": "Leído el",
+    "mark_unread": "Marcar como no leído",
+    "mark_as_read": "Marcar como leído",
+    "read_by_recipient": "Leído por el destinatario",
+    "pending_receipt": "Esperando apertura por el destinatario"
   },
   "Profile": {
     "page_title": "Ajustes de Cuenta y Perfil",

@@ -269,7 +269,17 @@
     "report_cancel": "إلغاء",
     "report_success": "تم إرسال البلاغ بنجاح إلى الإدارة وأستاذ المجموعة.",
     "reported_badge": "تم الإبلاغ",
-    "delete_msg": "حذف"
+    "delete_msg": "حذف",
+    "read_receipt": "إشعار بالقراءة / الاستلام",
+    "read_receipt_confirmed": "تم تأكيد قراءة الرسالة",
+    "read_receipt_pending": "في انتظار القراءة",
+    "read_status_read": "مقروءة",
+    "read_status_unread": "غير مقروءة",
+    "read_at_label": "قُرئت في",
+    "mark_unread": "تحديد كغير مقروءة",
+    "mark_as_read": "تحديد كمقروءة",
+    "read_by_recipient": "قُرئت من قبل المستلم",
+    "pending_receipt": "في انتظار فتح الرسالة من قبل المستلم"
   },
   "Profile": {
     "page_title": "إعدادات الحساب والملف الشخصي",

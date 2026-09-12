@@ -270,7 +270,17 @@
     "report_cancel": "Annuler",
     "report_success": "Signalement transmis avec succès aux administrateurs et au formateur du groupe.",
     "reported_badge": "Signalé",
-    "delete_msg": "Supprimer"
+    "delete_msg": "Supprimer",
+    "read_receipt": "Accusé de réception",
+    "read_receipt_confirmed": "Accusé de lecture confirmé",
+    "read_receipt_pending": "En attente de lecture",
+    "read_status_read": "Lu",
+    "read_status_unread": "Non lu",
+    "read_at_label": "Lu le",
+    "mark_unread": "Marquer comme non lu",
+    "mark_as_read": "Marquer comme lu",
+    "read_by_recipient": "Lu par le destinataire",
+    "pending_receipt": "En attente d'ouverture par le destinataire"
   },
   "Profile": {
     "page_title": "Paramètres du Compte & Profil",

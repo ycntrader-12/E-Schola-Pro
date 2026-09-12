@@ -68,7 +68,7 @@ async def lifespan(app: FastAPI):
         with SessionLocal() as db_session:
             init_db(db_session)
 
-        # Safe non-destructive column check for quizzes.target_group and users.is_active
+        # Safe non-destructive column check for quizzes.target_group, users.is_active, and messages.read_at
         with engine.connect() as conn:
             try:
                 if dialect == "sqlite":
@@ -82,9 +82,15 @@ async def lifespan(app: FastAPI):
                         conn.execute(text("ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT 1"))
                         conn.commit()
                         print("[Database Migration] Colonne is_active ajoutée avec succès sur la table users.")
+                    msg_cols = [row[1] for row in conn.execute(text("PRAGMA table_info(messages)")).fetchall()]
+                    if msg_cols and "read_at" not in msg_cols:
+                        conn.execute(text("ALTER TABLE messages ADD COLUMN read_at DATETIME"))
+                        conn.commit()
+                        print("[Database Migration] Colonne read_at ajoutée avec succès sur la table messages.")
                 elif dialect == "postgresql":
                     conn.execute(text("ALTER TABLE quizzes ADD COLUMN IF NOT EXISTS target_group VARCHAR DEFAULT 'all'"))
                     conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE"))
+                    conn.execute(text("ALTER TABLE messages ADD COLUMN IF NOT EXISTS read_at TIMESTAMP"))
                     conn.commit()
             except Exception as mig_err:
                 print(f"[Database Migration Notice] {mig_err}")

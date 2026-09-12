@@ -964,6 +964,7 @@ E-Schola Pro/
         <tr><td><code>body</code></td><td>Text</td><td>Not Null</td><td>Corps du message</td></tr>
         <tr><td><code>attachment_url</code></td><td>String</td><td>Nullable</td><td>URL pièce jointe</td></tr>
         <tr><td><code>is_read</code></td><td>Boolean</td><td>Default: False</td><td>Lu / Non-lu</td></tr>
+        <tr><td><code>read_at</code></td><td>DateTime</td><td>Nullable</td><td>Accusé de réception (Horodatage précis de lecture par le destinataire)</td></tr>
         <tr><td><code>is_starred</code></td><td>Boolean</td><td>Default: False</td><td>Favori / Marqueur Étoile (persistant)</td></tr>
         <tr><td><code>is_draft</code></td><td>Boolean</td><td>Default: False</td><td>Brouillon</td></tr>
         <tr><td><code>is_trash</code></td><td>Boolean</td><td>Default: False</td><td>Corbeille</td></tr>
@@ -1191,7 +1192,9 @@ E-Schola Pro/
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/messages/drafts</code></td><td>Brouillons de l'utilisateur connecté</td><td>Authentifié</td></tr>
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/messages/trash</code></td><td>Corbeille personnelle des messages reçus ou envoyés</td><td>Authentifié</td></tr>
         <tr><td><span class="badge badge-post">POST</span></td><td><code>/messages/</code> · <code>/messages</code></td><td>Envoyer ou enregistrer un message (destinataires multiples, envoi général/broadcast sécurisé avec contrôle de rôle, copie CC, pièces jointes sûres, assainissement Anti-XSS et protection Anti-Flooding 25 req/min)</td><td>Authentifié</td></tr>
-        <tr><td><span class="badge badge-get">GET</span></td><td><code>/messages/{id}</code></td><td>Détail d'un message avec marquage de lecture automatique (Protection IDOR : uniquement expéditeur, destinataire ou administrateur)</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/messages/{id}</code></td><td>Détail d'un message avec marquage de lecture automatique et horodatage de l'accusé de réception <code>read_at</code> (Protection IDOR : uniquement expéditeur, destinataire ou administrateur)</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-put">PUT</span></td><td><code>/messages/{id}/read</code></td><td>Marquer explicitement un message comme lu (validation de l'accusé de réception et enregistrement de <code>read_at</code>)</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-put">PUT</span></td><td><code>/messages/{id}/unread</code></td><td>Marquer explicitement un message comme non lu (réinitialisation de <code>is_read</code> et <code>read_at</code>)</td><td>Authentifié</td></tr>
         <tr><td><span class="badge badge-put">PUT</span></td><td><code>/messages/{id}/star</code></td><td>Basculer l'état favori (⭐) d'un message avec persistance immédiate en base de données</td><td>Authentifié</td></tr>
         <tr><td><span class="badge badge-put">PUT</span></td><td><code>/messages/{id}/restore</code></td><td>Restaurer un message depuis la corbeille vers la boîte normale</td><td>Authentifié</td></tr>
         <tr><td><span class="badge badge-delete">DELETE</span></td><td><code>/messages/{id}</code></td><td>Suppression d'un message : déplacement vers corbeille au 1er appel, suppression définitive au 2e appel</td><td>Authentifié</td></tr>
@@ -1591,6 +1594,19 @@ E-Schola Pro/
             <li><em>Protection Anti-IDOR, Modale Interactive &amp; Routage Intelligent des Signalements (<code>POST /{id}/report</code>) :</em> Contrôle d'autorisation strict interdisant le signalement de messages tiers. Lors du signalement d'un message inapproprié depuis la modale interactive (avec motifs préconfigurés : contenu offensant, harcèlement, spam, fuite de données, motif personnalisé), le rapport d'incident est automatiquement et immédiatement transféré dans la messagerie et par email à l'ensemble des administrateurs (<code>admin</code>, <code>admin_manager</code>) ainsi qu'aux <strong>formateurs référents du groupe / promotion de l'utilisateur</strong>.</li>
             <li><em>Protection Anti-Flooding &amp; Rate Limiting :</em> Limiteur de débit en mémoire à fenêtre glissante (<code>app/core/rate_limiter.py</code>) plafonnant les envois à 25 req/min et les signalements à 5 req/min par utilisateur avec réponse HTTP 429 et en-tête <code>Retry-After</code>.</li>
             <li><em>En-têtes HTTP de Sécurité OWASP &amp; CORS Railway :</em> Middleware injectant <code>X-Content-Type-Options: nosniff</code>, <code>X-Frame-Options: SAMEORIGIN</code>, <code>X-XSS-Protection</code>, <code>Referrer-Policy</code> et prise en charge des sous-domaines Railway via regex CORS.</li>
+          </ul>
+        </li>
+        <li><strong>Accusé de Réception &amp; Confirmation de Lecture Temps Réel (Read Receipts) :</strong> Système complet d'accusé de lecture pour les messages internes :
+          <ul>
+            <li><em>Horodatage Précis (<code>read_at</code>) &amp; Déclenchement Automatique :</em> Dès qu'un destinataire ouvre un message via <code>GET /messages/{id}</code> ou le marque comme lu, la colonne <code>read_at</code> enregistre la date et l'heure exactes de consultation.</li>
+            <li><em>Indicateurs Visuels Double Coche (CheckCheck) :</em> Dans le dossier <strong>Messages Envoyés</strong> (<code>/messages/sent</code>) et la vue globale, chaque message affiche en temps réel :
+              <ul>
+                <li><strong>✓✓ Double coche bleue (<code>CheckCheck</code>) &amp; Badge « Lu » :</strong> Message ouvert par le destinataire avec infobulle contextuelle indiquant la date et l'heure précises de lecture (ex: <em>« Lu par le destinataire le 12/09/2026 à 14:30 »</em>).</li>
+                <li><strong>⏳ Simple coche grise (<code>Check</code>) &amp; Badge « Non lu » :</strong> Message distribué avec succès à la boîte du destinataire, en attente d'ouverture.</li>
+              </ul>
+            </li>
+            <li><em>Fiche Détaillée d'Accusé de Lecture Glassmorphic :</em> Dans la vue détaillée du message envoyé, une carte 3D interactive en dégradé affiche l'état de lecture, l'e-mail du destinataire et l'horodatage officiel de remise et d'ouverture.</li>
+            <li><em>Actions Rapides « Marquer comme Lu » &amp; « Marquer comme Non Lu » :</em> Disponibles dans la barre d'outils de sélection multiple (actions groupées), au survol de chaque ligne de message, et directement dans l'en-tête de lecture avec synchronisation instantanée de l'état global et du compteur d'e-mails non lus.</li>
           </ul>
         </li>
         <li><strong>Moteur de Notification Sonore, Visuelle &amp; Desktop Push en Temps Réel (NotificationManager) :</strong> Lors de l'arrivée d'un nouveau message non lu, le gestionnaire global émet un carillon sonore cristallin via l'API Web Audio (Mi5 659Hz &rarr; La5 880Hz, sans aucun fichier externe requis), affiche une notification Toast flottante interactive avec accès direct à <code>/inbox</code>, active une notification native système de bureau (Web Notification API) et incrémente le badge animé bleu royal de la barre de navigation. L'état est réactualisé instantanément lors de la lecture ou suppression via l'événement <code>messages_updated</code>.</li>

@@ -79,9 +79,11 @@ class MessageAdmin(ModelView, model=Message):
         Message.recipient_id,
         Message.subject,
         Message.is_read,
+        Message.read_at,
         Message.created_at,
     ]
     column_searchable_list = [Message.subject, Message.body]
+    column_sortable_list = [Message.id, Message.created_at, Message.read_at, Message.is_read]
     name = "Message"
     name_plural = "Messages"
     icon = "fa-solid fa-envelope"

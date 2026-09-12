@@ -43,6 +43,7 @@ class MessageResponse(BaseModel):
     attachment_name: str | None = None
     attachment_type: str | None = None
     is_read: bool | None = False
+    read_at: datetime | None = None
     is_starred: bool | None = False
     is_draft: bool | None = False
     is_trash: bool | None = False
