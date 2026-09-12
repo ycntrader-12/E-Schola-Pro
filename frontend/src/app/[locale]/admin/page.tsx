@@ -398,96 +398,94 @@ export default function AdminConsolePage() {
   const isSuperAdmin = (currentUser?.role || '').toLowerCase() === 'admin';
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 pb-20">
-      {/* Top Banner Header */}
-      <header className="bg-[#16325c] text-white border-b border-[#1e3a66] shadow-lg sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-2xl bg-[#1877f2] flex items-center justify-center shadow-md shadow-blue-500/20 text-white shrink-0">
-                <ShieldCheck size={26} />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-xl font-extrabold tracking-tight text-white">
-                    Console d'Administration &amp; Gouvernance
-                  </h1>
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-500/20 text-blue-200 border border-blue-400/30">
-                    {isSuperAdmin ? 'Super Admin Racine' : 'Admin Manager'}
-                  </span>
-                </div>
-                <p className="text-xs text-blue-200/80 mt-0.5">
-                  Supervision en direct, sécurité, utilisateurs, RBAC et infrastructure E-Schola Pro
-                </p>
-              </div>
+    <div className="min-h-screen px-4 sm:px-6 lg:px-8 pt-24 sm:pt-28 pb-16 max-w-[1700px] mx-auto space-y-6 animate-fade-in-up">
+      {/* 1. HEADER PRINCIPAL */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white p-6 sm:p-7 rounded-3xl border border-slate-200/90 shadow-sm">
+        <div className="flex items-start sm:items-center gap-4">
+          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-blue-50 border border-blue-200/60 text-[#1877f2] flex items-center justify-center shrink-0 shadow-xs">
+            <ShieldCheck size={28} className="sm:size-[32px]" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+                Console d'Administration &amp; Gouvernance
+              </h1>
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-black bg-blue-50 text-[#1877f2] border border-blue-200">
+                <Sparkles size={13} />
+                <span>{isSuperAdmin ? 'Super Admin Racine' : 'Admin Manager'}</span>
+              </span>
             </div>
+            <p className="text-xs sm:text-sm text-slate-600 font-medium mt-1">
+              Supervision en direct, sécurité, utilisateurs, RBAC et infrastructure E-Schola Pro
+            </p>
+          </div>
+        </div>
 
-            <div className="flex items-center gap-3 flex-wrap">
-              {/* DB Status Badge */}
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/10 border border-white/10 text-xs font-semibold">
-                <div className={`w-2 h-2 rounded-full ${stats?.system?.database_alive ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400'}`} />
-                <span>Moteur: {stats?.system?.database_engine || 'DB'} ({stats?.system?.database_latency_ms || 0}ms)</span>
-              </div>
-
-              {/* Refresh Button */}
-              <button
-                onClick={loadAllData}
-                disabled={refreshing}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-colors disabled:opacity-50 cursor-pointer"
-                title="Actualiser les données"
-              >
-                <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
-                <span className="hidden sm:inline">Actualiser</span>
-              </button>
-
-              {/* Return to Dashboard */}
-              <Link
-                href="/dashboard"
-                className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-[#1877f2] hover:bg-[#166fe5] text-white text-xs font-bold transition-all shadow-sm"
-              >
-                <span>Dashboard</span> &rarr;
-              </Link>
-            </div>
+        {/* Quick Badges & Controls */}
+        <div className="flex items-center gap-2.5 flex-wrap">
+          {/* DB Status Badge */}
+          <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 shadow-2xs">
+            <div className={`w-2 h-2 rounded-full ${stats?.system?.database_alive ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
+            <span>Moteur: {stats?.system?.database_engine || 'DB'} ({stats?.system?.database_latency_ms || 0}ms)</span>
           </div>
 
-          {/* Navigation Tabs */}
-          <nav className="flex items-center gap-1.5 mt-4 overflow-x-auto pb-1 scrollbar-none text-xs font-bold">
-            {[
-              { id: 'overview', label: "Vue d'Ensemble", icon: Activity },
-              { id: 'users', label: `Utilisateurs (${allUsers.length})`, icon: Users },
-              { id: 'rbac', label: 'Rôles & RBAC', icon: Shield },
-              { id: 'audit', label: `Audit Log (${auditTotal})`, icon: FileText },
-              { id: 'sessions', label: `Sessions (${activeSessions.length})`, icon: Laptop },
-              { id: 'invitations', label: `Invitations (${invitations.length})`, icon: Mail },
-              { id: 'classrooms', label: `Visioconférence (${classrooms.length})`, icon: Video },
-              { id: 'quizzes', label: 'Quiz & Résultats', icon: Award },
-              { id: 'settings', label: 'Paramètres', icon: Settings },
-              { id: 'system', label: 'Santé Système', icon: Server },
-              { id: 'logs_backup', label: 'Logs & Backups', icon: Database },
-            ].map(tab => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition-all whitespace-nowrap cursor-pointer ${
-                    isActive
-                      ? 'bg-[#1877f2] text-white shadow-md font-extrabold'
-                      : 'text-blue-100/75 hover:bg-white/10 hover:text-white'
-                  }`}
-                >
-                  <Icon size={15} />
-                  <span>{tab.label}</span>
-                </button>
-              );
-            })}
-          </nav>
+          {/* Refresh Button */}
+          <button
+            onClick={loadAllData}
+            disabled={refreshing}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-95 disabled:opacity-50"
+            title="Actualiser les données"
+          >
+            <RefreshCw size={14} className={refreshing ? 'animate-spin text-[#1877f2]' : 'text-slate-500'} />
+            <span>Actualiser</span>
+          </button>
+
+          {/* Return to Dashboard */}
+          <Link
+            href="/dashboard"
+            className="btn-primary px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm hover:shadow-md transition-all active:scale-95"
+          >
+            <span>Tableau de bord</span> &rarr;
+          </Link>
         </div>
-      </header>
+      </div>
+
+      {/* 2. ONGLETS DE NAVIGATION */}
+      <div className="flex items-center gap-1.5 p-1.5 bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-x-auto scrollbar-none">
+        {[
+          { id: 'overview', label: "Vue d'Ensemble", icon: Activity },
+          { id: 'users', label: `Utilisateurs (${allUsers.length})`, icon: Users },
+          { id: 'rbac', label: 'Rôles & RBAC', icon: Shield },
+          { id: 'audit', label: `Audit Log (${auditTotal})`, icon: FileText },
+          { id: 'sessions', label: `Sessions (${activeSessions.length})`, icon: Laptop },
+          { id: 'invitations', label: `Invitations (${invitations.length})`, icon: Mail },
+          { id: 'classrooms', label: `Visioconférence (${classrooms.length})`, icon: Video },
+          { id: 'quizzes', label: 'Quiz & Résultats', icon: Award },
+          { id: 'settings', label: 'Paramètres', icon: Settings },
+          { id: 'system', label: 'Santé Système', icon: Server },
+          { id: 'logs_backup', label: 'Logs & Backups', icon: Database },
+        ].map(tab => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition-all whitespace-nowrap text-xs cursor-pointer ${
+                isActive
+                  ? 'bg-[#1877f2] text-white shadow-sm font-extrabold shadow-blue-500/20'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 font-semibold'
+              }`}
+            >
+              <Icon size={15} className={isActive ? 'text-white' : 'text-slate-500'} />
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
+      </div>
 
       {/* Main Container */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 space-y-6">
+      <div className="space-y-6">
         {/* Feedback Alert */}
         {feedbackMessage && (
           <div
@@ -514,7 +512,7 @@ export default function AdminConsolePage() {
           <div className="space-y-6">
             {/* KPI Cards Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+              <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-sm hover:shadow-md hover:border-blue-200 transition-all flex items-center justify-between">
                 <div>
                   <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Utilisateurs Inscrits</p>
                   <h3 className="text-2xl font-black text-slate-900 mt-1">{stats?.users?.total || allUsers.length}</h3>
@@ -522,12 +520,12 @@ export default function AdminConsolePage() {
                     {stats?.users?.active || 0} actifs • {stats?.users?.disabled || 0} suspendus
                   </p>
                 </div>
-                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-[#1877f2] flex items-center justify-center">
+                <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-100 text-[#1877f2] flex items-center justify-center shrink-0 shadow-2xs">
                   <Users size={24} />
                 </div>
               </div>
 
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+              <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-sm hover:shadow-md hover:border-blue-200 transition-all flex items-center justify-between">
                 <div>
                   <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Cours &amp; Vidéos</p>
                   <h3 className="text-2xl font-black text-slate-900 mt-1">{stats?.academics?.courses || 0}</h3>
@@ -535,12 +533,12 @@ export default function AdminConsolePage() {
                     {stats?.academics?.videos || 0} vidéos • {stats?.academics?.enrollments || 0} inscriptions
                   </p>
                 </div>
-                <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center shrink-0 shadow-2xs">
                   <BookOpen size={24} />
                 </div>
               </div>
 
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+              <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-sm hover:shadow-md hover:border-amber-200 transition-all flex items-center justify-between">
                 <div>
                   <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Évaluations &amp; Quiz</p>
                   <h3 className="text-2xl font-black text-slate-900 mt-1">{stats?.quizzes?.total || 0}</h3>
@@ -548,12 +546,12 @@ export default function AdminConsolePage() {
                     {stats?.quizzes?.attempts || 0} tentatives • Moyenne {stats?.quizzes?.average_score || 0}%
                   </p>
                 </div>
-                <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-100 text-amber-600 flex items-center justify-center shrink-0 shadow-2xs">
                   <Award size={24} />
                 </div>
               </div>
 
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+              <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-sm hover:shadow-md hover:border-purple-200 transition-all flex items-center justify-between">
                 <div>
                   <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Salles Vidéo Live</p>
                   <h3 className="text-2xl font-black text-slate-900 mt-1">{stats?.classrooms?.active || 0}</h3>
@@ -561,7 +559,7 @@ export default function AdminConsolePage() {
                     {stats?.classrooms?.total || 0} salles créées • {stats?.classrooms?.invitations || 0} invites
                   </p>
                 </div>
-                <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-2xl bg-purple-50 border border-purple-100 text-purple-600 flex items-center justify-center shrink-0 shadow-2xs">
                   <Video size={24} />
                 </div>
               </div>
@@ -570,7 +568,7 @@ export default function AdminConsolePage() {
             {/* Middle Grid: Roles distribution & Quick Actions */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Distribution des Rôles */}
-              <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm lg:col-span-2 space-y-4">
+              <div className="bg-white p-6 rounded-3xl border border-slate-200/90 shadow-sm lg:col-span-2 space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
                     <Shield size={18} className="text-[#1877f2]" /> Répartition par Rôles
@@ -580,23 +578,23 @@ export default function AdminConsolePage() {
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
                   {Object.entries(stats?.users?.by_role || {}).map(([roleName, count]: [string, any]) => (
-                    <div key={roleName} className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100">
+                    <div key={roleName} className="p-3.5 rounded-2xl bg-slate-50/80 border border-slate-200/80 hover:border-blue-200 hover:bg-blue-50/20 transition-all">
                       <p className="text-xs font-bold text-slate-500 capitalize">{roleName}</p>
-                      <p className="text-xl font-black text-[#16325c] mt-1">{count}</p>
+                      <p className="text-xl font-black text-[#1877f2] mt-1">{count}</p>
                     </div>
                   ))}
                 </div>
               </div>
 
               {/* Raccourcis d'actions rapides */}
-              <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-3">
+              <div className="bg-white p-6 rounded-3xl border border-slate-200/90 shadow-sm space-y-3">
                 <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
                   <Zap size={18} className="text-amber-500" /> Actions Immédiates
                 </h3>
                 <div className="space-y-2 pt-1">
                   <button
                     onClick={() => setShowInviteModal(true)}
-                    className="w-full flex items-center justify-between p-3 rounded-xl bg-blue-50 text-[#1877f2] font-bold text-xs hover:bg-blue-100 transition-colors"
+                    className="w-full flex items-center justify-between p-3 rounded-xl bg-blue-50/80 border border-blue-200/70 text-[#1877f2] font-bold text-xs hover:bg-blue-100 transition-all shadow-2xs cursor-pointer active:scale-98"
                   >
                     <span className="flex items-center gap-2">
                       <Send size={15} /> Inviter un utilisateur
@@ -606,7 +604,7 @@ export default function AdminConsolePage() {
 
                   <button
                     onClick={handleDownloadBackup}
-                    className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs hover:bg-slate-200 transition-colors"
+                    className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200/80 text-slate-700 font-bold text-xs hover:bg-slate-100 hover:text-slate-900 transition-all shadow-2xs cursor-pointer active:scale-98"
                   >
                     <span className="flex items-center gap-2">
                       <Download size={15} /> Exporter sauvegarde JSON
@@ -616,7 +614,7 @@ export default function AdminConsolePage() {
 
                   <button
                     onClick={() => setActiveTab('audit')}
-                    className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs hover:bg-slate-200 transition-colors"
+                    className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200/80 text-slate-700 font-bold text-xs hover:bg-slate-100 hover:text-slate-900 transition-all shadow-2xs cursor-pointer active:scale-98"
                   >
                     <span className="flex items-center gap-2">
                       <FileText size={15} /> Consulter le journal d'audit
@@ -633,7 +631,7 @@ export default function AdminConsolePage() {
         {/* TAB 2 : GESTION COMPLÈTE DES UTILISATEURS                                  */}
         {/* ========================================================================= */}
         {activeTab === 'users' && (
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-6">
+          <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm hover:shadow-md transition-all p-6 space-y-6">
             {/* Toolbar */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
@@ -644,7 +642,7 @@ export default function AdminConsolePage() {
               <div className="flex items-center gap-2 flex-wrap">
                 <button
                   onClick={handleExportUsersCSV}
-                  className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-bold transition-colors"
+                  className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-slate-200/80 text-slate-700 hover:bg-slate-50 hover:border-blue-200 text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-98"
                 >
                   <Download size={15} /> Exporter CSV ({filteredUsers.length})
                 </button>
@@ -698,9 +696,9 @@ export default function AdminConsolePage() {
             </div>
 
             {/* Table */}
-            <div className="overflow-x-auto border border-slate-200 rounded-2xl">
+            <div className="overflow-x-auto border border-slate-200/90 rounded-2xl">
               <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider">
+                <thead className="bg-gradient-to-r from-slate-50 to-blue-50/30 border-b border-slate-200/90 text-slate-600 font-bold uppercase tracking-wider">
                   <tr>
                     <th className="px-4 py-3">Utilisateur</th>
                     <th className="px-4 py-3">Rôle</th>
@@ -721,7 +719,7 @@ export default function AdminConsolePage() {
                       const isRoot = (u.username || '').toLowerCase() === 'admin_first';
                       const isActive = u.is_active !== false;
                       return (
-                        <tr key={u.id} className="hover:bg-slate-50/80 transition-colors">
+                        <tr key={u.id} className="hover:bg-blue-50/30 transition-colors">
                           <td className="px-4 py-3">
                             <div className="font-bold text-slate-900">
                               {u.prenom} {u.nom}
@@ -794,7 +792,7 @@ export default function AdminConsolePage() {
         {/* TAB 3 : RÔLES & CONTRÔLE RBAC                                             */}
         {/* ========================================================================= */}
         {activeTab === 'rbac' && (
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-6">
+          <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm hover:shadow-md transition-all p-6 space-y-6">
             <div>
               <h3 className="text-lg font-black text-slate-900">Matrice des Permissions &amp; Sécurité RBAC</h3>
               <p className="text-xs text-slate-500">
@@ -802,9 +800,9 @@ export default function AdminConsolePage() {
               </p>
             </div>
 
-            <div className="overflow-x-auto border border-slate-200 rounded-2xl">
+            <div className="overflow-x-auto border border-slate-200/90 rounded-2xl">
               <table className="w-full text-xs text-left">
-                <thead className="bg-slate-50 border-b border-slate-200 font-bold text-slate-700">
+                <thead className="bg-gradient-to-r from-slate-50 to-blue-50/30 border-b border-slate-200/90 font-bold text-slate-700">
                   <tr>
                     <th className="px-4 py-3">Rôle Officiel</th>
                     <th className="px-4 py-3">Niveau d'Accès</th>
@@ -868,7 +866,7 @@ export default function AdminConsolePage() {
         {/* TAB 4 : JOURNAL D'AUDIT (AUDIT LOGS)                                      */}
         {/* ========================================================================= */}
         {activeTab === 'audit' && (
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-6">
+          <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm hover:shadow-md transition-all p-6 space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h3 className="text-lg font-black text-slate-900">Journal d'Audit &amp; Traçabilité</h3>
@@ -877,9 +875,9 @@ export default function AdminConsolePage() {
               <span className="text-xs font-bold text-slate-500">{auditTotal} événements enregistrés</span>
             </div>
 
-            <div className="overflow-x-auto border border-slate-200 rounded-2xl">
+            <div className="overflow-x-auto border border-slate-200/90 rounded-2xl">
               <table className="w-full text-xs text-left">
-                <thead className="bg-slate-50 border-b border-slate-200 font-bold text-slate-600 uppercase">
+                <thead className="bg-gradient-to-r from-slate-50 to-blue-50/30 border-b border-slate-200/90 font-bold text-slate-600 uppercase">
                   <tr>
                     <th className="px-4 py-3">Date / Heure</th>
                     <th className="px-4 py-3">Action</th>
@@ -898,7 +896,7 @@ export default function AdminConsolePage() {
                     </tr>
                   ) : (
                     auditLogs.map(l => (
-                      <tr key={l.id} className="hover:bg-slate-50">
+                      <tr key={l.id} className="hover:bg-blue-50/30 transition-colors">
                         <td className="px-4 py-3 text-slate-500 font-mono text-[11px] whitespace-nowrap">
                           {l.created_at ? l.created_at.slice(0, 19).replace('T', ' ') : '—'}
                         </td>
@@ -919,7 +917,7 @@ export default function AdminConsolePage() {
                         <td className="px-4 py-3 text-right">
                           <button
                             onClick={() => setSelectedAuditLog(l)}
-                            className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-600"
+                            className="p-1.5 rounded-lg border border-slate-200/80 hover:bg-blue-50 hover:border-blue-200 text-slate-600 hover:text-[#1877f2] transition-all"
                             title="Voir les détails complets"
                           >
                             <Eye size={14} />
@@ -938,7 +936,7 @@ export default function AdminConsolePage() {
         {/* TAB 5 : SESSIONS ACTIVES                                                  */}
         {/* ========================================================================= */}
         {activeTab === 'sessions' && (
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-6">
+          <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm hover:shadow-md transition-all p-6 space-y-6">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-black text-slate-900">Sessions Actives Connectées</h3>
@@ -949,9 +947,9 @@ export default function AdminConsolePage() {
               </span>
             </div>
 
-            <div className="overflow-x-auto border border-slate-200 rounded-2xl">
+            <div className="overflow-x-auto border border-slate-200/90 rounded-2xl">
               <table className="w-full text-xs text-left">
-                <thead className="bg-slate-50 border-b border-slate-200 font-bold text-slate-600 uppercase">
+                <thead className="bg-gradient-to-r from-slate-50 to-blue-50/30 border-b border-slate-200/90 font-bold text-slate-600 uppercase">
                   <tr>
                     <th className="px-4 py-3">Utilisateur</th>
                     <th className="px-4 py-3">Appareil / Navigateur</th>
@@ -969,7 +967,7 @@ export default function AdminConsolePage() {
                     </tr>
                   ) : (
                     activeSessions.map(s => (
-                      <tr key={s.id} className="hover:bg-slate-50">
+                      <tr key={s.id} className="hover:bg-blue-50/30 transition-colors">
                         <td className="px-4 py-3">
                           <div className="font-bold text-slate-900">{s.user_name}</div>
                           <div className="text-slate-500 text-[11px]">{s.user_email}</div>
@@ -982,7 +980,7 @@ export default function AdminConsolePage() {
                         <td className="px-4 py-3 text-right">
                           <button
                             onClick={() => handleRevokeSession(s.id)}
-                            className="px-3 py-1.5 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 text-xs font-bold transition-colors"
+                            className="px-3 py-1.5 rounded-lg bg-rose-50 border border-rose-200/70 text-rose-600 hover:bg-rose-100 text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-98"
                           >
                             Révoquer
                           </button>
@@ -1000,7 +998,7 @@ export default function AdminConsolePage() {
         {/* TAB 6 : INVITATIONS UTILISATEURS                                          */}
         {/* ========================================================================= */}
         {activeTab === 'invitations' && (
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-6">
+          <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm hover:shadow-md transition-all p-6 space-y-6">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-black text-slate-900">Invitations Envoyées</h3>
@@ -1014,9 +1012,9 @@ export default function AdminConsolePage() {
               </button>
             </div>
 
-            <div className="overflow-x-auto border border-slate-200 rounded-2xl">
+            <div className="overflow-x-auto border border-slate-200/90 rounded-2xl">
               <table className="w-full text-xs text-left">
-                <thead className="bg-slate-50 border-b border-slate-200 font-bold text-slate-600 uppercase">
+                <thead className="bg-gradient-to-r from-slate-50 to-blue-50/30 border-b border-slate-200/90 font-bold text-slate-600 uppercase">
                   <tr>
                     <th className="px-4 py-3">Email Destinataire</th>
                     <th className="px-4 py-3">Rôle Prévu</th>
@@ -1035,7 +1033,7 @@ export default function AdminConsolePage() {
                     </tr>
                   ) : (
                     invitations.map(inv => (
-                      <tr key={inv.id} className="hover:bg-slate-50">
+                      <tr key={inv.id} className="hover:bg-blue-50/30 transition-colors">
                         <td className="px-4 py-3 font-bold text-slate-900">{inv.email}</td>
                         <td className="px-4 py-3 capitalize font-semibold">{inv.role}</td>
                         <td className="px-4 py-3 text-slate-600">{inv.group_name}</td>
@@ -1061,14 +1059,14 @@ export default function AdminConsolePage() {
                               <>
                                 <button
                                   onClick={() => handleResendInvitation(inv.id, inv.email)}
-                                  className="p-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 text-xs font-semibold"
+                                  className="p-1.5 rounded-lg border border-slate-200/80 text-slate-700 hover:bg-blue-50 hover:border-blue-200 hover:text-[#1877f2] text-xs font-semibold transition-all"
                                   title="Renvoyer l'email"
                                 >
                                   <RefreshCw size={14} />
                                 </button>
                                 <button
                                   onClick={() => handleRevokeInvitation(inv.id)}
-                                  className="p-1.5 rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-semibold"
+                                  className="p-1.5 rounded-lg border border-rose-200/80 text-rose-600 hover:bg-rose-50 text-xs font-semibold transition-all"
                                   title="Révoquer l'invitation"
                                 >
                                   <Trash2 size={14} />
@@ -1090,7 +1088,7 @@ export default function AdminConsolePage() {
         {/* TAB 7 : VISIOCONFÉRENCES                                                  */}
         {/* ========================================================================= */}
         {activeTab === 'classrooms' && (
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-6">
+          <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm hover:shadow-md transition-all p-6 space-y-6">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-black text-slate-900">Supervision des Salles Vidéo Conférence</h3>
@@ -1131,7 +1129,7 @@ export default function AdminConsolePage() {
                     {c.is_active && (
                       <button
                         onClick={() => handleTerminateRoom(c.id, c.title)}
-                        className="px-3 py-1 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 text-xs font-bold transition-colors"
+                        className="px-3 py-1 rounded-xl bg-rose-50 border border-rose-200/70 text-rose-600 hover:bg-rose-100 text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-98"
                       >
                         Arrêt d'urgence
                       </button>
@@ -1147,15 +1145,15 @@ export default function AdminConsolePage() {
         {/* TAB 8 : QUIZ & RÉSULTATS                                                  */}
         {/* ========================================================================= */}
         {activeTab === 'quizzes' && (
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-6">
+          <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm hover:shadow-md transition-all p-6 space-y-6">
             <div>
               <h3 className="text-lg font-black text-slate-900">Supervision des Quiz &amp; Résultats</h3>
               <p className="text-xs text-slate-500">Taux de complétion et dernières tentatives enregistrées</p>
             </div>
 
-            <div className="overflow-x-auto border border-slate-200 rounded-2xl">
+            <div className="overflow-x-auto border border-slate-200/90 rounded-2xl">
               <table className="w-full text-xs text-left">
-                <thead className="bg-slate-50 border-b border-slate-200 font-bold text-slate-600 uppercase">
+                <thead className="bg-gradient-to-r from-slate-50 to-blue-50/30 border-b border-slate-200/90 font-bold text-slate-600 uppercase">
                   <tr>
                     <th className="px-4 py-3">Titre du Quiz</th>
                     <th className="px-4 py-3">Formateur</th>
@@ -1166,7 +1164,7 @@ export default function AdminConsolePage() {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {quizzesData?.quizzes?.map((q: any) => (
-                    <tr key={q.id} className="hover:bg-slate-50">
+                    <tr key={q.id} className="hover:bg-blue-50/30 transition-colors">
                       <td className="px-4 py-3 font-bold text-slate-900">{q.title}</td>
                       <td className="px-4 py-3 text-slate-600">{q.creator_email}</td>
                       <td className="px-4 py-3 font-semibold">{q.questions_count} questions</td>
@@ -1184,7 +1182,7 @@ export default function AdminConsolePage() {
         {/* TAB 9 : PARAMÈTRES GLOBAUX DE LA PLATEFORME                               */}
         {/* ========================================================================= */}
         {activeTab === 'settings' && (
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-6">
+          <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm hover:shadow-md transition-all p-6 space-y-6">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-black text-slate-900">Configuration de la Plateforme</h3>
@@ -1203,7 +1201,7 @@ export default function AdminConsolePage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {platformSettings.map(s => (
-                <div key={s.key} className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-2">
+                <div key={s.key} className="p-4 rounded-2xl border border-slate-200/80 bg-slate-50/50 hover:border-blue-200 hover:bg-blue-50/10 transition-all space-y-2">
                   <label className="text-xs font-bold text-slate-700 block uppercase tracking-wider">{s.key}</label>
                   <p className="text-[11px] text-slate-500">{s.description}</p>
                   <input
@@ -1223,26 +1221,26 @@ export default function AdminConsolePage() {
         {/* TAB 10 : SANTÉ SYSTÈME & INFRASTRUCTURE                                   */}
         {/* ========================================================================= */}
         {activeTab === 'system' && (
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-6">
+          <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm hover:shadow-md transition-all p-6 space-y-6">
             <div>
               <h3 className="text-lg font-black text-slate-900">Infrastructure &amp; État des Services</h3>
               <p className="text-xs text-slate-500">Diagnostic en temps réel pour l'hébergement Railway et production</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-              <div className="p-5 rounded-2xl border border-slate-200 bg-slate-50 space-y-2">
+              <div className="p-5 rounded-2xl border border-slate-200/80 bg-slate-50 hover:border-blue-200 hover:bg-blue-50/20 transition-all space-y-2">
                 <p className="text-xs font-bold text-slate-500 uppercase">Moteur Base de Données</p>
                 <h4 className="text-xl font-black text-slate-900 capitalize">{systemStatus?.database?.engine || 'SQL'}</h4>
                 <p className="text-xs text-emerald-600 font-semibold">Latence ping : {systemStatus?.database?.latency_ms || 0} ms</p>
               </div>
 
-              <div className="p-5 rounded-2xl border border-slate-200 bg-slate-50 space-y-2">
+              <div className="p-5 rounded-2xl border border-slate-200/80 bg-slate-50 hover:border-blue-200 hover:bg-blue-50/20 transition-all space-y-2">
                 <p className="text-xs font-bold text-slate-500 uppercase">Stockage Uploads</p>
                 <h4 className="text-xl font-black text-slate-900">{systemStatus?.storage?.uploads_size_mb || 0} Mo</h4>
                 <p className="text-xs text-slate-600 font-medium">{systemStatus?.storage?.uploads_file_count || 0} fichiers stockés</p>
               </div>
 
-              <div className="p-5 rounded-2xl border border-slate-200 bg-slate-50 space-y-2">
+              <div className="p-5 rounded-2xl border border-slate-200/80 bg-slate-50 hover:border-blue-200 hover:bg-blue-50/20 transition-all space-y-2">
                 <p className="text-xs font-bold text-slate-500 uppercase">Temps de Fonctionnement</p>
                 <h4 className="text-xl font-black text-slate-900">{systemStatus?.system?.uptime_formatted || '0h 0m'}</h4>
                 <p className="text-xs text-blue-600 font-semibold">Environnement : {systemStatus?.system?.environment || 'dev'}</p>
@@ -1257,7 +1255,7 @@ export default function AdminConsolePage() {
         {activeTab === 'logs_backup' && (
           <div className="space-y-6">
             {/* Sauvegardes Card */}
-            <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-4">
+            <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm hover:shadow-md transition-all p-6 space-y-4">
               <div>
                 <h3 className="text-lg font-black text-slate-900">Sauvegardes &amp; Restauration de la Base de Données</h3>
                 <p className="text-xs text-slate-500">
@@ -1275,7 +1273,7 @@ export default function AdminConsolePage() {
 
                 <button
                   onClick={handleCreateSnapshot}
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs border border-slate-200 transition-all cursor-pointer"
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-800 font-bold text-xs border border-slate-200/80 hover:border-blue-200 transition-all cursor-pointer shadow-2xs active:scale-98"
                 >
                   <Database size={16} /> Générer Instantané Serveur
                 </button>
@@ -1315,7 +1313,7 @@ export default function AdminConsolePage() {
             </div>
           </div>
         )}
-      </main>
+      </div>
 
       {/* ========================================================================= */}
       {/* MODAL INVITATION                                                          */}
