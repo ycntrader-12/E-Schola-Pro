@@ -16,12 +16,14 @@ import {
   Globe,
   ExternalLink,
   X,
-  LogOut
+  LogOut,
+  Sparkles
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import Sidebar from '@/components/dashboard/Sidebar';
 import RightPanel from '@/components/dashboard/RightPanel';
 import AttendancePerformanceWidget from '@/components/dashboard/AttendancePerformanceWidget';
+import { GoogleAiAssistModal } from '@/components/inbox/GoogleAiAssistModal';
 import { useTranslations } from 'next-intl';
 
 interface Course {
@@ -42,6 +44,9 @@ export default function DashboardPage() {
   const [currentUser, setCurrentUser] = useState<{ id: number; email: string; role: string; avatar_url?: string } | null>(null);
   const [allCourses, setAllCourses] = useState<Course[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchMode, setSearchMode] = useState<'all' | 'internal' | 'google' | 'ai'>('all');
+  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState('');
   const [isSearchDropdownOpen, setIsSearchDropdownOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [activeClassroomsCount, setActiveClassroomsCount] = useState(0);
@@ -169,20 +174,35 @@ export default function DashboardPage() {
     : [];
 
   const handleGoogleSearch = (queryToSearch?: string) => {
-    const q = (queryToSearch || searchQuery).trim();
+    const q = (queryToSearch !== undefined ? queryToSearch : searchQuery).trim();
     if (q) {
-      window.open(`https://www.google.com/search?q=${encodeURIComponent(q)}`, '_blank');
+      window.open(`https://www.google.com/search?q=${encodeURIComponent(q)}`, '_blank', 'noopener,noreferrer');
       setIsSearchDropdownOpen(false);
     }
   };
 
+  const handleOpenAiAssistant = (queryToPass?: string) => {
+    const q = (queryToPass !== undefined ? queryToPass : searchQuery).trim();
+    setAiPrompt(q);
+    setIsAiModalOpen(true);
+    setIsSearchDropdownOpen(false);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
+      if (searchMode === 'ai') {
+        handleOpenAiAssistant();
+        return;
+      }
+      if (searchMode === 'google') {
+        handleGoogleSearch();
+        return;
+      }
       if (matchingCourses.length > 0) {
         router.push(`/courses/${matchingCourses[0].id}`);
         setIsSearchDropdownOpen(false);
       } else if (searchQuery.trim()) {
-        handleGoogleSearch();
+        handleOpenAiAssistant();
       }
     }
   };
@@ -238,10 +258,16 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Search Bar with Live Local Filter & Google Search Integration */}
-          <div ref={searchContainerRef} className="relative flex-1 max-w-lg w-full">
+          {/* Search Bar with Live Local Filter, Google Search & AI Mode Integration */}
+          <div ref={searchContainerRef} className="relative flex-1 max-w-xl w-full">
             <div className="relative flex items-center">
-              <Search className="absolute left-3.5 text-slate-400 pointer-events-none" size={16} />
+              {searchMode === 'ai' ? (
+                <Sparkles className="absolute left-3.5 text-purple-500 animate-pulse pointer-events-none" size={16} />
+              ) : searchMode === 'google' ? (
+                <Globe className="absolute left-3.5 text-blue-500 pointer-events-none" size={16} />
+              ) : (
+                <Search className="absolute left-3.5 text-slate-400 pointer-events-none" size={16} />
+              )}
               <input 
                 type="text" 
                 value={searchQuery}
@@ -251,28 +277,54 @@ export default function DashboardPage() {
                   setIsSearchDropdownOpen(true);
                 }}
                 onKeyDown={handleKeyDown}
-                placeholder="Rechercher un cours ou sur Google..." 
-                className="w-full pl-9 pr-20 py-2.5 rounded-xl bg-white border border-slate-200 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 outline-none shadow-xs focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 transition-all"
+                placeholder={
+                  searchMode === 'ai'
+                    ? "Demander à l'assistant IA Google Gemini..."
+                    : searchMode === 'google'
+                    ? "Rechercher sur Google Web..."
+                    : "Rechercher un cours, sur Google ou Mode IA..."
+                } 
+                className={`w-full pl-9 pr-36 sm:pr-44 py-2.5 rounded-xl bg-white border text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 outline-none shadow-xs transition-all ${
+                  searchMode === 'ai'
+                    ? 'border-purple-300 focus:border-purple-600 focus:ring-2 focus:ring-purple-100'
+                    : searchMode === 'google'
+                    ? 'border-blue-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100'
+                    : 'border-slate-200 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100'
+                }`}
               />
               
-              {/* Clear search or Google Search button */}
-              <div className="absolute right-2 flex items-center gap-1">
+              {/* Clear search, Google Search and Mode IA buttons */}
+              <div className="absolute right-1.5 flex items-center gap-1">
                 {searchQuery && (
                   <button 
                     onClick={() => { setSearchQuery(''); setIsSearchDropdownOpen(false); }}
-                    className="p-1 text-slate-400 hover:text-slate-600 rounded-md transition-colors"
+                    className="p-1 text-slate-400 hover:text-slate-600 rounded-md transition-colors cursor-pointer"
                     title="Effacer"
                   >
                     <X size={14} />
                   </button>
                 )}
+                
+                {/* Google Web Search Action Button */}
                 <button
                   onClick={() => handleGoogleSearch()}
-                  className="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-[#1877f2] rounded-lg text-[11px] font-bold flex items-center gap-1 border border-blue-200 transition-all shadow-xs"
+                  type="button"
+                  className="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-[#1877f2] rounded-lg text-[11px] font-bold flex items-center gap-1 border border-blue-200 transition-all shadow-xs cursor-pointer"
                   title="Rechercher sur Google"
                 >
                   <Globe size={13} />
-                  <span className="hidden md:inline">Google</span>
+                  <span className="hidden sm:inline">Google</span>
+                </button>
+
+                {/* Mode IA Action Button */}
+                <button
+                  onClick={() => handleOpenAiAssistant()}
+                  type="button"
+                  className="px-2 sm:px-2.5 py-1 bg-gradient-to-r from-purple-50 to-indigo-50 hover:from-purple-100 hover:to-indigo-100 text-purple-700 rounded-lg text-[11px] font-black flex items-center gap-1 border border-purple-200 hover:border-purple-300 transition-all shadow-xs cursor-pointer group"
+                  title="Ouvrir le Mode IA Google Gemini"
+                >
+                  <Sparkles size={13} className="text-purple-600 group-hover:rotate-12 transition-transform" />
+                  <span>Mode IA</span>
                 </button>
               </div>
             </div>
@@ -320,8 +372,33 @@ export default function DashboardPage() {
                   )}
                 </div>
 
+                {/* Direct Google AI Gemini Assistant Action */}
+                <div className="p-2 bg-gradient-to-r from-purple-50/70 to-indigo-50/70">
+                  <button
+                    onClick={() => handleOpenAiAssistant()}
+                    className="w-full flex items-center justify-between p-2.5 rounded-xl text-purple-700 font-bold hover:bg-purple-100/70 transition-colors cursor-pointer text-left group"
+                  >
+                    <div className="flex items-center gap-2.5 overflow-hidden">
+                      <div className="w-7 h-7 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform shadow-xs">
+                        <Sparkles size={14} className="animate-pulse" />
+                      </div>
+                      <div className="truncate">
+                        <p className="text-xs font-bold text-purple-900 group-hover:text-purple-700 truncate">
+                          Demander à l'IA Gemini : <strong>« {searchQuery} »</strong>
+                        </p>
+                        <p className="text-[10px] text-purple-600 truncate font-normal">
+                          Explications de cours, synthèse, aide aux devoirs et concepts clés
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-black text-purple-700 px-2 py-0.5 rounded bg-purple-200/60 border border-purple-300 shrink-0 ml-2 shadow-2xs">
+                      Mode IA
+                    </span>
+                  </button>
+                </div>
+
                 {/* Direct Google Search Action */}
-                <div className="p-2 bg-slate-50/60">
+                <div className="p-2 bg-slate-50/70">
                   <button
                     onClick={() => handleGoogleSearch()}
                     className="w-full flex items-center justify-between p-2.5 rounded-xl text-[#1877f2] font-bold hover:bg-blue-100/60 transition-colors cursor-pointer text-left"
@@ -579,6 +656,14 @@ export default function DashboardPage() {
       {isRightPanelOpen && (
         <RightPanel isOpen={isRightPanelOpen} setIsOpen={setIsRightPanelOpen} />
       )}
+
+      {/* Google AI Gemini Assistant Modal */}
+      <GoogleAiAssistModal
+        isOpen={isAiModalOpen}
+        onClose={() => setIsAiModalOpen(false)}
+        initialPrompt={aiPrompt}
+        defaultMode="ask"
+      />
     </div>
   );
 }
