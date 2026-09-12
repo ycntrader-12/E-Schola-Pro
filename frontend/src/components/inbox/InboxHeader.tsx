@@ -191,13 +191,13 @@ export const InboxHeader: React.FC<InboxHeaderProps> = ({
                 onClick={() => setIsModeDropdownOpen(!isModeDropdownOpen)}
                 className={`px-2.5 py-1 rounded-xl text-[11px] font-bold border flex items-center gap-1.5 transition-colors ${
                   searchMode === 'ai'
-                    ? 'bg-purple-500/20 text-purple-300 border-purple-500/40'
+                    ? 'bg-blue-50 text-[#1877f2] border-blue-200'
                     : searchMode === 'google'
-                    ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
+                    ? 'bg-cyan-50 text-cyan-700 border-cyan-200'
                     : 'bg-surface/80 text-text-secondary border-border hover:text-text-primary'
                 }`}
               >
-                {searchMode === 'ai' && <Sparkles size={12} />}
+                {searchMode === 'ai' && <Sparkles size={12} className="text-[#1877f2]" />}
                 {searchMode === 'google' && <Globe size={12} />}
                 {searchMode === 'internal' && <Search size={12} />}
                 <span>
@@ -211,7 +211,7 @@ export const InboxHeader: React.FC<InboxHeaderProps> = ({
               </button>
 
               {isModeDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-52 bg-surface border border-border rounded-2xl shadow-2xl z-50 py-1.5 divide-y divide-border/40 animate-scale-in">
+                <div className="absolute right-0 mt-2 w-52 bg-white border border-border rounded-2xl shadow-2xl z-50 py-1.5 divide-y divide-border/40 animate-scale-in">
                   <div className="p-1">
                     <button
                       type="button"
@@ -221,11 +221,11 @@ export const InboxHeader: React.FC<InboxHeaderProps> = ({
                       }}
                       className={`w-full p-2 rounded-xl text-left text-xs font-semibold flex items-center gap-2 transition-colors ${
                         searchMode === 'internal'
-                          ? 'bg-primary/20 text-primary'
-                          : 'hover:bg-primary/10 text-text-primary'
+                          ? 'bg-blue-50 text-[#1877f2]'
+                          : 'hover:bg-blue-50/60 text-text-primary'
                       }`}
                     >
-                      <Search size={14} className="text-primary" />
+                      <Search size={14} className="text-[#1877f2]" />
                       <div>
                         <div>{labels.internal}</div>
                         <div className="text-[10px] text-text-secondary font-normal">
@@ -242,11 +242,11 @@ export const InboxHeader: React.FC<InboxHeaderProps> = ({
                       }}
                       className={`w-full p-2 rounded-xl text-left text-xs font-semibold flex items-center gap-2 transition-colors ${
                         searchMode === 'google'
-                          ? 'bg-cyan-500/20 text-cyan-400'
-                          : 'hover:bg-cyan-500/10 text-text-primary'
+                          ? 'bg-cyan-50 text-cyan-700'
+                          : 'hover:bg-cyan-50/60 text-text-primary'
                       }`}
                     >
-                      <Globe size={14} className="text-cyan-400" />
+                      <Globe size={14} className="text-cyan-600" />
                       <div>
                         <div>{labels.google}</div>
                         <div className="text-[10px] text-text-secondary font-normal">
@@ -263,11 +263,11 @@ export const InboxHeader: React.FC<InboxHeaderProps> = ({
                       }}
                       className={`w-full p-2 rounded-xl text-left text-xs font-semibold flex items-center gap-2 transition-colors ${
                         searchMode === 'ai'
-                          ? 'bg-purple-500/20 text-purple-300'
-                          : 'hover:bg-purple-500/10 text-text-primary'
+                          ? 'bg-blue-50 text-[#1877f2]'
+                          : 'hover:bg-blue-50/60 text-text-primary'
                       }`}
                     >
-                      <Sparkles size={14} className="text-purple-400" />
+                      <Sparkles size={14} className="text-[#1877f2]" />
                       <div>
                         <div>{labels.ai}</div>
                         <div className="text-[10px] text-text-secondary font-normal">
@@ -285,14 +285,14 @@ export const InboxHeader: React.FC<InboxHeaderProps> = ({
 
       {/* Right: Actions, AI Sparkle, Help, Settings, Apps Grid, Profile Avatar */}
       <div className="flex items-center gap-1.5">
-        {/* Google AI Gemini Sparkle Button */}
+        {/* Google AI Gemini Sparkle Button - Application Blue Theme */}
         <button
           type="button"
           onClick={onOpenAiModal}
-          className="p-2 rounded-xl bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/30 text-purple-300 text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm group"
+          className="p-2 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-[#1877f2] text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs group cursor-pointer"
           title="Ouvrir l'Assistant IA Google Gemini"
         >
-          <Sparkles size={16} className="text-purple-400 group-hover:rotate-12 transition-transform" />
+          <Sparkles size={16} className="text-[#1877f2] group-hover:rotate-12 transition-transform" />
           <span className="hidden lg:inline">Assistant IA</span>
         </button>
 

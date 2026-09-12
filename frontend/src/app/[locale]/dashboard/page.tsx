@@ -262,9 +262,9 @@ export default function DashboardPage() {
           <div ref={searchContainerRef} className="relative flex-1 max-w-xl w-full">
             <div className="relative flex items-center">
               {searchMode === 'ai' ? (
-                <Sparkles className="absolute left-3.5 text-purple-500 animate-pulse pointer-events-none" size={16} />
+                <Sparkles className="absolute left-3.5 text-[#1877f2] animate-pulse pointer-events-none" size={16} />
               ) : searchMode === 'google' ? (
-                <Globe className="absolute left-3.5 text-blue-500 pointer-events-none" size={16} />
+                <Globe className="absolute left-3.5 text-[#1877f2] pointer-events-none" size={16} />
               ) : (
                 <Search className="absolute left-3.5 text-slate-400 pointer-events-none" size={16} />
               )}
@@ -284,13 +284,7 @@ export default function DashboardPage() {
                     ? "Rechercher sur Google Web..."
                     : "Rechercher un cours, sur Google ou Mode IA..."
                 } 
-                className={`w-full pl-9 pr-36 sm:pr-44 py-2.5 rounded-xl bg-white border text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 outline-none shadow-xs transition-all ${
-                  searchMode === 'ai'
-                    ? 'border-purple-300 focus:border-purple-600 focus:ring-2 focus:ring-purple-100'
-                    : searchMode === 'google'
-                    ? 'border-blue-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100'
-                    : 'border-slate-200 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100'
-                }`}
+                className="w-full pl-9 pr-36 sm:pr-44 py-2.5 rounded-xl bg-white border border-slate-200 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 outline-none shadow-xs transition-all"
               />
               
               {/* Clear search, Google Search and Mode IA buttons */}
@@ -316,14 +310,14 @@ export default function DashboardPage() {
                   <span className="hidden sm:inline">Google</span>
                 </button>
 
-                {/* Mode IA Action Button */}
+                {/* Mode IA Action Button - Thème Bleu Officiel #1877f2 */}
                 <button
                   onClick={() => handleOpenAiAssistant()}
                   type="button"
-                  className="px-2 sm:px-2.5 py-1 bg-gradient-to-r from-purple-50 to-indigo-50 hover:from-purple-100 hover:to-indigo-100 text-purple-700 rounded-lg text-[11px] font-black flex items-center gap-1 border border-purple-200 hover:border-purple-300 transition-all shadow-xs cursor-pointer group"
+                  className="px-2 sm:px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-[#1877f2] rounded-lg text-[11px] font-black flex items-center gap-1 border border-blue-200 hover:border-blue-300 transition-all shadow-xs cursor-pointer group"
                   title="Ouvrir le Mode IA Google Gemini"
                 >
-                  <Sparkles size={13} className="text-purple-600 group-hover:rotate-12 transition-transform" />
+                  <Sparkles size={13} className="text-[#1877f2] group-hover:rotate-12 transition-transform" />
                   <span>Mode IA</span>
                 </button>
               </div>
@@ -372,26 +366,26 @@ export default function DashboardPage() {
                   )}
                 </div>
 
-                {/* Direct Google AI Gemini Assistant Action */}
-                <div className="p-2 bg-gradient-to-r from-purple-50/70 to-indigo-50/70">
+                {/* Direct Google AI Gemini Assistant Action - Thème Bleu #1877f2 */}
+                <div className="p-2 bg-blue-50/80">
                   <button
                     onClick={() => handleOpenAiAssistant()}
-                    className="w-full flex items-center justify-between p-2.5 rounded-xl text-purple-700 font-bold hover:bg-purple-100/70 transition-colors cursor-pointer text-left group"
+                    className="w-full flex items-center justify-between p-2.5 rounded-xl text-[#1877f2] font-bold hover:bg-blue-100/70 transition-colors cursor-pointer text-left group"
                   >
                     <div className="flex items-center gap-2.5 overflow-hidden">
-                      <div className="w-7 h-7 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform shadow-xs">
+                      <div className="w-7 h-7 rounded-lg bg-blue-100 text-[#1877f2] flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform shadow-xs">
                         <Sparkles size={14} className="animate-pulse" />
                       </div>
                       <div className="truncate">
-                        <p className="text-xs font-bold text-purple-900 group-hover:text-purple-700 truncate">
+                        <p className="text-xs font-bold text-slate-900 group-hover:text-[#1877f2] transition-colors truncate">
                           Demander à l'IA Gemini : <strong>« {searchQuery} »</strong>
                         </p>
-                        <p className="text-[10px] text-purple-600 truncate font-normal">
+                        <p className="text-[10px] text-[#1877f2] truncate font-normal">
                           Explications de cours, synthèse, aide aux devoirs et concepts clés
                         </p>
                       </div>
                     </div>
-                    <span className="text-[10px] font-black text-purple-700 px-2 py-0.5 rounded bg-purple-200/60 border border-purple-300 shrink-0 ml-2 shadow-2xs">
+                    <span className="text-[10px] font-black text-[#1877f2] px-2 py-0.5 rounded bg-blue-100 border border-blue-200 shrink-0 ml-2 shadow-2xs">
                       Mode IA
                     </span>
                   </button>
