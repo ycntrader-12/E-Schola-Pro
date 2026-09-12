@@ -515,21 +515,21 @@ export default function CalendarPage() {
                     key={dayNum}
                     onClick={() => setSelectedDay(cellDate)}
                     className={`min-h-[72px] p-1.5 rounded-xl border flex flex-col justify-between items-start transition-all relative group text-left ${isSelected
-                      ? 'bg-primary/20 border-primary text-text-primary shadow-md shadow-primary/20 ring-1 ring-primary'
+                      ? 'bg-blue-50/90 border-2 border-[#1877f2] text-slate-900 shadow-md shadow-blue-500/10 ring-2 ring-blue-100'
                       : isToday
-                        ? 'bg-primary/10 border-blue-500 text-text-primary font-bold'
+                        ? 'bg-blue-50/70 border border-[#1877f2] text-slate-900 font-bold'
                         : moroccanHoliday
-                          ? 'bg-blue-500/10 dark:bg-blue-950/25 border-blue-400/40 dark:border-blue-500/40 text-text-primary hover:border-blue-500 hover:bg-blue-500/15'
-                          : 'bg-surface/50 hover:bg-surface border-border text-text-secondary hover:text-text-primary'
+                          ? 'bg-blue-50/60 hover:bg-blue-100/60 border-blue-200/90 text-slate-900 hover:border-[#1877f2]'
+                          : 'bg-white hover:bg-slate-50 border-slate-200/80 text-slate-600 hover:text-slate-900'
                       }`}
                   >
                     <div className="w-full flex items-center justify-between">
                       <div className="flex items-center gap-1">
                         <span className={`text-xs ${isToday
-                          ? 'w-5 h-5 rounded-full bg-primary text-white flex items-center justify-center font-extrabold shadow-xs'
+                          ? 'w-5 h-5 rounded-full bg-[#1877f2] text-white flex items-center justify-center font-extrabold shadow-xs'
                           : moroccanHoliday
-                            ? 'font-extrabold text-[#1877f2] dark:text-blue-400'
-                            : 'font-semibold'
+                            ? 'font-extrabold text-[#1877f2]'
+                            : 'font-semibold text-slate-700'
                           }`}>
                           {dayNum}
                         </span>
@@ -540,7 +540,7 @@ export default function CalendarPage() {
                         )}
                       </div>
                       {isToday && (
-                        <span className="text-[9px] uppercase font-bold text-primary hidden sm:inline">
+                        <span className="text-[9px] uppercase font-bold text-[#1877f2] hidden sm:inline">
                           Auj.
                         </span>
                       )}
@@ -549,7 +549,7 @@ export default function CalendarPage() {
                     {/* Moroccan Holiday Micro Badge */}
                     {moroccanHoliday && (
                       <div
-                        className="w-full text-[8px] font-bold text-blue-700 dark:text-blue-300 bg-blue-100/90 dark:bg-blue-900/50 border border-blue-200/60 dark:border-blue-800/60 px-1 py-0.5 rounded truncate leading-tight my-0.5 shadow-2xs"
+                        className="w-full text-[9px] font-bold text-blue-800 bg-blue-100/90 border border-blue-200/90 px-1.5 py-0.5 rounded-md truncate leading-tight my-0.5 shadow-2xs"
                         title={`Jour Férié Officiel : ${moroccanHoliday.name} (${moroccanHoliday.nameAr})`}
                       >
                         {moroccanHoliday.name}
@@ -602,34 +602,34 @@ export default function CalendarPage() {
 
           {/* 🇲🇦 Moroccan Public Holiday Highlight Card */}
           {selectedDayHoliday && (
-            <div className="p-4 rounded-2xl bg-gradient-to-br from-blue-50 to-blue-100/60 dark:from-blue-950/40 dark:to-blue-900/30 border border-blue-200 dark:border-blue-800 text-blue-950 dark:text-blue-100 space-y-2 animate-fade-in shadow-xs">
+            <div className="p-4.5 rounded-2xl bg-white border border-blue-200/90 shadow-sm text-slate-900 space-y-2.5 animate-fade-in">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="text-xl">🇲🇦</span>
-                  <span className="text-[11px] font-bold text-[#1877f2] dark:text-blue-400 uppercase tracking-wider">
+                  <span className="text-[11px] font-bold text-[#1877f2] uppercase tracking-wider">
                     Jour Férié Officiel au Maroc
                   </span>
                 </div>
-                <span className="px-2.5 py-0.5 rounded-full text-[9px] font-extrabold bg-blue-500/15 text-[#1877f2] dark:text-blue-300 border border-blue-500/25">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-[#1877f2] border border-blue-200">
                   {selectedDayHoliday.type === 'national' ? 'Fête Nationale' : 'Fête Religieuse'}
                 </span>
               </div>
 
               <div>
                 <div className="flex items-center justify-between flex-wrap gap-1">
-                  <h4 className="text-sm font-black text-slate-900 dark:text-white">
+                  <h4 className="text-base font-extrabold text-slate-900 leading-tight">
                     {selectedDayHoliday.name}
                   </h4>
-                  <span className="text-xs font-bold text-[#1877f2] dark:text-blue-400">
+                  <span className="text-sm font-bold text-[#1877f2]">
                     {selectedDayHoliday.nameAr}
                   </span>
                 </div>
-                <p className="text-xs text-slate-600 dark:text-blue-200/90 mt-1">
+                <p className="text-xs text-slate-600 font-medium leading-relaxed mt-1">
                   {selectedDayHoliday.description}
                 </p>
-                <div className="mt-2 pt-2 border-t border-blue-200/60 dark:border-blue-800/60 flex items-center justify-between text-[10px] text-slate-600 dark:text-blue-300 font-semibold">
-                  <span>Statut</span>
-                  <span className="font-bold text-[#1877f2] dark:text-blue-300">Jour chômé et payé (Maroc)</span>
+                <div className="mt-2.5 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 font-medium">
+                  <span>Statut officiel</span>
+                  <span className="font-bold text-[#1877f2]">Jour chômé et payé (Maroc)</span>
                 </div>
               </div>
             </div>
