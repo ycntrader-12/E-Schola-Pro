@@ -94,6 +94,13 @@ async def login_access_token(
             detail="Identifiants incorrects (email ou mot de passe)",
         )
 
+    # Vérification du statut d'activation du compte
+    if hasattr(user, "is_active") and user.is_active is False:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Votre compte a été désactivé par l'administration. Veuillez contacter l'administration pour réactiver votre accès (contact@eschola.pro).",
+        )
+
     access_token = security.create_access_token(
         subject=user.id, role=user.role, email=user.email
     )

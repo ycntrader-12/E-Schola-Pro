@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text
+from sqlalchemy import Boolean, Column, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from app.db.base import Base
@@ -13,6 +13,7 @@ class User(Base):
     role = Column(
         String, default="étudiant"
     )  # "admin", "admin_manager", "formateur", "pedagogique", "dg_rh", "employer", "stagiaire", "étudiant"
+    is_active = Column(Boolean, default=True, nullable=False)
     
     # Profil standard étendu
     nom = Column(String, nullable=True)

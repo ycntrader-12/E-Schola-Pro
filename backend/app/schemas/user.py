@@ -6,6 +6,7 @@ class UserBase(BaseModel):
     username: Optional[str] = None
     email: Optional[str] = None
     role: str = "étudiant"
+    is_active: bool = True
     nom: Optional[str] = None
     prenom: Optional[str] = None
     date_naissance: Optional[str] = None
@@ -36,6 +37,7 @@ class UserMinimalRead(BaseModel):
     full_name: str
     email: Optional[str] = None
     role: str = "étudiant"
+    is_active: bool = True
     avatar_url: Optional[str] = None
 
     class Config:
@@ -47,10 +49,15 @@ class UserUpdatePassword(BaseModel):
     new_password: str
 
 
+class StatusUpdate(BaseModel):
+    is_active: bool
+
+
 class UserUpdate(BaseModel):
     username: Optional[str] = None
     email: Optional[str] = None
     role: Optional[str] = None
+    is_active: Optional[bool] = None
     nom: Optional[str] = None
     prenom: Optional[str] = None
     date_naissance: Optional[str] = None

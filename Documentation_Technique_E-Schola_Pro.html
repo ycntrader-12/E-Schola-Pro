@@ -804,6 +804,7 @@ E-Schola Pro/
         <tr><td><code>email</code></td><td>String</td><td>Unique, Indexé, Nullable</td><td>Adresse e-mail (login / contact)</td></tr>
         <tr><td><code>hashed_password</code></td><td>String</td><td>Not Null</td><td>Mot de passe haché (bcrypt)</td></tr>
         <tr><td><code>role</code></td><td>String</td><td>Default: "étudiant"</td><td>admin | admin_manager | formateur | pedagogique | dg_rh | étudiant | stagiaire | employer</td></tr>
+        <tr><td><code>is_active</code></td><td>Boolean</td><td>Default: True, Not Null</td><td>Statut d'activation du compte. Si <code>False</code>, l'utilisateur est suspendu et toute connexion est bloquée avec consigne de contacter l'administration (contact@eschola.pro).</td></tr>
         <tr><td><code>nom</code></td><td>String</td><td>Nullable</td><td>Nom de famille de l'utilisateur</td></tr>
         <tr><td><code>prenom</code></td><td>String</td><td>Nullable</td><td>Prénom de l'utilisateur</td></tr>
         <tr><td><code>date_naissance</code></td><td>String</td><td>Nullable</td><td>Date de naissance ISO (calcul dynamique d'âge)</td></tr>
@@ -1113,6 +1114,7 @@ E-Schola Pro/
         <tr><td><span class="badge badge-put">PUT</span></td><td><code>/users/{id}</code></td><td>Modifier un compte utilisateur (profil complet, normalisation des rôles avec accents, unicité croisée username/email, mot de passe, affectation de groupe, détection de changement de rôle avec persistance immédiate, envoi d'un email de notification de sécurité et traçabilité [AUDIT])</td><td>Admin, Admin Manager</td></tr>
         <tr><td><span class="badge badge-put">PUT</span></td><td><code>/users/{id}/password</code></td><td>Réinitialiser le mot de passe d'un utilisateur</td><td>Admin, Admin Manager</td></tr>
         <tr><td><span class="badge badge-put">PUT</span></td><td><code>/users/{id}/role</code></td><td>Changer le rôle d'un utilisateur (persistance immédiate en base de données, notification par email transactionnel à l'utilisateur, contrôles stricts anti-élévation, traçabilité [AUDIT])</td><td>Admin, Admin Manager</td></tr>
+        <tr><td><span class="badge badge-put">PUT</span></td><td><code>/users/{id}/status</code></td><td>Activer ou désactiver (suspendre) l'accès à la connexion d'un compte utilisateur (droits stricts pour Admin et Admin Manager, protection inviolable pour <code>admin_first</code>, interdiction d'auto-désactivation et traçabilité [AUDIT])</td><td>Admin, Admin Manager</td></tr>
         <tr><td><span class="badge badge-post">POST</span></td><td><code>/users/me/avatar</code></td><td>Téléverser une photo de profil avec auto-optimisation WebP 256×256 (Pillow, qualité 80, réduction &gt;98% d'espace) et persistance intégrale en base de données Railway (Data URI Base64)</td><td>Authentifié</td></tr>
         <tr><td><span class="badge badge-delete">DELETE</span></td><td><code>/users/me/avatar</code></td><td>Supprimer la photo de profil personnalisée et réinitialiser vers les initiales dynamiques</td><td>Authentifié</td></tr>
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/users/{id}/avatar</code></td><td>Servir et streamer directement l'avatar optimisé WebP depuis la base de données avec en-têtes HTTP de mise en cache</td><td>Public</td></tr>
@@ -1352,6 +1354,7 @@ E-Schola Pro/
         <tr><td><strong>Envoi Général / Broadcast ("All")</strong></td><td>✅</td><td>✅</td><td>✅</td><td>❌ <em>(Interdit &amp; HTTP 403 pour Étudiant, Stagiaire, Employé)</em></td></tr>
         <tr><td><strong>Réception du Message d'Accueil Automatique</strong></td><td>✅</td><td>✅</td><td>✅</td><td>✅ <em>(Déclenché à la création du compte)</em></td></tr>
         <tr><td><strong>Gérer les apprenants &amp; formateurs (Création/Rôle)</strong></td><td>✅</td><td>✅</td><td>❌</td><td>❌</td></tr>
+        <tr><td><strong>Activer / Suspendre la connexion d'un compte utilisateur</strong></td><td>✅ <em>(Tous sauf admin_first)</em></td><td>✅ <em>(Apprenants &amp; Formateurs)</em></td><td>❌ <em>(Interdit)</em></td><td>❌ <em>(Interdit)</em></td></tr>
         <tr><td><strong>Attribuer les rôles Admin / Admin Manager</strong></td><td>✅</td><td>❌ <em>(Interdit)</em></td><td>❌</td><td>❌</td></tr>
         <tr><td><strong>Modifier/Supprimer un compte Admin existant</strong></td><td>✅</td><td>❌ <em>(Interdit)</em></td><td>❌</td><td>❌</td></tr>
         <tr><td><strong>Modifier / Supprimer le compte racine <code>admin_first</code></strong></td><td>❌ <em>(Intouchable)</em></td><td>❌ <em>(Interdit &amp; HTTP 403)</em></td><td>❌</td><td>❌</td></tr>

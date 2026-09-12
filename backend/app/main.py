@@ -68,17 +68,23 @@ async def lifespan(app: FastAPI):
         with SessionLocal() as db_session:
             init_db(db_session)
 
-        # Safe non-destructive column check for quizzes.target_group
+        # Safe non-destructive column check for quizzes.target_group and users.is_active
         with engine.connect() as conn:
             try:
                 if dialect == "sqlite":
-                    cols = [row[1] for row in conn.execute(text("PRAGMA table_info(quizzes)")).fetchall()]
-                    if cols and "target_group" not in cols:
+                    quiz_cols = [row[1] for row in conn.execute(text("PRAGMA table_info(quizzes)")).fetchall()]
+                    if quiz_cols and "target_group" not in quiz_cols:
                         conn.execute(text("ALTER TABLE quizzes ADD COLUMN target_group VARCHAR DEFAULT 'all'"))
                         conn.commit()
                         print("[Database Migration] Colonne target_group ajoutée avec succès sur la table quizzes.")
+                    user_cols = [row[1] for row in conn.execute(text("PRAGMA table_info(users)")).fetchall()]
+                    if user_cols and "is_active" not in user_cols:
+                        conn.execute(text("ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT 1"))
+                        conn.commit()
+                        print("[Database Migration] Colonne is_active ajoutée avec succès sur la table users.")
                 elif dialect == "postgresql":
                     conn.execute(text("ALTER TABLE quizzes ADD COLUMN IF NOT EXISTS target_group VARCHAR DEFAULT 'all'"))
+                    conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE"))
                     conn.commit()
             except Exception as mig_err:
                 print(f"[Database Migration Notice] {mig_err}")

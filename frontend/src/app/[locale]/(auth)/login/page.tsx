@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { Link, useRouter } from '@/i18n/routing';
 import { apiClient } from '@/lib/api';
-import { Cpu, Eye, EyeOff } from 'lucide-react';
+import { Cpu, Eye, EyeOff, Mail, ShieldAlert, AlertCircle } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import BackButton from '@/components/BackButton';
 
@@ -16,11 +16,13 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [isAccountDeactivated, setIsAccountDeactivated] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setIsAccountDeactivated(false);
     setLoading(true);
     try {
       const response = await apiClient.post('/login/access-token', {
@@ -42,19 +44,28 @@ export default function LoginPage() {
       } catch {}
       router.push('/dashboard');
     } catch (err: any) {
-      if (err?.response?.status === 400 || err?.response?.status === 401) {
-        setError(err?.response?.data?.detail || t('error') || 'Identifiants incorrects (email ou mot de passe)');
+      const detailMsg = err?.response?.data?.detail || '';
+      const isForbidden = err?.response?.status === 403;
+      const isDeactivated = isForbidden || detailMsg.toLowerCase().includes('désactivé') || detailMsg.toLowerCase().includes('desactive');
+
+      if (isDeactivated) {
+        setIsAccountDeactivated(true);
+        setError(detailMsg || "Votre compte a été désactivé par l'administration. Veuillez contacter l'administration pour réactiver votre accès.");
+      } else if (err?.response?.status === 400 || err?.response?.status === 401) {
+        setError(detailMsg || t('error') || 'Identifiants incorrects (email ou mot de passe)');
       } else if (err?.response?.status >= 500) {
         setError('Le serveur backend est temporairement indisponible (Erreur 500/502).');
       } else if (err?.message === 'Network Error' || !err?.response) {
         setError('Impossible de contacter le serveur backend. Vérifiez votre connexion.');
       } else {
-        setError(err?.response?.data?.detail || t('error') || 'Une erreur est survenue lors de la connexion');
+        setError(detailMsg || t('error') || 'Une erreur est survenue lors de la connexion');
       }
     } finally {
       setLoading(false);
     }
   };
+
+  const contactAdminMailto = `mailto:contact@eschola.pro?subject=${encodeURIComponent('Demande de réactivation de compte E-Schola Pro')}&body=${encodeURIComponent(`Bonjour l'administration E-Schola Pro,\n\nMon compte (${email.trim() || 'mon email'}) a été désactivé. Je sollicite la réactivation de mes accès à la plateforme.\n\nIdentifiant/Email : ${email.trim() || 'N/A'}\n\nMerci d'avance.`)}`;
 
   return (
     <div className="min-h-screen relative flex items-center justify-center pt-24 pb-12 px-4 select-none bg-white">
@@ -97,11 +108,36 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* Error Alert */}
+        {/* Error Alert / Deactivated Account Alert */}
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-600 p-3 rounded-xl text-xs text-center font-semibold">
-            {error}
-          </div>
+          isAccountDeactivated ? (
+            <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs space-y-3 shadow-xs animate-fade-in">
+              <div className="flex items-start gap-2.5">
+                <ShieldAlert size={20} className="text-rose-600 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="font-bold text-rose-900">Accès Compte Désactivé</p>
+                  <p className="leading-relaxed text-[11px] text-rose-700">{error}</p>
+                </div>
+              </div>
+              <div className="pt-2 border-t border-rose-200/60 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                <a
+                  href={contactAdminMailto}
+                  className="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-[11px] flex items-center justify-center gap-2 transition-colors shadow-xs"
+                >
+                  <Mail size={14} />
+                  <span>Contacter l'Administration</span>
+                </a>
+                <span className="text-[10px] text-rose-600 font-mono text-center sm:text-left self-center">
+                  contact@eschola.pro
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-red-50 border border-red-200 text-red-600 p-3 rounded-xl text-xs text-center font-semibold flex items-center justify-center gap-2">
+              <AlertCircle size={15} className="shrink-0 text-red-500" />
+              <span>{error}</span>
+            </div>
+          )
         )}
 
         {/* Form */}

@@ -55,7 +55,10 @@ import {
   GraduationCap,
   Unlock,
   CreditCard,
-  Phone
+  Phone,
+  Power,
+  UserCheck,
+  UserX
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import BackButton from '@/components/BackButton';
@@ -74,6 +77,7 @@ interface UserProfile {
   id: number;
   email: string;
   role: string;
+  is_active?: boolean;
   avatar_url?: string;
   username?: string;
   nom?: string;
@@ -238,6 +242,7 @@ export default function ProfilePage() {
   const [editPays, setEditPays] = useState('');
   const [editDepartement, setEditDepartement] = useState('');
   const [editSpecialisation, setEditSpecialisation] = useState('');
+  const [editIsActive, setEditIsActive] = useState(true);
   const [editPassword, setEditPassword] = useState('');
   const [isUpdatingUser, setIsUpdatingUser] = useState(false);
   const [editUserError, setEditUserError] = useState('');
@@ -419,6 +424,7 @@ export default function ProfilePage() {
     setEditPays(u.pays || 'Tunisie');
     setEditDepartement(u.departement || '');
     setEditSpecialisation(u.specialisation || '');
+    setEditIsActive(u.is_active !== false);
     setEditPassword('');
     setEditUserError('');
     setIsEditUserModalOpen(true);
@@ -435,6 +441,7 @@ export default function ProfilePage() {
         username: editUsername.trim() || undefined,
         email: editEmail.trim() || undefined,
         role: editRole,
+        is_active: editIsActive,
         group_name: editGroupName.trim(),
         nom: editNom.trim() || undefined,
         prenom: editPrenom.trim() || undefined,
@@ -806,6 +813,30 @@ export default function ProfilePage() {
     }
   };
 
+  const handleToggleUserStatus = async (targetUser: UserProfile) => {
+    const newStatus = targetUser.is_active === false ? true : false;
+    const actionLabel = newStatus ? 'réactiver la connexion pour' : 'suspendre et désactiver le compte de';
+    if (!confirm(`Confirmez-vous vouloir ${actionLabel} "${targetUser.email}" ?`)) return;
+
+    setActionMessage(null);
+    try {
+      const res = await apiClient.put(`/users/${targetUser.id}/status`, { is_active: newStatus });
+      setAllUsers((prev) => prev.map((u) => (u.id === targetUser.id ? { ...u, is_active: res.data.is_active } : u)));
+      if (user && user.id === targetUser.id) {
+        setUser((prev) => (prev ? { ...prev, is_active: res.data.is_active } : null));
+      }
+      setActionMessage({
+        type: 'success',
+        text: `Compte "${targetUser.email}" ${newStatus ? 'réactivé (connexion autorisée)' : 'désactivé (connexion suspendue)'} avec succès.`
+      });
+    } catch (err: any) {
+      setActionMessage({
+        type: 'error',
+        text: err?.response?.data?.detail || "Erreur lors de la modification du statut de l'utilisateur."
+      });
+    }
+  };
+
   const handleDeleteUser = async (targetUserId: number, email: string) => {
     if (!confirm(`Êtes-vous sûr de vouloir supprimer l'utilisateur "${email}" ?`)) return;
     setActionMessage(null);
@@ -986,6 +1017,7 @@ export default function ProfilePage() {
                         <th className="px-6 py-3.5">Rôle Actuel</th>
                         <th className="px-6 py-3.5">Groupe / Classe</th>
                         <th className="px-6 py-3.5">Changer le Rôle</th>
+                        <th className="px-6 py-3.5">Statut Connexion</th>
                         <th className="px-6 py-3.5 text-right">Actions</th>
                       </tr>
                     </thead>
@@ -993,8 +1025,10 @@ export default function ProfilePage() {
                       {usersList.map((u) => {
                         const isCurrentUser = u.id === user.id;
                         const isTargetAdmin = ADMIN_ROLES.includes(u.role);
-                        const canModifyTargetRole = isSuperAdmin ? !isCurrentUser : (!isCurrentUser && !isTargetAdmin);
-                        const canDeleteTarget = isSuperAdmin ? !isCurrentUser : (!isCurrentUser && !isTargetAdmin);
+                        const isRoot = isRootAdmin(u);
+                        const canModifyTargetRole = isSuperAdmin ? (!isCurrentUser && !isRoot) : (!isCurrentUser && !isTargetAdmin && !isRoot);
+                        const canToggleStatus = isSuperAdmin ? (!isCurrentUser && !isRoot) : (!isCurrentUser && !isTargetAdmin && !isRoot);
+                        const canDeleteTarget = isSuperAdmin ? (!isCurrentUser && !isRoot) : (!isCurrentUser && !isTargetAdmin && !isRoot);
                         const canResetTargetPassword = isSuperAdmin ? true : !isTargetAdmin;
 
                         const selectableRoles = isSuperAdmin
@@ -1047,6 +1081,38 @@ export default function ProfilePage() {
                                   </option>
                                 ))}
                               </select>
+                            </td>
+
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center gap-2">
+                                {u.is_active !== false ? (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                    <span>Actif</span>
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                                    <span>Suspendu</span>
+                                  </span>
+                                )}
+
+                                {canToggleStatus && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggleUserStatus(u)}
+                                    className={`px-2 py-1 rounded-lg text-[10px] font-bold border transition-all cursor-pointer inline-flex items-center gap-1 ${
+                                      u.is_active !== false
+                                        ? 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100 hover:border-rose-300'
+                                        : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300'
+                                    }`}
+                                    title={u.is_active !== false ? "Suspendre l'accès et désactiver la connexion" : "Réactiver l'accès et la connexion"}
+                                  >
+                                    <Power size={11} />
+                                    <span>{u.is_active !== false ? 'Désactiver' : 'Activer'}</span>
+                                  </button>
+                                )}
+                              </div>
                             </td>
 
                             <td className="px-6 py-4 text-right whitespace-nowrap">
@@ -2854,6 +2920,45 @@ export default function ProfilePage() {
                         placeholder="Laisser vide pour conserver le mot de passe actuel"
                         className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 focus:bg-white focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 outline-none transition-all font-mono placeholder:text-slate-400"
                       />
+                    </div>
+
+                    <div className="sm:col-span-2 p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <p className="font-bold text-xs text-slate-800 flex items-center gap-1.5">
+                          <Power size={14} className={editIsActive ? "text-emerald-600" : "text-rose-600"} />
+                          <span>Statut de connexion du compte</span>
+                        </p>
+                        <p className="text-[11px] text-slate-500 mt-0.5">
+                          {editIsActive
+                            ? "Compte actif : l'utilisateur peut se connecter normalement à la plateforme."
+                            : "Compte suspendu : l'accès est bloqué avec message invitant à contacter l'administration."}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => setEditIsActive(true)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                            editIsActive
+                              ? 'bg-emerald-600 text-white shadow-xs'
+                              : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-100'
+                          }`}
+                        >
+                          Actif
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditIsActive(false)}
+                          disabled={isRootAdmin(editingUser) || (editingUser ? editingUser.id === user.id : false)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer ${
+                            !editIsActive
+                              ? 'bg-rose-600 text-white shadow-xs'
+                              : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-100'
+                          }`}
+                        >
+                          Suspendu
+                        </button>
+                      </div>
                     </div>
                   </div>
 

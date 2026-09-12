@@ -15,6 +15,7 @@ from app.api.deps import CurrentUser, SessionDep
 from app.core.security import get_password_hash, verify_password
 from app.models.user import User
 from app.schemas.user import (
+    StatusUpdate,
     UserCreate,
     UserMinimalRead,
     UserResponse,
@@ -597,6 +598,66 @@ def update_user_role(
     return user
 
 
+@router.put("/{user_id}/status", response_model=UserResponse)
+def update_user_status(
+    user_id: int,
+    status_in: StatusUpdate,
+    session: SessionDep,
+    current_user: CurrentUser,
+) -> Any:
+    """
+    Activer ou désactiver (suspendre) l'accès d'un compte utilisateur.
+    Autorisé aux rôles 'admin' et 'admin_manager'.
+    Règles de sécurité strictes :
+    - admin_first ne peut JAMAIS être désactivé par qui que ce soit.
+    - Un utilisateur ne peut pas désactiver son propre compte connecté.
+    - Un admin_manager ne peut pas désactiver un admin ou un admin_manager.
+    """
+    if current_user.role.lower() not in ADMIN_ROLES:
+        raise HTTPException(
+            status_code=403,
+            detail="Droits insuffisants. Seuls les administrateurs et directeurs peuvent modifier le statut d'un compte.",
+        )
+
+    user = session.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Utilisateur introuvable.")
+
+    # Protection intouchable pour le super-administrateur racine 'admin_first'
+    if is_protected_root_admin(user) and not status_in.is_active:
+        raise HTTPException(
+            status_code=403,
+            detail="Le compte super-administrateur racine 'admin_first' est intouchable et ne peut jamais être désactivé.",
+        )
+
+    # Empêcher l'auto-désactivation
+    if user.id == current_user.id and not status_in.is_active:
+        raise HTTPException(
+            status_code=400,
+            detail="Vous ne pouvez pas désactiver votre propre compte administrateur en cours d'utilisation.",
+        )
+
+    # Restrictions pour admin_manager
+    if current_user.role.lower() == "admin_manager" and user.role.lower() in ADMIN_ROLES:
+        raise HTTPException(
+            status_code=403,
+            detail="Un ADMIN_MANAGER ne peut pas modifier le statut d'activation d'un compte administrateur.",
+        )
+
+    user.is_active = status_in.is_active
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+
+    action_str = "activé" if user.is_active else "désactivé (accès suspendu)"
+    print(
+        f"[Audit Statut Compte] Compte utilisateur ID {user.id} ({user.email}) {action_str} "
+        f"par {current_user.email} (ID {current_user.id}, rôle: {current_user.role})."
+    )
+
+    return user
+
+
 @router.delete("/{user_id}")
 def delete_user(
     user_id: int,
@@ -1078,6 +1139,24 @@ def admin_update_user(
         user.departement = user_in.departement.strip() or None
     if user_in.specialisation is not None:
         user.specialisation = user_in.specialisation.strip() or None
+    if user_in.is_active is not None:
+        if is_protected_root_admin(user) and not user_in.is_active:
+            raise HTTPException(
+                status_code=403,
+                detail="Le compte super-administrateur racine 'admin_first' ne peut pas être désactivé.",
+            )
+        if user.id == current_user.id and not user_in.is_active:
+            raise HTTPException(
+                status_code=400,
+                detail="Vous ne pouvez pas désactiver votre propre compte.",
+            )
+        if current_user.role.lower() == "admin_manager" and user.role.lower() in ADMIN_ROLES:
+            raise HTTPException(
+                status_code=403,
+                detail="Un ADMIN_MANAGER ne peut pas désactiver un compte administrateur.",
+            )
+        user.is_active = user_in.is_active
+
     if "group_name" in user_in.model_fields_set or user_in.group_name is not None:
         sync_user_group_membership(session, user, user_in.group_name)
 
