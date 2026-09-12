@@ -58,7 +58,8 @@ import {
   Phone,
   Power,
   UserCheck,
-  UserX
+  UserX,
+  ShieldAlert
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import BackButton from '@/components/BackButton';
@@ -246,6 +247,20 @@ export default function ProfilePage() {
   const [editPassword, setEditPassword] = useState('');
   const [isUpdatingUser, setIsUpdatingUser] = useState(false);
   const [editUserError, setEditUserError] = useState('');
+
+  // 3D Centered Confirmation Dialog State
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    type: 'status_toggle' | 'delete_user' | 'delete_course' | 'delete_quiz';
+    targetUser?: UserProfile;
+    targetId?: number;
+    targetTitle?: string;
+    targetNewStatus?: boolean;
+    isProcessing?: boolean;
+  }>({
+    isOpen: false,
+    type: 'status_toggle',
+  });
 
   // ==========================================
   // SYSTÈME DE GESTION PAR DOSSIERS DE RÔLES
@@ -730,15 +745,8 @@ export default function ProfilePage() {
     fetchUser();
   }, [router]);
 
-  const handleDeleteQuizInProfile = async (quizId: number) => {
-    if (!confirm('Voulez-vous vraiment supprimer ce quiz ?')) return;
-    try {
-      await apiClient.delete(`/quizzes/${quizId}`);
-      setAllQuizzes(prev => prev.filter(q => q.id !== quizId));
-      setActionMessage({ type: 'success', text: 'Quiz supprimé avec succès.' });
-    } catch (err: any) {
-      setActionMessage({ type: 'error', text: err?.response?.data?.detail || 'Erreur lors de la suppression.' });
-    }
+  const handleDeleteQuizInProfile = (quizId: number, title?: string) => {
+    handleRequestDeleteQuiz(quizId, title);
   };
 
   const handleInspectQuizInProfile = async (quiz: QuizItem) => {
@@ -813,53 +821,83 @@ export default function ProfilePage() {
     }
   };
 
-  const handleToggleUserStatus = async (targetUser: UserProfile) => {
+  const handleRequestToggleStatus = (targetUser: UserProfile) => {
     const newStatus = targetUser.is_active === false ? true : false;
-    const actionLabel = newStatus ? 'réactiver la connexion pour' : 'suspendre et désactiver le compte de';
-    if (!confirm(`Confirmez-vous vouloir ${actionLabel} "${targetUser.email}" ?`)) return;
+    setConfirmModal({
+      isOpen: true,
+      type: 'status_toggle',
+      targetUser,
+      targetNewStatus: newStatus,
+      isProcessing: false,
+    });
+  };
 
-    setActionMessage(null);
+  const handleRequestDeleteUser = (targetUser: UserProfile) => {
+    setConfirmModal({
+      isOpen: true,
+      type: 'delete_user',
+      targetUser,
+      targetId: targetUser.id,
+      targetTitle: targetUser.email,
+      isProcessing: false,
+    });
+  };
+
+  const handleRequestDeleteCourse = (courseId: number, title: string) => {
+    setConfirmModal({
+      isOpen: true,
+      type: 'delete_course',
+      targetId: courseId,
+      targetTitle: title,
+      isProcessing: false,
+    });
+  };
+
+  const handleRequestDeleteQuiz = (quizId: number, title?: string) => {
+    setConfirmModal({
+      isOpen: true,
+      type: 'delete_quiz',
+      targetId: quizId,
+      targetTitle: title || `Quiz #${quizId}`,
+      isProcessing: false,
+    });
+  };
+
+  const handleExecuteConfirmAction = async () => {
+    if (!confirmModal.isOpen) return;
+    setConfirmModal((prev) => ({ ...prev, isProcessing: true }));
+
     try {
-      const res = await apiClient.put(`/users/${targetUser.id}/status`, { is_active: newStatus });
-      setAllUsers((prev) => prev.map((u) => (u.id === targetUser.id ? { ...u, is_active: res.data.is_active } : u)));
-      if (user && user.id === targetUser.id) {
-        setUser((prev) => (prev ? { ...prev, is_active: res.data.is_active } : null));
+      if (confirmModal.type === 'status_toggle' && confirmModal.targetUser) {
+        const targetUser = confirmModal.targetUser;
+        const newStatus = confirmModal.targetNewStatus ?? (targetUser.is_active === false ? true : false);
+        const res = await apiClient.put(`/users/${targetUser.id}/status`, { is_active: newStatus });
+        setAllUsers((prev) => prev.map((u) => (u.id === targetUser.id ? { ...u, is_active: res.data.is_active } : u)));
+        if (user && user.id === targetUser.id) {
+          setUser((prev) => (prev ? { ...prev, is_active: res.data.is_active } : null));
+        }
+        setActionMessage({
+          type: 'success',
+          text: `Compte "${targetUser.email}" ${newStatus ? 'réactivé (connexion autorisée)' : 'suspendu et désactivé'} avec succès.`,
+        });
+      } else if (confirmModal.type === 'delete_user' && confirmModal.targetId) {
+        await apiClient.delete(`/users/${confirmModal.targetId}`);
+        setAllUsers((prev) => prev.filter((u) => u.id !== confirmModal.targetId));
+        setActionMessage({ type: 'success', text: `Utilisateur "${confirmModal.targetTitle || confirmModal.targetId}" supprimé.` });
+      } else if (confirmModal.type === 'delete_course' && confirmModal.targetId) {
+        await apiClient.delete(`/courses/${confirmModal.targetId}`);
+        setAllCourses((prev) => prev.filter((c) => c.id !== confirmModal.targetId));
+        setActionMessage({ type: 'success', text: `Cours "${confirmModal.targetTitle}" supprimé avec succès.` });
+      } else if (confirmModal.type === 'delete_quiz' && confirmModal.targetId) {
+        await apiClient.delete(`/quizzes/${confirmModal.targetId}`);
+        setAllQuizzes((prev) => prev.filter((q) => q.id !== confirmModal.targetId));
+        setActionMessage({ type: 'success', text: `Quiz "${confirmModal.targetTitle}" supprimé avec succès.` });
       }
-      setActionMessage({
-        type: 'success',
-        text: `Compte "${targetUser.email}" ${newStatus ? 'réactivé (connexion autorisée)' : 'désactivé (connexion suspendue)'} avec succès.`
-      });
+      setConfirmModal((prev) => ({ ...prev, isOpen: false, isProcessing: false }));
     } catch (err: any) {
-      setActionMessage({
-        type: 'error',
-        text: err?.response?.data?.detail || "Erreur lors de la modification du statut de l'utilisateur."
-      });
-    }
-  };
-
-  const handleDeleteUser = async (targetUserId: number, email: string) => {
-    if (!confirm(`Êtes-vous sûr de vouloir supprimer l'utilisateur "${email}" ?`)) return;
-    setActionMessage(null);
-    try {
-      await apiClient.delete(`/users/${targetUserId}`);
-      setAllUsers(prev => prev.filter(u => u.id !== targetUserId));
-      setActionMessage({ type: 'success', text: `Utilisateur "${email}" supprimé.` });
-    } catch (err) {
-      const e = err as { response?: { data?: { detail?: string } } };
-      setActionMessage({ type: 'error', text: e.response?.data?.detail || 'Impossible de supprimer cet utilisateur.' });
-    }
-  };
-
-  const handleDeleteCourse = async (courseId: number, title: string) => {
-    if (!confirm(`Supprimer définitivement le cours "${title}" ?`)) return;
-    setActionMessage(null);
-    try {
-      await apiClient.delete(`/courses/${courseId}`);
-      setAllCourses(prev => prev.filter(c => c.id !== courseId));
-      setActionMessage({ type: 'success', text: `Cours "${title}" supprimé avec succès.` });
-    } catch (err) {
-      const e = err as { response?: { data?: { detail?: string } } };
-      setActionMessage({ type: 'error', text: e.response?.data?.detail || 'Erreur lors de la suppression du cours.' });
+      const errorMsg = err?.response?.data?.detail || "Une erreur est survenue lors de l'exécution de l'action.";
+      setActionMessage({ type: 'error', text: errorMsg });
+      setConfirmModal((prev) => ({ ...prev, isProcessing: false }));
     }
   };
 
@@ -1100,7 +1138,7 @@ export default function ProfilePage() {
                                 {canToggleStatus && (
                                   <button
                                     type="button"
-                                    onClick={() => handleToggleUserStatus(u)}
+                                    onClick={() => handleRequestToggleStatus(u)}
                                     className={`px-2 py-1 rounded-lg text-[10px] font-bold border transition-all cursor-pointer inline-flex items-center gap-1 ${
                                       u.is_active !== false
                                         ? 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100 hover:border-rose-300'
@@ -1139,7 +1177,7 @@ export default function ProfilePage() {
                                 )}
                                 {canDeleteTarget && (
                                   <button
-                                    onClick={() => handleDeleteUser(u.id, u.email)}
+                                    onClick={() => handleRequestDeleteUser(u)}
                                     className="p-2 rounded-lg text-slate-500 hover:text-red-500 hover:bg-red-50 transition-colors cursor-pointer"
                                     title="Supprimer cet utilisateur"
                                   >
@@ -1502,8 +1540,8 @@ export default function ProfilePage() {
                             Voir <ExternalLink size={12} />
                           </Link>
                           <button
-                            onClick={() => handleDeleteCourse(course.id, course.title)}
-                            className="p-1.5 rounded-lg text-text-secondary hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                            onClick={() => handleRequestDeleteCourse(course.id, course.title)}
+                            className="p-1.5 rounded-lg text-text-secondary hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
                             title="Supprimer ce cours"
                           >
                             <Trash2 size={16} />
@@ -1629,8 +1667,8 @@ export default function ProfilePage() {
                               <span>Résultats</span>
                             </button>
                             <button
-                              onClick={() => handleDeleteQuizInProfile(quiz.id)}
-                              className="p-2 rounded-xl text-text-secondary hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
+                              onClick={() => handleRequestDeleteQuiz(quiz.id, quiz.title)}
+                              className="p-2 rounded-xl text-text-secondary hover:text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
                               title="Supprimer ce quiz"
                             >
                               <Trash2 size={16} />
@@ -2980,6 +3018,133 @@ export default function ProfilePage() {
                     </button>
                   </div>
                 </form>
+              </div>
+            </div>
+          )}
+
+          {/* ========================================================================= */}
+          {/* MODAL 3D CENTRÉ DE CONFIRMATION D'ACTION (THÈME E-SCHOLA PRO)             */}
+          {/* ========================================================================= */}
+          {confirmModal.isOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/65 backdrop-blur-md animate-fade-in select-none">
+              <div className="relative w-full max-w-md bg-white rounded-3xl border border-slate-200/90 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.35),0_0_40px_rgba(24,119,242,0.12)] p-6 sm:p-8 text-center space-y-5 transform transition-all animate-scale-up">
+                
+                {/* 3D Floating Glowing Icon Badge */}
+                <div className="flex justify-center -mt-2">
+                  {confirmModal.type === 'status_toggle' ? (
+                    confirmModal.targetNewStatus ? (
+                      <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-emerald-500 to-emerald-600 text-white flex items-center justify-center shadow-lg shadow-emerald-500/35 ring-8 ring-emerald-50 transform rotate-3 hover:rotate-0 transition-transform">
+                        <Power size={30} className="drop-shadow-sm" />
+                      </div>
+                    ) : (
+                      <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-rose-500 to-rose-600 text-white flex items-center justify-center shadow-lg shadow-rose-500/35 ring-8 ring-rose-50 transform -rotate-3 hover:rotate-0 transition-transform">
+                        <Power size={30} className="drop-shadow-sm" />
+                      </div>
+                    )
+                  ) : (
+                    <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-red-600 to-rose-700 text-white flex items-center justify-center shadow-lg shadow-red-600/35 ring-8 ring-red-50 transform -rotate-3 hover:rotate-0 transition-transform">
+                      <Trash2 size={30} className="drop-shadow-sm" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Security Chip Badge */}
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200/80 text-[#1877f2] text-[10px] font-extrabold uppercase tracking-wider shadow-2xs">
+                  <Cpu size={13} className="text-[#1877f2] animate-pulse" />
+                  <span>E-Schola Pro Sécurité</span>
+                </div>
+
+                {/* Title & Description */}
+                <div className="space-y-2">
+                  <h3 className="text-xl font-black text-slate-900 tracking-tight">
+                    {confirmModal.type === 'status_toggle'
+                      ? confirmModal.targetNewStatus
+                        ? "Réactiver l'Accès Compte"
+                        : "Suspendre la Connexion Compte"
+                      : confirmModal.type === 'delete_user'
+                        ? "Supprimer cet Utilisateur"
+                        : confirmModal.type === 'delete_course'
+                          ? "Supprimer ce Cours"
+                          : "Supprimer ce Quiz"}
+                  </h3>
+                  <p className="text-xs sm:text-sm text-slate-500 leading-relaxed max-w-sm mx-auto">
+                    {confirmModal.type === 'status_toggle'
+                      ? confirmModal.targetNewStatus
+                        ? `Confirmez-vous vouloir réactiver la connexion et rétablir tous les accès pour ce compte ?`
+                        : `Confirmez-vous vouloir suspendre et désactiver la connexion pour ce compte utilisateur ?`
+                      : `Êtes-vous certain de vouloir supprimer définitivement cet élément ? Cette action est irréversible.`}
+                  </p>
+                </div>
+
+                {/* 3D Recessed Target Preview Card */}
+                {confirmModal.targetUser && (
+                  <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center gap-3 text-left shadow-inner">
+                    <div className="w-10 h-10 rounded-xl bg-blue-100/70 border border-blue-200 text-[#1877f2] font-bold flex items-center justify-center text-sm shrink-0 shadow-xs">
+                      {confirmModal.targetUser.email.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-bold text-xs text-slate-900 truncate">{confirmModal.targetUser.email}</p>
+                      <p className="text-[11px] text-slate-500 truncate">
+                        {[confirmModal.targetUser.prenom, confirmModal.targetUser.nom].filter(Boolean).join(' ') || `ID #${confirmModal.targetUser.id}`} • <span className="font-semibold text-[#1877f2] capitalize">{confirmModal.targetUser.role}</span>
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {confirmModal.targetTitle && !confirmModal.targetUser && (
+                  <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80 text-left shadow-inner">
+                    <p className="font-bold text-xs text-slate-900 truncate">{confirmModal.targetTitle}</p>
+                    <p className="text-[11px] text-slate-500">ID #{confirmModal.targetId}</p>
+                  </div>
+                )}
+
+                {/* Impact Warning */}
+                {confirmModal.type === 'status_toggle' && !confirmModal.targetNewStatus && (
+                  <div className="p-3 rounded-xl bg-rose-50/80 border border-rose-200 text-rose-800 text-[11px] text-left flex items-start gap-2">
+                    <ShieldAlert size={16} className="text-rose-600 shrink-0 mt-0.5" />
+                    <p className="leading-snug">
+                      L'utilisateur ne pourra plus s'authentifier. Un message l'orientant vers <strong>contact@eschola.pro</strong> lui sera présenté.
+                    </p>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    disabled={confirmModal.isProcessing}
+                    onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                    className="w-1/2 py-3 bg-slate-100 hover:bg-slate-200 active:scale-[0.98] text-slate-700 rounded-2xl font-bold border border-slate-300 transition-all text-xs cursor-pointer shadow-xs"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="button"
+                    disabled={confirmModal.isProcessing}
+                    onClick={handleExecuteConfirmAction}
+                    className={`w-1/2 py-3 active:scale-[0.98] text-white rounded-2xl font-extrabold transition-all text-xs flex items-center justify-center gap-2 cursor-pointer shadow-md ${
+                      confirmModal.type === 'status_toggle'
+                        ? confirmModal.targetNewStatus
+                          ? 'bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 shadow-emerald-500/25'
+                          : 'bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-700 hover:to-rose-600 shadow-rose-500/25'
+                        : 'bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 shadow-red-500/25'
+                    }`}
+                  >
+                    {confirmModal.isProcessing ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      <Check size={16} />
+                    )}
+                    <span>
+                      {confirmModal.type === 'status_toggle'
+                        ? confirmModal.targetNewStatus
+                          ? "Confirmer l'activation"
+                          : "Confirmer la suspension"
+                        : "Confirmer la suppression"}
+                    </span>
+                  </button>
+                </div>
+
               </div>
             </div>
           )}
