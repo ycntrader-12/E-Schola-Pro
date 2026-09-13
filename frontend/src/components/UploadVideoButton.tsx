@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from '@/i18n/routing';
-import { Plus, Video, Loader2, Upload, AlertCircle } from 'lucide-react';
+import { Video, Loader2, Upload, AlertCircle } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 
 interface Course {
@@ -149,9 +149,10 @@ export default function UploadVideoButton({ courses }: UploadVideoButtonProps) {
             setSelectedCourseId(String(myCourses[0].id));
           }
         }}
-        className="px-6 py-3 rounded-xl font-semibold text-sm bg-surface border border-border text-text-primary hover:bg-surface-hover hover:border-primary/40 flex items-center gap-2 transition-all cursor-pointer shadow-sm"
+        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm bg-white text-[#1877f2] border border-blue-200/90 hover:bg-blue-50/80 shadow-xs hover:border-[#1877f2]/50 active:scale-95 transition-all cursor-pointer shrink-0"
       >
-        <Video size={18} className="text-primary" /> Ajouter une vidéo
+        <Video size={17} className="text-[#1877f2]" />
+        <span>Ajouter une vidéo</span>
       </button>
 
       {/* Upload Video Modal */}

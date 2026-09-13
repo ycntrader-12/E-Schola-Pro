@@ -172,50 +172,53 @@ export default function CourseSearchClient({ initialCourses }: CourseSearchClien
         <BackButton className="mb-2" />
       </div>
 
-      {/* Header Section */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6 bg-gradient-to-r from-blue-50/80 via-indigo-50/40 to-slate-50 p-6 sm:p-8 rounded-3xl border border-slate-200/80 shadow-xs">
-        <div className="space-y-3 max-w-2xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100/80 text-[#1877f2] font-extrabold text-xs">
-            <Folder className="w-3.5 h-3.5" />
-            <span>Campus Numérique • Dossiers de Formation</span>
-          </div>
-          <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-900">
-            Dossiers de Cours & <span className="bg-gradient-to-r from-[#1877f2] to-[#0052cc] bg-clip-text text-transparent">Vidéos Pédagogiques</span>
-          </h1>
-          <p className="text-slate-600 text-xs sm:text-sm leading-relaxed">
-            Consultez notre bibliothèque de formations organisée par dossiers thématiques. Chaque dossier regroupe le cours, ses leçons vidéo séquencées et ses supports de cours.
-          </p>
-
-          {/* Quick Metrics */}
-          <div className="flex flex-wrap items-center gap-4 pt-1 text-xs font-bold text-slate-700">
-            <span className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white border border-slate-200 shadow-2xs">
-              <Folder className="w-4 h-4 text-[#1877f2]" />
-              <strong>{totalCourses}</strong> {totalCourses > 1 ? 'Dossiers de cours' : 'Dossier de cours'}
-            </span>
-            <span className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white border border-slate-200 shadow-2xs">
-              <Film className="w-4 h-4 text-emerald-600" />
-              <strong>{totalVideos}</strong> {totalVideos > 1 ? 'Vidéos de formation' : 'Vidéo de formation'}
-            </span>
-          </div>
+      {/* Header Section Centré & Thème Officiel E-Schola Pro */}
+      <div className="flex flex-col items-center text-center p-8 sm:p-12 rounded-3xl bg-gradient-to-b from-blue-50/60 via-white to-slate-50/40 border border-slate-200/90 shadow-sm space-y-6">
+        {/* Badge Thème */}
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50 border border-blue-200/80 text-[#1877f2] font-extrabold text-xs shadow-2xs">
+          <Folder className="w-3.5 h-3.5 text-[#1877f2]" />
+          <span>Campus Numérique • Dossiers de Formation</span>
         </div>
 
-        {/* Search Bar & Action Buttons */}
-        <div className="flex flex-col gap-3 w-full lg:w-auto shrink-0">
-          <form onSubmit={handleSearchSubmit} className="flex items-center w-full lg:w-96 shadow-xs rounded-2xl overflow-hidden border border-slate-200 bg-white">
+        {/* Title & Subtitle Centered */}
+        <div className="space-y-3 max-w-3xl mx-auto">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-slate-900 leading-tight">
+            Dossiers de Cours & <span className="bg-gradient-to-r from-[#1877f2] via-[#2563eb] to-[#0052cc] bg-clip-text text-transparent">Vidéos Pédagogiques</span>
+          </h1>
+          <p className="text-slate-600 text-xs sm:text-sm max-w-2xl mx-auto leading-relaxed">
+            Consultez notre bibliothèque de formations organisée par dossiers thématiques. Chaque dossier regroupe le cours, ses leçons vidéo séquencées et ses supports de cours.
+          </p>
+        </div>
+
+        {/* Quick Metrics Centered */}
+        <div className="flex flex-wrap items-center justify-center gap-3 pt-1 text-xs font-bold text-slate-700">
+          <span className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white border border-slate-200 shadow-2xs">
+            <Folder className="w-4 h-4 text-[#1877f2]" />
+            <strong>{totalCourses}</strong> {totalCourses > 1 ? 'Dossiers de cours' : 'Dossier de cours'}
+          </span>
+          <span className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white border border-slate-200 shadow-2xs">
+            <Film className="w-4 h-4 text-emerald-600" />
+            <strong>{totalVideos}</strong> {totalVideos > 1 ? 'Vidéos de formation' : 'Vidéo de formation'}
+          </span>
+        </div>
+
+        {/* Search Bar & Action Buttons Centered */}
+        <div className="flex flex-col items-center gap-4 w-full max-w-2xl mx-auto pt-2">
+          <form onSubmit={handleSearchSubmit} className="flex items-center w-full shadow-sm rounded-2xl overflow-hidden border border-slate-200 bg-white focus-within:border-[#1877f2] focus-within:ring-2 focus-within:ring-blue-100 transition-all">
             <div className="relative flex-1 flex items-center">
-              <Search className="absolute left-3.5 text-slate-400" size={18} />
+              <Search className="absolute left-4 text-slate-400" size={18} />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={searchEngine === 'app' ? "Rechercher cours, vidéo, compétence..." : "Rechercher sur Google..."}
-                className="w-full pl-10 pr-3 py-2.5 bg-transparent text-slate-900 placeholder:text-slate-400 outline-none text-xs font-medium"
+                className="w-full pl-11 pr-4 py-3 bg-transparent text-slate-900 placeholder:text-slate-400 outline-none text-xs sm:text-sm font-medium"
               />
             </div>
             <select
               value={searchEngine}
               onChange={(e) => setSearchEngine(e.target.value as 'app' | 'google')}
-              className="bg-slate-50 border-l border-slate-200 px-3 py-2.5 text-xs text-slate-600 font-bold hover:text-slate-900 focus:outline-none cursor-pointer"
+              className="bg-slate-50 border-l border-slate-200 px-4 py-3 text-xs sm:text-sm text-slate-600 font-bold hover:text-slate-900 focus:outline-none cursor-pointer"
             >
               <option value="app">App</option>
               <option value="google">Google</option>
@@ -223,24 +226,24 @@ export default function CourseSearchClient({ initialCourses }: CourseSearchClien
           </form>
 
           {/* Action buttons (Upload Video & Create Course) */}
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center justify-center gap-3">
             <UploadVideoButton courses={courses} />
             <CreateCourseButton />
           </div>
         </div>
       </div>
 
-      {/* Control Bar: Categories Filter & View Mode Switcher */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b border-slate-200">
-        {/* Category Pills */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
+      {/* Control Bar: Categories Filter & View Mode Switcher Centered */}
+      <div className="flex flex-col lg:flex-row items-center justify-between gap-4 pb-2 border-b border-slate-200">
+        {/* Category Pills Centered */}
+        <div className="flex items-center justify-center gap-2 overflow-x-auto pb-1 lg:pb-0 scrollbar-none flex-wrap">
           {categories.map((cat) => (
             <button
               key={cat.id}
               onClick={() => setSelectedCategory(cat.id)}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
                 selectedCategory === cat.id
-                  ? 'bg-[#1877f2] text-white shadow-xs'
+                  ? 'bg-[#1877f2] text-white shadow-xs shadow-blue-500/30'
                   : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
               }`}
             >
@@ -250,7 +253,7 @@ export default function CourseSearchClient({ initialCourses }: CourseSearchClien
         </div>
 
         {/* View Mode Switcher & Folders Toggle */}
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center justify-center gap-3 shrink-0">
           {viewMode === 'folders' && (
             <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-600 font-semibold">
               <button
@@ -626,23 +629,23 @@ export default function CourseSearchClient({ initialCourses }: CourseSearchClien
       {activeModalVideo && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-3 sm:p-6 animate-in fade-in duration-200">
           <div className="relative w-full max-w-4xl bg-white rounded-3xl border border-slate-200 shadow-2xl overflow-hidden flex flex-col max-h-[92vh] animate-in zoom-in-95 duration-200">
-            {/* Modal Header */}
-            <div className="px-5 py-4 bg-gradient-to-r from-slate-900 to-slate-800 text-white flex items-center justify-between shrink-0">
+            {/* Modal Header avec Thème E-Schola Blue */}
+            <div className="px-5 sm:px-6 py-4 bg-gradient-to-r from-[#1877f2] to-[#0052cc] text-white flex items-center justify-between shrink-0 shadow-xs">
               <div className="space-y-0.5 max-w-2xl">
-                <div className="flex items-center gap-2 text-xs text-blue-300 font-extrabold">
+                <div className="flex items-center gap-2 text-xs text-blue-100 font-extrabold">
                   <Folder className="w-3.5 h-3.5" />
                   <span>Dossier : {activeModalVideo.course.title}</span>
                   <span>•</span>
                   <span>Leçon #{activeModalVideo.videoIndex + 1} / {activeModalVideo.course.videos?.length || 1}</span>
                 </div>
-                <h3 className="text-base font-extrabold truncate">
+                <h3 className="text-base font-extrabold truncate text-white">
                   {activeModalVideo.video.title}
                 </h3>
               </div>
 
               <button
                 onClick={() => setActiveModalVideo(null)}
-                className="w-8 h-8 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
+                className="w-8 h-8 rounded-xl bg-white/15 hover:bg-white/25 text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
                 title="Fermer la vidéo"
                 aria-label="Fermer"
               >

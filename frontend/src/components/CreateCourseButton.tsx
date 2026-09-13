@@ -30,8 +30,12 @@ export default function CreateCourseButton() {
   if (!canCreate) return null;
 
   return (
-    <Link href="/courses/new" className="btn-primary flex items-center gap-2">
-      <Plus size={18} /> Create Course
+    <Link 
+      href="/courses/new" 
+      className="btn-primary inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-blue-500/20 active:scale-95 transition-all cursor-pointer shrink-0"
+    >
+      <Plus size={17} />
+      <span>Créer un cours</span>
     </Link>
   );
 }
