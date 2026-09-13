@@ -222,7 +222,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
           <button
             type="button"
             onClick={() => {
-              window.dispatchEvent(new CustomEvent('open_role_guide'));
+              window.dispatchEvent(new CustomEvent('open_role_guide', { detail: { role: userRole } }));
               if (setIsOpen) setIsOpen(false);
             }}
             className="w-full group flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all text-sm font-medium text-slate-200 hover:bg-white/10 hover:text-white cursor-pointer"

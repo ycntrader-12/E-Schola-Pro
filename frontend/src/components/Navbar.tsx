@@ -217,7 +217,7 @@ export default function Navbar() {
               {!isPublicPage && (
                 <button
                   type="button"
-                  onClick={() => window.dispatchEvent(new CustomEvent('open_role_guide'))}
+                  onClick={() => window.dispatchEvent(new CustomEvent('open_role_guide', { detail: { role: userRole } }))}
                   className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[#1877f2] bg-blue-50/80 hover:bg-blue-100 border border-blue-200/60 text-xs font-bold transition-all shadow-xs group cursor-pointer"
                   title="Guide Assistant & Aide par Rôle"
                   aria-label="Guide Assistant"

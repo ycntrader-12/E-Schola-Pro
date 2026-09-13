@@ -2838,15 +2838,15 @@ E-Schola Pro/
   
     
       <div class="card">
-        <h4>RoleGuideAssistant.tsx (Composant Global & Guide sur Demande)</h4>
-        <p>Composant modal d'assistance et d'onboarding par rôle (<code>frontend/src/components/RoleGuideAssistant.tsx</code>) :</p>
+        <h4>RoleGuideAssistant.tsx (Composant Global & Guide sur Demande par Rôle Autorisé)</h4>
+        <p>Composant modal d'assistance et d'onboarding ciblé par rôle autorisé (<code>frontend/src/components/RoleGuideAssistant.tsx</code>) :</p>
         <ul>
-          <li><strong>Écran épuré :</strong> Le bouton flottant en bas d'écran a été supprimé de toutes les pages afin d'offrir une interface totalement nette et sans encombrement visuel.</li>
-          <li><strong>Ouverture sur demande ciblée :</strong> L'assistant interactif reste directement accessible via les déclencheurs de la barre latérale (<code>Sidebar.tsx</code>) et de la barre supérieure (<code>Navbar.tsx</code>), tout en étant rigoureusement masqué sur les pages publiques (page d'accueil vitrine, login, inscription) pour préserver un design épuré aux visiteurs.</li>
-          <li>Détection automatique du rôle utilisateur via token JWT et <code>localStorage</code>.</li>
-          <li>Sélecteur de prévisualisation multi-rôles permettant d'explorer les parcours de l'ensemble des 8 rôles.</li>
+          <li><strong>Affichage exclusif du rôle autorisé :</strong> Chaque utilisateur connecté ne voit désormais que le guide correspondant strictement à son rôle autorisé (Super-Administrateur, Formateur, Étudiant, etc.). Le sélecteur global affichant tous les rôles a été remplacé par un indicateur élégant du rôle actif autorisé afin d'éliminer toute confusion et préserver le cloisonnement RBAC.</li>
+          <li><strong>Détection &amp; Normalisation Robuste :</strong> Extraction synchronisée du rôle depuis <code>localStorage</code>, le payload JWT décodé et l'endpoint <code>/users/me</code> avec normalisation insensible aux accents (ex: <code>étudiant</code> &rarr; <code>etudiant</code>) et transmission explicite via <code>open_role_guide</code> depuis <code>Navbar.tsx</code> et <code>Sidebar.tsx</code>.</li>
+          <li><strong>Écran épuré :</strong> Le bouton flottant intrusif en bas d'écran a été supprimé de toutes les pages afin d'offrir une interface totalement nette et sans encombrement visuel.</li>
+          <li><strong>Ouverture sur demande ciblée :</strong> L'assistant interactif reste directement accessible via les déclencheurs de la barre latérale (<code>Sidebar.tsx</code>) et de la barre supérieure (<code>Navbar.tsx</code>), tout en étant rigoureusement masqué sur les pages publiques (page d'accueil vitrine, login, inscription).</li>
           <li>Checklist d'onboarding interactive avec sauvegarde de la progression locale par utilisateur.</li>
-          <li>Moteur de recherche interne instantané filtrant tâches, modules et questions fréquentes.</li>
+          <li>Moteur de recherche interne instantané filtrant tâches, modules et questions fréquentes du rôle connecté.</li>
           <li>Intégration universelle dans <code>Providers</code> via l'événement <code>open_role_guide</code>.</li>
         </ul>
       </div>

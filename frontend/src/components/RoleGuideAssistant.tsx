@@ -839,63 +839,88 @@ const ROLES_DATA: Record<RoleType, RoleConfig> = {
   }
 };
 
+export function normalizeRole(raw: string | null | undefined): RoleType {
+  if (!raw) return 'etudiant';
+  const clean = raw.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  if (clean === 'admin' || clean === 'superadmin' || clean === 'administrateur' || clean === 'super-administrateur') return 'admin';
+  if (clean === 'admin_manager' || clean === 'adminmanager' || clean === 'gestionnaire') return 'admin_manager';
+  if (clean === 'formateur' || clean === 'enseignant' || clean === 'professeur' || clean === 'teacher') return 'formateur';
+  if (clean === 'pedagogique' || clean === 'coordinateur_pedagogique' || clean === 'responsable_pedagogique') return 'pedagogique';
+  if (clean === 'dg_rh' || clean === 'dgrh' || clean === 'rh' || clean === 'directeur') return 'dg_rh';
+  if (clean === 'stagiaire' || clean === 'intern') return 'stagiaire';
+  if (clean === 'employer' || clean === 'employe' || clean === 'salarie') return 'employer';
+  return 'etudiant';
+}
+
+function getInitialRole(): RoleType {
+  if (typeof window === 'undefined') return 'etudiant';
+  try {
+    const stored = localStorage.getItem('user_role');
+    if (stored) return normalizeRole(stored);
+
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      const parts = token.split('.');
+      if (parts.length === 3) {
+        const base64Url = parts[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(
+          atob(base64)
+            .split('')
+            .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+            .join('')
+        );
+        const payload = JSON.parse(jsonPayload);
+        if (payload.role) {
+          const norm = normalizeRole(payload.role);
+          localStorage.setItem('user_role', norm);
+          return norm;
+        }
+      }
+    }
+  } catch {}
+  return 'etudiant';
+}
+
 export default function RoleGuideAssistant() {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'checklist' | 'modules' | 'tips' | 'faq' | 'permissions'>('checklist');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedRole, setSelectedRole] = useState<RoleType>('etudiant');
+  const [selectedRole, setSelectedRole] = useState<RoleType>(getInitialRole);
   const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
-  const [currentUserRole, setCurrentUserRole] = useState<RoleType | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
 
-  // 1. Initialiser le rôle courant depuis le token ou localStorage
+  // 1. Initialiser et synchroniser le rôle autorisé de l'utilisateur
   useEffect(() => {
-    const detectUserRole = () => {
+    const detectUserRole = async () => {
+      const initial = getInitialRole();
+      setSelectedRole(initial);
+
       try {
-        const storedRole = localStorage.getItem('user_role');
-        if (storedRole) {
-          const clean = storedRole.trim().toLowerCase() as RoleType;
-          if (ROLES_DATA[clean]) {
-            setCurrentUserRole(clean);
-            setSelectedRole(clean);
-            return;
-          }
-        }
         const token = localStorage.getItem('access_token');
         if (token) {
-          const parts = token.split('.');
-          if (parts.length === 3) {
-            const base64Url = parts[1];
-            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-            const jsonPayload = decodeURIComponent(
-              atob(base64)
-                .split('')
-                .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-                .join('')
-            );
-            const payload = JSON.parse(jsonPayload);
-            if (payload.role) {
-              const r = String(payload.role).trim().toLowerCase() as RoleType;
-              if (ROLES_DATA[r]) {
-                setCurrentUserRole(r);
-                setSelectedRole(r);
-                localStorage.setItem('user_role', r);
-                return;
-              }
-            }
+          const res = await apiClient.get('/users/me');
+          if (res.data?.role) {
+            const fresh = normalizeRole(res.data.role);
+            setSelectedRole(fresh);
+            localStorage.setItem('user_role', fresh);
           }
         }
       } catch {}
-      setSelectedRole('etudiant');
     };
 
     detectUserRole();
 
     // 2. Écouter les événements d'ouverture externe (Navbar, Sidebar, etc.)
     const handleOpenGuide = (e: any) => {
-      if (e?.detail?.role && ROLES_DATA[e.detail.role as RoleType]) {
-        setSelectedRole(e.detail.role as RoleType);
+      if (e?.detail?.role) {
+        const r = normalizeRole(e.detail.role);
+        setSelectedRole(r);
+      } else {
+        const r = getInitialRole();
+        setSelectedRole(r);
+        detectUserRole();
       }
       setIsOpen(true);
     };
@@ -1039,38 +1064,20 @@ export default function RoleGuideAssistant() {
               </div>
             </div>
 
-            {/* Barre de sélection de rôle (Pills) & Recherche */}
+            {/* Barre de Rôle Autorisé & Recherche */}
             <div className="bg-slate-50 border-b border-slate-200 px-5 sm:px-7 py-3 shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-3">
-              {/* Sélecteur de rôle */}
+              {/* Rôle autorisé de l'utilisateur connecté */}
               <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
-                <span className="text-xs font-bold text-slate-600 shrink-0 flex items-center gap-1">
-                  <Layers className="w-3.5 h-3.5 text-blue-600" /> Rôle :
+                <span className="text-xs font-bold text-slate-600 shrink-0 flex items-center gap-1.5">
+                  <Layers className="w-3.5 h-3.5 text-[#1877f2]" /> Rôle :
                 </span>
-                {(Object.keys(ROLES_DATA) as RoleType[]).map((rKey) => {
-                  const r = ROLES_DATA[rKey];
-                  const isSelected = selectedRole === rKey;
-                  const isUserActualRole = currentUserRole === rKey;
-
-                  return (
-                    <button
-                      key={rKey}
-                      onClick={() => {
-                        setSelectedRole(rKey);
-                        setSearchQuery('');
-                      }}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
-                        isSelected
-                          ? 'bg-[#1877f2] text-white shadow-sm shadow-blue-600/30'
-                          : 'bg-white text-slate-700 hover:bg-slate-200/80 border border-slate-200'
-                      }`}
-                    >
-                      {r.label}
-                      {isUserActualRole && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" title="Votre rôle actuel" />
-                      )}
-                    </button>
-                  );
-                })}
+                <div
+                  className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-[#1877f2] text-white shadow-sm shadow-blue-600/30 flex items-center gap-2 shrink-0 select-none"
+                  title="Rôle autorisé connecté"
+                >
+                  <span>{currentConfig.label}</span>
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" title="Votre rôle autorisé" />
+                </div>
               </div>
 
               {/* Champ de recherche interne */}
