@@ -847,7 +847,6 @@ export default function RoleGuideAssistant() {
   const [selectedRole, setSelectedRole] = useState<RoleType>('etudiant');
   const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
   const [currentUserRole, setCurrentUserRole] = useState<RoleType | null>(null);
-  const [isMinimized, setIsMinimized] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
 
   // 1. Initialiser le rôle courant depuis le token ou localStorage
@@ -899,7 +898,6 @@ export default function RoleGuideAssistant() {
         setSelectedRole(e.detail.role as RoleType);
       }
       setIsOpen(true);
-      setIsMinimized(false);
     };
 
     window.addEventListener('open_role_guide', handleOpenGuide);
@@ -989,41 +987,15 @@ export default function RoleGuideAssistant() {
     router.push(href as any);
   };
 
+  if (!isOpen) return null;
+
   return (
     <>
       {/* ===================================================================== */}
-      {/* 1. BOUTON FLOTTANT D'ASSISTANT (Bottom Right Corner)                   */}
+      {/* MODAL DU GUIDE ASSISTANT INTERACTIF (Déclenché via Navbar ou Sidebar) */}
       {/* ===================================================================== */}
-      <div className="fixed bottom-5 right-5 z-40 print:hidden flex flex-col items-end gap-2">
-        {!isOpen && (
-          <button
-            onClick={() => setIsOpen(true)}
-            className="group flex items-center gap-2.5 px-4 py-3 bg-[#1877f2] hover:bg-[#166fe5] text-white rounded-2xl shadow-lg hover:shadow-xl hover:shadow-blue-500/25 border border-white/20 transition-all duration-200 active:scale-95 cursor-pointer"
-            title="Ouvrir le Guide Assistant par Rôle"
-            aria-label="Guide Assistant E-Schola"
-          >
-            <div className="relative flex items-center justify-center w-7 h-7 rounded-xl bg-white/20">
-              <Sparkles className="w-4 h-4 text-white animate-pulse" />
-            </div>
-            <div className="text-left hidden sm:block">
-              <div className="text-xs font-bold leading-tight flex items-center gap-1.5">
-                Guide Assistant
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-              </div>
-              <div className="text-[10.5px] text-blue-100 font-medium leading-none mt-0.5">
-                Aide & Parcours {currentConfig.label}
-              </div>
-            </div>
-          </button>
-        )}
-      </div>
-
-      {/* ===================================================================== */}
-      {/* 2. MODAL DU GUIDE ASSISTANT INTERACTIF                                 */}
-      {/* ===================================================================== */}
-      {isOpen && (
-        <div 
-          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 animate-fade-in print:hidden"
+      <div 
+        className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 animate-fade-in print:hidden"
           onClick={(e) => {
             if (e.target === e.currentTarget) setIsOpen(false);
           }}
@@ -1526,7 +1498,6 @@ export default function RoleGuideAssistant() {
             </div>
           </div>
         </div>
-      )}
     </>
   );
 }

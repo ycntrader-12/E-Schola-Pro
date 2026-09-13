@@ -86,6 +86,7 @@ export default function Navbar() {
   if (normalizedPath === '/dashboard' || normalizedPath.startsWith('/dashboard/')) return null;
 
   const isHomePage = normalizedPath === '/' || normalizedPath === '';
+  const isPublicPage = isHomePage || normalizedPath === '/login' || normalizedPath === '/register';
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-[#e4e6eb] h-16 transition-colors shadow-xs">
@@ -117,6 +118,7 @@ export default function Navbar() {
             </span>
           </Link>
 
+          {/* About anchor link on public home */}
           {isHomePage && (
             <a
               href="#about"
@@ -211,17 +213,19 @@ export default function Navbar() {
                 ) : null}
               </Link>
 
-              {/* Guide Assistant par Rôle */}
-              <button
-                type="button"
-                onClick={() => window.dispatchEvent(new CustomEvent('open_role_guide'))}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[#1877f2] bg-blue-50/80 hover:bg-blue-100 border border-blue-200/60 text-xs font-bold transition-all shadow-xs group cursor-pointer"
-                title="Guide Assistant & Aide par Rôle"
-                aria-label="Guide Assistant"
-              >
-                <Compass size={16} className="transition-transform group-hover:rotate-45" />
-                <span className="hidden md:inline">Guide</span>
-              </button>
+              {/* Guide Assistant par Rôle (Masqué sur les pages publiques) */}
+              {!isPublicPage && (
+                <button
+                  type="button"
+                  onClick={() => window.dispatchEvent(new CustomEvent('open_role_guide'))}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[#1877f2] bg-blue-50/80 hover:bg-blue-100 border border-blue-200/60 text-xs font-bold transition-all shadow-xs group cursor-pointer"
+                  title="Guide Assistant & Aide par Rôle"
+                  aria-label="Guide Assistant"
+                >
+                  <Compass size={16} className="transition-transform group-hover:rotate-45" />
+                  <span className="hidden md:inline">Guide</span>
+                </button>
+              )}
 
               <Link 
                 href="/profile"
