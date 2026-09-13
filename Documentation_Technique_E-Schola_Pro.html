@@ -2126,13 +2126,21 @@ E-Schola Pro/
       </div>
     </div>
 
-    <h3>Module 2 — Gestion des Cours</h3>
+    <h3>Module 2 — Gestion des Cours & Dossiers Pédagogiques</h3>
     <div class="card">
       <p><strong>Routes Frontend :</strong> <code>/courses</code> · <code>/courses/new</code> · <code>/courses/{id}</code></p>
       <p><strong>Options et propriétés :</strong></p>
       <ul>
-        <li><strong>Création :</strong> Formulaire avec titre, description, image de couverture (upload Cloudinary), document PDF</li>
-        <li><strong>Vidéos &amp; Playlist :</strong> Gestion d'une playlist de vidéos ordonnées par cours. Les formateurs et administrateurs peuvent téléverser des fichiers vidéo locaux (MP4, WebM) via un modal d'upload dédié directement depuis la page de détail du cours (<code>/courses/{id}</code>) ou en tant que raccourci depuis la liste globale des cours (<code>/courses</code>).</li>
+        <li><strong>Organisation Pédagogique par Dossiers :</strong> Chaque cours est structuré comme un <strong>Dossier de Formation</strong> complet (<code>📁 Dossier #[ID]</code>), regroupant l'ensemble de ses vidéos séquencées (<code>🎬 X leçons vidéo</code>), son support de cours PDF téléchargeable et son formateur référent.</li>
+        <li><strong>Double Mode d'Exploration :</strong>
+          <ul>
+            <li><strong>Vue Dossiers Pédagogiques (Folder Explorer) :</strong> Affichage en rayons thématiques avec dossiers dépliables en un clic (accordéons), permettant d'inspecter et de lancer instantanément chaque leçon vidéo sans quitter l'explorateur.</li>
+            <li><strong>Vue Grille de Cartes (Grid View) :</strong> Cartes de cours immersives avec tiroir déroulant <code>📂 Vidéos du dossier</code> pour explorer les chapitres au format mosaïque.</li>
+          </ul>
+        </li>
+        <li><strong>Lecteur Vidéo Modal Interactif &amp; Navigation dans le Dossier :</strong> Visionnage instantané en haute définition via un lecteur modal intégré avec navigation fluide (<em>Leçon précédente</em> / <em>Leçon suivante</em>) au sein de la playlist du dossier.</li>
+        <li><strong>Filtres par Domaine &amp; Recherche Universelle :</strong> Boutons de filtrage par thématique (<em>Web & Fullstack</em>, <em>Python & APIs</em>, <em>IA & Data</em>, <em>Cybersécurité</em>) et moteur de recherche en temps réel interrogeant simultanément les titres de cours, descriptions et intitulés de vidéos.</li>
+        <li><strong>Création &amp; Enrichissement :</strong> Formulaire de création de cours avec upload d'image de couverture, document PDF et téléversement de nouvelles leçons vidéo directement dans le dossier sélectionné via <code>UploadVideoButton</code>.</li>
         <li><strong>Lecteur Vidéo Avancé Haute Performance UDP (<code>YoutubePlayer.tsx</code>) :</strong> Moteur de streaming vidéo universel hybride intégrant :
           <ul>
             <li><strong>Pipeline UDP Streaming &amp; Accélération QUIC/RTP :</strong> Diffusion en basse latence sans blocage de tête de ligne avec badge HUD dynamique, préchargement continu de mémoire tampon et panneau de diagnostic des métriques réseau (débit en Mbps, perte de paquets 0%, latence RTT, jitter, résolution 60 FPS).</li>
@@ -2144,9 +2152,8 @@ E-Schola Pro/
             <li><strong>Compatibilité Hybride :</strong> Détection automatique et encapsulation optimisée pour les flux YouTube ou lecture native pour les vidéos locales/serveur.</li>
           </ul>
         </li>
-        <li><strong>Inscription :</strong> Les étudiants peuvent s'inscrire/se désinscrire automatiquement</li>
-        <li><strong>Détail du cours (/courses/{id}) :</strong> Bannière horizontale d'inscription et d'actions (statut d'inscription, bouton de téléchargement du support, bouton de suppression), lecteur vidéo intégré, description étendue et playlist interactive des leçons</li>
-        <li><strong>Suppression :</strong> Cascade automatique (vidéos et inscriptions supprimées)</li>
+        <li><strong>Inscription &amp; Détail du cours (/courses/{id}) :</strong> Bannière d'inscription, lecteur vidéo HD principal, description étendue et playlist interactive ordonnée.</li>
+        <li><strong>Suppression :</strong> Cascade automatique (vidéos et inscriptions supprimées).</li>
       </ul>
       <div class="screenshot-container">
         <div class="screenshot-header">
