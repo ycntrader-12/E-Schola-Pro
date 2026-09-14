@@ -44,3 +44,20 @@ class CourseResponse(CourseBase):
 
     class Config:
         from_attributes = True
+
+
+class CourseAiAssistRequest(BaseModel):
+    prompt: str
+    course_id: int | None = None
+    mode: str = "ask"  # 'ask', 'explain', 'summarize', 'translate', 'compose'
+    target_lang: str | None = "en"  # 'en', 'ar', 'es', 'fr', 'de'
+
+
+class CourseAiAssistResponse(BaseModel):
+    response: str
+    course_id: int | None = None
+    course_title: str | None = None
+    has_document: bool = False
+    video_count: int = 0
+    google_translate_url: str | None = None
+    sources: list[str] = []

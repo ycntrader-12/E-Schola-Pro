@@ -19,13 +19,15 @@ import {
   ExternalLink,
   LayoutGrid,
   Clock,
-  ArrowRight
+  ArrowRight,
+  Sparkles,
 } from 'lucide-react';
 import CreateCourseButton from '@/components/CreateCourseButton';
 import UploadVideoButton from '@/components/UploadVideoButton';
 import BackButton from '@/components/BackButton';
 import YoutubePlayer from '@/components/video/YoutubePlayer';
 import DownloadCourseButton from '@/components/DownloadCourseButton';
+import { GoogleAiAssistModal } from '@/components/inbox/GoogleAiAssistModal';
 import { apiClient } from '@/lib/api';
 
 export interface CourseVideo {
@@ -69,6 +71,10 @@ export default function CourseSearchClient({ initialCourses }: CourseSearchClien
     course: Course;
     videoIndex: number;
   } | null>(null);
+
+  // Assistant IA Google Gemini Modal State
+  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
+  const [aiCourseId, setAiCourseId] = useState<number | null>(null);
 
   // Client-side dynamic refresh to ensure real-time consistency with backend database
   useEffect(() => {
@@ -225,10 +231,22 @@ export default function CourseSearchClient({ initialCourses }: CourseSearchClien
             </select>
           </form>
 
-          {/* Action buttons (Upload Video & Create Course) */}
+          {/* Action buttons (Upload Video, Create Course & Assistant IA) */}
           <div className="flex flex-wrap items-center justify-center gap-3">
             <UploadVideoButton courses={courses} />
             <CreateCourseButton />
+            <button
+              type="button"
+              onClick={() => {
+                setAiCourseId(null);
+                setIsAiModalOpen(true);
+              }}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs shadow-sm shadow-blue-500/20 transition-all cursor-pointer active:scale-95"
+              title="Assistant IA Google Gemini pour les cours"
+            >
+              <Sparkles size={14} className="text-yellow-300 animate-pulse" />
+              <span>Assistant IA Cours</span>
+            </button>
           </div>
         </div>
       </div>
@@ -417,6 +435,19 @@ export default function CourseSearchClient({ initialCourses }: CourseSearchClien
                           <ChevronDown size={15} />
                         </>
                       )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAiCourseId(course.id);
+                        setIsAiModalOpen(true);
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-50 hover:bg-blue-100 text-[#1877f2] text-xs font-bold rounded-xl border border-blue-200 shadow-2xs transition-all cursor-pointer"
+                      title="Interroger l'Assistant IA Gemini sur ce cours"
+                    >
+                      <Sparkles size={13} className="text-[#1877f2]" />
+                      <span>IA Cours</span>
                     </button>
 
                     <Link
@@ -726,6 +757,13 @@ export default function CourseSearchClient({ initialCourses }: CourseSearchClien
           </div>
         </div>
       )}
+
+      {/* Assistant IA Google Gemini Modal pour les Cours */}
+      <GoogleAiAssistModal
+        isOpen={isAiModalOpen}
+        onClose={() => setIsAiModalOpen(false)}
+        defaultCourseId={aiCourseId}
+      />
     </div>
   );
 }

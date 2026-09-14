@@ -1766,6 +1766,7 @@ E-Schola Pro/
         <tr><td><span class="badge badge-delete">DELETE</span></td><td><code>/courses/{id}</code></td><td>Supprimer un cours</td><td>Propriétaire, Admin</td></tr>
         <tr><td><span class="badge badge-post">POST</span></td><td><code>/courses/{course_id}/videos</code></td><td>Ajouter une vidéo à la playlist</td><td>Admin, Formateur</td></tr>
         <tr><td><span class="badge badge-delete">DELETE</span></td><td><code>/courses/{course_id}/videos/{video_id}</code></td><td>Supprimer une vidéo de la playlist</td><td>Admin, Formateur</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/courses/ai-assist</code></td><td>Génération de réponses intelligentes et explications contextuelles depuis les cours hébergés (extraction de contexte des fichiers PDF/documents et vidéos séquencées du cours), résumés synthétiques instantanés, et génération automatique de liens profonds Google Traduction multilingue (<code>https://translate.google.com/?sl=auto&tl=...&text=...</code>). Moteur hybride Google Gemini (<code>gemini-1.5-flash</code>) avec moteur d'inférence contextuelle de secours.</td><td>Authentifié</td></tr>
       </tbody>
     </table>
 
@@ -2154,7 +2155,20 @@ E-Schola Pro/
             <li><strong>Compatibilité Hybride :</strong> Détection automatique et encapsulation optimisée pour les flux YouTube ou lecture native pour les vidéos locales/serveur.</li>
           </ul>
         </li>
-        <li><strong>Inscription &amp; Détail du cours (/courses/{id}) :</strong> Bannière d'inscription, lecteur vidéo HD principal, description étendue et playlist interactive ordonnée.</li>
+        <li><strong>Inscription &amp; Détail du cours (/courses/{id}) :</strong> Bannière d'inscription, lecteur vidéo HD principal, description étendue, bouton d'accès direct à l'Assistant IA et playlist interactive ordonnée.</li>
+        <li><strong>Assistant Pédagogique IA Connecté aux Cours (Google Gemini &amp; Supports Multi-Formats) :</strong>
+          <ul>
+            <li><strong>Extraction Contextuelle Multi-Sources :</strong> L'assistant s'ancre directement sur le cours choisi pour extraire la structure du cours, ses fichiers supports (documents PDF, fiches de révision) et l'ensemble des leçons vidéo séquencées.</li>
+            <li><strong>Modes Pédagogiques Dédiés :</strong>
+              <ul>
+                <li><em>Questions &amp; Explications :</em> Réponses didactiques approfondies et explications étape par étape adaptées au niveau de l'apprenant.</li>
+                <li><em>Résumés Instantanés :</em> Synthèse en un clic des chapitres, récapitulatif des leçons vidéo et fiches de synthèse concises.</li>
+                <li><em>Traduction Multilingue Intégrée :</em> Traduction assistée multilingue (Français, Anglais, Arabe avec support RTL, Espagnol, Allemand) et passerelle directe avec lien pré-rempli vers Google Traduction multilingue (<code>translate.google.com</code>).</li>
+              </ul>
+            </li>
+            <li><strong>Points d'Accès Ergonomiques :</strong> Bouton <em>« Assistant IA Cours »</em> déployé sur la barre d'outils du catalogue (<code>/courses</code>), sur chaque carte de cours et dans la bannière de la page de cours détaillée (<code>/courses/[id]</code>).</li>
+          </ul>
+        </li>
         <li><strong>Suppression :</strong> Cascade automatique (vidéos et inscriptions supprimées).</li>
       </ul>
       <div class="screenshot-container">
@@ -2861,6 +2875,40 @@ E-Schola Pro/
         <li><code>Calendar</code> &amp; <code>Classroom</code> : Planification, dépôts de livrables, contrôles audio/vidéo et visioconférence HD.</li>
         <li><code>Inbox</code> &amp; <code>Profile</code> : Boîtes de messagerie, pièces jointes, sécurité, changement de mot de passe et gestion des permissions.</li>
         <li><code>Roles</code> : Dénominations officielles (Administrateur, Formateur, Étudiant, Stagiaire, Employé).</li>
+      </ul>
+    </div>
+
+    <h3>Assistant IA Pédagogique Google Gemini &amp; Passerelle Google Traduction Multilingue (GoogleAiAssistModal.tsx)</h3>
+    <div class="card" style="border-left: 4px solid #8b5cf6;">
+      <p>Afin d'offrir une expérience d'apprentissage intelligente et contextuelle assistée par IA, le composant multimodal <code>GoogleAiAssistModal.tsx</code> a été conçu et déployé de manière transverse :</p>
+      <ul>
+        <li><strong>Ancrage Contextuel aux Cours Hébergés :</strong>
+          <ul>
+            <li><em>Sélecteur Intelligent de Cours :</em> Permet à l'utilisateur de choisir le cours de référence (ou pré-sélection automatique du cours actif) parmi les cours hébergés sur la plateforme.</li>
+            <li><em>Extraction Automatique des Ressources :</em> Détection en direct des supports documentaires et fiches (PDF / documents) ainsi que du nombre de leçons vidéo du cours, avec badges indicateurs dynamiques.</li>
+            <li><em>Transmission au Backend :</em> Le payload envoyé à <code>/courses/ai-assist</code> transmet le titre, la description, l'URL du document et la playlist vidéo, garantissant que Gemini formule des explications ancrées dans les vraies ressources du cours.</li>
+          </ul>
+        </li>
+        <li><strong>Modes d'Assistance Pédagogique Intelligente :</strong>
+          <ul>
+            <li><strong>Mode Questions &amp; Cours :</strong> L'apprenant pose ses questions sur les points difficiles du cours et reçoit des réponses structurées, explicatives et progressives.</li>
+            <li><strong>Mode Résumé IA (1 Clic) :</strong> Génération instantanée d'un résumé complet du cours (concepts fondamentaux, plan du module, points d'attention et leçons clés).</li>
+            <li><strong>Mode Traduction Multilingue :</strong> Traduction des contenus pédagogiques vers 5 langues (Français, Anglais, Arabe, Espagnol, Allemand) avec boutons de sélection rapide.</li>
+            <li><strong>Mode Rédaction :</strong> Formulation et amélioration de messages pédagogiques à destination des formateurs ou pairs.</li>
+          </ul>
+        </li>
+        <li><strong>Passerelle Directe Google Traduction Multilingue :</strong>
+          <ul>
+            <li>Génération dynamique du lien officiel pré-rempli (<code>https://translate.google.com/?sl=auto&amp;tl={targetLang}&amp;text={encodedText}</code>).</li>
+            <li>Bouton d'action proéminent <em>« 🌐 Ouvrir dans Google Traduction Multilingue »</em> permettant à l'apprenant d'ouvrir directement le texte source et sa traduction sur l'outil Google Traduction dans un nouvel onglet sans ressaisie.</li>
+          </ul>
+        </li>
+        <li><strong>Résilience &amp; Zéro Dépendance Bloquante (Moteur Hybride) :</strong>
+          <ul>
+            <li>Connexion automatique à l'API Google Gemini avec clé <code>GEMINI_API_KEY</code> côté backend.</li>
+            <li>Moteur d'inférence contextuelle sémantique de secours (fallback) déterministe intégré à la fois côté serveur FastAPI et côté client React pour garantir une réponse même en cas d'absence de clé ou de coupure réseau externe.</li>
+          </ul>
+        </li>
       </ul>
     </div>
 
