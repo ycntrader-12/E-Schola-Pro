@@ -18,7 +18,9 @@ from app.models.user_invitation import UserInvitation
 from app.models.user_session import UserSession
 
 
-
+# ==============================================================================
+# 1. UTILISATEURS & ACCÈS
+# ==============================================================================
 class UserAdmin(ModelView, model=User):
     column_list = [User.id, User.username, User.nom, User.prenom, User.email, User.role, User.departement, User.specialisation]
     column_searchable_list = [User.username, User.email, User.nom, User.prenom]
@@ -26,8 +28,50 @@ class UserAdmin(ModelView, model=User):
     name = "Utilisateur"
     name_plural = "Utilisateurs"
     icon = "fa-solid fa-user"
+    category = "Utilisateurs & Accès"
+    category_icon = "fa-solid fa-users-gear"
 
 
+class UserSessionAdmin(ModelView, model=UserSession):
+    column_list = [
+        UserSession.id,
+        UserSession.user_id,
+        UserSession.device_info,
+        UserSession.ip_address,
+        UserSession.is_active,
+        UserSession.last_activity,
+        UserSession.created_at,
+    ]
+    column_searchable_list = [UserSession.ip_address, UserSession.device_info]
+    column_sortable_list = [UserSession.id, UserSession.last_activity, UserSession.created_at]
+    name = "Session Active"
+    name_plural = "Sessions Actives"
+    icon = "fa-solid fa-laptop"
+    category = "Utilisateurs & Accès"
+    category_icon = "fa-solid fa-users-gear"
+
+
+class UserInvitationAdmin(ModelView, model=UserInvitation):
+    column_list = [
+        UserInvitation.id,
+        UserInvitation.email,
+        UserInvitation.role,
+        UserInvitation.status,
+        UserInvitation.expires_at,
+        UserInvitation.created_at,
+    ]
+    column_searchable_list = [UserInvitation.email, UserInvitation.status, UserInvitation.role]
+    column_sortable_list = [UserInvitation.id, UserInvitation.created_at, UserInvitation.expires_at]
+    name = "Invitation Utilisateur"
+    name_plural = "Invitations Utilisateurs"
+    icon = "fa-solid fa-envelope"
+    category = "Utilisateurs & Accès"
+    category_icon = "fa-solid fa-users-gear"
+
+
+# ==============================================================================
+# 2. FORMATIONS & COURS
+# ==============================================================================
 class CourseAdmin(ModelView, model=Course):
     column_list = [Course.id, Course.title, Course.instructor_id]
     column_searchable_list = [Course.title]
@@ -35,6 +79,8 @@ class CourseAdmin(ModelView, model=Course):
     name = "Cours"
     name_plural = "Cours"
     icon = "fa-solid fa-book"
+    category = "Formations & Cours"
+    category_icon = "fa-solid fa-graduation-cap"
 
 
 class CourseVideoAdmin(ModelView, model=CourseVideo):
@@ -48,6 +94,8 @@ class CourseVideoAdmin(ModelView, model=CourseVideo):
     name = "Vidéo de Cours"
     name_plural = "Vidéos de Cours"
     icon = "fa-solid fa-film"
+    category = "Formations & Cours"
+    category_icon = "fa-solid fa-graduation-cap"
 
 
 class EnrollmentAdmin(ModelView, model=Enrollment):
@@ -59,67 +107,38 @@ class EnrollmentAdmin(ModelView, model=Enrollment):
     ]
     name = "Inscription"
     name_plural = "Inscriptions"
-    icon = "fa-solid fa-graduation-cap"
+    icon = "fa-solid fa-id-card"
+    category = "Formations & Cours"
+    category_icon = "fa-solid fa-graduation-cap"
 
 
-class ClassroomAdmin(ModelView, model=Classroom):
+class GroupAdmin(ModelView, model=Group):
+    column_list = [Group.id, Group.name, Group.level, Group.created_at]
+    column_searchable_list = [Group.name, Group.level]
+    name = "Groupe / Classe"
+    name_plural = "Groupes / Classes"
+    icon = "fa-solid fa-users"
+    category = "Formations & Cours"
+    category_icon = "fa-solid fa-graduation-cap"
+
+
+class GroupMemberAdmin(ModelView, model=GroupMember):
     column_list = [
-        Classroom.id,
-        Classroom.room_id,
-        Classroom.title,
-        Classroom.instructor_id,
-        Classroom.is_active,
-        Classroom.created_at,
+        GroupMember.id,
+        GroupMember.group_id,
+        GroupMember.user_id,
+        GroupMember.joined_at,
     ]
-    column_searchable_list = [Classroom.room_id, Classroom.title]
-    name = "Salle Vidéo Conférence"
-    name_plural = "Salles Vidéo Conférence"
-    icon = "fa-solid fa-video"
+    name = "Membre de Groupe"
+    name_plural = "Membres de Groupes"
+    icon = "fa-solid fa-user-plus"
+    category = "Formations & Cours"
+    category_icon = "fa-solid fa-graduation-cap"
 
 
-class MessageAdmin(ModelView, model=Message):
-    column_list = [
-        Message.id,
-        Message.sender_id,
-        Message.recipient_id,
-        Message.subject,
-        Message.is_read,
-        Message.read_at,
-        Message.created_at,
-    ]
-    column_searchable_list = [Message.subject, Message.body]
-    column_sortable_list = [Message.id, Message.created_at, Message.read_at, Message.is_read]
-    name = "Message"
-    name_plural = "Messages"
-    icon = "fa-solid fa-envelope"
-
-
-class EventAdmin(ModelView, model=Event):
-    column_list = [
-        Event.id,
-        Event.title,
-        Event.start_time,
-        Event.end_time,
-        Event.target_roles,
-    ]
-    column_searchable_list = [Event.title]
-    name = "Événement Calendrier"
-    name_plural = "Événements Calendrier"
-    icon = "fa-solid fa-calendar"
-
-
-class EventDeliverableAdmin(ModelView, model=EventDeliverable):
-    column_list = [
-        EventDeliverable.id,
-        EventDeliverable.event_id,
-        EventDeliverable.user_id,
-        EventDeliverable.submitted_at,
-    ]
-    name = "Livrable Événement"
-    name_plural = "Livrables Événements"
-    icon = "fa-solid fa-file-arrow-up"
-
-
+# ==============================================================================
+# 3. ÉVALUATIONS & DEVOIRS
+# ==============================================================================
 class QuizAdmin(ModelView, model=Quiz):
     column_list = [
         Quiz.id,
@@ -134,6 +153,8 @@ class QuizAdmin(ModelView, model=Quiz):
     name = "Quiz"
     name_plural = "Quiz"
     icon = "fa-solid fa-award"
+    category = "Évaluations & Devoirs"
+    category_icon = "fa-solid fa-award"
 
 
 class QuizQuestionAdmin(ModelView, model=QuizQuestion):
@@ -146,6 +167,8 @@ class QuizQuestionAdmin(ModelView, model=QuizQuestion):
     name = "Question Quiz"
     name_plural = "Questions Quiz"
     icon = "fa-solid fa-circle-question"
+    category = "Évaluations & Devoirs"
+    category_icon = "fa-solid fa-award"
 
 
 class QuizAttemptAdmin(ModelView, model=QuizAttempt):
@@ -161,57 +184,8 @@ class QuizAttemptAdmin(ModelView, model=QuizAttempt):
     name = "Tentative Quiz"
     name_plural = "Tentatives Quiz"
     icon = "fa-solid fa-chart-simple"
-
-
-class AttendanceAdmin(ModelView, model=Attendance):
-    column_list = [
-        Attendance.id,
-        Attendance.user_id,
-        Attendance.date,
-        Attendance.status,
-        Attendance.session_name,
-        Attendance.marked_by_id,
-    ]
-    column_searchable_list = [Attendance.session_name]
-    column_sortable_list = [Attendance.date, Attendance.status]
-    name = "Présence"
-    name_plural = "Présences"
-    icon = "fa-solid fa-clipboard-user"
-
-
-class GroupAdmin(ModelView, model=Group):
-    column_list = [Group.id, Group.name, Group.level, Group.created_at]
-    column_searchable_list = [Group.name, Group.level]
-    name = "Groupe / Classe"
-    name_plural = "Groupes / Classes"
-    icon = "fa-solid fa-users"
-
-
-class GroupMemberAdmin(ModelView, model=GroupMember):
-    column_list = [
-        GroupMember.id,
-        GroupMember.group_id,
-        GroupMember.user_id,
-        GroupMember.joined_at,
-    ]
-    name = "Membre de Groupe"
-    name_plural = "Membres de Groupes"
-    icon = "fa-solid fa-user-plus"
-
-
-class ClassroomInvitationAdmin(ModelView, model=ClassroomInvitation):
-    column_list = [
-        ClassroomInvitation.id,
-        ClassroomInvitation.classroom_id,
-        ClassroomInvitation.inviter_id,
-        ClassroomInvitation.invitee_id,
-        ClassroomInvitation.status,
-        ClassroomInvitation.created_at,
-    ]
-    column_searchable_list = [ClassroomInvitation.status]
-    name = "Invitation Salle Vidéo Conférence"
-    name_plural = "Invitations Salles Vidéo Conférence"
-    icon = "fa-solid fa-envelope-open-text"
+    category = "Évaluations & Devoirs"
+    category_icon = "fa-solid fa-award"
 
 
 class TaskAdmin(ModelView, model=Task):
@@ -231,6 +205,8 @@ class TaskAdmin(ModelView, model=Task):
     name = "Devoir / Tâche"
     name_plural = "Devoirs / Tâches"
     icon = "fa-solid fa-list-check"
+    category = "Évaluations & Devoirs"
+    category_icon = "fa-solid fa-award"
 
 
 class TaskSubmissionAdmin(ModelView, model=TaskSubmission):
@@ -247,8 +223,117 @@ class TaskSubmissionAdmin(ModelView, model=TaskSubmission):
     name = "Soumission de Devoir"
     name_plural = "Soumissions de Devoirs"
     icon = "fa-solid fa-file-circle-check"
+    category = "Évaluations & Devoirs"
+    category_icon = "fa-solid fa-award"
 
 
+# ==============================================================================
+# 4. COMMUNICATION & CALENDRIER
+# ==============================================================================
+class ClassroomAdmin(ModelView, model=Classroom):
+    column_list = [
+        Classroom.id,
+        Classroom.room_id,
+        Classroom.title,
+        Classroom.instructor_id,
+        Classroom.is_active,
+        Classroom.created_at,
+    ]
+    column_searchable_list = [Classroom.room_id, Classroom.title]
+    name = "Salle Vidéo Conférence"
+    name_plural = "Salles Vidéo Conférence"
+    icon = "fa-solid fa-video"
+    category = "Communication & Calendrier"
+    category_icon = "fa-solid fa-comments"
+
+
+class ClassroomInvitationAdmin(ModelView, model=ClassroomInvitation):
+    column_list = [
+        ClassroomInvitation.id,
+        ClassroomInvitation.classroom_id,
+        ClassroomInvitation.inviter_id,
+        ClassroomInvitation.invitee_id,
+        ClassroomInvitation.status,
+        ClassroomInvitation.created_at,
+    ]
+    column_searchable_list = [ClassroomInvitation.status]
+    name = "Invitation Vidéo Conférence"
+    name_plural = "Invitations Vidéo Conférence"
+    icon = "fa-solid fa-envelope-open-text"
+    category = "Communication & Calendrier"
+    category_icon = "fa-solid fa-comments"
+
+
+class MessageAdmin(ModelView, model=Message):
+    column_list = [
+        Message.id,
+        Message.sender_id,
+        Message.recipient_id,
+        Message.subject,
+        Message.is_read,
+        Message.read_at,
+        Message.created_at,
+    ]
+    column_searchable_list = [Message.subject, Message.body]
+    column_sortable_list = [Message.id, Message.created_at, Message.read_at, Message.is_read]
+    name = "Message"
+    name_plural = "Messages"
+    icon = "fa-solid fa-envelope"
+    category = "Communication & Calendrier"
+    category_icon = "fa-solid fa-comments"
+
+
+class EventAdmin(ModelView, model=Event):
+    column_list = [
+        Event.id,
+        Event.title,
+        Event.start_time,
+        Event.end_time,
+        Event.target_roles,
+    ]
+    column_searchable_list = [Event.title]
+    name = "Événement Calendrier"
+    name_plural = "Événements Calendrier"
+    icon = "fa-solid fa-calendar"
+    category = "Communication & Calendrier"
+    category_icon = "fa-solid fa-comments"
+
+
+class EventDeliverableAdmin(ModelView, model=EventDeliverable):
+    column_list = [
+        EventDeliverable.id,
+        EventDeliverable.event_id,
+        EventDeliverable.user_id,
+        EventDeliverable.submitted_at,
+    ]
+    name = "Livrable Événement"
+    name_plural = "Livrables Événements"
+    icon = "fa-solid fa-file-arrow-up"
+    category = "Communication & Calendrier"
+    category_icon = "fa-solid fa-comments"
+
+
+class AttendanceAdmin(ModelView, model=Attendance):
+    column_list = [
+        Attendance.id,
+        Attendance.user_id,
+        Attendance.date,
+        Attendance.status,
+        Attendance.session_name,
+        Attendance.marked_by_id,
+    ]
+    column_searchable_list = [Attendance.session_name]
+    column_sortable_list = [Attendance.date, Attendance.status]
+    name = "Présence"
+    name_plural = "Présences"
+    icon = "fa-solid fa-clipboard-user"
+    category = "Communication & Calendrier"
+    category_icon = "fa-solid fa-comments"
+
+
+# ==============================================================================
+# 5. SYSTÈME & AUDIT
+# ==============================================================================
 class AuditLogAdmin(ModelView, model=AuditLog):
     column_list = [
         AuditLog.id,
@@ -264,39 +349,8 @@ class AuditLogAdmin(ModelView, model=AuditLog):
     name = "Journal d'Audit"
     name_plural = "Journaux d'Audit"
     icon = "fa-solid fa-clipboard-list"
-
-
-class UserSessionAdmin(ModelView, model=UserSession):
-    column_list = [
-        UserSession.id,
-        UserSession.user_id,
-        UserSession.device_info,
-        UserSession.ip_address,
-        UserSession.is_active,
-        UserSession.last_activity,
-        UserSession.created_at,
-    ]
-    column_searchable_list = [UserSession.ip_address, UserSession.device_info]
-    column_sortable_list = [UserSession.id, UserSession.last_activity, UserSession.created_at]
-    name = "Session Active"
-    name_plural = "Sessions Actives"
-    icon = "fa-solid fa-laptop"
-
-
-class UserInvitationAdmin(ModelView, model=UserInvitation):
-    column_list = [
-        UserInvitation.id,
-        UserInvitation.email,
-        UserInvitation.role,
-        UserInvitation.status,
-        UserInvitation.expires_at,
-        UserInvitation.created_at,
-    ]
-    column_searchable_list = [UserInvitation.email, UserInvitation.status, UserInvitation.role]
-    column_sortable_list = [UserInvitation.id, UserInvitation.created_at, UserInvitation.expires_at]
-    name = "Invitation Utilisateur"
-    name_plural = "Invitations Utilisateurs"
-    icon = "fa-solid fa-envelope"
+    category = "Système & Audit"
+    category_icon = "fa-solid fa-shield-halved"
 
 
 class SystemSettingAdmin(ModelView, model=SystemSetting):
@@ -312,4 +366,5 @@ class SystemSettingAdmin(ModelView, model=SystemSetting):
     name = "Paramètre Système"
     name_plural = "Paramètres Système"
     icon = "fa-solid fa-sliders"
-
+    category = "Système & Audit"
+    category_icon = "fa-solid fa-shield-halved"

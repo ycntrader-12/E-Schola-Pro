@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   
-  <!-- Tabler Core CSS from CDN with Local Fallback -->
+  <!-- Tabler Core CSS & FontAwesome Icons -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/css/tabler.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -32,51 +32,527 @@
       --tblr-font-sans-serif: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       --tblr-primary: #1877f2;
       --tblr-primary-rgb: 24, 119, 242;
+      --eschola-navy: #16325c;
+      --eschola-navy-dark: #0f223f;
+      --eschola-navy-border: #1e3a66;
+      --eschola-blue: #1877f2;
+      --eschola-blue-hover: #166fe5;
+      --eschola-cyan: #38bdf8;
+      --eschola-slate-bg: #f8fafc;
+      --eschola-card-border: #e2e8f0;
+      --eschola-text-main: #0f172a;
+      --eschola-text-muted: #64748b;
     }
+
     body {
       font-family: var(--tblr-font-sans-serif);
-      background-color: #f8fafc;
-      color: #0f172a;
+      background-color: var(--eschola-slate-bg);
+      color: var(--eschola-text-main);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
     }
-    .navbar.navbar-expand-md {
-      border-bottom: 1px solid #e2e8f0;
-      background: #ffffff !important;
+
+    /* ==========================================================================
+       1. SIDEBAR CORPORATE THEME (#16325c)
+       ========================================================================== */
+    .eschola-admin-sidebar {
+      background-color: var(--eschola-navy) !important;
+      border-right: 1px solid var(--eschola-navy-border) !important;
+      color: #ffffff !important;
+      box-shadow: 4px 0 24px rgba(15, 23, 42, 0.08);
     }
-    /* Fix sidebar text color when using Tabler in light/custom mode */
-    .navbar-vertical {
-      background: #ffffff !important;
-      border-right: 1px solid #e2e8f0;
+
+    .eschola-brand-wrapper {
+      padding: 20px 14px 18px 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      margin-bottom: 8px;
     }
-    .navbar-vertical .nav-link,
-    .navbar-vertical .nav-link-title,
-    .navbar-vertical .nav-link-icon {
-      color: #475569 !important;
+
+    .eschola-brand-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: #ffffff;
+      transition: opacity 0.15s ease;
     }
-    .navbar-vertical .nav-link:hover {
-      color: #0f172a !important;
-      background-color: #f8fafc !important;
+
+    .eschola-brand-link:hover {
+      opacity: 0.95;
+      color: #ffffff;
     }
-    .card {
-      border: 1px solid #e2e8f0;
-      border-radius: 16px;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.03);
+
+    .eschola-brand-logo {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, #1877f2 0%, #2563eb 100%);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(24, 119, 242, 0.4);
+      flex-shrink: 0;
     }
-    .btn-primary {
-      background-color: #1877f2 !important;
-      border-color: #1877f2 !important;
+
+    .eschola-brand-title {
+      font-size: 17px;
+      font-weight: 800;
+      letter-spacing: -0.4px;
+      color: #ffffff;
+      line-height: 1.2;
+    }
+
+    .eschola-brand-title .highlight {
+      color: var(--eschola-cyan);
+    }
+
+    .eschola-brand-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: #93c5fd;
+      margin-top: 2px;
+    }
+
+    /* Pulse dot */
+    .pulse-dot {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #22c55e;
+      box-shadow: 0 0 0 rgba(34, 197, 94, 0.6);
+      animation: pulseGreen 2s infinite;
+    }
+
+    @keyframes pulseGreen {
+      0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6); }
+      70% { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+    }
+
+    /* Overview Quick Link */
+    .eschola-overview-nav {
+      padding: 6px 10px 4px 10px;
+      margin-bottom: 6px;
+    }
+
+    .eschola-overview-link {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 14px;
+      border-radius: 11px;
+      color: #e2e8f0 !important;
+      font-weight: 600;
+      font-size: 13.5px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      transition: all 0.15s ease-in-out;
+      text-decoration: none;
+    }
+
+    .eschola-overview-link:hover {
+      background: rgba(255, 255, 255, 0.12);
+      color: #ffffff !important;
+      transform: translateX(2px);
+    }
+
+    .eschola-overview-link.active {
+      background: var(--eschola-blue) !important;
+      color: #ffffff !important;
+      border-color: var(--eschola-blue) !important;
+      box-shadow: 0 4px 12px rgba(24, 119, 242, 0.35);
+    }
+
+    /* Sidebar Navigation Links */
+    .eschola-admin-sidebar .navbar-nav {
+      padding: 0 8px;
+    }
+
+    .eschola-admin-sidebar .nav-item {
+      margin-bottom: 3px;
+    }
+
+    .eschola-admin-sidebar .nav-link {
+      color: #cbd5e1 !important;
+      font-weight: 500;
+      font-size: 13.5px;
+      padding: 8px 12px;
+      border-radius: 10px;
+      transition: all 0.15s ease-in-out;
+    }
+
+    .eschola-admin-sidebar .nav-link:hover {
+      color: #ffffff !important;
+      background: rgba(255, 255, 255, 0.08) !important;
+    }
+
+    .eschola-admin-sidebar .nav-link.active {
+      color: #ffffff !important;
+      background: var(--eschola-blue) !important;
+      font-weight: 700;
+      box-shadow: 0 4px 12px rgba(24, 119, 242, 0.35);
+    }
+
+    .eschola-admin-sidebar .nav-link-icon {
+      color: #93c5fd !important;
+      font-size: 15px;
+      margin-right: 8px;
+    }
+
+    .eschola-admin-sidebar .nav-link.active .nav-link-icon {
+      color: #ffffff !important;
+    }
+
+    /* Category Accordion / Dropdown Menus in Sidebar */
+    .eschola-admin-sidebar .nav-item.dropdown > .nav-link {
+      color: #ffffff !important;
+      font-weight: 700;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 10px 12px 6px 12px;
+      opacity: 0.9;
+    }
+
+    .eschola-admin-sidebar .dropdown-menu {
+      position: static !important;
+      float: none !important;
+      display: none;
+      background: rgba(15, 23, 42, 0.45) !important;
+      border: none !important;
+      border-left: 2.5px solid var(--eschola-cyan) !important;
+      border-radius: 0 10px 10px 0 !important;
+      padding: 4px 6px 4px 8px !important;
+      margin: 4px 0 8px 14px !important;
+      box-shadow: none !important;
+    }
+
+    .eschola-admin-sidebar .dropdown-menu.show {
+      display: block !important;
+    }
+
+    .eschola-admin-sidebar .dropdown-menu .nav-link {
+      padding: 7px 12px !important;
+      font-size: 13px !important;
+      color: #cbd5e1 !important;
+      border-radius: 8px !important;
+    }
+
+    .eschola-admin-sidebar .dropdown-menu .nav-link:hover {
+      background: rgba(255, 255, 255, 0.1) !important;
+      color: #ffffff !important;
+      transform: translateX(2px);
+    }
+
+    .eschola-admin-sidebar .dropdown-menu .nav-link.active {
+      background: var(--eschola-blue) !important;
+      color: #ffffff !important;
+      font-weight: 700;
+      box-shadow: 0 2px 8px rgba(24, 119, 242, 0.4);
+    }
+
+    /* Sidebar Footer */
+    .eschola-sidebar-footer {
+      margin-top: auto;
+      padding: 16px 12px 8px 12px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      width: 100%;
+    }
+
+    .eschola-btn-back {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #93c5fd !important;
+      font-size: 12.5px;
       font-weight: 600;
       border-radius: 10px;
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      transition: all 0.15s ease;
     }
+
+    .eschola-btn-back:hover {
+      background: rgba(24, 119, 242, 0.3);
+      border-color: var(--eschola-cyan);
+      color: #ffffff !important;
+      transform: translateY(-1px);
+    }
+
+    .eschola-btn-logout {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.25);
+      color: #fca5a5 !important;
+      font-size: 12.5px;
+      font-weight: 600;
+      border-radius: 10px;
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      transition: all 0.15s ease;
+    }
+
+    .eschola-btn-logout:hover {
+      background: #dc2626 !important;
+      border-color: #dc2626 !important;
+      color: #ffffff !important;
+      transform: translateY(-1px);
+    }
+
+    /* ==========================================================================
+       2. TOPBAR & HEADER
+       ========================================================================== */
+    .eschola-topbar {
+      background: #ffffff !important;
+      border-bottom: 1px solid var(--eschola-card-border) !important;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+      min-height: 56px;
+    }
+
+    .eschola-db-chip {
+      background: #f1f5f9;
+      border: 1px solid var(--eschola-card-border);
+      padding: 5px 12px;
+      border-radius: 9999px;
+      font-size: 12px;
+      color: #334155;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .eschola-role-chip {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      padding: 5px 12px;
+      border-radius: 9999px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--eschola-blue);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .page-title {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--eschola-text-main);
+      letter-spacing: -0.4px;
+    }
+
+    .page-pretitle {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--eschola-text-muted);
+      margin-bottom: 2px;
+    }
+
+    /* ==========================================================================
+       3. CARDS & TABLES
+       ========================================================================== */
+    .card {
+      background: #ffffff;
+      border: 1px solid var(--eschola-card-border);
+      border-radius: 16px;
+      box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.03), 0 2px 4px -2px rgba(15, 23, 42, 0.02);
+      overflow: hidden;
+    }
+
+    .card-header {
+      background: #ffffff;
+      border-bottom: 1px solid #f1f5f9;
+      padding: 16px 20px;
+    }
+
+    .card-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--eschola-text-main);
+      letter-spacing: -0.3px;
+    }
+
+    .table {
+      margin-bottom: 0;
+      color: var(--eschola-text-main);
+    }
+
+    .table thead th {
+      background: #f8fafc;
+      color: #475569;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1.5px solid var(--eschola-card-border);
+      padding: 12px 16px;
+      white-space: nowrap;
+    }
+
+    .table tbody tr {
+      transition: background-color 0.12s ease;
+    }
+
+    .table tbody tr:hover {
+      background-color: #f1f5f9 !important;
+    }
+
+    .table tbody td {
+      padding: 12px 16px;
+      vertical-align: middle;
+      border-bottom: 1px solid #f1f5f9;
+      font-size: 13.5px;
+    }
+
+    /* Action buttons in tables */
+    .btn-list .btn {
+      margin-bottom: 0;
+    }
+
+    .btn {
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 13px;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn-primary {
+      background-color: var(--eschola-blue) !important;
+      border-color: var(--eschola-blue) !important;
+      color: #ffffff !important;
+      box-shadow: 0 4px 10px rgba(24, 119, 242, 0.25);
+    }
+
     .btn-primary:hover {
-      background-color: #166fe5 !important;
-      border-color: #166fe5 !important;
+      background-color: var(--eschola-blue-hover) !important;
+      border-color: var(--eschola-blue-hover) !important;
+      transform: translateY(-1px);
+    }
+
+    .btn-outline-primary {
+      color: var(--eschola-blue);
+      border-color: #bfdbfe;
+    }
+
+    .btn-outline-primary:hover {
+      background-color: var(--eschola-blue);
+      border-color: var(--eschola-blue);
+      color: #ffffff;
+      transform: translateY(-1px);
+    }
+
+    /* Form Controls */
+    .form-control, .form-select {
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      padding: 9px 13px;
+      font-size: 13.5px;
+      color: var(--eschola-text-main);
+      transition: all 0.15s ease;
+    }
+
+    .form-control:focus, .form-select:focus {
+      border-color: var(--eschola-blue);
+      box-shadow: 0 0 0 3px rgba(24, 119, 242, 0.15);
+    }
+
+    .form-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: #334155;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      margin-bottom: 6px;
+    }
+
+    /* Dashboard Hero & Cards */
+    .eschola-hero-card {
+      background: linear-gradient(135deg, #16325c 0%, #1e3a66 60%, #1877f2 100%);
+      border: none;
+      border-radius: 20px;
+      box-shadow: 0 12px 30px rgba(22, 50, 92, 0.22);
+    }
+
+    .eschola-stat-box {
+      background: rgba(255, 255, 255, 0.12);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 14px;
+      padding: 12px 18px;
+      text-align: center;
+      min-width: 95px;
+    }
+
+    .eschola-stat-num {
+      color: #ffffff;
+      font-size: 24px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .eschola-stat-label {
+      color: #bfdbfe;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin-top: 4px;
+    }
+
+    .eschola-domain-card {
+      border-radius: 16px;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .eschola-domain-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 24px -4px rgba(15, 23, 42, 0.08);
+    }
+
+    .eschola-domain-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    /* Badges */
+    .badge {
+      font-weight: 700;
+      border-radius: 8px;
+      padding: 4px 8px;
     }
   </style>
 
   {% if admin.favicon_url %}
   <link rel="icon" href="{{ admin.favicon_url }}">
   {% endif %}
-  <title>{{ admin.title }}</title>
+  <title>{{ admin.title }} — E-Schola Pro</title>
   {% block head %}
   {% endblock %}
   {% block head_tail %}
@@ -103,8 +579,30 @@
   <script type="text/javascript" src="{{ url_for('admin:statics', path='js/flatpickr.min.js') }}"></script>
   <script type="text/javascript" src="{{ url_for('admin:statics', path='js/main.js') }}"></script>
   {% endblock %}
-  {% block tail %}
-  {% endblock %}
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Ensure active menu category is shown
+      document.querySelectorAll('.eschola-admin-sidebar .nav-item.dropdown').forEach(function(item) {
+        var toggle = item.querySelector('.dropdown-toggle');
+        var menu = item.querySelector('.dropdown-menu');
+        if (!toggle || !menu) return;
+        
+        // If this category is active or contains an active link, keep it open
+        if (toggle.classList.contains('active') || item.querySelector('.nav-link.active') || menu.querySelector('.active')) {
+          menu.classList.add('show');
+          toggle.setAttribute('aria-expanded', 'true');
+        }
+
+        toggle.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          var isOpen = menu.classList.contains('show');
+          menu.classList.toggle('show', !isOpen);
+          toggle.setAttribute('aria-expanded', !isOpen ? 'true' : 'false');
+        });
+      });
+    });
+  </script>
 </body>
 
 </html>

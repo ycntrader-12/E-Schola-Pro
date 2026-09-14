@@ -1,0 +1,343 @@
+{% extends "sqladmin/layout.html" %}
+
+{% block content_header %}
+<div class="row align-items-center mb-2">
+  <div class="col">
+    <div class="page-pretitle">Système Relationnel E-Schola Pro</div>
+    <h2 class="page-title">Tableau de Bord — Base de Données</h2>
+  </div>
+  <div class="col-auto ms-auto d-print-none">
+    <div class="btn-list">
+      <a href="http://localhost:3000/dashboard" class="btn btn-outline-primary d-none d-sm-inline-flex">
+        <i class="fa-solid fa-arrow-left me-2"></i>
+        <span>Retour au LMS</span>
+      </a>
+      <a href="{{ url_for('admin:list', identity='user') }}" class="btn btn-primary">
+        <i class="fa-solid fa-users me-2"></i>
+        <span>Gérer les Utilisateurs</span>
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="col-12">
+  
+  <!-- Hero Banner -->
+  <div class="card eschola-hero-card mb-4">
+    <div class="card-body p-4">
+      <div class="row align-items-center">
+        <div class="col-md-8">
+          <div class="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill bg-white/10 text-white text-xs font-semibold mb-3 border border-white/15">
+            <span class="pulse-dot"></span>
+            <span>Environnement de Production SQLite</span>
+          </div>
+          <h2 class="text-white fw-bold mb-2">Console d'Administration de Données E-Schola Pro</h2>
+          <p class="text-blue-100 mb-0 opacity-85" style="max-width: 680px; font-size: 14px; line-height: 1.5;">
+            Accédez directement à l'ensemble des 21 tables du système relationnel. Consultez, filtrez, exportez en CSV/JSON et éditez les enregistrements en toute sécurité.
+          </p>
+        </div>
+        <div class="col-md-4 text-md-end mt-3 mt-md-0">
+          <div class="d-flex flex-wrap gap-2 justify-content-md-end">
+            <div class="eschola-stat-box">
+              <div class="eschola-stat-num">21</div>
+              <div class="eschola-stat-label">Tables Actives</div>
+            </div>
+            <div class="eschola-stat-box">
+              <div class="eschola-stat-num">5</div>
+              <div class="eschola-stat-label">Domaines Métier</div>
+            </div>
+            <div class="eschola-stat-box">
+              <div class="eschola-stat-num">100%</div>
+              <div class="eschola-stat-label">Intégrité DB</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Functional Domains Grid -->
+  <div class="row row-cards mb-4">
+
+    <!-- 1. Utilisateurs & Accès -->
+    <div class="col-md-6 col-lg-4">
+      <div class="card h-100 eschola-domain-card">
+        <div class="card-status-top bg-primary"></div>
+        <div class="card-body">
+          <div class="d-flex align-items-center gap-3 mb-3">
+            <div class="eschola-domain-icon bg-primary-lt text-primary">
+              <i class="fa-solid fa-users-gear"></i>
+            </div>
+            <div>
+              <h3 class="card-title mb-0">Utilisateurs & Accès</h3>
+              <small class="text-muted">3 tables relationnelles</small>
+            </div>
+          </div>
+          <p class="text-secondary small mb-3">Gestion des comptes d'accès, rôles (Admin, Formateur, Étudiant), sessions ouvertes et invitations.</p>
+          <div class="list-group list-group-flush border-top border-bottom mb-3">
+            <a href="{{ url_for('admin:list', identity='user') }}" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between px-0 py-2">
+              <span><i class="fa-solid fa-user me-2 text-primary"></i>Utilisateurs</span>
+              <i class="fa-solid fa-chevron-right text-muted small"></i>
+            </a>
+            <a href="{{ url_for('admin:list', identity='user-session') }}" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between px-0 py-2">
+              <span><i class="fa-solid fa-laptop me-2 text-primary"></i>Sessions Actives</span>
+              <i class="fa-solid fa-chevron-right text-muted small"></i>
+            </a>
+            <a href="{{ url_for('admin:list', identity='user-invitation') }}" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between px-0 py-2">
+              <span><i class="fa-solid fa-envelope me-2 text-primary"></i>Invitations Utilisateurs</span>
+              <i class="fa-solid fa-chevron-right text-muted small"></i>
+            </a>
+          </div>
+          <a href="{{ url_for('admin:list', identity='user') }}" class="btn btn-sm btn-outline-primary w-100">
+            <span>Ouvrir la gestion des utilisateurs</span>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. Formations & Cours -->
+    <div class="col-md-6 col-lg-4">
+      <div class="card h-100 eschola-domain-card">
+        <div class="card-status-top bg-info"></div>
+        <div class="card-body">
+          <div class="d-flex align-items-center gap-3 mb-3">
+            <div class="eschola-domain-icon bg-info-lt text-info">
+              <i class="fa-solid fa-graduation-cap"></i>
+            </div>
+            <div>
+              <h3 class="card-title mb-0">Formations & Cours</h3>
+              <small class="text-muted">5 tables relationnelles</small>
+            </div>
+          </div>
+          <p class="text-secondary small mb-3">Catalogue des formations, vidéos intégrées, inscriptions, cohortes de classes et membres associés.</p>
+          <div class="list-group list-group-flush border-top border-bottom mb-3">
+            <a href="{{ url_for('admin:list', identity='course') }}" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between px-0 py-2">
+              <span><i class="fa-solid fa-book me-2 text-info"></i>Cours</span>
+              <i class="fa-solid fa-chevron-right text-muted small"></i>
+            </a>
+            <a href="{{ url_for('admin:list', identity='course-video') }}" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between px-0 py-2">
+              <span><i class="fa-solid fa-film me-2 text-info"></i>Vidéos de Cours</span>
+              <i class="fa-solid fa-chevron-right text-muted small"></i>
+            </a>
+            <a href="{{ url_for('admin:list', identity='enrollment') }}" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between px-0 py-2">
+              <span><i class="fa-solid fa-id-card me-2 text-info"></i>Inscriptions</span>
+              <i class="fa-solid fa-chevron-right text-muted small"></i>
+            </a>
+            <a href="{{ url_for('admin:list', identity='group') }}" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between px-0 py-2">
+              <span><i class="fa-solid fa-users me-2 text-info"></i>Groupes / Classes</span>
+              <i class="fa-solid fa-chevron-right text-muted small"></i>
+            </a>
+            <a href="{{ url_for('admin:list', identity='group-member') }}" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between px-0 py-2">
+              <span><i class="fa-solid fa-user-plus me-2 text-info"></i>Membres de Groupes</span>
+              <i class="fa-solid fa-chevron-right text-muted small"></i>
+            </a>
+          </div>
+          <a href="{{ url_for('admin:list', identity='course') }}" class="btn btn-sm btn-outline-info w-100">
+            <span>Ouvrir les cours</span>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. Évaluations & Devoirs -->
+    <div class="col-md-6 col-lg-4">
+      <div class="card h-100 eschola-domain-card">
+        <div class="card-status-top bg-warning"></div>
+        <div class="card-body">
+          <div class="d-flex align-items-center gap-3 mb-3">
+            <div class="eschola-domain-icon bg-warning-lt text-warning">
+              <i class="fa-solid fa-award"></i>
+            </div>
+            <div>
+              <h3 class="card-title mb-0">Évaluations & Devoirs</h3>
+              <small class="text-muted">5 tables relationnelles</small>
+            </div>
+          </div>
+          <p class="text-secondary small mb-3">Questionnaires quiz, banques de questions, résultats chronométrés, devoirs assignés et dépôts de rendus.</p>
+          <div class="list-group list-group-flush border-top border-bottom mb-3">
+            <a href="{{ url_for('admin:list', identity='quiz') }}" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between px-0 py-2">
+              <span><i class="fa-solid fa-award me-2 text-warning"></i>Quiz</span>
+              <i class="fa-solid fa-chevron-right text-muted small"></i>
+            </a>
+            <a href="{{ url_for('admin:list', identity='quiz-question') }}" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between px-0 py-2">
+              <span><i class="fa-solid fa-circle-question me-2 text-warning"></i>Questions Quiz</span>
+              <i class="fa-solid fa-chevron-right text-muted small"></i>
+            </a>
+            <a href="{{ url_for('admin:list', identity='quiz-attempt') }}" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between px-0 py-2">
+              <span><i class="fa-solid fa-chart-simple me-2 text-warning"></i>Tentatives Quiz</span>
+              <i class="fa-solid fa-chevron-right text-muted small"></i>
+            </a>
+            <a href="{{ url_for('admin:list', identity='task') }}" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between px-0 py-2">
+              <span><i class="fa-solid fa-list-check me-2 text-warning"></i>Devoirs / Tâches</span>
+              <i class="fa-solid fa-chevron-right text-muted small"></i>
+            </a>
+            <a href="{{ url_for('admin:list', identity='task-submission') }}" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between px-0 py-2">
+              <span><i class="fa-solid fa-file-circle-check me-2 text-warning"></i>Soumissions de Devoirs</span>
+              <i class="fa-solid fa-chevron-right text-muted small"></i>
+            </a>
+          </div>
+          <a href="{{ url_for('admin:list', identity='quiz') }}" class="btn btn-sm btn-outline-warning w-100">
+            <span>Ouvrir les évaluations</span>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. Communication & Calendrier -->
+    <div class="col-md-6 col-lg-6">
+      <div class="card h-100 eschola-domain-card">
+        <div class="card-status-top bg-success"></div>
+        <div class="card-body">
+          <div class="d-flex align-items-center gap-3 mb-3">
+            <div class="eschola-domain-icon bg-success-lt text-success">
+              <i class="fa-solid fa-comments"></i>
+            </div>
+            <div>
+              <h3 class="card-title mb-0">Communication & Calendrier</h3>
+              <small class="text-muted">6 tables relationnelles</small>
+            </div>
+          </div>
+          <p class="text-secondary small mb-3">Salles virtuelles WebRTC, invitations de réunion, messagerie interne, agenda d'événements, livrables et présences.</p>
+          <div class="row">
+            <div class="col-sm-6">
+              <div class="list-group list-group-flush border-top mb-3">
+                <a href="{{ url_for('admin:list', identity='classroom') }}" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between px-0 py-2">
+                  <span><i class="fa-solid fa-video me-2 text-success"></i>Salles Vidéo Conférence</span>
+                  <i class="fa-solid fa-chevron-right text-muted small"></i>
+                </a>
+                <a href="{{ url_for('admin:list', identity='classroom-invitation') }}" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between px-0 py-2">
+                  <span><i class="fa-solid fa-envelope-open-text me-2 text-success"></i>Invitations Vidéo</span>
+                  <i class="fa-solid fa-chevron-right text-muted small"></i>
+                </a>
+                <a href="{{ url_for('admin:list', identity='message') }}" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between px-0 py-2">
+                  <span><i class="fa-solid fa-envelope me-2 text-success"></i>Messages</span>
+                  <i class="fa-solid fa-chevron-right text-muted small"></i>
+                </a>
+              </div>
+            </div>
+            <div class="col-sm-6">
+              <div class="list-group list-group-flush border-top mb-3">
+                <a href="{{ url_for('admin:list', identity='event') }}" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between px-0 py-2">
+                  <span><i class="fa-solid fa-calendar me-2 text-success"></i>Événements Calendrier</span>
+                  <i class="fa-solid fa-chevron-right text-muted small"></i>
+                </a>
+                <a href="{{ url_for('admin:list', identity='event-deliverable') }}" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between px-0 py-2">
+                  <span><i class="fa-solid fa-file-arrow-up me-2 text-success"></i>Livrables Événements</span>
+                  <i class="fa-solid fa-chevron-right text-muted small"></i>
+                </a>
+                <a href="{{ url_for('admin:list', identity='attendance') }}" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between px-0 py-2">
+                  <span><i class="fa-solid fa-clipboard-user me-2 text-success"></i>Présences</span>
+                  <i class="fa-solid fa-chevron-right text-muted small"></i>
+                </a>
+              </div>
+            </div>
+          </div>
+          <a href="{{ url_for('admin:list', identity='classroom') }}" class="btn btn-sm btn-outline-success w-100">
+            <span>Gérer les salles & la communication</span>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. Système & Audit -->
+    <div class="col-md-6 col-lg-6">
+      <div class="card h-100 eschola-domain-card">
+        <div class="card-status-top bg-purple"></div>
+        <div class="card-body">
+          <div class="d-flex align-items-center gap-3 mb-3">
+            <div class="eschola-domain-icon bg-purple-lt text-purple">
+              <i class="fa-solid fa-shield-halved"></i>
+            </div>
+            <div>
+              <h3 class="card-title mb-0">Système & Audit</h3>
+              <small class="text-muted">2 tables relationnelles</small>
+            </div>
+          </div>
+          <p class="text-secondary small mb-3">Traçabilité complète des opérations administratives, journalisation des connexions et configuration globale.</p>
+          <div class="list-group list-group-flush border-top border-bottom mb-3">
+            <a href="{{ url_for('admin:list', identity='audit-log') }}" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between px-0 py-2">
+              <span><i class="fa-solid fa-clipboard-list me-2 text-purple"></i>Journal d'Audit</span>
+              <i class="fa-solid fa-chevron-right text-muted small"></i>
+            </a>
+            <a href="{{ url_for('admin:list', identity='system-setting') }}" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between px-0 py-2">
+              <span><i class="fa-solid fa-sliders me-2 text-purple"></i>Paramètres Système</span>
+              <i class="fa-solid fa-chevron-right text-muted small"></i>
+            </a>
+          </div>
+          <a href="{{ url_for('admin:list', identity='audit-log') }}" class="btn btn-sm btn-outline-secondary w-100" style="border-color: #a855f7; color: #a855f7;">
+            <span>Consulter les traces d'audit</span>
+          </a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Detailed Table Directory -->
+  <div class="card">
+    <div class="card-header d-flex align-items-center justify-content-between">
+      <div>
+        <h3 class="card-title mb-0">Répertoire Général des Tables de Données</h3>
+        <p class="card-subtitle text-muted mb-0">Vue synthétique et accès rapide aux 21 modèles relationnels de l'application</p>
+      </div>
+      <span class="badge bg-blue-lt px-3 py-1.5 font-bold">21 Tables</span>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-vcenter table-hover card-table">
+        <thead>
+          <tr>
+            <th>Entité / Table</th>
+            <th>Domaine Métier</th>
+            <th>Identifiant</th>
+            <th class="w-1 text-end">Actions Directes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for view in admin._views %}
+          <tr>
+            <td>
+              <div class="d-flex align-items-center gap-2.5">
+                <span class="avatar avatar-xs rounded-circle bg-blue-lt text-primary">
+                  {% if view.icon %}<i class="{{ view.icon }}"></i>{% else %}<i class="fa-solid fa-table"></i>{% endif %}
+                </span>
+                <div>
+                  <a href="{{ url_for('admin:list', identity=view.identity) }}" class="text-reset fw-bold text-decoration-none">
+                    {{ view.name_plural }}
+                  </a>
+                  <div class="small text-muted">{{ view.name }}</div>
+                </div>
+              </div>
+            </td>
+            <td>
+              <span class="badge bg-slate-lt text-secondary">
+                {{ view.category or 'Général' }}
+              </span>
+            </td>
+            <td>
+              <code class="text-primary">{{ view.identity }}</code>
+            </td>
+            <td class="text-end">
+              <div class="btn-list justify-content-end flex-nowrap">
+                <a href="{{ url_for('admin:list', identity=view.identity) }}" class="btn btn-sm btn-outline-primary" title="Consulter la liste">
+                  <i class="fa-solid fa-list me-1"></i>
+                  <span>Voir</span>
+                </a>
+                {% if view.can_create %}
+                <a href="{{ url_for('admin:create', identity=view.identity) }}" class="btn btn-sm btn-primary" title="Créer un nouvel élément">
+                  <i class="fa-solid fa-plus me-1"></i>
+                  <span>Nouveau</span>
+                </a>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

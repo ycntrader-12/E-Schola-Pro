@@ -1,0 +1,149 @@
+{% extends "sqladmin/base.html" %}
+{% from 'sqladmin/_macros.html' import display_menu %}
+{% block body %}
+<div class="wrapper">
+  <!-- E-Schola Pro Signature Sidebar -->
+  <aside class="navbar navbar-expand-lg navbar-vertical navbar-expand-md eschola-admin-sidebar" data-bs-theme="dark">
+    <div class="container-fluid">
+      
+      <!-- Brand Header -->
+      <div class="eschola-brand-wrapper">
+        <a href="{{ url_for('admin:index') }}" class="eschola-brand-link">
+          <div class="eschola-brand-logo">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+              <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+            </svg>
+          </div>
+          <div class="eschola-brand-text">
+            <div class="eschola-brand-title">E-Schola <span class="highlight">Pro</span></div>
+            <div class="eschola-brand-badge">
+              <span class="pulse-dot"></span>
+              <span>Base de Données</span>
+            </div>
+          </div>
+        </a>
+      </div>
+
+      <!-- Overview Quick Link -->
+      <div class="eschola-overview-nav">
+        <a href="{{ url_for('admin:index') }}" class="nav-link eschola-overview-link {% if request.url.path == admin.base_url or request.url.path == admin.base_url + '/' %}active{% endif %}">
+          <span class="nav-link-icon"><i class="fa-solid fa-chart-pie"></i></span>
+          <span class="nav-link-title">Vue d'ensemble</span>
+        </a>
+      </div>
+
+      <nav class="navbar navbar-expand-sm shadow-none w-100" id="navbar-menu" data-sqladmin-menu="{{ admin.base_url }}">
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent"
+          aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarSupportedContent">
+          {{ display_menu(admin._menu, request) }}
+        </div>
+      </nav>
+
+      <!-- Sidebar Bottom Actions -->
+      <div class="eschola-sidebar-footer">
+        <a href="http://localhost:3000/dashboard" class="btn eschola-btn-back" title="Revenir au tableau de bord utilisateur">
+          <i class="fa-solid fa-arrow-left me-2"></i>
+          <span>Retour Application</span>
+        </a>
+        {% if admin.authentication_backend %}
+        <a href="{{ request.url_for('admin:logout') }}" class="btn eschola-btn-logout" title="Déconnexion de la session admin">
+          <i class="fa-solid fa-right-from-bracket me-2"></i>
+          <span>Déconnexion</span>
+        </a>
+        {% endif %}
+      </div>
+
+    </div>
+  </aside>
+
+  <!-- Main Page Content -->
+  <div class="page-wrapper">
+    <!-- Topbar -->
+    {% block topbar %}
+    <header class="navbar navbar-expand-md d-print-none sticky-top eschola-topbar">
+      <div class="container-fluid">
+        <div class="d-flex align-items-center gap-3">
+          <span class="eschola-db-chip">
+            <i class="fa-solid fa-database text-primary"></i>
+            <strong>SQLite :</strong> eschola.db
+          </span>
+          <span class="badge bg-success-lt text-success d-none d-sm-inline-flex align-items-center gap-1 px-2 py-1">
+            <span class="status-dot status-dot-animated bg-success"></span>
+            En ligne
+          </span>
+        </div>
+
+        <div class="navbar-nav flex-row ms-auto align-items-center gap-2">
+          <span class="eschola-role-chip d-none d-md-inline-flex">
+            <i class="fa-solid fa-shield-halved"></i>
+            <span>Admin Système</span>
+          </span>
+
+          <a href="http://localhost:3000/dashboard" class="btn btn-outline-primary btn-sm rounded-pill d-none d-sm-inline-flex align-items-center gap-1">
+            <i class="fa-solid fa-graduation-cap"></i>
+            <span>E-Schola Pro LMS</span>
+          </a>
+
+          {% if admin.authentication_backend %}
+          <a href="{{ request.url_for('admin:logout') }}" class="btn btn-sm btn-outline-danger rounded-pill px-2.5" title="Déconnexion">
+            <i class="fa-solid fa-power-off"></i>
+          </a>
+          {% endif %}
+        </div>
+      </div>
+    </header>
+    {% endblock %}
+
+    <!-- Page Header -->
+    <div class="container-fluid">
+      <div class="page-header d-print-none">
+        {% block content_header %}
+        <div class="row align-items-center">
+          <div class="col">
+            <div class="page-pretitle">{{ subtitle or 'Administration des Tables Relationnelles' }}</div>
+            <h2 class="page-title">{{ title }}</h2>
+          </div>
+        </div>
+        {% endblock %}
+      </div>
+    </div>
+
+    <!-- Page Body -->
+    <div class="page-body flex-grow-1">
+      <div class="container-fluid">
+        <div class="row row-deck row-cards">
+          {% block content %} {% endblock %}
+          {% block flash %}
+          {% include 'sqladmin/flash.html' %}
+          {% endblock %}
+          {% block secret_modal %}
+          {% include 'sqladmin/secret_modal.html' %}
+          {% endblock %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer footer-transparent d-print-none py-3 border-top mt-auto">
+      <div class="container-fluid">
+        <div class="row text-center align-items-center flex-row-reverse">
+          <div class="col-lg-auto ms-lg-auto">
+            <ul class="list-inline list-inline-dots mb-0">
+              <li class="list-inline-item"><a href="http://localhost:3000/dashboard" class="link-secondary">Plateforme</a></li>
+              <li class="list-inline-item"><span class="badge bg-blue-lt">Version 1.0.0</span></li>
+            </ul>
+          </div>
+          <div class="col-12 col-lg-auto mt-3 mt-lg-0 text-muted">
+            © 2026 E-Schola Pro — Gestion de Base de Données Sécurisée
+          </div>
+        </div>
+      </div>
+    </footer>
+
+  </div>
+</div>
+{% endblock %}

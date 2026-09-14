@@ -2541,6 +2541,32 @@ E-Schola Pro/
         </div>
         <img src="docs_screenshots/profile_admin.png" alt="Portail Backend et Base de Données Admin" class="screenshot-img" />
       </div>
+
+      <div class="screenshot-container">
+        <div class="screenshot-header">
+          <div class="screenshot-header-left">
+            <div class="screenshot-dots"><span class="dot-red"></span><span class="dot-yellow"></span><span class="dot-green"></span></div>
+            <div class="screenshot-address-bar"><span class="lock-icon">🔒</span> https://eschola.pro/admin/</div>
+          </div>
+          <span class="screenshot-title-text">E-Schola Pro — Base de Données</span>
+        </div>
+          <span>Aperçu de la Console d'Administration BDD : Tableau de Bord des 21 Tables (/admin/)</span>
+        </div>
+        <img src="docs_screenshots/admin_database_dashboard.png" alt="Tableau de Bord Base de Données Admin E-Schola Pro" class="screenshot-img" />
+      </div>
+
+      <div class="screenshot-container">
+        <div class="screenshot-header">
+          <div class="screenshot-header-left">
+            <div class="screenshot-dots"><span class="dot-red"></span><span class="dot-yellow"></span><span class="dot-green"></span></div>
+            <div class="screenshot-address-bar"><span class="lock-icon">🔒</span> https://eschola.pro/admin/user/list</div>
+          </div>
+          <span class="screenshot-title-text">E-Schola Pro — Base de Données</span>
+        </div>
+          <span>Aperçu de la Vue Table & Navigation Accordion par Domaines Métier (/admin/user/list)</span>
+        </div>
+        <img src="docs_screenshots/admin_database_table.png" alt="Vue Table Utilisateurs et Sidebar Catégorielle" class="screenshot-img" />
+      </div>
     </div>
 
     <h3>Module 10 — Tâches, Devoirs &amp; Livrables Officiels</h3>
@@ -3012,22 +3038,26 @@ npm run dev
       <strong>💡 Note :</strong> Le backend doit être lancé en premier (port 8000) avant le frontend (port 3000). Le frontend communique avec le backend via les appels API configurés dans <code>src/lib/api.ts</code>.
     </div>
 
-    <h3>Panel d'Administration (SQLAdmin)</h3>
-    <pre>
-# Le panel d'administration SQLAdmin est accessible à :
-http://localhost:8000/admin
-
-# 14 tables de base de données gérées directement en interface web :
-# - Utilisateurs, Cours, Vidéos de cours, Inscriptions
-# - Événements calendrier, Livrables déposés
-# - Quiz, Questions QCM, Tentatives & notes
-# - Présences & feuilles d'émargement
-# - Groupes/Classes, Membres des groupes
-# - Salles vidéo conférence, Messagerie & signalements
-
-# Ce panel est également accessible en 1 clic depuis l'onglet :
-# "Paramètres" -> "Base de Données & Backend (Admin)"
-    </pre>
+    <h3>Console d'Administration de la Base de Données (SQLAdmin Harmonisé E-Schola Pro)</h3>
+    <p>
+      L'interface d'administration de la base de données est directement intégrée et harmonisée aux couleurs officielles d'E-Schola Pro (Sidebar Corporate Navy <code>#16325c</code>, Bleu Roi <code>#1877f2</code>, Fond Clean Slate <code>#f8fafc</code> et Cartes blanches <code>#ffffff</code> avec bordures <code>#e2e8f0</code>).
+    </p>
+    <div class="card" style="margin-bottom: 20px;">
+      <h4 style="margin-bottom: 8px; color: var(--text-primary);">🗄️ Architecture &amp; Organisation par Domaines Métier</h4>
+      <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">
+        Les <strong>21 tables relationnelles</strong> de l'application sont structurées en <strong>5 pôles fonctionnels</strong> avec navigation accordéon fluide :
+      </p>
+      <ul style="font-size: 13px; color: var(--text-secondary); line-height: 1.8;">
+        <li><strong>1. Utilisateurs &amp; Accès :</strong> <code>Utilisateurs</code> (User), <code>Sessions Actives</code> (UserSession), <code>Invitations Utilisateurs</code> (UserInvitation).</li>
+        <li><strong>2. Formations &amp; Cours :</strong> <code>Cours</code> (Course), <code>Vidéos de Cours</code> (CourseVideo), <code>Inscriptions</code> (Enrollment), <code>Groupes / Classes</code> (Group), <code>Membres de Groupes</code> (GroupMember).</li>
+        <li><strong>3. Évaluations &amp; Devoirs :</strong> <code>Quiz</code> (Quiz), <code>Questions Quiz</code> (QuizQuestion), <code>Tentatives Quiz</code> (QuizAttempt), <code>Devoirs / Tâches</code> (Task), <code>Soumissions de Devoirs</code> (TaskSubmission).</li>
+        <li><strong>4. Communication &amp; Calendrier :</strong> <code>Salles Vidéo Conférence</code> (Classroom), <code>Invitations Vidéo</code> (ClassroomInvitation), <code>Messages</code> (Message), <code>Événements Calendrier</code> (Event), <code>Livrables Événements</code> (EventDeliverable), <code>Présences</code> (Attendance).</li>
+        <li><strong>5. Système &amp; Audit :</strong> <code>Journal d'Audit</code> (AuditLog), <code>Paramètres Système</code> (SystemSetting).</li>
+      </ul>
+      <div class="info-box" style="margin-top: 12px; margin-bottom: 0;">
+        <strong>🚀 Accès Sécurisé :</strong> URL directe : <code>http://localhost:8000/admin/</code> (ou via le bouton dédié <em>"Base de Données &amp; Backend"</em> dans la page Profil/Paramètres). Authentification par session sécurisée avec mot de passe haché et protection CSP stricte.
+      </div>
+    </div>
 
     <h3>Comptes Administrateurs &amp; Accès Système</h3>
     <table>

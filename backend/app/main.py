@@ -175,8 +175,18 @@ async def add_security_headers(request: Request, call_next):
     response.headers["Permissions-Policy"] = "geolocation=(), microphone=(self), camera=(self)"
     if is_production():
         response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains; preload"
-    # Content Security Policy pour l'API REST
-    response.headers["Content-Security-Policy"] = "default-src 'self'; frame-ancestors 'self';"
+    # Content Security Policy : adaptée pour autoriser les styles et CDN de l'administration de la base de données
+    if request.url.path.startswith("/admin"):
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self' http: https: data: blob: 'unsafe-inline' 'unsafe-eval'; "
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; "
+            "font-src 'self' data: https://fonts.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; "
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://code.jquery.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; "
+            "img-src 'self' data: blob: https:; "
+            "frame-ancestors 'self';"
+        )
+    else:
+        response.headers["Content-Security-Policy"] = "default-src 'self'; frame-ancestors 'self';"
     return response
 
 
@@ -259,26 +269,35 @@ admin = Admin(
     templates_dir=TEMPLATES_DIR,
     authentication_backend=authentication_backend,
 )
+# 1. Utilisateurs & Accès
 admin.add_view(UserAdmin)
+admin.add_view(UserSessionAdmin)
+admin.add_view(UserInvitationAdmin)
+
+# 2. Formations & Cours
 admin.add_view(CourseAdmin)
 admin.add_view(CourseVideoAdmin)
 admin.add_view(EnrollmentAdmin)
+admin.add_view(GroupAdmin)
+admin.add_view(GroupMemberAdmin)
+
+# 3. Évaluations & Devoirs
+admin.add_view(QuizAdmin)
+admin.add_view(QuizQuestionAdmin)
+admin.add_view(QuizAttemptAdmin)
+admin.add_view(TaskAdmin)
+admin.add_view(TaskSubmissionAdmin)
+
+# 4. Communication & Calendrier
 admin.add_view(ClassroomAdmin)
 admin.add_view(ClassroomInvitationAdmin)
 admin.add_view(MessageAdmin)
 admin.add_view(EventAdmin)
 admin.add_view(EventDeliverableAdmin)
-admin.add_view(QuizAdmin)
-admin.add_view(QuizQuestionAdmin)
-admin.add_view(QuizAttemptAdmin)
 admin.add_view(AttendanceAdmin)
-admin.add_view(GroupAdmin)
-admin.add_view(GroupMemberAdmin)
-admin.add_view(TaskAdmin)
-admin.add_view(TaskSubmissionAdmin)
+
+# 5. Système & Audit
 admin.add_view(AuditLogAdmin)
-admin.add_view(UserSessionAdmin)
-admin.add_view(UserInvitationAdmin)
 admin.add_view(SystemSettingAdmin)
 
 
