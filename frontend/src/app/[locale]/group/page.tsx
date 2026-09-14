@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import GroupMembersModal from '@/components/group/GroupMembersModal';
+import { useConfirm } from '@/context/ConfirmModalContext';
 
 interface Group {
   id: number;
@@ -68,6 +69,7 @@ interface AvailableUser {
 }
 
 export default function GroupPage() {
+  const { confirm } = useConfirm();
   const [currentUser, setCurrentUser] = useState<{ id: number; email: string; role: string } | null>(null);
   const [groups, setGroups] = useState<Group[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -320,7 +322,20 @@ export default function GroupPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Voulez-vous vraiment supprimer ce groupe définitivement ? Tous les membres seront retirés.")) return;
+    const targetGroup = groups.find(g => g.id === id);
+    const ok = await confirm({
+      title: "Supprimer définitivement ce groupe ?",
+      description: "Voulez-vous vraiment supprimer ce groupe pédagogique définitivement ? Tous les membres et apprenants seront retirés.",
+      confirmText: "Supprimer le groupe",
+      cancelText: "Annuler",
+      variant: "danger",
+      badgeText: "E-Schola Pro • Groupes & Classes",
+      itemName: targetGroup ? targetGroup.name : `Groupe #${id}`,
+      itemDetail: targetGroup ? `${targetGroup.members_count} membre(s) • ${targetGroup.level || 'Non classé'}` : undefined,
+      icon: "trash"
+    });
+    if (!ok) return;
+
     try {
       await apiClient.delete(`/groups/${id}`);
       setGroups(prev => prev.filter(g => g.id !== id));
@@ -329,19 +344,31 @@ export default function GroupPage() {
         setSelectedGroupId(remaining.length > 0 ? remaining[0].id : null);
       }
     } catch (err: any) {
-      alert(err?.response?.data?.detail || "Erreur lors de la suppression.");
+      setFormError(err?.response?.data?.detail || "Erreur lors de la suppression.");
     }
   };
 
   const handleRemoveMemberFromPanoramic = async (userId: number, userName: string) => {
     if (!selectedGroupId) return;
-    if (!confirm(`Voulez-vous vraiment retirer "${userName}" de ce groupe ?`)) return;
+    const ok = await confirm({
+      title: "Retirer ce membre de la classe ?",
+      description: `Êtes-vous certain de vouloir retirer "${userName}" de ce groupe de travail ?`,
+      confirmText: "Retirer du groupe",
+      cancelText: "Annuler",
+      variant: "warning",
+      badgeText: "E-Schola Pro • Gestion des Membres",
+      itemName: userName,
+      itemDetail: `ID #${userId}`,
+      icon: "users"
+    });
+    if (!ok) return;
+
     try {
       await apiClient.delete(`/groups/${selectedGroupId}/members/${userId}`);
       await fetchPanoramicMembers(selectedGroupId);
       await fetchGroups();
     } catch (err: any) {
-      alert(err?.response?.data?.detail || "Erreur lors du retrait du membre.");
+      setFormError(err?.response?.data?.detail || "Erreur lors du retrait du membre.");
     }
   };
 

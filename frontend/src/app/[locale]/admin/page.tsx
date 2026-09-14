@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter, Link } from '@/i18n/routing';
+import { useConfirm } from '@/context/ConfirmModalContext';
 import {
   Shield,
   ShieldCheck,
@@ -49,6 +50,7 @@ import { apiClient } from '@/lib/api';
 const ADMIN_ROLES = ['admin', 'admin_manager'];
 
 export default function AdminConsolePage() {
+  const { confirm } = useConfirm();
   const router = useRouter();
 
   // Auth & Permissions
@@ -201,7 +203,18 @@ export default function AdminConsolePage() {
   };
 
   const handleRevokeSession = async (sessionId: number) => {
-    if (!confirm('Êtes-vous sûr de vouloir déconnecter immédiatement cette session ?')) return;
+    const ok = await confirm({
+      title: "Révoquer cette session active ?",
+      description: "Êtes-vous sûr de vouloir déconnecter immédiatement cette session utilisateur ?",
+      confirmText: "Déconnecter la session",
+      cancelText: "Annuler",
+      variant: "warning",
+      badgeText: "E-Schola Pro Sécurité • Contrôle d'Accès",
+      itemName: `Session #${sessionId}`,
+      icon: "logout"
+    });
+    if (!ok) return;
+
     try {
       await apiClient.delete(`/admin/sessions/${sessionId}`);
       showNotification('success', 'Session révoquée avec succès.');
@@ -212,7 +225,19 @@ export default function AdminConsolePage() {
   };
 
   const handleRevokeAllUserSessions = async (userId: number, userEmail: string) => {
-    if (!confirm(`Déconnecter toutes les sessions actives de ${userEmail} ?`)) return;
+    const ok = await confirm({
+      title: "Révoquer toutes les sessions ?",
+      description: `Déconnecter immédiatement tous les appareils et sessions actives pour ${userEmail} ?`,
+      confirmText: "Révoquer tous les accès",
+      cancelText: "Annuler",
+      variant: "warning",
+      badgeText: "E-Schola Pro Sécurité • Révocation Globale",
+      itemName: userEmail,
+      itemDetail: `Utilisateur ID #${userId}`,
+      icon: "shield"
+    });
+    if (!ok) return;
+
     try {
       await apiClient.post(`/admin/sessions/revoke-all-user/${userId}`);
       showNotification('success', `Toutes les sessions de ${userEmail} ont été révoquées.`);
@@ -223,7 +248,19 @@ export default function AdminConsolePage() {
   };
 
   const handleTerminateRoom = async (roomId: number, title: string) => {
-    if (!confirm(`Clôturer d'urgence la visioconférence "${title}" ? Les participants seront déconnectés.`)) return;
+    const ok = await confirm({
+      title: "Clôturer d'urgence la visioconférence ?",
+      description: `Clôturer d'urgence la visioconférence "${title}" ? Les participants seront immédiatement déconnectés.`,
+      confirmText: "Clôturer la salle",
+      cancelText: "Annuler",
+      variant: "warning",
+      badgeText: "E-Schola Pro Sécurité • Visioconférence Direct",
+      itemName: title,
+      itemDetail: `Salle ID #${roomId}`,
+      icon: "video"
+    });
+    if (!ok) return;
+
     try {
       await apiClient.post(`/admin/classrooms/${roomId}/terminate`);
       showNotification('success', `La salle "${title}" a été clôturée avec succès.`);
@@ -266,7 +303,20 @@ export default function AdminConsolePage() {
   };
 
   const handleRevokeInvitation = async (inviteId: number) => {
-    if (!confirm('Révoquer cette invitation ?')) return;
+    const targetInvite = invitations.find(i => i.id === inviteId);
+    const ok = await confirm({
+      title: "Révoquer cette invitation ?",
+      description: "Êtes-vous certain de vouloir révoquer ce lien d'invitation ? Le destinataire ne pourra plus l'utiliser pour rejoindre la plateforme.",
+      confirmText: "Révoquer l'invitation",
+      cancelText: "Annuler",
+      variant: "warning",
+      badgeText: "E-Schola Pro Sécurité • Invitations",
+      itemName: targetInvite?.email || `Invitation #${inviteId}`,
+      itemDetail: targetInvite ? `Rôle : ${targetInvite.role} • Groupe : ${targetInvite.group_name || 'Aucun'}` : undefined,
+      icon: "shield"
+    });
+    if (!ok) return;
+
     try {
       await apiClient.delete(`/admin/invitations/${inviteId}`);
       showNotification('success', 'Invitation révoquée avec succès.');

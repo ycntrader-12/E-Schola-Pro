@@ -26,6 +26,7 @@ import {
 import { Link } from '@/i18n/routing';
 import { useTranslations, useLocale } from 'next-intl';
 import { apiClient } from '@/lib/api';
+import { useConfirm } from '@/context/ConfirmModalContext';
 
 interface Learner {
   id: number;
@@ -84,6 +85,7 @@ interface DashboardPerformance {
 }
 
 export default function AttendancePage() {
+  const { confirm } = useConfirm();
   const t = useTranslations('Attendance');
   const tCommon = useTranslations('Common');
   const tRoles = useTranslations('Roles');
@@ -316,7 +318,20 @@ export default function AttendancePage() {
 
   // Delete an attendance record
   const handleDeleteRecord = async (id: number) => {
-    if (!confirm('Supprimer cet enregistrement de présence ?')) return;
+    const targetRecord = historyRecords.find(r => r.id === id);
+    const ok = await confirm({
+      title: "Supprimer cet émargement ?",
+      description: "Voulez-vous vraiment supprimer cet enregistrement de présence de la base de données ?",
+      confirmText: "Supprimer l'émargement",
+      cancelText: "Annuler",
+      variant: "danger",
+      badgeText: "E-Schola Pro • Registre d'Émargement",
+      itemName: targetRecord?.user?.email || `Émargement #${id}`,
+      itemDetail: targetRecord ? `Séance : ${targetRecord.session_name || 'Générale'} • Date : ${targetRecord.date}` : undefined,
+      icon: "trash"
+    });
+    if (!ok) return;
+
     try {
       await apiClient.delete(`/attendance/${id}`);
       setHistoryRecords(prev => prev.filter(r => r.id !== id));

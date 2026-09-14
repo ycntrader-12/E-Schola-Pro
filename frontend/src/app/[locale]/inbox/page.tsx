@@ -4,6 +4,7 @@ import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { useRouter } from '@/i18n/routing';
 import { useTranslations } from 'next-intl';
+import { useConfirm } from '@/context/ConfirmModalContext';
 import {
   Inbox as InboxIcon,
   Send,
@@ -97,6 +98,7 @@ interface MessageItem {
 }
 
 export default function InboxMessagesPage() {
+  const { confirm } = useConfirm();
   const router = useRouter();
   const params = useParams();
   const locale = (params?.locale as string) || 'fr';
@@ -436,7 +438,17 @@ export default function InboxMessagesPage() {
   // Bulk Delete
   const handleBulkDelete = async () => {
     if (selectedMessageIds.size === 0) return;
-    if (!confirm(`Supprimer les ${selectedMessageIds.size} message(s) sélectionné(s) ?`)) return;
+    const ok = await confirm({
+      title: "Supprimer les messages sélectionnés ?",
+      description: `Êtes-vous certain de vouloir supprimer définitivement les ${selectedMessageIds.size} message(s) sélectionné(s) ?`,
+      confirmText: `Supprimer (${selectedMessageIds.size})`,
+      cancelText: "Annuler",
+      variant: "danger",
+      badgeText: "E-Schola Pro • Messagerie Interne",
+      itemName: `${selectedMessageIds.size} message(s) sélectionné(s)`,
+      icon: "trash"
+    });
+    if (!ok) return;
 
     for (const msgId of Array.from(selectedMessageIds)) {
       try {
@@ -1091,6 +1103,19 @@ export default function InboxMessagesPage() {
                             <button
                               type="button"
                               onClick={async () => {
+                                const ok = await confirm({
+                                  title: "Supprimer ce message ?",
+                                  description: "Voulez-vous vraiment supprimer définitivement ce message ?",
+                                  confirmText: "Supprimer",
+                                  cancelText: "Annuler",
+                                  variant: "danger",
+                                  badgeText: "E-Schola Pro • Messagerie Interne",
+                                  itemName: msg.subject,
+                                  itemDetail: `Expéditeur : ${msg.sender?.email || 'Inconnu'}`,
+                                  icon: "trash"
+                                });
+                                if (!ok) return;
+
                                 try {
                                   await apiClient.delete(`/messages/${msg.id}`);
                                   await loadAllMessages();

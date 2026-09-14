@@ -15,6 +15,7 @@ import {
   UserPlus
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
+import { useConfirm } from '@/context/ConfirmModalContext';
 
 interface GroupMembersModalProps {
   groupId: number;
@@ -48,6 +49,7 @@ interface AvailableUser {
 }
 
 export default function GroupMembersModal({ groupId, groupName, onClose }: GroupMembersModalProps) {
+  const { confirm } = useConfirm();
   const [members, setMembers] = useState<Member[]>([]);
   const [availableUsers, setAvailableUsers] = useState<AvailableUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -147,7 +149,19 @@ export default function GroupMembersModal({ groupId, groupName, onClose }: Group
   };
 
   const handleRemoveMember = async (userId: number, name: string) => {
-    if (!confirm(`Voulez-vous vraiment retirer "${name}" du groupe ?`)) return;
+    const ok = await confirm({
+      title: "Retirer ce membre du groupe ?",
+      description: `Êtes-vous certain de vouloir retirer "${name}" de "${groupName}" ?`,
+      confirmText: "Retirer",
+      cancelText: "Annuler",
+      variant: "warning",
+      badgeText: "E-Schola Pro • Gestion des Membres",
+      itemName: name,
+      itemDetail: `Groupe : ${groupName}`,
+      icon: "users"
+    });
+    if (!ok) return;
+
     setErrorMessage('');
     setSuccessMessage('');
     try {

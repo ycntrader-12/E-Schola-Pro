@@ -24,6 +24,7 @@ import {
 import { apiClient } from '@/lib/api';
 import { UserProfileData, ProfileEditForm } from './ProfileEditForm';
 import { calculateAge } from '@/lib/profileData';
+import { useConfirm } from '@/context/ConfirmModalContext';
 
 export interface UserProfileCardProps {
   user: UserProfileData;
@@ -36,6 +37,7 @@ export const UserProfileCard: React.FC<UserProfileCardProps> = ({
   onProfileUpdated,
   isEditable = true,
 }) => {
+  const { confirm } = useConfirm();
   const [user, setUser] = useState<UserProfileData>(initialUser);
   const [isEditing, setIsEditing] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
@@ -109,7 +111,18 @@ export const UserProfileCard: React.FC<UserProfileCardProps> = ({
   };
 
   const handleDeleteAvatar = async () => {
-    if (!confirm('Voulez-vous supprimer votre photo de profil et réinitialiser vos initiales ?')) return;
+    const ok = await confirm({
+      title: "Supprimer la photo de profil ?",
+      description: "Voulez-vous supprimer votre photo de profil et réinitialiser vos initiales par défaut ?",
+      confirmText: "Supprimer la photo",
+      cancelText: "Annuler",
+      variant: "danger",
+      badgeText: "E-Schola Pro • Profil & Identité",
+      itemName: [user.prenom, user.nom].filter(Boolean).join(' ') || user.email,
+      itemDetail: user.email,
+      icon: "trash"
+    });
+    if (!ok) return;
 
     setIsUploadingAvatar(true);
     setUploadMessage(null);

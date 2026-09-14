@@ -3,6 +3,7 @@
 import * as React from 'react';
 import NotificationManager from '@/components/NotificationManager';
 import RoleGuideAssistant from '@/components/RoleGuideAssistant';
+import { ConfirmModalProvider } from '@/context/ConfirmModalContext';
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
@@ -14,10 +15,10 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <>
+    <ConfirmModalProvider>
       <NotificationManager />
       <RoleGuideAssistant />
       {children}
-    </>
+    </ConfirmModalProvider>
   );
 }

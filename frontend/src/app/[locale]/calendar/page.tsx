@@ -27,6 +27,7 @@ import { apiClient } from '@/lib/api';
 import DeliverablesModal from '@/components/calendar/DeliverablesModal';
 import DeliverablesGlobalModal from '@/components/calendar/DeliverablesGlobalModal';
 import { getMoroccanHolidays, getMoroccanHolidayForDate, MoroccanHoliday } from '@/lib/moroccanHolidays';
+import { useConfirm } from '@/context/ConfirmModalContext';
 
 interface Event {
   id: number;
@@ -45,6 +46,7 @@ interface GroupItem {
 }
 
 export default function CalendarPage() {
+  const { confirm } = useConfirm();
   // Current authenticated user
   const [currentUser, setCurrentUser] = useState<{ id: number; email: string; role: string } | null>(null);
 
@@ -238,7 +240,20 @@ export default function CalendarPage() {
 
   // 6. Delete Event (Formateurs & Admins)
   const handleDeleteEvent = async (eventId: number) => {
-    if (!confirm('Voulez-vous vraiment supprimer ce cours / planning du calendrier ?')) return;
+    const targetEvent = events.find(e => e.id === eventId);
+    const ok = await confirm({
+      title: "Supprimer cet événement du calendrier ?",
+      description: "Voulez-vous vraiment supprimer ce cours / créneau du calendrier pédagogique ?",
+      confirmText: "Supprimer la séance",
+      cancelText: "Annuler",
+      variant: "danger",
+      badgeText: "E-Schola Pro • Calendrier Pédagogique",
+      itemName: targetEvent?.title || `Séance #${eventId}`,
+      itemDetail: targetEvent ? `${new Date(targetEvent.start_time).toLocaleDateString('fr-FR')} • ${targetEvent.description || 'Séance'}` : undefined,
+      icon: "calendar"
+    });
+    if (!ok) return;
+
     try {
       await apiClient.delete(`/events/${eventId}`);
       setEvents(prev => prev.filter(e => e.id !== eventId));

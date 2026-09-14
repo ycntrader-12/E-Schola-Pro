@@ -9,6 +9,7 @@ import { apiClient } from '@/lib/api';
 import DownloadCourseButton from "@/components/DownloadCourseButton";
 import YoutubePlayer from "@/components/video/YoutubePlayer";
 import BackButton from "@/components/BackButton";
+import { useConfirm } from '@/context/ConfirmModalContext';
 
 interface CourseVideo {
   id: number;
@@ -35,6 +36,7 @@ interface UserMe {
 }
 
 export default function CourseDetailPage() {
+  const { confirm } = useConfirm();
   const params = useParams();
   const router = useRouter();
   const id = params?.id as string;
@@ -83,7 +85,19 @@ export default function CourseDetailPage() {
   };
 
   const handleDeleteCourse = async () => {
-    if (!confirm("Attention : Voulez-vous vraiment supprimer ce cours ? Cette action supprimera également toutes les vidéos associées et est irréversible.")) return;
+    const ok = await confirm({
+      title: "Supprimer définitivement ce cours ?",
+      description: "Attention : Voulez-vous vraiment supprimer ce cours ? Cette action supprimera également toutes les vidéos associées et est irréversible.",
+      confirmText: "Supprimer le cours",
+      cancelText: "Annuler",
+      variant: "danger",
+      badgeText: "E-Schola Pro • Cours & Formations",
+      itemName: course?.title || `Cours #${id}`,
+      itemDetail: `${course?.videos?.length || 0} vidéo(s) associée(s)`,
+      icon: "trash"
+    });
+    if (!ok) return;
+
     setIsDeletingCourse(true);
     try {
       await apiClient.delete(`/courses/${id}`);
@@ -217,7 +231,20 @@ export default function CourseDetailPage() {
   };
 
   const handleDeleteVideo = async (videoId: number) => {
-    if (!confirm("Voulez-vous vraiment supprimer cette vidéo ?")) return;
+    const targetVideo = course?.videos?.find(v => v.id === videoId);
+    const ok = await confirm({
+      title: "Supprimer cette vidéo ?",
+      description: "Êtes-vous certain de vouloir supprimer cette vidéo de formation définitivement ?",
+      confirmText: "Supprimer la vidéo",
+      cancelText: "Annuler",
+      variant: "danger",
+      badgeText: "E-Schola Pro • Contenu Vidéo",
+      itemName: targetVideo?.title || `Vidéo #${videoId}`,
+      itemDetail: course?.title,
+      icon: "video"
+    });
+    if (!ok) return;
+
     try {
       await apiClient.delete(`/courses/${id}/videos/${videoId}`);
       

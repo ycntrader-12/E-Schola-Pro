@@ -2736,6 +2736,36 @@ E-Schola Pro/
       </ul>
     </div>
 
+    <h3>Système Global de Modals de Confirmation 3D &amp; Harmonisation Thématique (ConfirmModalContext)</h3>
+    <div class="card" style="border-left: 4px solid #1877f2;">
+      <p>Afin d'offrir une expérience utilisateur de standing industriel et d'éliminer définitivement les boîtes de dialogue natives archaïques du navigateur (<code>window.confirm()</code>), un framework global de confirmation unifié a été déployé à l'échelle de toute la plateforme :</p>
+      <ul>
+        <li><strong>Provider Global Racine (ConfirmModalProvider) :</strong> Monté dans <code>frontend/src/app/providers.tsx</code>, il encapsule l'application et expose le hook universel <code>useConfirm()</code>.</li>
+        <li><strong>Design System Officiel (Clean White #FFFFFF &amp; Facebook Blue #1877F2) :</strong>
+          <ul>
+            <li><em>Centrage Parfait &amp; Flou d'Arrière-Plan :</em> Modal centré au milieu du viewport (<code>fixed inset-0 flex items-center justify-center</code>), avec calque d'occlusion estompé (<code>backdrop-blur-md bg-slate-950/65</code>).</li>
+            <li><em>Badge 3D Flottant &amp; Halo Lumineux :</em> Icône thématique 3D inclinée (Trash, Warning, Logout, Shield, Video, Calendar, Mail) avec dégradé riche selon la variante (<code>danger</code> rouge/rose, <code>warning</code> ambre/orange, <code>primary</code> bleu officiel), ombre portée et anneau lumineux.</li>
+            <li><em>Puce de Sécurité E-Schola Pro :</em> Badge capsule supérieur avec icône CPU pulsée et libellé contextuel sécurisé.</li>
+            <li><em>Aperçu Ciblé de l'Élément (Target Preview Card) :</em> Affichage recessed avec micro-carte illustrant précisément l'entité ciblée (titre du cours, nom du groupe, sujet de message, séance ou session) pour prévenir toute suppression accidentelle.</li>
+            <li><em>Accessibilité &amp; Clavier :</em> Prise en charge automatique de la touche <kbd>Échap</kbd> pour annuler, fermeture par clic extérieur et verrouillage dynamique du défilement du corps (<code>body overflow hidden</code>).</li>
+          </ul>
+        </li>
+        <li><strong>Généralisation à 100% sur Toutes les Pages :</strong> Remplacement total de tous les dialogues natifs sur l'ensemble des modules :
+          <ul>
+            <li><strong>Cours &amp; Formations (<code>/courses/[id]</code>) :</strong> Confirmation de suppression de cours complets et de vidéos de formation.</li>
+            <li><strong>Quiz &amp; Évaluations (<code>/quizzes</code>) :</strong> Confirmation de suppression de quiz et confirmation d'abandon d'une session de test en cours avec avertissement sur les réponses non enregistrées.</li>
+            <li><strong>Groupes &amp; Classes (<code>/group</code> &amp; <code>GroupMembersModal</code>) :</strong> Confirmation de dissolution de groupe et de retrait de membres apprenants.</li>
+            <li><strong>Messagerie Interne (<code>/inbox</code>) :</strong> Confirmation de suppression unitaire et suppression par lot (bulk delete) de messages.</li>
+            <li><strong>Planning &amp; Calendrier (<code>/calendar</code>) :</strong> Confirmation de suppression de séances et cours du calendrier pédagogique.</li>
+            <li><strong>Assiduité &amp; Émargement (<code>/attendance</code>) :</strong> Confirmation de suppression d'enregistrements du registre d'émargement.</li>
+            <li><strong>Administration &amp; Console Sécurité (<code>/admin</code>) :</strong> Confirmation de révocation de session active, révocation globale de toutes les sessions d'un utilisateur, clôture d'urgence de visioconférence et révocation de liens d'invitations.</li>
+            <li><strong>Profil &amp; Identité (<code>UserProfileCard</code>) :</strong> Confirmation de suppression de la photo de profil et réinitialisation des initiales.</li>
+            <li><strong>Tâches &amp; Devoirs (<code>/assignments</code>) :</strong> Modal de confirmation 3D pour la suppression définitive de devoirs et livrables.</li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+
     <h3>Identité Visuelle, Nouveau Logo Métallique &amp; Intégration Graphique Globale</h3>
     <div class="card" style="border-left: 4px solid var(--accent-blue);">
       <p>L'application bénéficie d'une <strong>identité visuelle industrielle et moderne</strong> articulée autour du nouvel emblème officiel 3D en aluminium brossé :</p>

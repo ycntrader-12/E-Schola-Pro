@@ -26,6 +26,7 @@ import {
   GraduationCap
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
+import { useConfirm } from '@/context/ConfirmModalContext';
 import { 
   exportPersonalQuizAttemptPDF, 
   exportGlobalQuizReportPDF,
@@ -73,6 +74,7 @@ interface QuizAttempt {
 }
 
 export default function QuizzesPage() {
+  const { confirm } = useConfirm();
   const [currentUser, setCurrentUser] = useState<{ id: number; email: string; role: string; group_name?: string } | null>(null);
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [myAttempts, setMyAttempts] = useState<QuizAttempt[]>([]);
@@ -249,7 +251,20 @@ export default function QuizzesPage() {
 
   // 7. Delete Quiz (Formateur & Admin)
   const handleDeleteQuiz = async (quizId: number) => {
-    if (!confirm('Voulez-vous vraiment supprimer ce quiz ?')) return;
+    const targetQuiz = quizzes.find(q => q.id === quizId);
+    const ok = await confirm({
+      title: "Supprimer définitivement ce quiz ?",
+      description: "Êtes-vous certain de vouloir supprimer ce quiz pédagogique ? Tous les résultats et statistiques associés seront effacés.",
+      confirmText: "Supprimer le quiz",
+      cancelText: "Annuler",
+      variant: "danger",
+      badgeText: "E-Schola Pro • Évaluations & Quiz",
+      itemName: targetQuiz?.title || `Quiz #${quizId}`,
+      itemDetail: targetQuiz ? `${targetQuiz.question_count || 0} question(s) • ${targetQuiz.time_limit_minutes || 0} min` : undefined,
+      icon: "trash"
+    });
+    if (!ok) return;
+
     try {
       await apiClient.delete(`/quizzes/${quizId}`);
       setQuizzes(prev => prev.filter(q => q.id !== quizId));
@@ -871,8 +886,18 @@ export default function QuizzesPage() {
                     </div>
 
                     <button
-                      onClick={() => {
-                        if (confirm('Voulez-vous vraiment quitter ce quiz ? Vos réponses en cours ne seront pas enregistrées.')) {
+                      onClick={async () => {
+                        const ok = await confirm({
+                          title: "Quitter le quiz en cours ?",
+                          description: "Voulez-vous vraiment quitter ce quiz ? Vos réponses en cours ne seront pas enregistrées et votre progression sera perdue.",
+                          confirmText: "Quitter le quiz",
+                          cancelText: "Poursuivre le quiz",
+                          variant: "warning",
+                          badgeText: "E-Schola Pro • Session d'Évaluation",
+                          itemName: activeQuizDetail?.title || "Quiz actif",
+                          icon: "warning"
+                        });
+                        if (ok) {
                           setActiveQuizDetail(null);
                           setQuizResult(null);
                         }
