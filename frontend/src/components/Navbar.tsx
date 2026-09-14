@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Link, usePathname, useRouter } from '@/i18n/routing';
 import Image from 'next/image';
-import { LogOut, User, GraduationCap, MessageSquare, Video, LayoutDashboard, Compass, Sparkles } from 'lucide-react';
+import { LogOut, User, GraduationCap, MessageSquare, Video, LayoutDashboard, Compass } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { apiClient } from '@/lib/api';
 import LanguageSwitcher from './LanguageSwitcher';
@@ -224,23 +224,6 @@ export default function Navbar() {
                 >
                   <Compass size={16} className="transition-transform group-hover:rotate-45" />
                   <span className="hidden md:inline">Guide</span>
-                </button>
-              )}
-
-              {/* Assistant IA Google Gemini (Autorisé pour TOUS les utilisateurs connectés) */}
-              {!isPublicPage && (
-                <button
-                  type="button"
-                  onClick={() => window.dispatchEvent(new CustomEvent('open_ai_assistant'))}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-white bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:opacity-95 text-xs font-extrabold transition-all shadow-sm shadow-indigo-500/20 group cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
-                  title="Assistant IA Google Gemini — Autorisé pour tous les utilisateurs (Étudiants, Stagiaires, Formateurs, Admins)"
-                  aria-label="Assistant IA Google Gemini"
-                >
-                  <Sparkles size={14} className="text-amber-300 animate-pulse" />
-                  <span className="hidden sm:inline">IA Gemini</span>
-                  <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-emerald-400 text-slate-900 uppercase tracking-wider">
-                    Tous
-                  </span>
                 </button>
               )}
 

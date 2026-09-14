@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { usePathname, Link } from '@/i18n/routing';
 import Image from 'next/image';
-import { LayoutDashboard, Inbox, BookOpen, CheckSquare, Settings, Video, Award, UserCheck, Calendar, X, GraduationCap, Users, ShieldCheck, Compass, Sparkles } from 'lucide-react';
+import { LayoutDashboard, Inbox, BookOpen, CheckSquare, Settings, Video, Award, UserCheck, Calendar, X, GraduationCap, Users, ShieldCheck, Compass } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { apiClient } from '@/lib/api';
 
@@ -217,32 +217,8 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
           })}
         </nav>
 
-        {/* Assistant IA Google Gemini (Autorisé pour TOUS les utilisateurs) */}
-        <div className="px-3 shrink-0 mb-1 border-t border-white/10 pt-3">
-          <button
-            type="button"
-            onClick={() => {
-              window.dispatchEvent(new CustomEvent('open_ai_assistant'));
-              if (setIsOpen) setIsOpen(false);
-            }}
-            className="w-full group flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all text-sm font-medium bg-gradient-to-r from-blue-600/30 to-purple-600/30 hover:from-blue-600/50 hover:to-purple-600/50 text-white border border-indigo-400/30 cursor-pointer shadow-xs"
-            title="Assistant IA Google Gemini — Autorisé pour tous les utilisateurs"
-          >
-            <div className="flex items-center gap-3">
-              <Sparkles 
-                size={19} 
-                className="text-amber-300 group-hover:scale-110 transition-transform animate-pulse" 
-              />
-              <span className="font-bold">Assistant IA Gemini</span>
-            </div>
-            <span className="px-1.5 py-0.5 rounded-full text-[9px] font-black bg-emerald-500/30 text-emerald-300 border border-emerald-400/30 uppercase">
-              Tous
-            </span>
-          </button>
-        </div>
-
         {/* Guide Assistant par Rôle */}
-        <div className="px-3 shrink-0 mb-1 pt-1">
+        <div className="px-3 shrink-0 mb-1 border-t border-white/10 pt-3">
           <button
             type="button"
             onClick={() => {

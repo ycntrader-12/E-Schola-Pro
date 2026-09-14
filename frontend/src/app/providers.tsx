@@ -3,7 +3,6 @@
 import * as React from 'react';
 import NotificationManager from '@/components/NotificationManager';
 import RoleGuideAssistant from '@/components/RoleGuideAssistant';
-import GlobalAiAssistant from '@/components/GlobalAiAssistant';
 import { ConfirmModalProvider } from '@/context/ConfirmModalContext';
 
 export default function Providers({ children }: { children: React.ReactNode }) {
@@ -19,7 +18,6 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     <ConfirmModalProvider>
       <NotificationManager />
       <RoleGuideAssistant />
-      <GlobalAiAssistant />
       {children}
     </ConfirmModalProvider>
   );
