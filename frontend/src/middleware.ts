@@ -27,7 +27,7 @@ export default function middleware(req: NextRequest) {
     '/tasks',
     '/assignments',
     '/classroom',
-    '/courses/new',
+    '/courses',
     '/admin',
     '/supervision',
   ];

@@ -99,12 +99,8 @@ export default function CourseDetailPage() {
 
   const fetchCourse = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api/v1'}/courses/${id}`, { cache: "no-store" });
-      if (!res.ok) {
-        setCourse(null);
-        return;
-      }
-      const data = await res.json();
+      const res = await apiClient.get(`/courses/${id}`);
+      const data = res.data;
       setCourse(data);
       if (data.videos && data.videos.length > 0) {
         setActiveVideo(prev => {

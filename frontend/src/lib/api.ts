@@ -12,6 +12,10 @@ apiClient.interceptors.request.use((config) => {
     const token = localStorage.getItem('access_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+      if (!document.cookie.includes('access_token=')) {
+        const isHttps = window.location.protocol === 'https:';
+        document.cookie = `access_token=${token}; path=/; max-age=86400; SameSite=Lax${isHttps ? '; Secure' : ''}`;
+      }
     }
   }
   return config;
