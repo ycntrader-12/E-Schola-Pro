@@ -2005,6 +2005,7 @@ E-Schola Pro/
       <tbody>
         <tr><td><strong>Créer/Modifier/Supprimer des cours &amp; vidéos</strong></td><td>✅</td><td>✅</td><td>✅</td><td>❌</td></tr>
         <tr><td><strong>Consulter les cours &amp; supports</strong></td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+        <tr><td><strong>Assistant IA Google Gemini (Explications, Résumés &amp; Traduction)</strong></td><td>✅ <em>(Autorisé)</em></td><td>✅ <em>(Autorisé)</em></td><td>✅ <em>(Autorisé)</em></td><td>✅ <strong>(Autorisé pour tous les utilisateurs)</strong></td></tr>
         <tr><td><strong>Créer, générer &amp; lancer des quiz (Ciblage par Groupe)</strong></td><td>✅ <em>(Tous les groupes)</em></td><td>✅ <em>(Tous les groupes)</em></td><td>✅ <em>(Groupes assignés/tous)</em></td><td>❌</td></tr>
         <tr><td><strong>Passer un quiz &amp; consulter son bilan</strong></td><td>✅</td><td>✅</td><td>✅</td><td>✅ <em>(Restreint à son propre groupe)</em></td></tr>
         <tr><td><strong>Créer &amp; attribuer des devoirs / tâches</strong></td><td>✅</td><td>✅</td><td>✅</td><td>❌</td></tr>
@@ -2880,8 +2881,15 @@ E-Schola Pro/
 
     <h3>Assistant IA Pédagogique Google Gemini &amp; Passerelle Google Traduction Multilingue (GoogleAiAssistModal.tsx)</h3>
     <div class="card" style="border-left: 4px solid #8b5cf6;">
-      <p>Afin d'offrir une expérience d'apprentissage intelligente et contextuelle assistée par IA, le composant multimodal <code>GoogleAiAssistModal.tsx</code> a été conçu et déployé de manière transverse :</p>
+      <p>Afin d'offrir une expérience d'apprentissage intelligente, équitable et contextuelle assistée par IA, le composant multimodal <code>GoogleAiAssistModal.tsx</code> a été conçu et déployé de manière transverse avec une <strong>autorisation universelle accordée à l'ensemble des utilisateurs</strong> :</p>
       <ul>
+        <li><strong>Autorisation Universelle &amp; Démocratique pour Tous les Utilisateurs :</strong>
+          <ul>
+            <li><em>Tous les Rôles Autorisés sans Exception :</em> Ouvert sans aucune restriction aux <strong>Apprenants</strong> (Étudiants, Stagiaires, Employés), aux <strong>Formateurs &amp; Cadres Pédagogiques</strong> (Formateurs, Pédagogique, DG-RH) et aux <strong>Administrateurs</strong> (Admin, Admin Manager).</li>
+            <li><em>Boutons d'Accès Globaux Déployés :</em> Intégré directement dans la barre supérieure (<code>Navbar.tsx</code> avec badge émeraude « Tous »), dans la barre latérale principale (<code>Sidebar.tsx</code>), dans le catalogue de cours (<code>CourseSearchClient.tsx</code>), sur la page de visionnage de cours (<code>/courses/[id]</code>) et dans l'éditeur de messagerie (<code>/inbox</code>).</li>
+            <li><em>Gestionnaire d'Événements Global (GlobalAiAssistant.tsx) :</em> Écouteur racine universel monté dans <code>providers.tsx</code> réagissant à l'événement <code>open_ai_assistant</code> pour afficher le modal instantanément depuis n'importe quel composant de l'application sans rechargement.</li>
+          </ul>
+        </li>
         <li><strong>Ancrage Contextuel aux Cours Hébergés :</strong>
           <ul>
             <li><em>Sélecteur Intelligent de Cours :</em> Permet à l'utilisateur de choisir le cours de référence (ou pré-sélection automatique du cours actif) parmi les cours hébergés sur la plateforme.</li>
