@@ -7,6 +7,7 @@ export REQUIRE_POSTGRES_IN_RAILWAY=${REQUIRE_POSTGRES_IN_RAILWAY:-true}
 export AUTO_SYNC_SCHEMA=false
 export SEED_DEMO_DATA=false
 export DATABASE_URL=${DATABASE_URL:-"postgresql://postgres:UWnrFUZDxtSEMhgyvfRSNKCPDkTzcVsq@postgres.railway.internal:5432/railway"}
+export SECRET_KEY=${SECRET_KEY:-"eschola_pro_production_secret_key_railway_cloud_2026_secure_64chars_v1"}
 
 # Configuration du port dynamique de Railway dans Nginx
 PORT=${PORT:-8080}

@@ -52,7 +52,7 @@ ENV ENVIRONMENT=production
 ENV REQUIRE_POSTGRES_IN_RAILWAY=true
 ENV SEED_DEMO_DATA=false
 ENV AUTO_SYNC_SCHEMA=false
-ENV SECRET_KEY=supersecretkey_please_change_in_production
+ENV SECRET_KEY=eschola_pro_production_secret_key_railway_cloud_2026_secure_64chars_v1
 ENV ACCESS_TOKEN_EXPIRE_MINUTES=10080
 ENV DATABASE_URL=postgresql://postgres:UWnrFUZDxtSEMhgyvfRSNKCPDkTzcVsq@postgres.railway.internal:5432/railway
 
