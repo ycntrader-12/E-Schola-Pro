@@ -22,8 +22,6 @@ import {
   Layers,
   ArrowRight,
   BookCheck,
-  CheckCircle,
-  ShieldCheck,
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 
@@ -308,20 +306,14 @@ export const GoogleAiAssistModal: React.FC<GoogleAiAssistModalProps> = ({
               />
             </div>
             <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <h3 className="font-extrabold text-sm sm:text-base text-slate-900">
-                  Assistant IA Google Gemini
-                </h3>
+              <h3 className="font-extrabold text-sm sm:text-base text-slate-900 flex items-center gap-2">
+                Assistant IA Google Gemini
                 <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-blue-50 text-[#1877f2] border border-blue-200 shadow-2xs">
                   Mode IA
                 </span>
-                <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs flex items-center gap-1">
-                  <CheckCircle size={11} className="text-emerald-600" />
-                  Autorisé pour tous les utilisateurs
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-500 font-medium mt-0.5">
-                Génération de réponses intelligentes, explications de cours, résumés et traductions • Accès ouvert à tous (Étudiants, Stagiaires, Formateurs, Admins)
+              </h3>
+              <p className="text-[11px] text-slate-500 font-medium">
+                Génération de réponses intelligentes, explications de cours, résumés et traductions
               </p>
             </div>
           </div>
@@ -589,7 +581,7 @@ export const GoogleAiAssistModal: React.FC<GoogleAiAssistModalProps> = ({
           <div className="flex flex-col sm:flex-row items-center justify-between gap-2.5 pt-1">
             <span className="text-[11px] text-slate-500 font-medium order-2 sm:order-1 flex items-center gap-1">
               <Sparkles size={13} className="text-[#1877f2]" />
-              <span>Analyse connectée aux cours, supports et vidéos E-Schola Pro • Autorisé pour tous les utilisateurs</span>
+              <span>Analyse connectée aux cours, supports et vidéos E-Schola Pro</span>
             </span>
             <button
               type="submit"
