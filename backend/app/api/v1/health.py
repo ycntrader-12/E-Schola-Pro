@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db
+from app.api.deps import CurrentAdminUser, get_db
 from app.core.config import is_production, settings
 from app.db.database import engine
 from app.models.user import User
@@ -36,10 +36,14 @@ def health_check(session: Session = Depends(get_db)) -> dict[str, Any]:
 
 
 @router.get("/db-status")
-def get_database_status(session: Session = Depends(get_db)) -> dict[str, Any]:
+def get_database_status(
+    current_admin: CurrentAdminUser,
+    session: Session = Depends(get_db),
+) -> dict[str, Any]:
     """
     Diagnostic endpoint to verify real-time database connectivity, active engine,
     transaction persistence (write-commit-rollback canary), and table metrics.
+    Strictly restricted to administrators.
     """
     dialect = engine.dialect.name
     masked_url = settings.DATABASE_URL

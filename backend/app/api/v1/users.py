@@ -12,6 +12,7 @@ from pydantic import BaseModel
 from sqlalchemy import func, or_
 
 from app.api.deps import CurrentUser, SessionDep
+from app.core.rate_limiter import rate_limiter
 from app.core.security import get_password_hash, verify_password
 from app.models.user import User
 from app.schemas.user import (
@@ -22,6 +23,7 @@ from app.schemas.user import (
     UserUpdate,
     UserUpdatePassword,
 )
+from app.services.audit_service import extract_client_ip
 from app.services.email_service import send_role_change_email
 from app.services.welcome import send_welcome_message
 
@@ -116,7 +118,15 @@ def sync_user_group_membership(session, user: User, new_group_name: str | None):
 def check_username(
     val: str,
     session: SessionDep,
+    request: Request = None,
 ) -> Any:
+    client_ip = extract_client_ip(request) if request else "127.0.0.1"
+    rate_limiter.check_rate_limit(
+        identifier=f"check_username_{client_ip}",
+        max_requests=30,
+        window_seconds=60,
+        action_name="vérification de nom d'utilisateur",
+    )
     val = val.strip().lower()
     existing = (
         session.query(User)
@@ -182,10 +192,27 @@ def create_user(
     *,
     session: SessionDep,
     user_in: UserCreate,
+    request: Request = None,
 ) -> Any:
     """
     Create new user via public registration.
     """
+    # 0. Anti-Flooding & vérification de l'activation des inscriptions
+    client_ip = extract_client_ip(request) if request else "127.0.0.1"
+    rate_limiter.check_rate_limit(
+        identifier=f"register_ip_{client_ip}",
+        max_requests=10,
+        window_seconds=60,
+        action_name="inscription publique",
+    )
+
+    from app.models.system_setting import SystemSetting
+    allow_reg = session.query(SystemSetting).filter(SystemSetting.key == "allow_registration").first()
+    if allow_reg and str(allow_reg.value).strip().lower() in ("false", "0", "no", "off"):
+        raise HTTPException(
+            status_code=403,
+            detail="Les inscriptions publiques sont actuellement suspendues par l'administration de l'établissement.",
+        )
     requested_role = user_in.role.lower().strip()
     if requested_role in ["dg/rh", "dgrh", "dg-rh"]:
         requested_role = "dg_rh"
@@ -1101,7 +1128,14 @@ def update_user_me(
     if user_in.specialisation is not None:
         current_user.specialisation = user_in.specialisation.strip() or None
     if "group_name" in user_in.model_fields_set or user_in.group_name is not None:
-        sync_user_group_membership(session, current_user, user_in.group_name)
+        user_role = (current_user.role or "").strip().lower()
+        if user_role in ["admin", "admin_manager", "formateur", "pedagogique", "dg_rh"]:
+            sync_user_group_membership(session, current_user, user_in.group_name)
+        elif user_in.group_name != current_user.group_name:
+            raise HTTPException(
+                status_code=403,
+                detail="Les apprenants ne peuvent pas modifier eux-mêmes leur groupe d'affectation. Veuillez contacter votre formateur ou l'administration.",
+            )
 
     try:
         session.add(current_user)

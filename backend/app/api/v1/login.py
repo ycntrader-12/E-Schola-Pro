@@ -5,8 +5,10 @@ from fastapi import APIRouter, HTTPException, Request, status
 
 from app.api.deps import SessionDep
 from app.core import security
+from app.core.rate_limiter import rate_limiter
 from app.models.user import User
 from app.schemas.token import Token
+from app.services.audit_service import extract_client_ip
 
 router = APIRouter()
 
@@ -20,7 +22,17 @@ async def login_access_token(
     Universal OAuth2, Form, and JSON compatible token login.
     Accepts application/x-www-form-urlencoded, multipart/form-data, or application/json.
     Accepts both 'username' and 'email' fields.
+    Protected by in-memory sliding window rate limiter against brute-force and credential stuffing.
     """
+    # 1. Protection anti-brute force par IP
+    client_ip = extract_client_ip(request)
+    rate_limiter.check_rate_limit(
+        identifier=f"login_ip_{client_ip}",
+        max_requests=15,
+        window_seconds=60,
+        action_name="tentatives de connexion",
+    )
+
     username = None
     password = None
 
@@ -77,6 +89,14 @@ async def login_access_token(
     # Allow lookup by username or email (case-insensitive)
     uname = str(username).strip()
     uname_lower = uname.lower()
+
+    # 2. Protection anti-brute force par compte ciblé
+    rate_limiter.check_rate_limit(
+        identifier=f"login_account_{uname_lower}",
+        max_requests=10,
+        window_seconds=60,
+        action_name="tentatives de connexion pour ce compte",
+    )
     user = (
         session.query(User)
         .filter(

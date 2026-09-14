@@ -3,6 +3,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 
 from app.api.deps import CurrentUser, SessionDep
+from app.core.sanitizer import sanitize_attachment_url
 from app.models.event import Event, EventDeliverable
 from app.schemas.event import (
     EventCreate,
@@ -145,17 +146,24 @@ def submit_deliverable(
     if not event:
         raise HTTPException(status_code=404, detail="Événement introuvable.")
 
-    # Validate that at least one is provided
-    if not deliverable_in.file_url and not deliverable_in.link_url:
+    # Validate and sanitize submitted URLs
+    clean_file_url = sanitize_attachment_url(deliverable_in.file_url) if deliverable_in.file_url else None
+    clean_link_url = sanitize_attachment_url(deliverable_in.link_url) if deliverable_in.link_url else None
+
+    if deliverable_in.file_url and not clean_file_url:
+        raise HTTPException(status_code=400, detail="URL de fichier non sécurisée ou invalide.")
+    if deliverable_in.link_url and not clean_link_url:
+        raise HTTPException(status_code=400, detail="URL de lien non sécurisée ou protocole interdit.")
+    if not clean_file_url and not clean_link_url:
         raise HTTPException(
-            status_code=400, detail="Veuillez fournir un fichier ou un lien."
+            status_code=400, detail="Veuillez fournir un fichier ou un lien valide."
         )
 
     deliverable = EventDeliverable(
         event_id=event_id,
         user_id=current_user.id,
-        file_url=deliverable_in.file_url,
-        link_url=deliverable_in.link_url,
+        file_url=clean_file_url,
+        link_url=clean_link_url,
     )
     session.add(deliverable)
     session.commit()

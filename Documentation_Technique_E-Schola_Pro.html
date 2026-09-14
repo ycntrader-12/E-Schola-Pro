@@ -1719,7 +1719,7 @@ E-Schola Pro/
       <thead><tr><th>Méthode</th><th>Endpoint</th><th>Description</th><th>Accès</th></tr></thead>
       <tbody class="endpoint-row">
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/health</code></td><td>Healthcheck standard pour conteneur Railway / orchestrateurs (code 200 OK, validation de la connectivité DB et statut de production)</td><td>Public</td></tr>
-        <tr><td><span class="badge badge-get">GET</span></td><td><code>/health/db-status</code></td><td>Diagnostic en temps réel de la persistance base de données (dialecte actif, vérification write-commit-read canary, latence, métriques du pool et statut des mutations)</td><td>Public</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/health/db-status</code></td><td>Diagnostic approfondi de la persistance base de données (dialecte actif, vérification write-commit-read canary, latence, métriques du pool et statut des mutations). <strong>Sécurisé :</strong> réservé au staff d'administration.</td><td>Admin, Admin Manager</td></tr>
       </tbody>
     </table>
 
@@ -1727,7 +1727,7 @@ E-Schola Pro/
     <table>
       <thead><tr><th>Méthode</th><th>Endpoint</th><th>Description</th><th>Accès</th></tr></thead>
       <tbody class="endpoint-row">
-        <tr><td><span class="badge badge-post">POST</span></td><td><code>/login/access-token</code></td><td>Obtenir un token JWT</td><td>Public</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/login/access-token</code></td><td>Obtenir un token JWT Bearer. <strong>Protection anti-brute force :</strong> Sliding window rate limiter actif (max 15 req/min par IP, 10 req/min par compte cible) et traçabilité des tentatives d'accès.</td><td>Public (Rate Limited)</td></tr>
       </tbody>
     </table>
 
@@ -1738,11 +1738,11 @@ E-Schola Pro/
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/users/</code></td><td>Lister tous les utilisateurs</td><td>Admin, Admin Manager</td></tr>
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/users/me</code></td><td>Profil de l'utilisateur connecté</td><td>Authentifié</td></tr>
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/users/search</code></td><td>Recherche d'utilisateurs par nom, prénom, email ou nom d'utilisateur (Matching ILIKE, limite paramétrable) avec payload <code>UserMinimalRead</code></td><td>Authentifié</td></tr>
-        <tr><td><span class="badge badge-get">GET</span></td><td><code>/users/check-username</code></td><td>Vérifier la disponibilité d'un nom d'utilisateur en temps réel</td><td>Public</td></tr>
-        <tr><td><span class="badge badge-post">POST</span></td><td><code>/users/</code></td><td>Créer un utilisateur (inscription publique avec profil complet, envoi automatique d'un email de bienvenue avec rôle et lien d'accès, traçabilité [AUDIT])</td><td>Public</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/users/check-username</code></td><td>Vérifier la disponibilité d'un nom d'utilisateur en temps réel. <strong>Protection anti-énumération :</strong> Rate limited à 30 req/min.</td><td>Public (Rate Limited)</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/users/</code></td><td>Créer un utilisateur (inscription publique avec profil complet, soumis au paramètre système <code>allow_registration</code>, rate limit 5 req/min, email de bienvenue et traçabilité [AUDIT])</td><td>Public (Rate Limited)</td></tr>
         <tr><td><span class="badge badge-post">POST</span></td><td><code>/users/admin-create</code></td><td>Créer un compte depuis le panneau d'administration (profil standard ou allégé admin, envoi de l'email de bienvenue avec rôle assigné, traçabilité [AUDIT])</td><td>Admin, Admin Manager</td></tr>
         <tr><td><span class="badge badge-put">PUT</span></td><td><code>/users/me/password</code></td><td>Modifier son propre mot de passe (persistant avec hachage bcrypt)</td><td>Authentifié</td></tr>
-        <tr><td><span class="badge badge-put">PUT</span></td><td><code>/users/me</code></td><td>Mise à jour complète et persistance en base (nom, prénom, username unique, email, téléphone, adresse, date de naissance, CIN, coordonnées, mot de passe direct, réinitialisation des champs vidés vers NULL, et synchronisation atomique du groupe pédagogique avec <code>group_members</code>, traçabilité [AUDIT])</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-put">PUT</span></td><td><code>/users/me</code></td><td>Mise à jour du profil personnel (nom, prénom, username, email, téléphone, coordonnées). <strong>Sécurité RBAC :</strong> L'auto-changement de <code>group_name</code> est strictement réservé aux formateurs et administrateurs pour empêcher toute élévation de privilèges apprenant.</td><td>Authentifié</td></tr>
         <tr><td><span class="badge badge-put">PUT</span></td><td><code>/users/{id}</code></td><td>Modifier un compte utilisateur (profil complet, normalisation des rôles avec accents, unicité croisée insensible à la casse username/email, mot de passe, synchronisation de groupe sécurisée sans régression, diagnostic d'erreur enrichi, rollback transactionnel et traçabilité [AUDIT])</td><td>Admin, Admin Manager</td></tr>
         <tr><td><span class="badge badge-put">PUT</span></td><td><code>/users/{id}/password</code></td><td>Réinitialiser le mot de passe d'un utilisateur</td><td>Admin, Admin Manager</td></tr>
         <tr><td><span class="badge badge-put">PUT</span></td><td><code>/users/{id}/role</code></td><td>Changer le rôle d'un utilisateur (persistance immédiate en base de données, notification par email transactionnel à l'utilisateur, contrôles stricts anti-élévation, traçabilité [AUDIT])</td><td>Admin, Admin Manager</td></tr>
@@ -1904,7 +1904,7 @@ E-Schola Pro/
     <table>
       <thead><tr><th>Méthode</th><th>Endpoint</th><th>Description</th><th>Accès</th></tr></thead>
       <tbody class="endpoint-row">
-        <tr><td><span class="badge badge-get">GET</span></td><td><code>/email/status</code></td><td>Consulter le statut du service email, hôte SMTP configuré, ports TLS/SSL et mode actif (Production vs Dev Mock)</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/email/status</code></td><td>Consulter le statut du service email, hôte SMTP configuré, ports TLS/SSL et mode actif (Production vs Dev Mock). <strong>Sécurisé :</strong> réservé aux administrateurs.</td><td>Admin, Admin Manager</td></tr>
         <tr><td><span class="badge badge-post">POST</span></td><td><code>/email/test</code></td><td>Diagnostiquer en direct la connectivité SMTP (DNS, poignée de main TCP, STARTTLS/SSL, authentification) et envoyer un email de test optionnel</td><td>Admin, Admin Manager</td></tr>
       </tbody>
     </table>
@@ -1928,7 +1928,8 @@ E-Schola Pro/
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/admin/system/status</code></td><td>Statut de santé détaillé des composants : latence PostgreSQL, espace disque uploads, uptime et charge mémoire</td><td>Admin, Admin Manager</td></tr>
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/admin/system/logs</code></td><td>Consultation des logs applicatifs récents avec masquage automatique systématique des mots de passe et tokens</td><td>Admin, Admin Manager</td></tr>
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/admin/backup/export</code></td><td>Exportation intégrale structurée au format JSON de toutes les tables avec empreinte SHA256 d'intégrité</td><td>Admin (Super-Admin exclusif)</td></tr>
-        <tr><td><span class="badge badge-post">POST</span></td><td><code>/admin/backup/snapshot</code></td><td>Génération et sauvegarde d'un fichier snapshot horodaté sur le serveur (<code>uploads/backups/</code>)</td><td>Admin (Super-Admin exclusif)</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/admin/backup/snapshot</code></td><td>Génération et sauvegarde d'un fichier snapshot horodaté sur le serveur dans l'espace sécurisé <code>backups/</code> (non accessible via les fichiers statiques publics)</td><td>Admin (Super-Admin exclusif)</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/admin/backup/download/{filename}</code></td><td>Téléchargement sécurisé et contrôlé d'une sauvegarde avec validation stricte contre le Path Traversal et restriction super-admin</td><td>Admin (Super-Admin exclusif)</td></tr>
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/admin/classrooms/supervision</code></td><td>Supervision administrative des salles de visioconférence en direct et nombre d'invitations</td><td>Admin, Admin Manager</td></tr>
         <tr><td><span class="badge badge-post">POST</span></td><td><code>/admin/classrooms/{room_id}/terminate</code></td><td>Arrêt forcé d'urgence d'une salle de visioconférence</td><td>Admin, Admin Manager</td></tr>
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/admin/quizzes/supervision</code></td><td>Synthèse globale des évaluations, taux de complétion, moyennes et dernières tentatives en direct</td><td>Admin, Admin Manager</td></tr>
@@ -3018,6 +3019,19 @@ http://localhost:8000/admin
 
     <div class="warning-box">
       <strong>⚠️ Sécurité & Synchronisation Réseau :</strong> Pour connecter votre machine locale directement à la base PostgreSQL de production Railway, activez le <strong>TCP Proxy</strong> dans l'onglet <em>Networking</em> du service Postgres sur Railway et renseignez l'adresse dans <code>DATABASE_PUBLIC_URL</code>. Sinon, vous pouvez directement faire pointer <code>NEXT_PUBLIC_API_URL</code> sur le backend de production Railway.
+    </div>
+
+    <h3>🛡️ Politique de Cybersécurité & Audit de Durcissement (OWASP Top 10)</h3>
+    <div class="card" style="margin: 16px 0;">
+      <h4 style="margin-bottom: 12px; color: var(--text-primary);">Verrous de Sécurité & Protections Actives</h4>
+      <ul style="font-size: 13px; color: var(--text-secondary); line-height: 1.8; margin-left: 20px;">
+        <li><strong>Content Security Policy (CSP) & En-têtes HTTP de Défense en Profondeur :</strong> Next.js et FastAPI injectent des en-têtes stricts (<code>Content-Security-Policy</code>, <code>Strict-Transport-Security: max-age=63072000; includeSubDomains; preload</code>, <code>X-Content-Type-Options: nosniff</code>, <code>X-Frame-Options: SAMEORIGIN</code>, <code>Referrer-Policy: strict-origin-when-cross-origin</code>, <code>Permissions-Policy</code>).</li>
+        <li><strong>Protection Anti-Brute Force & Anti-Déni de Service (DoS) :</strong> Limiteur de débit glissant (Sliding Window Rate Limiter) actif sur <code>POST /login/access-token</code> (15 req/min par IP, 10 req/min par compte), <code>GET /users/check-username</code> (30 req/min) et <code>POST /users/</code> (5 req/min).</li>
+        <li><strong>Protection Anti-XSS & Filtrage des Liens :</strong> Assainissement systématique du texte HTML et des balises script (<code>sanitize_text</code>) et validation stricte des protocoles autorisés (<code>http:</code>, <code>https:</code>, <code>/uploads/</code> via <code>sanitize_attachment_url</code>) dans les salons de visioconférence (<code>classrooms.py</code>), devoirs (<code>tasks.py</code>) et livrables d'événements (<code>events.py</code>).</li>
+        <li><strong>Éradication des Fuites de Données & Isolation des Sauvegardes :</strong> Suppression définitive de l'endpoint <code>/api/v1/debug-users</code>. Déplacement des snapshots de bases de données vers le répertoire privé <code>backups/</code> hors des répertoires statiques publics <code>uploads/</code>, avec accès exclusif au super-administrateur via <code>GET /api/v1/admin/backup/download/{filename}</code> et protection anti-Path Traversal.</li>
+        <li><strong>Contrôle d'Accès Strict & Verrouillage RBAC :</strong> Sécurisation des endpoints de cours (authentification obligatoire), restriction de <code>/health/db-status</code> et <code>/email/status</code> aux administrateurs, et interdiction pour les apprenants d'altérer leur affectation de groupe via <code>PUT /users/me</code>.</li>
+        <li><strong>Validation Bloquante des Secrets de Production :</strong> Refus de démarrage immédiat en production si la variable <code>SECRET_KEY</code> n'est pas renseignée ou égale à la clé par défaut du dépôt.</li>
+      </ul>
     </div>
   
     </section>

@@ -3,6 +3,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 
 from app.api.deps import CurrentUser, SessionDep
+from app.core.sanitizer import sanitize_attachment_url, sanitize_text
 from app.models.course import Course
 from app.models.course_video import CourseVideo
 from app.schemas.course import (
@@ -19,11 +20,12 @@ ADMIN_ROLES = ["admin", "admin_manager"]
 @router.get("/", response_model=list[CourseResponse])
 def read_courses(
     session: SessionDep,
+    current_user: CurrentUser,
     skip: int = 0,
     limit: int = 100,
 ) -> Any:
     """
-    Retrieve all courses.
+    Retrieve all courses. Restricted to authenticated users.
     """
     courses = session.query(Course).offset(skip).limit(limit).all()
     return courses
@@ -45,11 +47,15 @@ def create_course(
             status_code=403, detail="Not enough permissions to upload courses"
         )
 
+    # Sanitize cover image and document URLs against injection/XSS
+    clean_cover = sanitize_attachment_url(course_in.cover_image_url) if course_in.cover_image_url else None
+    clean_doc = sanitize_attachment_url(course_in.document_url) if course_in.document_url else None
+
     course = Course(
-        title=course_in.title,
-        description=course_in.description,
-        cover_image_url=course_in.cover_image_url,
-        document_url=course_in.document_url,
+        title=sanitize_text(course_in.title, max_length=200) or course_in.title,
+        description=sanitize_text(course_in.description, max_length=5000) if course_in.description else None,
+        cover_image_url=clean_cover,
+        document_url=clean_doc,
         instructor_id=current_user.id,
     )
     session.add(course)
@@ -62,9 +68,10 @@ def create_course(
 def read_course(
     course_id: int,
     session: SessionDep,
+    current_user: CurrentUser,
 ) -> Any:
     """
-    Get course by ID.
+    Get course by ID. Restricted to authenticated users.
     """
     course = session.query(Course).filter(Course.id == course_id).first()
     if not course:
@@ -115,11 +122,15 @@ def add_course_video(
             detail="Not enough permissions to add videos to this course",
         )
 
+    clean_video_url = sanitize_attachment_url(video_in.video_url) if video_in.video_url else None
+    if not clean_video_url:
+        raise HTTPException(status_code=400, detail="URL de vidéo invalide ou protocole non autorisé.")
+
     video = CourseVideo(
         course_id=course.id,
-        title=video_in.title,
-        description=video_in.description,
-        video_url=video_in.video_url,
+        title=sanitize_text(video_in.title, max_length=200) or video_in.title,
+        description=sanitize_text(video_in.description, max_length=5000) if video_in.description else None,
+        video_url=clean_video_url,
         order_index=video_in.order_index,
     )
     session.add(video)

@@ -27,7 +27,9 @@ export default function middleware(req: NextRequest) {
     '/tasks',
     '/assignments',
     '/classroom',
-    '/courses/new'
+    '/courses/new',
+    '/admin',
+    '/supervision',
   ];
   
   const isProtectedPath = protectedPaths.some(

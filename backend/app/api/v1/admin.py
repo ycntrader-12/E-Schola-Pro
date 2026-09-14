@@ -7,12 +7,14 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import func, text
 from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentAdminUser, CurrentSuperAdminUser, SessionDep
 from app.core.config import is_production, settings
+from app.core.sanitizer import sanitize_filename
 from app.db.database import engine
 from app.models.attendance import Attendance
 from app.models.audit_log import AuditLog
@@ -929,10 +931,10 @@ def create_local_snapshot(
     session: SessionDep,
 ) -> Dict[str, Any]:
     """
-    Génère et sauvegarde un fichier d'instantané horodaté dans 'uploads/backups/'.
+    Génère et sauvegarde un fichier d'instantané horodaté dans 'backups/' (répertoire sécurisé non servi en statique).
     """
     backup_payload = export_database_backup(request, current_super_admin, session)
-    backup_dir = os.path.join("uploads", "backups")
+    backup_dir = os.path.abspath("backups")
     os.makedirs(backup_dir, exist_ok=True)
 
     timestamp_str = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
@@ -943,12 +945,38 @@ def create_local_snapshot(
         json.dump(backup_payload, f, ensure_ascii=False, indent=2)
 
     return {
-        "message": "Instantané de base de données créé sur le serveur avec succès.",
+        "message": "Instantané de base de données créé sur le serveur dans l'espace sécurisé avec succès.",
         "filename": filename,
-        "path": f"/uploads/backups/{filename}",
+        "download_url": f"{settings.API_V1_STR}/admin/backup/download/{filename}",
         "checksum": backup_payload["metadata"]["sha256_checksum"],
         "size_kb": round(os.path.getsize(file_path) / 1024, 2),
     }
+
+
+@router.get("/backup/download/{filename}")
+def download_backup_file(
+    filename: str,
+    current_super_admin: CurrentSuperAdminUser,
+):
+    """
+    Téléchargement sécurisé et contrôlé d'une sauvegarde de base de données.
+    Strictement réservé au super-administrateur principal.
+    Protection renforcée contre le Path Traversal.
+    """
+    safe_name = sanitize_filename(filename)
+    if not safe_name.endswith(".json") or not safe_name.startswith("eschola_backup_"):
+        raise HTTPException(status_code=400, detail="Nom de fichier de sauvegarde invalide.")
+
+    expected_dir = os.path.abspath("backups")
+    file_path = os.path.abspath(os.path.join(expected_dir, safe_name))
+    if not file_path.startswith(expected_dir) or not os.path.isfile(file_path):
+        raise HTTPException(status_code=404, detail="Fichier de sauvegarde introuvable.")
+
+    return FileResponse(
+        path=file_path,
+        media_type="application/json",
+        filename=safe_name,
+    )
 
 
 # =========================================================================

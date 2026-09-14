@@ -172,7 +172,11 @@ async def add_security_headers(request: Request, call_next):
     response.headers["X-Frame-Options"] = "SAMEORIGIN"
     response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(self), camera=(self)"
+    if is_production():
+        response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains; preload"
+    # Content Security Policy pour l'API REST
+    response.headers["Content-Security-Policy"] = "default-src 'self'; frame-ancestors 'self';"
     return response
 
 
@@ -180,7 +184,16 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 
 
 # --- SQLAdmin Authentication Backend ---
+import hashlib
+import hmac
+
+
 class AdminAuth(AuthenticationBackend):
+    def _compute_auth_token(self, user_id: int, hashed_pwd: str) -> str:
+        key = settings.SECRET_KEY.encode("utf-8")
+        msg = f"admin_auth:{user_id}:{hashed_pwd}".encode("utf-8")
+        return hmac.new(key, msg, hashlib.sha256).hexdigest()
+
     async def login(self, request: Request) -> bool:
         form = await request.form()
         username = form.get("username")
@@ -200,9 +213,11 @@ class AdminAuth(AuthenticationBackend):
             if (
                 user
                 and user.role in ["admin", "admin_manager"]
+                and (not hasattr(user, "is_active") or user.is_active is not False)
                 and verify_password(str(password), user.hashed_password)
             ):
-                request.session.update({"admin_token": settings.SECRET_KEY})
+                token = self._compute_auth_token(user.id, user.hashed_password)
+                request.session.update({"admin_uid": user.id, "admin_hash": token})
                 return True
         finally:
             db.close()
@@ -213,8 +228,25 @@ class AdminAuth(AuthenticationBackend):
         return True
 
     async def authenticate(self, request: Request) -> bool:
-        token = request.session.get("admin_token")
-        return token == settings.SECRET_KEY
+        user_id = request.session.get("admin_uid")
+        stored_hash = request.session.get("admin_hash")
+        if not user_id or not stored_hash:
+            return False
+
+        from app.db.database import SessionLocal
+        from app.models.user import User as UserModel
+
+        db = SessionLocal()
+        try:
+            user = db.query(UserModel).filter(UserModel.id == user_id).first()
+            if not user or user.role not in ["admin", "admin_manager"]:
+                return False
+            if hasattr(user, "is_active") and user.is_active is False:
+                return False
+            expected_hash = self._compute_auth_token(user.id, user.hashed_password)
+            return hmac.compare_digest(stored_hash, expected_hash)
+        finally:
+            db.close()
 
 
 TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), "templates")
@@ -248,23 +280,6 @@ admin.add_view(AuditLogAdmin)
 admin.add_view(UserSessionAdmin)
 admin.add_view(UserInvitationAdmin)
 admin.add_view(SystemSettingAdmin)
-
-
-@app.get("/api/v1/debug-users")
-def debug_users():
-    from app.core.config import settings
-    from app.db.database import SessionLocal
-    from app.models.user import User
-
-    db = SessionLocal()
-    try:
-        users = db.query(User).all()
-        user_list = [{"email": u.email, "role": u.role} for u in users]
-        return {"database_url": settings.DATABASE_URL, "users": user_list}
-    except Exception as e:
-        return {"error": str(e)}
-    finally:
-        db.close()
 
 
 @app.get("/")

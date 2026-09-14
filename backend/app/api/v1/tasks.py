@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db
+from app.core.sanitizer import sanitize_attachment_url
 from app.models.message import Message
 from app.models.task import Task, TaskSubmission
 from app.models.user import User
@@ -254,9 +255,17 @@ def submit_task_deliverable(
         .first()
     )
 
+    # Validation de sécurité de l'URL du livrable
+    clean_link = sanitize_attachment_url(submission_in.content_link)
+    if not clean_link:
+        raise HTTPException(
+            status_code=400,
+            detail="Le lien ou fichier de livrable est invalide ou utilise un protocole interdit (javascript:, vbscript:, etc.).",
+        )
+
     # 1. Traitement de la base de données : Création ou mise à jour de la soumission
     if existing:
-        existing.content_link = submission_in.content_link
+        existing.content_link = clean_link
         existing.submitted_at = datetime.utcnow()
         existing.status = "submitted"
         db.commit()
@@ -266,7 +275,7 @@ def submit_task_deliverable(
         sub_obj = TaskSubmission(
             task_id=task_id,
             user_id=current_user.id,
-            content_link=submission_in.content_link,
+            content_link=clean_link,
             status="submitted",
         )
         db.add(sub_obj)

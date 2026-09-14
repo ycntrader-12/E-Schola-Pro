@@ -237,6 +237,15 @@ class Settings(BaseSettings):
             self.ENVIRONMENT = "production"
             self.SEED_DEMO_DATA = False
             self.AUTO_SYNC_SCHEMA = False
+            if (
+                not self.SECRET_KEY
+                or self.SECRET_KEY == "supersecretkey_please_change_in_production"
+                or len(self.SECRET_KEY.strip()) < 32
+            ):
+                raise ValueError(
+                    "[ERREUR CRITIQUE SÉCURITÉ] La variable d'environnement 'SECRET_KEY' n'est pas sécurisée en production. "
+                    "Elle doit comporter au moins 32 caractères et être différente de la clé par défaut."
+                )
 
         # If running in production mode, auto-sync schema is disabled by default
         explicit_sync_env = os.getenv("AUTO_SYNC_SCHEMA") or os.getenv("DB_AUTO_SYNC")

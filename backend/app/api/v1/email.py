@@ -27,11 +27,11 @@ class EmailTestRequest(BaseModel):
 
 @router.get("/status", response_model=EmailStatusResponse)
 def get_email_status(
-    current_user: CurrentUser,
+    current_admin: CurrentAdminUser,
 ) -> Any:
     """
     Returns non-sensitive SMTP configuration and status.
-    Accessible to authenticated users (admin, trainers).
+    Accessible to administrators.
     """
     from_email = settings.SMTP_FROM_EMAIL or settings.SMTP_USER or "noreply@eschola.pro"
     return EmailStatusResponse(

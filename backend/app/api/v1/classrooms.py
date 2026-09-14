@@ -1,22 +1,24 @@
-import uuid
+from datetime import datetime, date
 from typing import Any
+import uuid
 
 from fastapi import APIRouter, HTTPException
 
 from app.api.deps import CurrentUser, SessionDep
+from app.core.rate_limiter import rate_limiter
+from app.core.sanitizer import sanitize_attachment_url, sanitize_text
+from app.models.attendance import Attendance
 from app.models.classroom import Classroom
 from app.models.classroom_invitation import ClassroomInvitation
-from app.models.user import User
 from app.models.group import Group, GroupMember
-from app.models.attendance import Attendance
 from app.models.message import Message
+from app.models.user import User
 from app.schemas.classroom import (
     ClassroomCreate,
     ClassroomResponse,
     ClassroomInviteCreate,
     ClassroomInvitationResponse,
 )
-from datetime import datetime, date
 from app.services.email_service import send_classroom_invitation_email
 
 router = APIRouter()
@@ -524,22 +526,50 @@ def get_room_messages(room_id: str, current_user: CurrentUser):
 def post_room_message(room_id: str, message: dict, current_user: CurrentUser):
     """
     Send a message to group or private recipient in the virtual classroom.
+    Sanitized against Stored XSS and bounded against memory exhaustion / DoS.
     """
+    rate_limiter.check_rate_limit(
+        identifier=f"classroom_msg_{current_user.id}",
+        max_requests=30,
+        window_seconds=60,
+        action_name="envoi de messages de classe",
+    )
+
     cleaned_id = room_id.strip().lower()
     if cleaned_id not in ROOM_MESSAGES:
         ROOM_MESSAGES[cleaned_id] = []
+
+    raw_text = str(message.get("text", "") or "")
+    clean_text = sanitize_text(raw_text, max_length=5000, strip_html=True)
+
+    attachment = message.get("attachment")
+    clean_attachment = None
+    if isinstance(attachment, dict):
+        raw_url = attachment.get("url")
+        safe_url = sanitize_attachment_url(raw_url) if raw_url else None
+        if safe_url:
+            clean_attachment = {
+                "url": safe_url,
+                "filename": sanitize_text(attachment.get("filename", "piece_jointe"), max_length=100),
+                "type": sanitize_text(attachment.get("type", "document"), max_length=50),
+            }
 
     msg_record = {
         "id": str(uuid.uuid4()),
         "sender": current_user.email,
         "sender_role": current_user.role,
-        "text": message.get("text", ""),
-        "time": message.get("time", "12:00"),
-        "recipient": message.get("recipient", "everyone"),
-        "subgroup_id": message.get("subgroup_id"),
-        "attachment": message.get("attachment"),
+        "text": clean_text,
+        "time": datetime.now().strftime("%H:%M"),
+        "recipient": sanitize_text(message.get("recipient", "everyone"), max_length=100),
+        "subgroup_id": sanitize_text(message.get("subgroup_id"), max_length=100) if message.get("subgroup_id") else None,
+        "attachment": clean_attachment,
     }
+
     ROOM_MESSAGES[cleaned_id].append(msg_record)
+    # Protection DoS mémoire : conserver au maximum les 120 derniers messages
+    if len(ROOM_MESSAGES[cleaned_id]) > 120:
+        ROOM_MESSAGES[cleaned_id] = ROOM_MESSAGES[cleaned_id][-120:]
+
     return msg_record
 
 
@@ -1028,35 +1058,52 @@ def send_webrtc_signal(
 ):
     """
     Exchange WebRTC SDP Offer, SDP Answer, or ICE Candidates (UDP/TCP).
+    Bounded against memory leaks / DoS.
     """
+    rate_limiter.check_rate_limit(
+        identifier=f"webrtc_sig_{current_user.id}",
+        max_requests=150,
+        window_seconds=60,
+        action_name="signaux WebRTC",
+    )
+
     cleaned_id = room_id.strip().lower()
     if cleaned_id not in ROOM_WEBRTC_SIGNALS:
         ROOM_WEBRTC_SIGNALS[cleaned_id] = {}
 
     sender_email = current_user.email.lower()
     recipient = (signal_data.get("recipient_email") or "broadcast").strip().lower()
+    now_ts = datetime.now().timestamp()
 
     envelope = {
         "id": str(uuid.uuid4()),
         "sender": current_user.email,
         "recipient": recipient,
-        "type": signal_data.get("type"),  # 'offer', 'answer', 'candidate', 'user_state'
+        "type": sanitize_text(signal_data.get("type"), max_length=50),
         "payload": signal_data.get("payload"),
-        "protocol": signal_data.get("protocol", "UDP"),
-        "created_at": datetime.now().timestamp(),
+        "protocol": sanitize_text(signal_data.get("protocol", "UDP"), max_length=20),
+        "created_at": now_ts,
     }
+
+    def push_signal(target_mail: str):
+        if target_mail not in ROOM_WEBRTC_SIGNALS[cleaned_id]:
+            ROOM_WEBRTC_SIGNALS[cleaned_id][target_mail] = []
+        # Nettoyage des signaux périmés (> 30s)
+        ROOM_WEBRTC_SIGNALS[cleaned_id][target_mail] = [
+            s for s in ROOM_WEBRTC_SIGNALS[cleaned_id][target_mail]
+            if now_ts - s.get("created_at", now_ts) < 30
+        ]
+        # Borne maximale pour éviter toute explosion mémoire
+        if len(ROOM_WEBRTC_SIGNALS[cleaned_id][target_mail]) < 50:
+            ROOM_WEBRTC_SIGNALS[cleaned_id][target_mail].append(envelope)
 
     if recipient == "broadcast" or not recipient:
         peers = ROOM_WEBRTC_PEERS.get(cleaned_id, {})
         for peer_email in peers:
             if peer_email != sender_email:
-                if peer_email not in ROOM_WEBRTC_SIGNALS[cleaned_id]:
-                    ROOM_WEBRTC_SIGNALS[cleaned_id][peer_email] = []
-                ROOM_WEBRTC_SIGNALS[cleaned_id][peer_email].append(envelope)
+                push_signal(peer_email)
     else:
-        if recipient not in ROOM_WEBRTC_SIGNALS[cleaned_id]:
-            ROOM_WEBRTC_SIGNALS[cleaned_id][recipient] = []
-        ROOM_WEBRTC_SIGNALS[cleaned_id][recipient].append(envelope)
+        push_signal(recipient)
 
     return {"status": "dispatched", "signal_id": envelope["id"]}
 
