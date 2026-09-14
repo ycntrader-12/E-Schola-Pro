@@ -22,7 +22,8 @@ import {
   ShieldCheck,
   Tag,
   Trash2,
-  Edit3
+  Edit3,
+  Cpu
 } from 'lucide-react';
 import { Link } from '@/i18n/routing';
 import { useTranslations } from 'next-intl';
@@ -96,6 +97,11 @@ export default function AssignmentsPage() {
   const [gradingSubmissionId, setGradingSubmissionId] = useState<number | null>(null);
   const [gradeInput, setGradeInput] = useState<number>(18);
   const [feedbackInput, setFeedbackInput] = useState('');
+
+  // Delete Task Confirmation Modal
+  const [taskToDelete, setTaskToDelete] = useState<TaskItem | null>(null);
+  const [isDeletingTask, setIsDeletingTask] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const fetchInitialData = async () => {
     setIsLoading(true);
@@ -254,14 +260,19 @@ export default function AssignmentsPage() {
     }
   };
 
-  // Delete Task
-  const handleDeleteTask = async (id: number) => {
-    if (!confirm("Supprimer définitivement cette tâche ?")) return;
+  // Delete Task (Confirmed via theme-styled modal)
+  const handleConfirmDeleteTask = async () => {
+    if (!taskToDelete) return;
+    setIsDeletingTask(true);
+    setDeleteError(null);
     try {
-      await apiClient.delete(`/tasks/${id}`);
-      setTasks(prev => prev.filter(t => t.id !== id));
+      await apiClient.delete(`/tasks/${taskToDelete.id}`);
+      setTasks(prev => prev.filter(t => t.id !== taskToDelete.id));
+      setTaskToDelete(null);
     } catch (err: any) {
-      alert(err?.response?.data?.detail || "Erreur de suppression.");
+      setDeleteError(err?.response?.data?.detail || "Erreur de suppression de la tâche.");
+    } finally {
+      setIsDeletingTask(false);
     }
   };
 
@@ -591,7 +602,10 @@ export default function AssignmentsPage() {
                       </button>
 
                       <button
-                        onClick={() => handleDeleteTask(task.id)}
+                        onClick={() => {
+                          setTaskToDelete(task);
+                          setDeleteError(null);
+                        }}
                         className="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 transition-colors cursor-pointer"
                         title="Supprimer la tâche"
                       >
@@ -976,6 +990,89 @@ export default function AssignmentsPage() {
                 ))}
               </div>
             )}
+
+          </div>
+        </div>
+      )}
+
+      {/* 8. MODAL 3D CENTRÉ DE CONFIRMATION DE SUPPRESSION (THÈME E-SCHOLA PRO) */}
+      {taskToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/65 backdrop-blur-md animate-fade-in select-none">
+          <div className="relative w-full max-w-md bg-white rounded-3xl border border-slate-200/90 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.35),0_0_40px_rgba(24,119,242,0.12)] p-6 sm:p-8 text-center space-y-5 transform transition-all animate-scale-up">
+            
+            {/* 3D Floating Glowing Icon Badge */}
+            <div className="flex justify-center -mt-2">
+              <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-red-600 to-rose-700 text-white flex items-center justify-center shadow-lg shadow-red-600/35 ring-8 ring-red-50 transform -rotate-3 hover:rotate-0 transition-transform">
+                <Trash2 size={30} className="drop-shadow-sm" />
+              </div>
+            </div>
+
+            {/* Security Chip Badge */}
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200/80 text-[#1877f2] text-[10px] font-extrabold uppercase tracking-wider shadow-2xs">
+              <Cpu size={13} className="text-[#1877f2] animate-pulse" />
+              <span>E-Schola Pro Sécurité • Devoirs &amp; Tâches</span>
+            </div>
+
+            {/* Title & Description */}
+            <div className="space-y-2">
+              <h3 className="text-xl font-black text-slate-900 tracking-tight">
+                Supprimer définitivement cette tâche ?
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-500 leading-relaxed max-w-sm mx-auto">
+                Êtes-vous certain de vouloir supprimer cette tâche pédagogique ? Cette action est irréversible et effacera l&apos;ensemble des soumissions et notes associées.
+              </p>
+            </div>
+
+            {/* 3D Recessed Target Preview Card */}
+            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center gap-3 text-left shadow-inner">
+              <div className="w-10 h-10 rounded-xl bg-blue-100/70 border border-blue-200 text-[#1877f2] font-bold flex items-center justify-center text-sm shrink-0 shadow-xs">
+                <FileText size={18} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="font-bold text-xs text-slate-900 truncate">{taskToDelete.title}</p>
+                <p className="text-[11px] text-slate-500 truncate">
+                  {taskToDelete.course_name} • <span className="font-semibold text-[#1877f2]">{taskToDelete.total_submissions || 0} soumission(s)</span>
+                </p>
+              </div>
+            </div>
+
+            {/* Error Message if any */}
+            {deleteError && (
+              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-[11px] text-left flex items-start gap-2">
+                <AlertCircle size={16} className="text-rose-600 shrink-0 mt-0.5" />
+                <p className="leading-snug">{deleteError}</p>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                disabled={isDeletingTask}
+                onClick={() => setTaskToDelete(null)}
+                className="w-1/2 py-3 bg-slate-100 hover:bg-slate-200 active:scale-[0.98] text-slate-700 rounded-2xl font-bold border border-slate-300 transition-all text-xs cursor-pointer shadow-xs"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingTask}
+                onClick={handleConfirmDeleteTask}
+                className="w-1/2 py-3 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 active:scale-[0.98] text-white rounded-2xl font-bold shadow-md shadow-red-500/25 transition-all text-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                {isDeletingTask ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" />
+                    <span>Suppression...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={14} />
+                    <span>Confirmer</span>
+                  </>
+                )}
+              </button>
+            </div>
 
           </div>
         </div>
