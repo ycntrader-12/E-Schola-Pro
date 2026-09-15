@@ -2491,9 +2491,10 @@ E-Schola Pro/
         <li><strong>Photo de profil &amp; Auto-optimisation :</strong> Téléversement direct, auto-orientation EXIF et recadrage centré carré 256×256 avec compression WebP ultra-haute efficacité (qualité 80, réduction &gt;98% de volume disque). Persistance intégrale directement dans la base de données Railway (colonne <code>avatar_url</code> en Data URI Base64), garantissant une conservation absolue des photos lors de tous les redéploiements sans perte de fichiers ni dépendance de volume ou S3. L'interface offre un bouton de suppression avec réinitialisation vers les initiales dynamiques et un endpoint public de streaming direct (<code>GET /api/v1/users/{id}/avatar</code>).</li>
         <li><strong>Mot de passe &amp; Sécurité :</strong> Changement sécurisé du mot de passe avec validation de l'ancien mot de passe ou saisie directe sécurisée avec hachage bcrypt (minimum 6 caractères).</li>
         <li><strong>Langue :</strong> Basculement multilingue instantané (Français, Anglais, Arabe).</li>
-        <li><strong>Portail Backend & Base de Données (Exclusif Admin) :</strong> Onglet dédié contenant tous les accès techniques directs :
+        <li><strong>Portail Backend & Base de Données (Exclusif Admin) :</strong> Onglet dédié et console autonome SQLAdmin contenant tous les accès techniques directs :
           <ul>
-            <li>Accès direct aux <strong>14 tables de la base de données</strong> dans SQLAdmin (Utilisateurs, Cours, Vidéos, Inscriptions, Événements, Livrables, Quiz, Questions, Notes, Présences, Groupes, Membres, Classes virtuelles, Messages)</li>
+            <li>Accès direct aux <strong>21 tables relationnelles de la base de données</strong> dans SQLAdmin (Utilisateurs, Sessions, Invitations, Cours, Vidéos, Inscriptions, Groupes, Membres, Événements, Livrables, Quiz, Questions, Tentatives, Notes, Tâches, Soumissions, Présences, Salles, Invitations Vidéo, Messages, Audit Logs, Paramètres Système).</li>
+            <li><strong>Dashboard SQLAdmin en Thème Clair (Light Dashboard) &amp; Console Alignée à Gauche :</strong> Refonte complète de la bannière d'en-tête en style dashboard couleur claire (fond blanc pur, bordure ardoise fine, liseré supérieur dégradé signature et cartes de statistiques <code>21 Tables Actives</code>, <code>5 Domaines Métier</code>, <code>100% Intégrité DB</code> relocalisées et alignées à gauche avec icônes distinctes et micro-interactions au survol). Volet d'accès rapides à droite avec statuts live SQLite.</li>
             <li>Accès direct à <strong>Swagger UI</strong> (<code>/docs</code>) et <strong>ReDoc</strong> (<code>/redoc</code>)</li>
             <li>Accès au schéma <strong>OpenAPI JSON</strong> brut et à l'endpoint racine healthcheck</li>
             <li>Accès au répertoire public de stockage des <strong>fichiers et livrables</strong> (<code>/uploads</code>)</li>
@@ -2509,8 +2510,6 @@ E-Schola Pro/
           </div>
           <span class="screenshot-title-text">E-Schola Pro</span>
         </div>
-          <span>Aperçu de l'interface : Profil & Paramètres (/profile)</span>
-        </div>
         <img src="docs_screenshots/profile.png" alt="Interface Profil E-Schola Pro" class="screenshot-img" />
       </div>
       <div class="screenshot-container">
@@ -2520,8 +2519,6 @@ E-Schola Pro/
             <div class="screenshot-address-bar"><span class="lock-icon">🔒</span> https://eschola.pro/fr/dashboard</div>
           </div>
           <span class="screenshot-title-text">E-Schola Pro</span>
-        </div>
-          <span>Aperçu de l'interface : Portail Base de Données & Backend réservé à l'Admin (/profile)</span>
         </div>
         <img src="docs_screenshots/profile_admin.png" alt="Portail Backend et Base de Données Admin" class="screenshot-img" />
       </div>
@@ -2533,8 +2530,6 @@ E-Schola Pro/
             <div class="screenshot-address-bar"><span class="lock-icon">🔒</span> https://eschola.pro/admin/</div>
           </div>
           <span class="screenshot-title-text">E-Schola Pro — Base de Données</span>
-        </div>
-          <span>Aperçu de la Console d'Administration BDD : Tableau de Bord des 21 Tables (/admin/)</span>
         </div>
         <img src="docs_screenshots/admin_database_dashboard.png" alt="Tableau de Bord Base de Données Admin E-Schola Pro" class="screenshot-img" />
       </div>

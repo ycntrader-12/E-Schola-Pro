@@ -24,34 +24,78 @@
 {% block content %}
 <div class="col-12">
   
-  <!-- Hero Banner -->
+  <!-- Light Dashboard Hero Banner with Left-Aligned Console & Metrics -->
   <div class="card eschola-hero-card mb-4">
     <div class="card-body p-4">
-      <div class="row align-items-center">
-        <div class="col-md-8">
-          <div class="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill bg-white/10 text-white text-xs font-semibold mb-3 border border-white/15">
+      <div class="row align-items-center g-3">
+        <!-- Left Side: Console Title, Description & Left-Aligned Stat Cards -->
+        <div class="col-lg-8 col-md-7">
+          <div class="d-inline-flex align-items-center gap-2 px-3 py-1.5 rounded-pill bg-blue-50 text-primary text-xs font-semibold mb-2 border border-blue-200">
             <span class="pulse-dot"></span>
-            <span>Environnement de Production SQLite</span>
+            <span class="fw-bold">Environnement de Production SQLite</span>
+            <span class="text-muted opacity-50">&bull;</span>
+            <span class="text-secondary font-monospace" style="font-size: 11px;">eschola.db</span>
           </div>
-          <h2 class="text-white fw-bold mb-2">Console d'Administration de Données E-Schola Pro</h2>
-          <p class="text-blue-100 mb-0 opacity-85" style="max-width: 680px; font-size: 14px; line-height: 1.5;">
+          <h2 class="fw-bold mb-2 tracking-tight" style="color: #0f172a; font-size: 1.65rem;">
+            Console d'Administration de Données E-Schola Pro
+          </h2>
+          <p class="mb-3 text-secondary" style="max-width: 720px; font-size: 14px; line-height: 1.6; color: #475569;">
             Accédez directement à l'ensemble des 21 tables du système relationnel. Consultez, filtrez, exportez en CSV/JSON et éditez les enregistrements en toute sécurité.
           </p>
+          
+          <!-- Console Stat Boxes (Moved to the LEFT) -->
+          <div class="d-flex flex-wrap gap-2.5 justify-content-start align-items-center">
+            <div class="eschola-stat-box">
+              <div class="eschola-stat-icon-wrap bg-blue-50 text-primary border border-blue-100">
+                <i class="fa-solid fa-table-cells"></i>
+              </div>
+              <div>
+                <div class="eschola-stat-num">21</div>
+                <div class="eschola-stat-label">Tables Actives</div>
+              </div>
+            </div>
+            <div class="eschola-stat-box">
+              <div class="eschola-stat-icon-wrap bg-indigo-50 text-indigo border border-indigo-100">
+                <i class="fa-solid fa-layer-group"></i>
+              </div>
+              <div>
+                <div class="eschola-stat-num">5</div>
+                <div class="eschola-stat-label">Domaines Métier</div>
+              </div>
+            </div>
+            <div class="eschola-stat-box">
+              <div class="eschola-stat-icon-wrap bg-emerald-50 text-success border border-emerald-100">
+                <i class="fa-solid fa-shield-check"></i>
+              </div>
+              <div>
+                <div class="eschola-stat-num">100%</div>
+                <div class="eschola-stat-label">Intégrité DB</div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="col-md-4 text-md-end mt-3 mt-md-0">
-          <div class="d-flex flex-wrap gap-2 justify-content-md-end">
-            <div class="eschola-stat-box">
-              <div class="eschola-stat-num">21</div>
-              <div class="eschola-stat-label">Tables Actives</div>
+
+        <!-- Right Side: Light Dashboard Quick Actions & Status -->
+        <div class="col-lg-4 col-md-5 text-md-end mt-3 mt-md-0">
+          <div class="d-inline-flex flex-column gap-2 text-start p-3 rounded-3 w-100" style="background: #f8fafc; border: 1px solid #e2e8f0; max-width: 320px;">
+            <div class="d-flex align-items-center justify-content-between mb-1">
+              <span class="text-xs font-bold text-uppercase text-muted" style="font-size: 11px; letter-spacing: 0.5px;">Accès Rapides</span>
+              <span class="badge bg-success-lt text-success" style="font-size: 10px;">
+                <span class="status-dot status-dot-animated bg-success me-1"></span>En ligne
+              </span>
             </div>
-            <div class="eschola-stat-box">
-              <div class="eschola-stat-num">5</div>
-              <div class="eschola-stat-label">Domaines Métier</div>
-            </div>
-            <div class="eschola-stat-box">
-              <div class="eschola-stat-num">100%</div>
-              <div class="eschola-stat-label">Intégrité DB</div>
-            </div>
+            <a href="{{ url_for('admin:list', identity='user') }}" class="btn btn-sm btn-primary w-100 d-flex align-items-center justify-content-between">
+              <span><i class="fa-solid fa-users me-2"></i>Gérer les Utilisateurs</span>
+              <i class="fa-solid fa-arrow-right small opacity-75"></i>
+            </a>
+            <a href="{{ url_for('admin:list', identity='course') }}" class="btn btn-sm btn-outline-primary w-100 d-flex align-items-center justify-content-between">
+              <span><i class="fa-solid fa-graduation-cap me-2"></i>Formations &amp; Cours</span>
+              <i class="fa-solid fa-arrow-right small opacity-75"></i>
+            </a>
+            <a href="{{ url_for('admin:list', identity='audit-log') }}" class="btn btn-sm btn-ghost-secondary w-100 d-flex align-items-center justify-content-between text-secondary">
+              <span><i class="fa-solid fa-shield-halved me-2"></i>Journal d'Audit</span>
+              <i class="fa-solid fa-arrow-right small opacity-75"></i>
+            </a>
           </div>
         </div>
       </div>
