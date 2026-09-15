@@ -220,14 +220,44 @@
     }
 
     /* Category Accordion / Dropdown Menus in Sidebar */
-    .eschola-admin-sidebar .nav-item.dropdown > .nav-link {
+    .eschola-admin-sidebar .nav-item.dropdown > .dropdown-toggle {
       color: #ffffff !important;
       font-weight: 700;
-      font-size: 12px;
+      font-size: 11.5px;
       text-transform: uppercase;
       letter-spacing: 0.5px;
       padding: 10px 12px 6px 12px;
-      opacity: 0.9;
+      opacity: 0.95;
+      cursor: pointer !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+      user-select: none;
+      transition: background 0.15s ease, color 0.15s ease;
+      border-radius: 8px;
+    }
+
+    .eschola-admin-sidebar .nav-item.dropdown > .dropdown-toggle:hover {
+      background: rgba(255, 255, 255, 0.08) !important;
+      color: #ffffff !important;
+    }
+
+    .eschola-admin-sidebar .dropdown-toggle::after {
+      content: "\f078" !important;
+      font-family: "Font Awesome 6 Free" !important;
+      font-weight: 900 !important;
+      border: none !important;
+      display: inline-block !important;
+      margin-left: auto !important;
+      font-size: 10.5px !important;
+      color: #93c5fd !important;
+      transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+
+    .eschola-admin-sidebar .dropdown-toggle.show::after,
+    .eschola-admin-sidebar .dropdown-toggle[aria-expanded="true"]::after {
+      transform: rotate(-180deg) !important;
+      color: var(--eschola-cyan) !important;
     }
 
     .eschola-admin-sidebar .dropdown-menu {
@@ -252,12 +282,16 @@
       font-size: 13px !important;
       color: #cbd5e1 !important;
       border-radius: 8px !important;
+      display: flex !important;
+      align-items: center !important;
+      text-decoration: none;
+      transition: all 0.15s ease;
     }
 
     .eschola-admin-sidebar .dropdown-menu .nav-link:hover {
       background: rgba(255, 255, 255, 0.1) !important;
       color: #ffffff !important;
-      transform: translateX(2px);
+      transform: translateX(3px);
     }
 
     .eschola-admin-sidebar .dropdown-menu .nav-link.active {
@@ -627,11 +661,6 @@
   </main>
   {% endblock %}
 
-  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/js/tabler.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.full.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-
   {% block tail_js %}
   <script type="text/javascript" src="{{ url_for('admin:statics', path='js/jquery.min.js') }}"></script>
   <script type="text/javascript" src="{{ url_for('admin:statics', path='js/tabler.min.js') }}"></script>
@@ -639,29 +668,89 @@
   <script type="text/javascript" src="{{ url_for('admin:statics', path='js/flatpickr.min.js') }}"></script>
   <script type="text/javascript" src="{{ url_for('admin:statics', path='js/main.js') }}"></script>
   {% endblock %}
+
   <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      // Ensure active menu category is shown
-      document.querySelectorAll('.eschola-admin-sidebar .nav-item.dropdown').forEach(function(item) {
-        var toggle = item.querySelector('.dropdown-toggle');
+    (function() {
+      // 1. Delegated click handler on document capture phase
+      // Captures clicks on sidebar category dropdown toggles before any framework stops them
+      document.addEventListener('click', function(event) {
+        var toggle = event.target.closest('.eschola-admin-sidebar .dropdown-toggle');
+        if (!toggle) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        var item = toggle.closest('.nav-item.dropdown');
+        if (!item) return;
+
         var menu = item.querySelector('.dropdown-menu');
-        if (!toggle || !menu) return;
-        
-        // If this category is active or contains an active link, keep it open
-        if (toggle.classList.contains('active') || item.querySelector('.nav-link.active') || menu.querySelector('.active')) {
+        if (!menu) return;
+
+        var isOpen = menu.classList.contains('show');
+        if (isOpen) {
+          menu.classList.remove('show');
+          toggle.classList.remove('show');
+          toggle.setAttribute('aria-expanded', 'false');
+        } else {
           menu.classList.add('show');
+          toggle.classList.add('show');
           toggle.setAttribute('aria-expanded', 'true');
         }
 
-        toggle.addEventListener('click', function(e) {
-          e.preventDefault();
-          e.stopPropagation();
-          var isOpen = menu.classList.contains('show');
-          menu.classList.toggle('show', !isOpen);
-          toggle.setAttribute('aria-expanded', !isOpen ? 'true' : 'false');
+        // Persist open category names to localStorage
+        try {
+          var openCategories = [];
+          document.querySelectorAll('.eschola-admin-sidebar .nav-item.dropdown').forEach(function(el) {
+            var m = el.querySelector('.dropdown-menu');
+            var cat = el.getAttribute('data-sqladmin-menu-category');
+            if (m && m.classList.contains('show') && cat) {
+              openCategories.push(cat);
+            }
+          });
+          localStorage.setItem('eschola_sidebar_categories', JSON.stringify(openCategories));
+        } catch (err) {}
+      }, true);
+
+      // 2. State restoration on page load
+      function initSidebarCategories() {
+        var sidebar = document.querySelector('.eschola-admin-sidebar');
+        if (!sidebar) return;
+
+        var savedCats = null;
+        try {
+          var stored = localStorage.getItem('eschola_sidebar_categories');
+          if (stored) savedCats = JSON.parse(stored);
+        } catch (err) {}
+
+        sidebar.querySelectorAll('.nav-item.dropdown').forEach(function(item) {
+          var toggle = item.querySelector('.dropdown-toggle');
+          var menu = item.querySelector('.dropdown-menu');
+          if (!toggle || !menu) return;
+
+          var catName = item.getAttribute('data-sqladmin-menu-category');
+          var containsActive = toggle.classList.contains('active') || item.querySelector('.nav-link.active') !== null || menu.querySelector('.active') !== null;
+
+          // Default state: if first visit (savedCats === null) or category contains active page or was previously open
+          var shouldBeOpen = containsActive || (savedCats && savedCats.indexOf(catName) !== -1) || (savedCats === null);
+
+          if (shouldBeOpen) {
+            menu.classList.add('show');
+            toggle.classList.add('show');
+            toggle.setAttribute('aria-expanded', 'true');
+          } else {
+            menu.classList.remove('show');
+            toggle.classList.remove('show');
+            toggle.setAttribute('aria-expanded', 'false');
+          }
         });
-      });
-    });
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initSidebarCategories);
+      } else {
+        initSidebarCategories();
+      }
+    })();
   </script>
 </body>
 
