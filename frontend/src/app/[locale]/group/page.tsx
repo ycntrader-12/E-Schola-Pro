@@ -1048,11 +1048,11 @@ export default function GroupPage() {
         </div>
       )}
 
-      {/* 4. MODAL AJOUTER / MODIFIER UN GROUPE (FORMAT PANORAMIQUE HAUTE LISIBILITÉ) */}
+      {/* 4. MODAL AJOUTER / MODIFIER UN GROUPE (FORMAT RECTANGLE PANORAMIQUE HAUTE LISIBILITÉ) */}
       {showFormModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs overflow-y-auto p-2 sm:p-4 md:p-6 flex justify-center items-start sm:items-center">
-          <div className={`bg-white w-full ${
-            editingGroupId ? 'max-w-2xl' : 'max-w-6xl xl:max-w-7xl 2xl:max-w-[1420px] w-[96vw]'
+          <div className={`bg-white w-[95vw] ${
+            editingGroupId ? 'max-w-3xl' : 'max-w-[1520px]'
           } rounded-3xl border border-slate-200 shadow-2xl animate-zoom-in text-slate-900 my-auto flex flex-col overflow-hidden max-h-[94vh]`}>
             
             {/* En-tête panoramique spacieux & élégant */}
@@ -1075,7 +1075,7 @@ export default function GroupPage() {
               <div className="flex items-center gap-2.5">
                 {!editingGroupId && (
                   <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-[#1877f2] border border-blue-200/80 text-xs font-black uppercase tracking-wider">
-                    <Maximize2 size={13} /> Vue Panoramique
+                    <Maximize2 size={13} /> Rectangle Panoramique
                   </span>
                 )}
                 <button 
@@ -1090,7 +1090,7 @@ export default function GroupPage() {
 
             {/* Formulaire panoramique équilibré & hautement lisible */}
             <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
-              <div className="p-6 sm:p-8 space-y-5 overflow-y-auto flex-1">
+              <div className="p-5 sm:p-7 lg:p-8 space-y-5 overflow-y-auto flex-1">
                 
                 {formError && (
                   <div className="bg-red-50 border border-red-200 text-red-700 p-3.5 rounded-xl font-semibold text-xs sm:text-sm flex items-center gap-2 shrink-0">
@@ -1101,10 +1101,10 @@ export default function GroupPage() {
 
                 {!editingGroupId ? (
                   /* ─── DISPOSITION EN VÉRITABLE RECTANGLE PANORAMIQUE 2 COLONNES (PAYSAGE) ─── */
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 xl:gap-8 items-stretch">
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-5 lg:gap-7 items-stretch">
                     
                     {/* Colonne Gauche : Paramètres de la promotion */}
-                    <div className="lg:col-span-5 flex flex-col justify-between space-y-4">
+                    <div className="md:col-span-5 flex flex-col justify-between space-y-4">
                       <div className="space-y-3.5">
                         <div className="flex items-center gap-2 text-slate-800 pb-2 border-b border-slate-200">
                           <Layers size={16} className="text-[#1877f2]" />
@@ -1186,7 +1186,7 @@ export default function GroupPage() {
                     </div>
 
                     {/* Colonne Droite : Affectation des apprenants */}
-                    <div className="lg:col-span-7 bg-slate-50/90 p-5 sm:p-6 rounded-2xl border border-slate-200 flex flex-col justify-between shadow-2xs">
+                    <div className="md:col-span-7 bg-slate-50/90 p-5 sm:p-6 rounded-2xl border border-slate-200 flex flex-col justify-between shadow-2xs">
                       <div className="space-y-3">
                         <div className="flex items-center justify-between gap-3 pb-2.5 border-b border-slate-200">
                           <div className="flex items-center gap-2">
