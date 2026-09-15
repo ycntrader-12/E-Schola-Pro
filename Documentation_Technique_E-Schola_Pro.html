@@ -1702,6 +1702,111 @@ E-Schola Pro/
         <tr><td><code>updated_at</code></td><td>DateTime</td><td>Auto</td><td>Date de dernière mise à jour</td></tr>
       </tbody>
     </table>
+
+    <!-- ========================================================================= -->
+    <!-- MODULE UNIFIÉ D'ÉVALUATION & CERTIFICATION                                -->
+    <!-- ========================================================================= -->
+    <h3 style="color: var(--primary); margin-top: 32px;">🎓 Module Unifié d'Évaluation & Certification</h3>
+
+    <!-- ASSESSMENT -->
+    <h4>Assessment (Évaluations & Examens de Certification)</h4>
+    <table>
+      <thead><tr><th>Colonne</th><th>Type</th><th>Contraintes</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code></td><td>String(36)</td><td>PK, UUID v4</td><td>Identifiant unique universel de l'évaluation</td></tr>
+        <tr><td><code>title</code></td><td>String(255)</td><td>Not Null</td><td>Titre académique ou professionnel de l'évaluation</td></tr>
+        <tr><td><code>description</code></td><td>Text</td><td>Nullable</td><td>Consignes pédagogiques et directives d'examen</td></tr>
+        <tr><td><code>type</code></td><td>Enum(String)</td><td>QUIZ | CERTIFICATION, Not Null</td><td>Type : Quiz formatif régulier ou Examen de certification final</td></tr>
+        <tr><td><code>is_standard_recommended</code></td><td>Boolean</td><td>Default: False, Not Null</td><td>Drapeau d'activation de la prestation standard recommandée (70%, 30 min, correction active)</td></tr>
+        <tr><td><code>time_limit_minutes</code></td><td>Integer</td><td>Default: 30, Nullable</td><td>Durée maximale allouée pour compléter l'évaluation (en minutes)</td></tr>
+        <tr><td><code>passing_score_percentage</code></td><td>Numeric(5,2)</td><td>Default: 70.00, Not Null</td><td>Seuil minimal de réussite en pourcentage (requis pour l'obtention du diplôme si type CERTIFICATION)</td></tr>
+        <tr><td><code>show_corrections_after</code></td><td>Boolean</td><td>Default: True, Not Null</td><td>Autorisation d'affichage immédiat du corrigé vert/rouge après soumission</td></tr>
+        <tr><td><code>certificate_template_url</code></td><td>String(255)</td><td>Nullable</td><td>Modèle visuel personnalisé de diplôme (PNG/JPG). Si null, utilisation du modèle Royal Navy & Gold par défaut.</td></tr>
+        <tr><td><code>created_by</code></td><td>Integer</td><td>FK → users.id, Not Null</td><td>Créateur de l'évaluation (Formateur ou Administrateur)</td></tr>
+        <tr><td><code>created_at</code></td><td>DateTime</td><td>Auto</td><td>Date et heure de publication</td></tr>
+        <tr><td><code>updated_at</code></td><td>DateTime</td><td>Auto</td><td>Date et heure de dernière modification</td></tr>
+      </tbody>
+    </table>
+
+    <!-- ASSESSMENT ASSIGNMENT -->
+    <h4>AssessmentAssignment (Assignations aux Cohortes / Groupes)</h4>
+    <table>
+      <thead><tr><th>Colonne</th><th>Type</th><th>Contraintes</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code></td><td>String(36)</td><td>PK, UUID v4</td><td>Identifiant unique de la liaison</td></tr>
+        <tr><td><code>assessment_id</code></td><td>String(36)</td><td>FK → assessments.id, Not Null, Cascade</td><td>Évaluation rattachée</td></tr>
+        <tr><td><code>group_id</code></td><td>Integer</td><td>FK → groups.id, Not Null, Cascade</td><td>Groupe / Promotion ciblée par l'évaluation</td></tr>
+        <tr><td><code>assigned_at</code></td><td>DateTime</td><td>Auto</td><td>Date et heure d'assignation</td></tr>
+      </tbody>
+    </table>
+
+    <!-- QUESTION -->
+    <h4>Question (Questions QCM de l'Évaluation)</h4>
+    <table>
+      <thead><tr><th>Colonne</th><th>Type</th><th>Contraintes</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code></td><td>String(36)</td><td>PK, UUID v4</td><td>Identifiant unique de la question</td></tr>
+        <tr><td><code>assessment_id</code></td><td>String(36)</td><td>FK → assessments.id, Not Null, Cascade</td><td>Évaluation parente</td></tr>
+        <tr><td><code>content</code></td><td>Text</td><td>Not Null</td><td>Énoncé complet de la question</td></tr>
+        <tr><td><code>points</code></td><td>Integer</td><td>Default: 1, Not Null</td><td>Points attribués en cas de réponse exacte</td></tr>
+        <tr><td><code>order_index</code></td><td>Integer</td><td>Default: 0, Not Null</td><td>Ordre d'affichage de la question dans le questionnaire</td></tr>
+        <tr><td><code>created_at</code></td><td>DateTime</td><td>Auto</td><td>Date de création de la question</td></tr>
+      </tbody>
+    </table>
+
+    <!-- CHOICE -->
+    <h4>Choice (Options de Réponse QCM)</h4>
+    <table>
+      <thead><tr><th>Colonne</th><th>Type</th><th>Contraintes</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code></td><td>String(36)</td><td>PK, UUID v4</td><td>Identifiant unique du choix</td></tr>
+        <tr><td><code>question_id</code></td><td>String(36)</td><td>FK → questions.id, Not Null, Cascade</td><td>Question parente</td></tr>
+        <tr><td><code>content</code></td><td>Text</td><td>Not Null</td><td>Libellé textuel de l'option de réponse</td></tr>
+        <tr><td><code>is_correct</code></td><td>Boolean</td><td>Default: False, Not Null</td><td>Indicateur de bonne réponse (Strictement masqué aux apprenants jusqu'à la fin de la tentative)</td></tr>
+      </tbody>
+    </table>
+
+    <!-- USER ATTEMPT -->
+    <h4>UserAttempt (Tentatives de Passation d'Examen)</h4>
+    <table>
+      <thead><tr><th>Colonne</th><th>Type</th><th>Contraintes</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code></td><td>String(36)</td><td>PK, UUID v4</td><td>Identifiant unique de la tentative</td></tr>
+        <tr><td><code>assessment_id</code></td><td>String(36)</td><td>FK → assessments.id, Not Null, Cascade</td><td>Évaluation passée</td></tr>
+        <tr><td><code>user_id</code></td><td>Integer</td><td>FK → users.id, Not Null, Cascade</td><td>Apprenant ayant composé</td></tr>
+        <tr><td><code>status</code></td><td>Enum(String)</td><td>IN_PROGRESS | COMPLETED</td><td>Statut de la tentative (en cours ou finalisée)</td></tr>
+        <tr><td><code>started_at</code></td><td>DateTime</td><td>Auto, Not Null</td><td>Horodatage exact de démarrage de l'examen</td></tr>
+        <tr><td><code>completed_at</code></td><td>DateTime</td><td>Nullable</td><td>Horodatage de soumission finale</td></tr>
+        <tr><td><code>score_percentage</code></td><td>Numeric(5,2)</td><td>Nullable</td><td>Score final obtenu en pourcentage</td></tr>
+        <tr><td><code>is_passed</code></td><td>Boolean</td><td>Default: False, Not Null</td><td>Indicateur de réussite (score &ge; seuil minimal requis)</td></tr>
+      </tbody>
+    </table>
+
+    <!-- USER ANSWER -->
+    <h4>UserAnswer (Réponses Soumises par Question)</h4>
+    <table>
+      <thead><tr><th>Colonne</th><th>Type</th><th>Contraintes</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code></td><td>String(36)</td><td>PK, UUID v4</td><td>Identifiant unique de la réponse</td></tr>
+        <tr><td><code>attempt_id</code></td><td>String(36)</td><td>FK → user_attempts.id, Not Null, Cascade</td><td>Tentative associée</td></tr>
+        <tr><td><code>question_id</code></td><td>String(36)</td><td>FK → questions.id, Not Null, Cascade</td><td>Question répondue</td></tr>
+        <tr><td><code>selected_choice_id</code></td><td>String(36)</td><td>FK → choices.id, Nullable, Set Null</td><td>Option choisie par l'apprenant</td></tr>
+      </tbody>
+    </table>
+
+    <!-- USER CERTIFICATE -->
+    <h4>UserCertificate (Diplômes & Accréditations Officielles)</h4>
+    <table>
+      <thead><tr><th>Colonne</th><th>Type</th><th>Contraintes</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code></td><td>String(36)</td><td>PK, UUID v4</td><td>Identifiant unique d'accréditation et de traçabilité</td></tr>
+        <tr><td><code>user_id</code></td><td>Integer</td><td>FK → users.id, Not Null, Cascade</td><td>Titulaire récipiendaire du diplôme</td></tr>
+        <tr><td><code>assessment_id</code></td><td>String(36)</td><td>FK → assessments.id, Not Null, Cascade</td><td>Examen certifiant validé</td></tr>
+        <tr><td><code>attempt_id</code></td><td>String(36)</td><td>FK → user_attempts.id, Not Null, Cascade</td><td>Tentative ayant validé le certificat</td></tr>
+        <tr><td><code>certificate_file_url</code></td><td>String(255)</td><td>Not Null</td><td>Chemin d'accès au document diplôme officiel haute résolution généré (ex: <code>/uploads/certificates/...png</code>)</td></tr>
+        <tr><td><code>issued_at</code></td><td>DateTime</td><td>Auto</td><td>Date et heure officielle de délivrance</td></tr>
+      </tbody>
+    </table>
   
     </section>
 
@@ -1796,6 +1901,22 @@ E-Schola Pro/
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/quizzes/{id}/results</code></td><td>Consulter la liste de toutes les tentatives des apprenants pour ce quiz</td><td>Admin, Admin Manager, Formateur, DG-RH, Pédagogique</td></tr>
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/quizzes/{id}/report-data</code></td><td>Données agrégées et synthèse statistique de la promotion pour export du Procès-Verbal Global PDF</td><td>Admin, Admin Manager, Formateur, DG-RH, Pédagogique</td></tr>
         <tr><td><span class="badge badge-delete">DELETE</span></td><td><code>/quizzes/{id}</code></td><td>Supprimer un quiz et ses questions en cascade</td><td>Admin, Admin Manager, Formateur</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Module Unifié d'Évaluation & Certification (/assessments)</h3>
+    <table>
+      <thead><tr><th>Méthode</th><th>Endpoint</th><th>Description</th><th>Accès</th></tr></thead>
+      <tbody class="endpoint-row">
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/assessments/</code></td><td>Lister les évaluations (Quiz formatifs et Examens de certification) selon les permissions : visibilité globale pour les créateurs ; filtrage par assignation de cohortes pour les apprenants. Filtre optionnel <code>?type_filter=QUIZ|CERTIFICATION</code>.</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/assessments/</code></td><td>Créer une nouvelle évaluation ou un examen certifiant. Support en 1 clic de la <strong>« Prestation Standard Recommandée »</strong> (seuil à 70%, 30 min, correction active). Assignation ciblée à des groupes d'apprenants multiples et support de modèle graphique de diplôme.</td><td>Admin, Formateur, Pédagogique, DG/RH</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/assessments/{id}</code></td><td>Consulter le détail d'une évaluation avec son questionnaire. <strong>Sécurité Anti-Triche :</strong> Le drapeau <code>is_correct</code> est strictement masqué aux apprenants.</td><td>Authentifié (Contrôle d'accès groupe)</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/assessments/{id}/start</code></td><td>Démarrer officiellement une tentative d'évaluation (statut <code>IN_PROGRESS</code>, horodatage de début, décompte du timer). Retourne les questions QCM sans aucune fuite de réponses correctes.</td><td>Authentifié (Apprenants exclusifs / Staff)</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/assessments/{id}/submit</code></td><td>Soumettre les réponses de l'évaluation : calcul en temps réel du score et du pourcentage, passage au statut <code>COMPLETED</code>. <strong>Workflow de Certification :</strong> Si type <code>CERTIFICATION</code> et score &ge; seuil, génération automatique du diplôme haute résolution et enregistrement dans <code>user_certificates</code>. Retourne le corrigé détaillé comparatif.</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/assessments/attempts/{attempt_id}/review</code></td><td>Revue détaillée post-examen et feedback pédagogique : compare question par question le choix sélectionné par l'apprenant face à la réponse attendue (mise en valeur vert/rouge) avec total des points obtenus.</td><td>Auteur de la tentative, Créateurs</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/assessments/certificates/my-certificates</code></td><td>Répertoire personnel de tous les diplômes et certifications officiels obtenus par l'apprenant avec liens directs de téléchargement et identifiants d'accréditation.</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/assessments/upload-template</code></td><td>Téléverser une maquette personnalisée de diplôme de certification (PNG/JPG) avec stockage persistant dans <code>uploads/templates/</code>.</td><td>Admin, Formateur, Pédagogique</td></tr>
+        <tr><td><span class="badge badge-delete">DELETE</span></td><td><code>/assessments/{id}</code></td><td>Supprimer définitivement une évaluation, ses questions, choix, tentatives et assignations en cascade relationnelle.</td><td>Admin, Formateur (Créateurs)</td></tr>
       </tbody>
     </table>
 
@@ -2008,6 +2129,9 @@ E-Schola Pro/
         <tr><td><strong>Assistant IA Google Gemini (Explications, Résumés &amp; Traduction)</strong></td><td>✅ <em>(Autorisé)</em></td><td>✅ <em>(Autorisé)</em></td><td>✅ <em>(Autorisé)</em></td><td>✅ <strong>(Autorisé pour tous les utilisateurs)</strong></td></tr>
         <tr><td><strong>Créer, générer &amp; lancer des quiz (Ciblage par Groupe)</strong></td><td>✅ <em>(Tous les groupes)</em></td><td>✅ <em>(Tous les groupes)</em></td><td>✅ <em>(Groupes assignés/tous)</em></td><td>❌</td></tr>
         <tr><td><strong>Passer un quiz &amp; consulter son bilan</strong></td><td>✅</td><td>✅</td><td>✅</td><td>✅ <em>(Restreint à son propre groupe)</em></td></tr>
+        <tr><td><strong>Concevoir des Évaluations &amp; Examens de Certification (Prestation Standard, Seuils, Templates)</strong></td><td>✅ <em>(Tous les groupes)</em></td><td>✅ <em>(Tous les groupes)</em></td><td>✅ <em>(Création &amp; Assignation)</em></td><td>❌ <em>(Interdiction formelle)</em></td></tr>
+        <tr><td><strong>Passer les Examens Certifiants &amp; Télécharger ses Diplômes Officiels</strong></td><td>✅</td><td>✅</td><td>✅</td><td>✅ <strong>(Autorisation exclusive apprenants)</strong></td></tr>
+        <tr><td><strong>Consulter la Revue Détaillée Post-Examen (Feedback vert/rouge)</strong></td><td>✅</td><td>✅</td><td>✅</td><td>✅ <em>(Sur ses propres tentatives)</em></td></tr>
         <tr><td><strong>Créer &amp; attribuer des devoirs / tâches</strong></td><td>✅</td><td>✅</td><td>✅</td><td>❌</td></tr>
         <tr><td><strong>Consulter &amp; soumettre des livrables de devoirs</strong></td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
         <tr><td><strong>Évaluer &amp; noter les devoirs / travaux</strong></td><td>✅</td><td>✅</td><td>✅</td><td>❌</td></tr>
@@ -2174,30 +2298,42 @@ E-Schola Pro/
       </div>
     </div>
 
-    <h3>Module 3 — Quiz & Évaluations (Cloisonnement par Groupe & Accès Admin Universel)</h3>
+    <h3>Module 3 — Module Unifié d'Évaluation & Certification (Quiz Formatifs & Examens Certifiants)</h3>
     <div class="card">
-      <p><strong>Route Frontend :</strong> <code>/quizzes</code></p>
+      <p><strong>Routes Frontend :</strong> <code>/quizzes</code> (Centre Unifié Évaluations &amp; Examens) et <code>/certifications</code> (Portail Dédié des Accréditations &amp; Diplômes)</p>
       <p><strong>Options et propriétés :</strong></p>
       <ul>
-        <li><strong>Studio de Création Panoramique (Widescreen Rectangulaire 2 Colonnes) :</strong> Interface panoramique plein écran en 2 colonnes scindées (colonne latérale de configuration avec titre, consignes, durée, public cible, <strong>sélecteur de groupe / promotion assignée</strong> et barème dynamique en direct + colonne principale de composition modulaire des questions QCM en grille 2x2).</li>
-        <li><strong>Cloisonnement Strict par Groupe (Group-Based Access Control) :</strong>
+        <li><strong>Architecture Unifiée (Quiz &amp; Certifications) :</strong> Regroupement harmonieux au sein d'une même interface des évaluations formatives régulières et des examens de certification officiels à haute valeur ajoutée.</li>
+        <li><strong>Bouton Magique « ⚡ Prestation Standard Recommandée » :</strong> Permet aux créateurs (Administrateurs, Formateurs) d'appliquer instantanément en 1 clic les standards d'excellence académique :
           <ul>
-            <li><strong>Apprenants (Étudiants, Stagiaires, Employés) :</strong> Visibilité et passage strictement limités aux quiz créés pour leur propre groupe ou pour l'ensemble des groupes (<code>target_group="all"</code>). Tentative d'accès direct bloquée avec HTTP 403 Forbidden.</li>
-            <li><strong>Formateurs &amp; Équipe Pédagogique :</strong> Création ciblée par groupe, filtre interactif par groupe et supervision des résultats de leurs promotions.</li>
-            <li><strong>Administrateurs (<code>admin</code>, <code>admin_manager</code>) :</strong> Accès total 360°, universel et sans restriction à l'ensemble des quiz, résultats, statistiques et exports de tous les groupes.</li>
+            <li>Seuil minimal de réussite fixé à <strong>70%</strong>.</li>
+            <li>Durée de passation calibrée à <strong>30 minutes</strong>.</li>
+            <li>Affichage immédiat de la correction détaillée après soumission activé.</li>
           </ul>
         </li>
-        <li><strong>Badges de Groupe &amp; Filtrage Dynamique :</strong> Affichage d'un badge visuel distinctif <code>👥 Groupe : {Nom}</code> ou <code>🌐 Tous les groupes</code> sur chaque carte d'évaluation, et barre de filtrage instantanée par groupe pour les gestionnaires.</li>
-        <li><strong>Questions &amp; Barème :</strong> QCM à 4 choix, points personnalisables par question, validation interactive visuelle de la bonne réponse</li>
-        <li><strong>Timer &amp; Soumission :</strong> Compte à rebours temps réel avec auto-soumission à expiration du délai</li>
-        <li><strong>Correction Immédiate :</strong> Calcul automatique de la note, pourcentage, mention d'excellence et révision détaillée question par question</li>
-        <li><strong>Export PDF Universel Sécurisé (Moteur <code>quizPdfExport.ts</code>) :</strong>
+        <li><strong>Génération Automatisée de Diplômes &amp; Accréditations Officielles :</strong>
           <ul>
-            <li><strong>Pour les Apprenants (Étudiants, Stagiaires, Employés) :</strong> Export PDF autorisé <em>strictement pour leurs évaluations personnelles</em>. Génère un <strong>Relevé Officiel de Résultats / Certificat d'Évaluation A4</strong> avec identifiant unique, notes, pourcentage, statut de validation, mention, tableau complet de correction pédagogique, code d'authenticité et cachet numérique.</li>
-            <li><strong>Pour l'Équipe Pédagogique (Formateurs, Pédagogique, DG-RH, Administrateurs) :</strong> Export des relevés individuels de n'importe quel apprenant + Export du <strong>Procès-Verbal &amp; Rapport Global de la Promotion en PDF</strong> (statistiques agrégées, moyenne de promo, taux de réussite, amplitude min/max et tableau de classement complet).</li>
+            <li>Dès qu'un apprenant obtient un score &ge; au seuil (ex: 70%) sur un examen de type <code>CERTIFICATION</code>, le moteur backend génère automatiquement un diplôme officiel haute définition (format 2400×1600 px Ultra-HD, charte Royal Navy &amp; Gold, sceau doré, typographies académiques, nom du récipiendaire, note obtenue et horodatage certifié).</li>
+            <li>Support du téléversement de maquettes personnalisées (templates custom) par les formateurs via <code>POST /api/v1/assessments/upload-template</code>.</li>
+            <li>Enregistrement et liaison pérenne dans la table <code>user_certificates</code>.</li>
           </ul>
         </li>
-        <li><strong>Onglet Dédié « Mes Résultats &amp; Relevés PDF » :</strong> Permet à chaque utilisateur de consulter l'historique complet de ses passages et de réexporter ses attestations en PDF à tout moment.</li>
+        <li><strong>Espace « Mes Diplômes &amp; Certificats » :</strong> Galerie dédiée permettant aux apprenants de consulter l'ensemble de leurs certifications acquises, de visualiser le diplôme en plein écran et de le télécharger en un clic en haute résolution.</li>
+        <li><strong>Mode Examen Immersif &amp; Sécurité Anti-Triche Renforcée :</strong>
+          <ul>
+            <li>Chronomètre défilant en temps réel avec alerte visuelle sous les 5 minutes.</li>
+            <li><strong>Règle Anti-Triche Stricte :</strong> L'API ne divulgue à aucun moment l'attribut <code>is_correct</code> des choix pendant le déroulement de l'épreuve.</li>
+            <li>Barre de progression interactive et confirmation avant soumission.</li>
+          </ul>
+        </li>
+        <li><strong>Système de Feedback Post-Examen &amp; Corrigé Détaillé :</strong>
+          <ul>
+            <li>Comparaison visuelle immédiate entre le choix de l'apprenant et la solution attendue.</li>
+            <li>Code couleur strict : réponse choisie en <strong style="color: #10b981;">Vert</strong> si exacte, en <strong style="color: #ef4444;">Rouge</strong> si erronée.</li>
+            <li>Affichage clair de la bonne réponse officielle accompagnée d'une icône de validation ✔.</li>
+          </ul>
+        </li>
+        <li><strong>Ciblage &amp; Assignation par Cohorte :</strong> Filtrage par groupes d'apprenants multiples et contrôle d'accès strict (RBAC).</li>
       </ul>
       <div class="screenshot-container">
         <div class="screenshot-header">
@@ -2680,7 +2816,7 @@ E-Schola Pro/
         <li>🎥 <strong>Salles Vidéo Conférence</strong> → <code>/classroom</code></li>
         <li>💬 <strong>Boîte de réception</strong> → <code>/inbox</code> (avec badge de notifications en direct)</li>
         <li>📚 <strong>Cours &amp; Ressources</strong> → <code>/courses</code></li>
-        <li>🏆 <strong>Quiz &amp; Tests</strong> → <code>/quizzes</code></li>
+        <li>🏆 <strong>Quiz &amp; Certifications</strong> → <code>/quizzes</code> &amp; <code>/certifications</code></li>
         <li>✅ <strong>Présences &amp; Émargement</strong> → <code>/attendance</code></li>
         <li>📋 <strong>Tâches &amp; Devoirs</strong> → <code>/tasks</code></li>
       </ol>

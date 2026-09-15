@@ -23,328 +23,483 @@ import {
   Download,
   FileText,
   History,
-  GraduationCap
+  GraduationCap,
+  ExternalLink,
+  Eye,
+  CheckCircle,
+  XCircle,
+  FileCheck2,
+  Settings2,
+  UploadCloud,
+  ChevronRight
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { useConfirm } from '@/context/ConfirmModalContext';
-import { 
-  exportPersonalQuizAttemptPDF, 
-  exportGlobalQuizReportPDF,
-  QuizAttemptDetail,
-  QuizGlobalReport 
-} from '@/lib/quizPdfExport';
 
-interface Quiz {
+// ============================================================================
+// TYPES & INTERFACES
+// ============================================================================
+interface AssignedGroup {
   id: number;
+  name: string;
+  level?: string;
+}
+
+interface AssessmentChoice {
+  id: string;
+  question_id: string;
+  content: string;
+}
+
+interface AssessmentQuestion {
+  id: string;
+  assessment_id: string;
+  content: string;
+  points: number;
+  order_index: number;
+  choices: AssessmentChoice[];
+}
+
+interface Assessment {
+  id: string;
   title: string;
   description?: string;
-  creator_email?: string;
-  target_roles: string;
-  target_group?: string;
+  type: 'QUIZ' | 'CERTIFICATION';
+  is_standard_recommended: boolean;
   time_limit_minutes: number;
+  passing_score_percentage: number;
+  show_corrections_after: boolean;
+  certificate_template_url?: string;
+  created_by: number;
+  creator_name?: string;
+  created_at: string;
+  updated_at?: string;
   question_count: number;
   total_points: number;
-  is_completed: boolean;
-  best_percentage?: number;
-  created_at: string;
+  assigned_groups: AssignedGroup[];
+  has_completed: boolean;
+  best_score?: number;
+  is_passed: boolean;
+  latest_attempt_id?: string;
+  certificate_url?: string;
 }
 
-interface Question {
-  id: number;
-  question_text: string;
-  options: string[];
+interface ChoiceReview {
+  id: string;
+  question_id: string;
+  content: string;
+  is_correct: boolean;
+}
+
+interface QuestionReview {
+  id: string;
+  assessment_id: string;
+  content: string;
   points: number;
-  correct_option_index?: number;
+  order_index: number;
+  choices: ChoiceReview[];
+  user_selected_choice_id?: string;
+  is_user_correct: boolean;
+  points_earned: number;
 }
 
-interface QuizDetail extends Quiz {
-  questions: Question[];
+interface AttemptReview {
+  attempt_id: string;
+  assessment_id: string;
+  assessment_title: string;
+  assessment_type: string;
+  passing_score_percentage: number;
+  score_percentage: number;
+  is_passed: boolean;
+  status: string;
+  started_at: string;
+  completed_at?: string;
+  total_points_earned: number;
+  total_points_possible: number;
+  show_corrections: boolean;
+  certificate_url?: string;
+  questions: QuestionReview[];
 }
 
-interface QuizAttempt {
-  id: number;
-  quiz_id: number;
-  quiz_title?: string;
-  user_email: string;
-  user_role: string;
-  score: number;
-  max_score: number;
-  percentage: number;
-  completed_at: string;
+interface UserCertificate {
+  id: string;
+  user_id: number;
+  user_name?: string;
+  user_email?: string;
+  assessment_id: string;
+  assessment_title: string;
+  attempt_id: string;
+  score_percentage: number;
+  certificate_file_url: string;
+  issued_at: string;
+}
+
+// Question Builder structure
+interface BuilderQuestion {
+  content: string;
+  points: number;
+  choices: Array<{
+    content: string;
+    is_correct: boolean;
+  }>;
 }
 
 export default function QuizzesPage() {
   const { confirm } = useConfirm();
-  const [currentUser, setCurrentUser] = useState<{ id: number; email: string; role: string; group_name?: string } | null>(null);
-  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
-  const [myAttempts, setMyAttempts] = useState<QuizAttempt[]>([]);
+
+  // Helper de résolution universelle des URLs de certificats
+  const getCertificateUrl = (url?: string | null) => {
+    if (!url) return '';
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    const backendBase = (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api/v1').replace(/\/api\/v1\/?$/, '');
+    return `${backendBase}${url.startsWith('/') ? '' : '/'}${url}`;
+  };
+
+  // Auth User
+  const [currentUser, setCurrentUser] = useState<{ id: number; email: string; role: string; prenom?: string; nom?: string; group_name?: string } | null>(null);
+
+  // Data
+  const [assessments, setAssessments] = useState<Assessment[]>([]);
+  const [certificates, setCertificates] = useState<UserCertificate[]>([]);
   const [availableGroups, setAvailableGroups] = useState<Array<{ id: number; name: string; level?: string }>>([]);
-  const [selectedGroupFilter, setSelectedGroupFilter] = useState<string>('all');
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'available' | 'history' | 'manage'>('available');
-  const [isExportingPdf, setIsExportingPdf] = useState<number | null>(null);
 
-  // Taking a Quiz state
-  const [activeQuizDetail, setActiveQuizDetail] = useState<QuizDetail | null>(null);
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [selectedAnswers, setSelectedAnswers] = useState<{ [questionId: number]: number }>({});
-  const [timeLeftSeconds, setTimeLeftSeconds] = useState<number>(0);
-  const [isSubmittingQuiz, setIsSubmittingQuiz] = useState(false);
-  const [quizResult, setQuizResult] = useState<any | null>(null);
+  // Filters & Tabs
+  const [activeTab, setActiveTab] = useState<'assessments' | 'certificates' | 'history'>('assessments');
+  const [typeFilter, setTypeFilter] = useState<'ALL' | 'QUIZ' | 'CERTIFICATION'>('ALL');
+  const [groupFilter, setGroupFilter] = useState<string>('ALL');
 
-  // Formateur / Admin Create Modal
+  // Examination Player State
+  const [activeExam, setActiveExam] = useState<{
+    attemptId: string;
+    assessment: Assessment;
+    questions: AssessmentQuestion[];
+  } | null>(null);
+  const [examQuestionIndex, setExamQuestionIndex] = useState(0);
+  const [examAnswers, setExamAnswers] = useState<{ [questionId: string]: string }>({});
+  const [examTimeLeftSeconds, setExamTimeLeftSeconds] = useState<number>(0);
+  const [isSubmittingExam, setIsSubmittingExam] = useState(false);
+
+  // Post-Exam Review / Feedback State
+  const [reviewResult, setReviewResult] = useState<AttemptReview | null>(null);
+  const [isLoadingReview, setIsLoadingReview] = useState(false);
+
+  // Certificate Modal Preview
+  const [previewCertUrl, setPreviewCertUrl] = useState<string | null>(null);
+
+  // Creator Builder State (Modal)
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newDescription, setNewDescription] = useState('');
-  const [newTimeLimit, setNewTimeLimit] = useState(15);
-  const [newRoles, setNewRoles] = useState('étudiant,stagiaire,employer');
-  const [newTargetGroup, setNewTargetGroup] = useState('all');
-  const [newQuestions, setNewQuestions] = useState<Array<{
-    question_text: string;
-    options: string[];
-    correct_option_index: number;
-    points: number;
-  }>>([
+  const [newType, setNewType] = useState<'QUIZ' | 'CERTIFICATION'>('CERTIFICATION');
+  const [isStandardRecommended, setIsStandardRecommended] = useState(true);
+  const [newTimeLimit, setNewTimeLimit] = useState(30);
+  const [newPassingScore, setNewPassingScore] = useState(70);
+  const [newShowCorrections, setNewShowCorrections] = useState(true);
+  const [newCertificateTemplateUrl, setNewCertificateTemplateUrl] = useState<string | null>(null);
+  const [isUploadingTemplate, setIsUploadingTemplate] = useState(false);
+  const [selectedGroupIds, setSelectedGroupIds] = useState<number[]>([]);
+  const [builderQuestions, setBuilderQuestions] = useState<BuilderQuestion[]>([
     {
-      question_text: '',
-      options: ['', '', '', ''],
-      correct_option_index: 0,
-      points: 5
+      content: '',
+      points: 5,
+      choices: [
+        { content: '', is_correct: true },
+        { content: '', is_correct: false },
+        { content: '', is_correct: false },
+        { content: '', is_correct: false }
+      ]
     }
   ]);
-  const [isCreatingQuiz, setIsCreatingQuiz] = useState(false);
+  const [isCreatingAssessment, setIsCreatingAssessment] = useState(false);
 
-  // Formateur Results Modal
-  const [inspectQuizResults, setInspectQuizResults] = useState<{ quiz: Quiz; attempts: QuizAttempt[] } | null>(null);
-  const [isLoadingResults, setIsLoadingResults] = useState(false);
+  // RBAC Permission Check
+  const canManage = ['formateur', 'pedagogique', 'dg_rh', 'dg/rh', 'admin', 'admin_manager'].includes(
+    currentUser?.role?.toLowerCase() || ''
+  );
 
-  const canManage = ['formateur', 'pedagogique', 'dg_rh', 'dg/rh', 'admin', 'admin_manager'].includes(currentUser?.role || '');
-
-  // 1. Fetch User, Quizzes, Groups & Personal Attempts
-  const fetchQuizzes = async () => {
+  // 1. Initial Data Fetching
+  const fetchData = async () => {
     try {
-      const [userRes, quizRes, attemptsRes, groupsRes] = await Promise.all([
+      const [userRes, asmRes, certRes, grpRes] = await Promise.all([
         apiClient.get('/users/me').catch(() => null),
-        apiClient.get('/quizzes/'),
-        apiClient.get('/quizzes/attempts/my').catch(() => ({ data: [] })),
+        apiClient.get('/assessments/').catch(() => ({ data: [] })),
+        apiClient.get('/assessments/certificates/my-certificates').catch(() => ({ data: [] })),
         apiClient.get('/groups/').catch(() => ({ data: [] }))
       ]);
+
       if (userRes?.data) setCurrentUser(userRes.data);
-      setQuizzes(quizRes.data);
-      if (attemptsRes?.data) setMyAttempts(attemptsRes.data);
-      if (groupsRes?.data && Array.isArray(groupsRes.data)) {
-        setAvailableGroups(groupsRes.data);
-      }
+      if (asmRes?.data) setAssessments(asmRes.data);
+      if (certRes?.data) setCertificates(certRes.data);
+      if (grpRes?.data && Array.isArray(grpRes.data)) setAvailableGroups(grpRes.data);
     } catch (err) {
-      console.error('Error fetching quizzes:', err);
+      console.error('Error fetching assessments data:', err);
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchQuizzes();
+    fetchData();
   }, []);
 
-  // 2. Export Individual Quiz Attempt PDF
-  const handleExportAttemptPDF = async (attemptId: number) => {
-    setIsExportingPdf(attemptId);
-    try {
-      const res = await apiClient.get(`/quizzes/attempts/${attemptId}/details`);
-      exportPersonalQuizAttemptPDF(res.data);
-    } catch (err: any) {
-      alert(err?.response?.data?.detail || "Erreur lors de l'exportation du relevé PDF.");
-    } finally {
-      setIsExportingPdf(null);
+  // 2. Standard Recommended Settings Handler
+  const handleToggleStandardRecommended = (enabled: boolean) => {
+    setIsStandardRecommended(enabled);
+    if (enabled) {
+      setNewPassingScore(70);
+      setNewTimeLimit(30);
+      setNewShowCorrections(true);
     }
   };
 
-  // 3. Export PDF directly from Quiz Card
-  const handleExportQuizCardPDF = async (quizId: number) => {
-    // Find the latest attempt for this quiz
-    const targetAttempt = myAttempts.find(a => a.quiz_id === quizId);
-    if (targetAttempt) {
-      await handleExportAttemptPDF(targetAttempt.id);
-    } else {
-      // Re-fetch my attempts to get the ID
-      setIsExportingPdf(quizId);
-      try {
-        const attemptsRes = await apiClient.get('/quizzes/attempts/my');
-        const match = attemptsRes.data.find((a: QuizAttempt) => a.quiz_id === quizId);
-        if (match) {
-          const detailRes = await apiClient.get(`/quizzes/attempts/${match.id}/details`);
-          exportPersonalQuizAttemptPDF(detailRes.data);
-        } else {
-          alert("Aucun résultat d'évaluation enregistré pour ce quiz.");
-        }
-      } catch (err) {
-        alert("Erreur lors de l'exportation PDF.");
-      } finally {
-        setIsExportingPdf(null);
-      }
-    }
-  };
+  // 3. Template Upload Handler
+  const handleTemplateUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-  // 4. Export Global Quiz Report PDF (Formateurs & Admins)
-  const handleExportGlobalReportPDF = async (quizId: number) => {
-    setIsExportingPdf(quizId);
-    try {
-      const res = await apiClient.get(`/quizzes/${quizId}/report-data`);
-      exportGlobalQuizReportPDF(res.data);
-    } catch (err: any) {
-      alert(err?.response?.data?.detail || "Erreur lors de l'exportation du rapport global PDF.");
-    } finally {
-      setIsExportingPdf(null);
-    }
-  };
+    setIsUploadingTemplate(true);
+    const formData = new FormData();
+    formData.append('file', file);
 
-  const submitQuizAnswers = async () => {
-    if (!activeQuizDetail) return;
-    setIsSubmittingQuiz(true);
     try {
-      const res = await apiClient.post(`/quizzes/${activeQuizDetail.id}/submit`, {
-        answers: selectedAnswers
+      const res = await apiClient.post('/assessments/upload-template', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
       });
-      setQuizResult(res.data);
-      fetchQuizzes(); // Refresh scores and attempts
+      if (res.data?.template_url) {
+        setNewCertificateTemplateUrl(res.data.template_url);
+      }
     } catch (err: any) {
-      alert(err?.response?.data?.detail || 'Erreur lors de la soumission du quiz.');
+      alert(err?.response?.data?.detail || "Erreur lors du téléversement du modèle de certificat.");
     } finally {
-      setIsSubmittingQuiz(false);
+      setIsUploadingTemplate(false);
     }
   };
 
-  const handleAutoSubmit = async () => {
-    if (!activeQuizDetail || isSubmittingQuiz) return;
-    submitQuizAnswers();
-  };
-
-  // 5. Timer for active quiz
-  useEffect(() => {
-    if (!activeQuizDetail || quizResult) return;
-    if (timeLeftSeconds <= 0) {
-      handleAutoSubmit();
-      return;
-    }
-    const timer = setInterval(() => {
-      setTimeLeftSeconds(prev => prev - 1);
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [activeQuizDetail, timeLeftSeconds, quizResult]);
-
-  // 6. Start a Quiz
-  const handleStartQuiz = async (quizId: number) => {
+  // 4. Start Exam / Attempt
+  const handleStartExam = async (asm: Assessment) => {
     try {
       setIsLoading(true);
-      const res = await apiClient.get(`/quizzes/${quizId}`);
-      setActiveQuizDetail(res.data);
-      setCurrentQuestionIndex(0);
-      setSelectedAnswers({});
-      setQuizResult(null);
-      setTimeLeftSeconds(res.data.time_limit_minutes * 60);
+      const res = await apiClient.post(`/assessments/${asm.id}/start`);
+      const startData = res.data;
+
+      setActiveExam({
+        attemptId: startData.attempt_id,
+        assessment: startData.assessment,
+        questions: startData.assessment.questions || []
+      });
+      setExamQuestionIndex(0);
+      setExamAnswers({});
+      setReviewResult(null);
+      setExamTimeLeftSeconds((startData.time_limit_minutes || 30) * 60);
     } catch (err: any) {
-      alert(err?.response?.data?.detail || 'Erreur lors du chargement du quiz.');
+      alert(err?.response?.data?.detail || "Erreur lors du démarrage de l'évaluation.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  // 7. Delete Quiz (Formateur & Admin)
-  const handleDeleteQuiz = async (quizId: number) => {
-    const targetQuiz = quizzes.find(q => q.id === quizId);
+  // 5. Timer countdown for active examination
+  useEffect(() => {
+    if (!activeExam || reviewResult) return;
+
+    if (examTimeLeftSeconds <= 0) {
+      handleAutoSubmitExam();
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setExamTimeLeftSeconds(prev => prev - 1);
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [activeExam, examTimeLeftSeconds, reviewResult]);
+
+  const handleAutoSubmitExam = async () => {
+    if (!activeExam || isSubmittingExam) return;
+    handleSubmitExam(true);
+  };
+
+  // 6. Submit Exam Answers
+  const handleSubmitExam = async (isAuto: boolean = false) => {
+    if (!activeExam) return;
+
+    if (!isAuto) {
+      const unansweredCount = activeExam.questions.length - Object.keys(examAnswers).length;
+      if (unansweredCount > 0) {
+        const ok = await confirm({
+          title: "Soumettre l'examen ?",
+          description: `Attention : vous n'avez pas répondu à ${unansweredCount} question(s) sur ${activeExam.questions.length}. Voulez-vous tout de même finaliser votre tentative ?`,
+          confirmText: "Finaliser et soumettre",
+          cancelText: "Poursuivre l'examen",
+          variant: "danger",
+          badgeText: "Examen E-Schola Pro",
+          icon: "warning"
+        });
+        if (!ok) return;
+      }
+    }
+
+    setIsSubmittingExam(true);
+    try {
+      const res = await apiClient.post(
+        `/assessments/${activeExam.assessment.id}/submit?attempt_id=${activeExam.attemptId}`,
+        { answers: examAnswers }
+      );
+      setReviewResult(res.data);
+      setActiveExam(null); // Quitte le mode player
+      fetchData(); // Rafraîchit les scores et certificats
+    } catch (err: any) {
+      alert(err?.response?.data?.detail || "Erreur lors de la soumission de l'évaluation.");
+    } finally {
+      setIsSubmittingExam(false);
+    }
+  };
+
+  // 7. Inspect Review (Feedback)
+  const handleOpenReview = async (attemptId: string) => {
+    setIsLoadingReview(true);
+    try {
+      const res = await apiClient.get(`/assessments/attempts/${attemptId}/review`);
+      setReviewResult(res.data);
+    } catch (err: any) {
+      alert(err?.response?.data?.detail || "Erreur lors du chargement de la correction.");
+    } finally {
+      setIsLoadingReview(false);
+    }
+  };
+
+  // 8. Delete Assessment (Creator)
+  const handleDeleteAssessment = async (asm: Assessment) => {
     const ok = await confirm({
-      title: "Supprimer définitivement ce quiz ?",
-      description: "Êtes-vous certain de vouloir supprimer ce quiz pédagogique ? Tous les résultats et statistiques associés seront effacés.",
-      confirmText: "Supprimer le quiz",
+      title: "Supprimer cette évaluation ?",
+      description: `Êtes-vous certain de vouloir supprimer définitivement "${asm.title}" ? Toutes les questions, tentatives et résultats d'apprenants associés seront effacés.`,
+      confirmText: "Supprimer définitivement",
       cancelText: "Annuler",
       variant: "danger",
-      badgeText: "E-Schola Pro • Évaluations & Quiz",
-      itemName: targetQuiz?.title || `Quiz #${quizId}`,
-      itemDetail: targetQuiz ? `${targetQuiz.question_count || 0} question(s) • ${targetQuiz.time_limit_minutes || 0} min` : undefined,
+      badgeText: asm.type === 'CERTIFICATION' ? "Examen de Certification" : "Quiz Formatif",
+      itemName: asm.title,
       icon: "trash"
     });
     if (!ok) return;
 
     try {
-      await apiClient.delete(`/quizzes/${quizId}`);
-      setQuizzes(prev => prev.filter(q => q.id !== quizId));
+      await apiClient.delete(`/assessments/${asm.id}`);
+      setAssessments(prev => prev.filter(a => a.id !== asm.id));
     } catch (err: any) {
-      alert(err?.response?.data?.detail || 'Erreur lors de la suppression.');
-    }
-  };
-
-  // 8. View Results (Formateur & Admin)
-  const handleInspectResults = async (quiz: Quiz) => {
-    setIsLoadingResults(true);
-    try {
-      const res = await apiClient.get(`/quizzes/${quiz.id}/results`);
-      setInspectQuizResults({ quiz, attempts: res.data });
-    } catch (err: any) {
-      alert(err?.response?.data?.detail || 'Erreur lors du chargement des résultats.');
-    } finally {
-      setIsLoadingResults(false);
+      alert(err?.response?.data?.detail || "Erreur lors de la suppression.");
     }
   };
 
   // 9. Add Question to Builder
-  const handleAddQuestionToBuilder = () => {
-    setNewQuestions(prev => [
+  const handleAddQuestion = () => {
+    setBuilderQuestions(prev => [
       ...prev,
       {
-        question_text: '',
-        options: ['', '', '', ''],
-        correct_option_index: 0,
-        points: 5
+        content: '',
+        points: 5,
+        choices: [
+          { content: '', is_correct: true },
+          { content: '', is_correct: false },
+          { content: '', is_correct: false },
+          { content: '', is_correct: false }
+        ]
       }
     ]);
   };
 
-  // 10. Submit New Quiz (Formateur & Admin)
-  const handleCreateQuizSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTitle.trim()) return;
+  const handleRemoveQuestion = (idx: number) => {
+    if (builderQuestions.length <= 1) return;
+    setBuilderQuestions(prev => prev.filter((_, i) => i !== idx));
+  };
 
-    for (let i = 0; i < newQuestions.length; i++) {
-      const q = newQuestions[i];
-      if (!q.question_text.trim()) {
-        alert(`Veuillez renseigner le texte de la Question #${i + 1}`);
+  const handleSetCorrectChoice = (qIndex: number, choiceIndex: number) => {
+    setBuilderQuestions(prev => {
+      const updated = [...prev];
+      const q = { ...updated[qIndex] };
+      q.choices = q.choices.map((c, i) => ({
+        ...c,
+        is_correct: i === choiceIndex
+      }));
+      updated[qIndex] = q;
+      return updated;
+    });
+  };
+
+  // 10. Submit Creation
+  const handleCreateAssessmentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTitle.trim()) {
+      alert("Veuillez renseigner un titre pour l'évaluation.");
+      return;
+    }
+
+    // Validation des questions
+    for (let i = 0; i < builderQuestions.length; i++) {
+      const q = builderQuestions[i];
+      if (!q.content.trim()) {
+        alert(`Veuillez renseigner l'énoncé de la Question #${i + 1}`);
         return;
       }
-      for (let j = 0; j < q.options.length; j++) {
-        if (!q.options[j].trim()) {
-          alert(`Veuillez remplir l'option #${j + 1} de la Question #${i + 1}`);
-          return;
-        }
+      const validChoices = q.choices.filter(c => c.content.trim() !== '');
+      if (validChoices.length < 2) {
+        alert(`La Question #${i + 1} doit comporter au moins 2 choix de réponse valides.`);
+        return;
+      }
+      const hasCorrect = validChoices.some(c => c.is_correct);
+      if (!hasCorrect) {
+        alert(`Veuillez sélectionner au moins une bonne réponse pour la Question #${i + 1}`);
+        return;
       }
     }
 
-    setIsCreatingQuiz(true);
+    setIsCreatingAssessment(true);
     try {
-      await apiClient.post('/quizzes/', {
+      const payload = {
         title: newTitle.trim(),
         description: newDescription.trim() || undefined,
-        time_limit_minutes: newTimeLimit,
-        target_roles: newRoles,
-        target_group: newTargetGroup,
-        questions: newQuestions
-      });
+        type: newType,
+        is_standard_recommended: isStandardRecommended,
+        time_limit_minutes: isStandardRecommended ? 30 : newTimeLimit,
+        passing_score_percentage: isStandardRecommended ? 70.0 : newPassingScore,
+        show_corrections_after: isStandardRecommended ? true : newShowCorrections,
+        certificate_template_url: newCertificateTemplateUrl,
+        assigned_group_ids: selectedGroupIds,
+        questions: builderQuestions.map(q => ({
+          content: q.content.trim(),
+          points: q.points || 1,
+          choices: q.choices.filter(c => c.content.trim() !== '').map(c => ({
+            content: c.content.trim(),
+            is_correct: c.is_correct
+          }))
+        }))
+      };
 
+      await apiClient.post('/assessments/', payload);
       setShowCreateModal(false);
+      // Reset form
       setNewTitle('');
       setNewDescription('');
-      setNewTargetGroup('all');
-      setNewQuestions([{
-        question_text: '',
-        options: ['', '', '', ''],
-        correct_option_index: 0,
-        points: 5
-      }]);
-      fetchQuizzes();
-      alert('Quiz généré et publié avec succès pour les apprenants !');
+      setNewCertificateTemplateUrl(null);
+      setSelectedGroupIds([]);
+      setBuilderQuestions([
+        {
+          content: '',
+          points: 5,
+          choices: [
+            { content: '', is_correct: true },
+            { content: '', is_correct: false },
+            { content: '', is_correct: false },
+            { content: '', is_correct: false }
+          ]
+        }
+      ]);
+      fetchData();
+      alert("Évaluation créée et publiée avec succès !");
     } catch (err: any) {
-      alert(err?.response?.data?.detail || 'Erreur lors de la création du quiz.');
+      alert(err?.response?.data?.detail || "Erreur lors de la création de l'évaluation.");
     } finally {
-      setIsCreatingQuiz(false);
+      setIsCreatingAssessment(false);
     }
   };
 
@@ -354,226 +509,750 @@ export default function QuizzesPage() {
     return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
   };
 
-  if (isLoading && quizzes.length === 0) {
+  // Filtered Assessments
+  const filteredAssessments = assessments.filter(asm => {
+    if (typeFilter !== 'ALL' && asm.type !== typeFilter) return false;
+    if (groupFilter !== 'ALL') {
+      const gId = parseInt(groupFilter, 10);
+      const isAssigned = asm.assigned_groups.some(g => g.id === gId);
+      if (!isAssigned && asm.assigned_groups.length > 0) return false;
+    }
+    return true;
+  });
+
+  if (isLoading && assessments.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="animate-spin text-primary" size={32} />
+        <Loader2 className="animate-spin text-primary" size={36} />
       </div>
     );
   }
 
+  // =========================================================================
+  // RENDER 1 : MODE EXAMEN IMMERSIF (PLAYER)
+  // =========================================================================
+  if (activeExam) {
+    const qCount = activeExam.questions.length;
+    const currentQ = activeExam.questions[examQuestionIndex];
+    const isUrgentTimer = examTimeLeftSeconds < 300; // moins de 5 min
+
+    return (
+      <div className="min-h-screen bg-background text-text-primary px-4 py-8 max-w-4xl mx-auto space-y-6">
+        {/* Header Examen */}
+        <div className="p-6 rounded-2xl bg-surface border border-border flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider ${
+                activeExam.assessment.type === 'CERTIFICATION'
+                  ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
+                  : 'bg-primary/10 text-primary border border-primary/30'
+              }`}>
+                {activeExam.assessment.type === 'CERTIFICATION' ? 'Examen de Certification Officiel' : 'Quiz Formatif'}
+              </span>
+              <span className="text-xs text-text-secondary">
+                Question {examQuestionIndex + 1} sur {qCount}
+              </span>
+            </div>
+            <h1 className="text-xl sm:text-2xl font-black text-text-primary">
+              {activeExam.assessment.title}
+            </h1>
+          </div>
+
+          {/* Chronomètre */}
+          <div className={`flex items-center gap-3 px-4 py-2.5 rounded-xl border font-mono text-base font-bold ${
+            isUrgentTimer
+              ? 'bg-rose-500/10 text-rose-400 border-rose-500/30 animate-pulse'
+              : 'bg-primary/10 text-primary border-primary/20'
+          }`}>
+            <Clock size={18} />
+            <span>{formatTimer(examTimeLeftSeconds)}</span>
+          </div>
+        </div>
+
+        {/* Barre de Progression */}
+        <div className="w-full bg-surface-raised h-2.5 rounded-full overflow-hidden border border-border">
+          <div 
+            className="h-full bg-primary transition-all duration-300 rounded-full"
+            style={{ width: `${((examQuestionIndex + 1) / qCount) * 100}%` }}
+          />
+        </div>
+
+        {/* Carte de la Question Actuelle */}
+        {currentQ && (
+          <div className="p-6 sm:p-8 rounded-2xl bg-surface border border-border space-y-6 shadow-xl">
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-1">
+                <span className="text-xs font-extrabold uppercase tracking-wider text-primary">
+                  Question #{examQuestionIndex + 1}
+                </span>
+                <h2 className="text-lg sm:text-xl font-bold text-text-primary leading-relaxed">
+                  {currentQ.content}
+                </h2>
+              </div>
+              <span className="px-3 py-1 rounded-lg text-xs font-bold bg-surface-raised border border-border shrink-0">
+                {currentQ.points} pt{currentQ.points > 1 ? 's' : ''}
+              </span>
+            </div>
+
+            {/* Choix Multiples */}
+            <div className="space-y-3 pt-2">
+              {currentQ.choices.map((choice, cIdx) => {
+                const isSelected = examAnswers[currentQ.id] === choice.id;
+                return (
+                  <button
+                    key={choice.id}
+                    type="button"
+                    onClick={() => setExamAnswers(prev => ({ ...prev, [currentQ.id]: choice.id }))}
+                    className={`w-full text-left p-4 rounded-xl border transition-all flex items-center justify-between gap-3 cursor-pointer ${
+                      isSelected
+                        ? 'bg-primary/10 border-primary shadow-md shadow-primary/10'
+                        : 'bg-surface-raised/60 hover:bg-surface-raised border-border/80 text-text-secondary hover:text-text-primary'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-6 h-6 rounded-full border flex items-center justify-center text-xs font-bold shrink-0 ${
+                        isSelected
+                          ? 'bg-primary text-white border-primary'
+                          : 'border-border text-text-muted bg-surface'
+                      }`}>
+                        {String.fromCharCode(65 + cIdx)}
+                      </div>
+                      <span className={`text-sm sm:text-base ${isSelected ? 'font-bold text-text-primary' : 'text-text-secondary'}`}>
+                        {choice.content}
+                      </span>
+                    </div>
+
+                    <div className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 ${
+                      isSelected ? 'border-primary bg-primary text-white' : 'border-border'
+                    }`}>
+                      {isSelected && <Check size={12} strokeWidth={3} />}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Actions de Navigation */}
+        <div className="flex items-center justify-between gap-4 pt-4">
+          <button
+            type="button"
+            disabled={examQuestionIndex === 0}
+            onClick={() => setExamQuestionIndex(prev => Math.max(0, prev - 1))}
+            className="px-5 py-2.5 rounded-xl border border-border text-sm font-bold flex items-center gap-2 hover:bg-surface disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+          >
+            <ArrowLeft size={16} /> Précédente
+          </button>
+
+          <div className="flex items-center gap-3">
+            {examQuestionIndex < qCount - 1 ? (
+              <button
+                type="button"
+                onClick={() => setExamQuestionIndex(prev => Math.min(qCount - 1, prev + 1))}
+                className="btn-primary px-6 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 shadow-lg shadow-primary/20 cursor-pointer"
+              >
+                Suivante <ArrowRight size={16} />
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled={isSubmittingExam}
+                onClick={() => handleSubmitExam(false)}
+                className="px-6 py-2.5 rounded-xl text-sm font-bold bg-emerald-500 hover:bg-emerald-600 text-white flex items-center gap-2 shadow-lg shadow-emerald-500/20 cursor-pointer"
+              >
+                {isSubmittingExam ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
+                Finaliser & Soumettre l'examen
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // =========================================================================
+  // RENDER 2 : ÉCRAN DE RÉSULTAT & FEEDBACK POST-EXAMEN
+  // =========================================================================
+  if (reviewResult) {
+    const isPassed = reviewResult.is_passed;
+    const isCert = reviewResult.assessment_type === 'CERTIFICATION';
+
+    return (
+      <div className="min-h-screen px-4 pt-28 pb-20 max-w-4xl mx-auto space-y-8 animate-in fade-in duration-300">
+        {/* Bannière de Résultat */}
+        <div className={`p-8 rounded-3xl border shadow-2xl relative overflow-hidden ${
+          isPassed
+            ? 'bg-gradient-to-br from-emerald-500/10 via-surface to-surface border-emerald-500/30'
+            : 'bg-gradient-to-br from-rose-500/10 via-surface to-surface border-rose-500/30'
+        }`}>
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-6 relative z-10">
+            <div className="space-y-2 text-center sm:text-left">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-surface border border-border">
+                {isCert ? <GraduationCap size={14} className="text-amber-400" /> : <Award size={14} className="text-primary" />}
+                <span>{reviewResult.assessment_title}</span>
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-black text-text-primary">
+                {isPassed 
+                  ? (isCert ? 'Félicitations ! Vous êtes certifié !' : 'Bravo ! Évaluation réussie !') 
+                  : 'Évaluation terminée — Seuil non atteint'}
+              </h1>
+              <p className="text-sm text-text-secondary max-w-md">
+                {isPassed
+                  ? (isCert 
+                      ? "Votre réussite valide officiellement vos compétences. Votre diplôme officiel haute définition a été généré avec succès."
+                      : "Vous avez brillamment validé les objectifs pédagogiques de ce quiz.")
+                  : `Votre score de ${reviewResult.score_percentage}% est inférieur au seuil requis de ${reviewResult.passing_score_percentage}%. Vous pouvez réviser et retenter l'examen.`}
+              </p>
+            </div>
+
+            {/* Score Badge */}
+            <div className="flex flex-col items-center justify-center p-6 rounded-2xl bg-surface border border-border/80 shadow-lg text-center shrink-0 min-w-[160px]">
+              <span className="text-xs font-bold uppercase text-text-secondary mb-1">Score Final</span>
+              <span className={`text-4xl font-black ${isPassed ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {reviewResult.score_percentage}%
+              </span>
+              <span className="text-xs text-text-muted mt-1 font-medium">
+                {reviewResult.total_points_earned} / {reviewResult.total_points_possible} pts
+              </span>
+              <span className="text-[11px] text-text-secondary mt-1">
+                Seuil requis : {reviewResult.passing_score_percentage}%
+              </span>
+            </div>
+          </div>
+
+          {/* Bouton de Téléchargement du Diplôme si Réussi & Certifié */}
+          {isPassed && isCert && reviewResult.certificate_url && (
+            <div className="mt-8 pt-6 border-t border-border flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-2 text-sm font-bold text-emerald-400">
+                <CheckCircle size={18} />
+                <span>Diplôme Officiel E-Schola Pro généré & certifié</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setPreviewCertUrl(reviewResult.certificate_url!)}
+                  className="px-4 py-2.5 rounded-xl text-xs font-bold border border-border hover:bg-surface-raised flex items-center gap-2 cursor-pointer"
+                >
+                  <Eye size={15} /> Aperçu Grand Format
+                </button>
+                <a
+                  href={getCertificateUrl(reviewResult.certificate_url)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-5 py-2.5 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-slate-950 flex items-center gap-2 shadow-lg shadow-amber-500/20 cursor-pointer"
+                >
+                  <Download size={15} /> Télécharger mon Diplôme (Haute Définition)
+                </a>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Feedback Détaillé Question par Question (Vert / Rouge) */}
+        {reviewResult.show_corrections && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-black text-text-primary">
+                  Correction Détaillée & Feedback
+                </h2>
+                <p className="text-xs text-text-secondary">
+                  Comparez vos réponses avec les solutions attendues.
+                </p>
+              </div>
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-surface border border-border">
+                {reviewResult.questions.length} questions analysées
+              </span>
+            </div>
+
+            <div className="space-y-4">
+              {reviewResult.questions.map((q, qIdx) => {
+                return (
+                  <div
+                    key={q.id}
+                    className={`p-6 rounded-2xl border transition-all ${
+                      q.is_user_correct
+                        ? 'bg-surface border-emerald-500/30'
+                        : 'bg-surface border-rose-500/30'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-4 mb-4">
+                      <div className="flex items-center gap-2.5">
+                        {q.is_user_correct ? (
+                          <div className="w-7 h-7 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                            <CheckCircle2 size={16} />
+                          </div>
+                        ) : (
+                          <div className="w-7 h-7 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20 flex items-center justify-center shrink-0">
+                            <XCircle size={16} />
+                          </div>
+                        )}
+                        <div>
+                          <span className="text-xs font-bold text-text-secondary uppercase">
+                            Question #{qIdx + 1}
+                          </span>
+                          <h3 className="text-base font-bold text-text-primary">
+                            {q.content}
+                          </h3>
+                        </div>
+                      </div>
+
+                      <span className={`px-2.5 py-1 rounded-lg text-xs font-bold shrink-0 ${
+                        q.is_user_correct
+                          ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                          : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                      }`}>
+                        {q.points_earned} / {q.points} pt{q.points > 1 ? 's' : ''}
+                      </span>
+                    </div>
+
+                    {/* Choix avec coloration Vert/Rouge */}
+                    <div className="space-y-2 pt-1">
+                      {q.choices.map((c, cIdx) => {
+                        const isUserPick = q.user_selected_choice_id === c.id;
+                        const isCorrectAnswer = c.is_correct;
+
+                        let styleClasses = "bg-surface-raised/40 border-border/70 text-text-secondary";
+                        let badgeLabel = null;
+
+                        if (isUserPick && isCorrectAnswer) {
+                          // L'utilisateur a bien choisi la bonne réponse
+                          styleClasses = "bg-emerald-500/10 border-emerald-500 text-emerald-400 font-bold";
+                          badgeLabel = (
+                            <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-400">
+                              <CheckCircle2 size={14} /> Votre réponse (Correcte)
+                            </span>
+                          );
+                        } else if (isUserPick && !isCorrectAnswer) {
+                          // L'utilisateur a choisi une mauvaise réponse
+                          styleClasses = "bg-rose-500/10 border-rose-500 text-rose-400 font-bold";
+                          badgeLabel = (
+                            <span className="inline-flex items-center gap-1 text-xs font-bold text-rose-400">
+                              <XCircle size={14} /> Votre réponse (Incorrecte)
+                            </span>
+                          );
+                        } else if (!isUserPick && isCorrectAnswer) {
+                          // La bonne réponse que l'utilisateur n'a pas choisie
+                          styleClasses = "bg-emerald-500/5 border-emerald-500/40 text-emerald-300 font-medium";
+                          badgeLabel = (
+                            <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-400">
+                              <CheckCircle2 size={14} /> Réponse attendue
+                            </span>
+                          );
+                        }
+
+                        return (
+                          <div
+                            key={c.id}
+                            className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 text-sm ${styleClasses}`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <span className="w-5 h-5 rounded-full border border-current/30 flex items-center justify-center text-xs shrink-0">
+                                {String.fromCharCode(65 + cIdx)}
+                              </span>
+                              <span>{c.content}</span>
+                            </div>
+                            {badgeLabel}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Bouton Retour */}
+        <div className="flex items-center justify-end gap-4 pt-4 border-t border-border">
+          <button
+            type="button"
+            onClick={() => setReviewResult(null)}
+            className="btn-primary px-6 py-2.5 rounded-xl text-xs font-bold cursor-pointer"
+          >
+            Retour au Centre d'Évaluations
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // =========================================================================
+  // RENDER 3 : VUE PRINCIPALE DU CENTRE D'ÉVALUATION & CERTIFICATION
+  // =========================================================================
   return (
     <div className="min-h-screen px-4 pt-28 pb-20 max-w-7xl mx-auto space-y-8">
-      
       {/* 1. Header & Hero */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-border">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-primary/10 text-primary border border-primary/20 mb-2">
             <Award size={14} />
-            <span>ÉVALUATION & CERTIFICATION DES COMPÉTENCES</span>
+            <span>MODULE UNIFIÉ D'ÉVALUATION & ACCRÉDITATIONS</span>
           </div>
           <h1 className="text-3xl sm:text-4xl font-extrabold text-text-primary">
-            Quiz & <span className="text-brand-gradient">Tests de Connaissances</span>
+            Examens & <span className="text-brand-gradient">Certifications Officielles</span>
           </h1>
           <p className="text-text-secondary text-sm max-w-2xl mt-1">
-            Passez vos évaluations pédagogiques, obtenez vos notes instantanément et exportez vos relevés officiels et certifications au format PDF.
+            Évaluez vos compétences avec des QCM formatifs et décrochez des diplômes de certification certifiés avec délivrance automatique.
           </p>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center gap-3">
-          {canManage && (
+        {/* Bouton de création réservé aux créateurs (RBAC) */}
+        {canManage && (
+          <div className="flex items-center gap-3">
             <button
               onClick={() => setShowCreateModal(true)}
               className="btn-primary px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg shadow-primary/20 cursor-pointer"
             >
-              <Plus size={16} /> Générer un nouveau Quiz
+              <Plus size={16} /> Créer une Évaluation / Examen
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
-      {/* 2. Navigation Tabs (Tous les Rôles) */}
+      {/* 2. Onglets Principaux */}
       <div className="flex items-center gap-2 border-b border-border pb-1 overflow-x-auto">
         <button
-          onClick={() => setActiveTab('available')}
+          onClick={() => setActiveTab('assessments')}
           className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
-            activeTab === 'available'
+            activeTab === 'assessments'
               ? 'bg-primary text-white shadow-sm'
               : 'text-text-secondary hover:text-text-primary hover:bg-surface'
           }`}
         >
           <BookOpen size={15} />
-          <span>Évaluations Disponibles ({quizzes.length})</span>
+          <span>Évaluations Disponibles ({assessments.length})</span>
         </button>
 
         <button
-          onClick={() => setActiveTab('history')}
+          onClick={() => setActiveTab('certificates')}
           className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
-            activeTab === 'history'
+            activeTab === 'certificates'
               ? 'bg-primary text-white shadow-sm'
               : 'text-text-secondary hover:text-text-primary hover:bg-surface'
           }`}
         >
-          <History size={15} />
-          <span>Mes Résultats & Relevés PDF ({myAttempts.length})</span>
+          <GraduationCap size={15} />
+          <span>Mes Diplômes & Certificats ({certificates.length})</span>
         </button>
-
-        {canManage && (
-          <button
-            onClick={() => setActiveTab('manage')}
-            className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
-              activeTab === 'manage'
-                ? 'bg-primary text-white shadow-sm'
-                : 'text-text-secondary hover:text-text-primary hover:bg-surface'
-            }`}
-          >
-            <ShieldCheck size={15} />
-            <span>Gestion & Résultats Promo ({quizzes.length})</span>
-          </button>
-        )}
       </div>
 
-      {/* ========================================================================= */}
-      {/* SECTION 1 : VUE QUIZ DISPONIBLES                                          */}
-      {/* ========================================================================= */}
-      {activeTab === 'available' && (
+      {/* ===================================================================== */}
+      {/* ONGLET 1 : ÉVALUATIONS & EXAMENS                                      */}
+      {/* ===================================================================== */}
+      {activeTab === 'assessments' && (
         <div className="space-y-6">
-          {/* Group Filter Bar for Staff & Admins */}
-          {canManage && availableGroups.length > 0 && (
-            <div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-2xl bg-surface border border-border">
-              <div className="flex items-center gap-2">
-                <GraduationCap size={16} className="text-primary" />
-                <span className="text-xs font-bold text-text-primary">Filtrer les évaluations par Groupe :</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <select
-                  value={selectedGroupFilter}
-                  onChange={(e) => setSelectedGroupFilter(e.target.value)}
-                  className="px-3 py-1.5 rounded-xl bg-background border border-border text-xs font-semibold outline-none focus:border-primary text-text-primary transition-all cursor-pointer"
+          {/* Barre de Filtres */}
+          <div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-2xl bg-surface border border-border">
+            {/* Filtre Type */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-text-secondary">Type :</span>
+              <div className="flex items-center bg-surface-raised p-1 rounded-xl border border-border">
+                <button
+                  onClick={() => setTypeFilter('ALL')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    typeFilter === 'ALL' ? 'bg-primary text-white' : 'text-text-secondary hover:text-text-primary'
+                  }`}
                 >
-                  <option value="all">🌐 Tous les groupes</option>
-                  {availableGroups.map((grp) => (
-                    <option key={grp.id} value={grp.name}>
-                      👥 {grp.name} {grp.level ? `(${grp.level})` : ''}
+                  Tous
+                </button>
+                <button
+                  onClick={() => setTypeFilter('QUIZ')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    typeFilter === 'QUIZ' ? 'bg-primary text-white' : 'text-text-secondary hover:text-text-primary'
+                  }`}
+                >
+                  Quiz Formatifs
+                </button>
+                <button
+                  onClick={() => setTypeFilter('CERTIFICATION')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    typeFilter === 'CERTIFICATION' ? 'bg-primary text-white' : 'text-text-secondary hover:text-text-primary'
+                  }`}
+                >
+                  Certifications
+                </button>
+              </div>
+            </div>
+
+            {/* Filtre Groupe */}
+            {availableGroups.length > 0 && (
+              <div className="flex items-center gap-2">
+                <Users size={15} className="text-text-secondary" />
+                <span className="text-xs font-bold text-text-secondary">Groupe :</span>
+                <select
+                  value={groupFilter}
+                  onChange={e => setGroupFilter(e.target.value)}
+                  className="bg-surface-raised border border-border text-text-primary text-xs font-medium rounded-xl px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+                >
+                  <option value="ALL">Toutes les cohortes</option>
+                  {availableGroups.map(g => (
+                    <option key={g.id} value={g.id.toString()}>
+                      {g.name} {g.level ? `(${g.level})` : ''}
                     </option>
                   ))}
                 </select>
-                {selectedGroupFilter !== 'all' && (
-                  <button
-                    type="button"
-                    onClick={() => setSelectedGroupFilter('all')}
-                    className="text-xs text-primary font-bold hover:underline px-2 py-1 cursor-pointer"
-                  >
-                    Réinitialiser
-                  </button>
-                )}
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
-          {quizzes.length === 0 ? (
-            <div className="glass-card p-12 text-center text-text-secondary space-y-3">
-              <HelpCircle size={40} className="mx-auto opacity-30 text-primary" />
-              <p className="font-bold text-base text-text-primary">Aucun quiz disponible pour le moment</p>
-              <p className="text-xs max-w-sm mx-auto">
-                Les formateurs n'ont pas encore publié d'évaluation pour votre groupe ou profil. Revenez très bientôt !
+          {/* Grille des Évaluations */}
+          {filteredAssessments.length === 0 ? (
+            <div className="p-12 rounded-3xl bg-surface border border-border text-center space-y-4">
+              <FileQuestion size={48} className="mx-auto text-text-muted" />
+              <h3 className="text-lg font-bold text-text-primary">Aucune évaluation correspondante</h3>
+              <p className="text-xs text-text-secondary max-w-md mx-auto">
+                Aucune évaluation n'est actuellement disponible pour ce filtre ou assignée à votre groupe d'apprentissage.
               </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {quizzes
-                .filter((quiz) => {
-                  if (selectedGroupFilter === 'all') return true;
-                  const qGrp = (quiz.target_group || 'all').toLowerCase();
-                  if (qGrp === 'all') return true;
-                  return qGrp.includes(selectedGroupFilter.toLowerCase());
-                })
-                .map((quiz) => (
-                <div 
-                  key={quiz.id} 
-                  className="glass-card p-6 flex flex-col justify-between space-y-5 hover:border-primary/50 transition-all group"
-                >
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-text-secondary flex items-center gap-1.5">
-                        <Clock size={13} className="text-primary" />
-                        {quiz.time_limit_minutes} minutes
-                      </span>
+              {filteredAssessments.map(asm => {
+                const isCert = asm.type === 'CERTIFICATION';
+                return (
+                  <div
+                    key={asm.id}
+                    className="p-6 rounded-3xl bg-surface border border-border hover:border-primary/50 transition-all flex flex-col justify-between space-y-5 shadow-lg group relative overflow-hidden"
+                  >
+                    {/* Top Badges */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 ${
+                          isCert
+                            ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
+                            : 'bg-primary/10 text-primary border border-primary/30'
+                        }`}>
+                          {isCert ? <GraduationCap size={13} /> : <BookOpen size={13} />}
+                          <span>{isCert ? 'Certification' : 'Quiz Formatif'}</span>
+                        </span>
 
-                      {quiz.is_completed ? (
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 flex items-center gap-1">
-                          <CheckCircle2 size={11} /> Score : {quiz.best_percentage}%
-                        </span>
-                      ) : (
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/10 text-cyan-500 border border-cyan-500/20">
-                          Nouveau • À passer
-                        </span>
+                        {asm.is_standard_recommended && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+                            <Sparkles size={11} /> Standard
+                          </span>
+                        )}
+                      </div>
+
+                      <h3 className="text-lg font-bold text-text-primary group-hover:text-primary transition-colors">
+                        {asm.title}
+                      </h3>
+
+                      {asm.description && (
+                        <p className="text-xs text-text-secondary line-clamp-2 leading-relaxed">
+                          {asm.description}
+                        </p>
                       )}
                     </div>
 
-                    <h3 className="text-lg font-bold text-text-primary group-hover:text-primary transition-colors line-clamp-2">
-                      {quiz.title}
-                    </h3>
-
-                    <p className="text-xs text-text-secondary line-clamp-2 leading-relaxed">
-                      {quiz.description || "Évaluation des compétences sur les notions abordées en cours."}
-                    </p>
-
-                    {/* Group & Roles Target Badges */}
-                    <div className="flex flex-wrap items-center gap-2 pt-1">
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-primary/10 text-primary border border-primary/20 flex items-center gap-1">
-                        <GraduationCap size={10} />
-                        {quiz.target_group && quiz.target_group !== 'all' ? `Groupe : ${quiz.target_group}` : '🌐 Tous les groupes'}
-                      </span>
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
-                        {quiz.target_roles ? quiz.target_roles.split(',').join(', ') : 'Tous rôles'}
-                      </span>
+                    {/* Paramètres Clés */}
+                    <div className="grid grid-cols-2 gap-2 p-3 rounded-xl bg-surface-raised border border-border/60 text-xs">
+                      <div className="flex items-center gap-2 text-text-secondary">
+                        <Clock size={14} className="text-text-muted shrink-0" />
+                        <span>{asm.time_limit_minutes} min</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-text-secondary">
+                        <Award size={14} className="text-text-muted shrink-0" />
+                        <span>Seuil : {asm.passing_score_percentage}%</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-text-secondary">
+                        <FileQuestion size={14} className="text-text-muted shrink-0" />
+                        <span>{asm.question_count} questions</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-text-secondary">
+                        <BarChart3 size={14} className="text-text-muted shrink-0" />
+                        <span>{asm.total_points} points</span>
+                      </div>
                     </div>
 
-                    <div className="pt-2 flex items-center gap-3 text-xs text-text-secondary">
-                      <span className="flex items-center gap-1">
-                        <FileQuestion size={14} className="text-primary" /> {quiz.question_count} Questions
-                      </span>
-                      <span>•</span>
-                      <span>{quiz.total_points} Points au total</span>
-                    </div>
-                  </div>
+                    {/* Groupes assignés */}
+                    {asm.assigned_groups.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {asm.assigned_groups.map(g => (
+                          <span key={g.id} className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-surface-raised border border-border text-text-muted">
+                            {g.name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
 
-                  <div className="pt-4 border-t border-border flex items-center justify-between gap-2">
-                    <span className="text-[11px] text-text-secondary truncate">
-                      Par {quiz.creator_email ? quiz.creator_email.split('@')[0] : 'Formateur'}
-                    </span>
+                    {/* Statut & Actions */}
+                    <div className="pt-3 border-t border-border space-y-3">
+                      {asm.has_completed ? (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-text-secondary">Meilleur score :</span>
+                            <span className={`font-bold ${asm.is_passed ? 'text-emerald-400' : 'text-amber-400'}`}>
+                              {asm.best_score}% {asm.is_passed ? '(Validé)' : '(Non validé)'}
+                            </span>
+                          </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
-                      {quiz.is_completed && (
+                          <div className="flex items-center gap-2">
+                            {/* Bouton Diplôme si Certifié */}
+                            {asm.is_passed && isCert && asm.certificate_url && (
+                              <a
+                                href={getCertificateUrl(asm.certificate_url)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex-1 py-2 px-3 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-slate-950 flex items-center justify-center gap-1.5 shadow-md shadow-amber-500/10 cursor-pointer"
+                              >
+                                <GraduationCap size={14} /> Mon Diplôme
+                              </a>
+                            )}
+
+                            {/* Bouton Correction */}
+                            {asm.latest_attempt_id && (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenReview(asm.latest_attempt_id!)}
+                                className="flex-1 py-2 px-3 rounded-xl text-xs font-bold border border-border hover:bg-surface-raised flex items-center justify-center gap-1.5 cursor-pointer"
+                              >
+                                <Eye size={14} /> Correction
+                              </button>
+                            )}
+
+                            {/* Bouton Retenter */}
+                            <button
+                              type="button"
+                              onClick={() => handleStartExam(asm)}
+                              className="py-2 px-3 rounded-xl text-xs font-bold bg-primary/10 text-primary hover:bg-primary/20 flex items-center justify-center gap-1.5 cursor-pointer"
+                              title="Retenter l'évaluation"
+                            >
+                              Retenter
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
                         <button
                           type="button"
-                          onClick={() => handleExportQuizCardPDF(quiz.id)}
-                          disabled={isExportingPdf === quiz.id}
-                          className="px-3 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
-                          title="Exporter mon relevé de résultats officiel au format PDF"
+                          onClick={() => handleStartExam(asm)}
+                          className="w-full py-2.5 px-4 rounded-xl text-xs font-bold btn-primary flex items-center justify-center gap-2 shadow-lg shadow-primary/20 cursor-pointer"
                         >
-                          {isExportingPdf === quiz.id ? (
-                            <Loader2 size={13} className="animate-spin" />
-                          ) : (
-                            <Download size={13} />
-                          )}
-                          <span>Bilan PDF</span>
+                          <span>{isCert ? "Passer l'Examen de Certification" : "Commencer le Quiz"}</span>
+                          <ArrowRight size={15} />
                         </button>
                       )}
 
+                      {/* Action Supprimer pour Formateur/Admin */}
+                      {canManage && (
+                        <div className="flex items-center justify-between pt-1">
+                          <span className="text-[10px] text-text-muted">Par : {asm.creator_name || 'Formateur'}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteAssessment(asm)}
+                            className="text-text-muted hover:text-rose-400 text-xs p-1 rounded transition-colors cursor-pointer"
+                            title="Supprimer l'évaluation"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* ONGLET 2 : MES DIPLÔMES & CERTIFICATS                                */}
+      {/* ===================================================================== */}
+      {activeTab === 'certificates' && (
+        <div className="space-y-6">
+          <div className="p-6 rounded-3xl bg-gradient-to-br from-amber-500/10 via-surface to-surface border border-amber-500/20 flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl">
+            <div className="space-y-2 text-center md:text-left">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                <GraduationCap size={14} />
+                <span>RÉPERTOIRE DES ACCRÉDITATIONS OFFICIELLES</span>
+              </div>
+              <h2 className="text-2xl font-black text-text-primary">
+                Vos Diplômes & Certificats de Compétences
+              </h2>
+              <p className="text-xs text-text-secondary max-w-xl">
+                Tous les diplômes générés après avoir obtenu un score supérieur ou égal au seuil de passage de 70% lors de vos examens certifiants.
+              </p>
+            </div>
+            <div className="px-6 py-4 rounded-2xl bg-surface border border-border text-center shrink-0">
+              <span className="text-3xl font-black text-amber-400">{certificates.length}</span>
+              <p className="text-xs text-text-secondary font-medium">Diplôme{certificates.length > 1 ? 's' : ''} obtenu{certificates.length > 1 ? 's' : ''}</p>
+            </div>
+          </div>
+
+          {certificates.length === 0 ? (
+            <div className="p-12 rounded-3xl bg-surface border border-border text-center space-y-4">
+              <GraduationCap size={48} className="mx-auto text-amber-400/50" />
+              <h3 className="text-lg font-bold text-text-primary">Aucun diplôme obtenu pour le moment</h3>
+              <p className="text-xs text-text-secondary max-w-md mx-auto">
+                Passez un examen certifiant disponible dans l'onglet "Évaluations Disponibles" et obtenez une note ≥ 70% pour déclencher la génération automatique de votre diplôme officiel.
+              </p>
+              <button
+                type="button"
+                onClick={() => { setActiveTab('assessments'); setTypeFilter('CERTIFICATION'); }}
+                className="btn-primary px-5 py-2.5 rounded-xl text-xs font-bold cursor-pointer"
+              >
+                Explorer les examens de certification
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {certificates.map(cert => (
+                <div
+                  key={cert.id}
+                  className="rounded-3xl bg-surface border border-border overflow-hidden shadow-xl hover:border-amber-500/50 transition-all flex flex-col justify-between group"
+                >
+                  {/* Aperçu du document */}
+                  <div className="relative aspect-[3/2] bg-slate-950 overflow-hidden border-b border-border">
+                    <img
+                      src={getCertificateUrl(cert.certificate_file_url)}
+                      alt={cert.assessment_title}
+                      className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
+                    <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-xs text-white">
+                      <span className="font-bold flex items-center gap-1.5 bg-slate-900/80 backdrop-blur px-2.5 py-1 rounded-lg border border-amber-500/30">
+                        <GraduationCap size={13} className="text-amber-400" />
+                        Score : {cert.score_percentage}%
+                      </span>
+                      <span className="text-[10px] text-white/80 bg-slate-900/80 backdrop-blur px-2 py-1 rounded-md">
+                        {new Date(cert.issued_at).toLocaleDateString('fr-FR')}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Informations */}
+                  <div className="p-5 space-y-4">
+                    <div>
+                      <h3 className="text-base font-black text-text-primary line-clamp-1">
+                        {cert.assessment_title}
+                      </h3>
+                      <p className="text-xs text-text-secondary mt-1">
+                        Délivré à : <strong className="text-text-primary">{cert.user_name || cert.user_email}</strong>
+                      </p>
+                      <p className="text-[10px] font-mono text-text-muted mt-0.5">
+                        ID: {cert.id.substring(0, 16)}...
+                      </p>
+                    </div>
+
+                    {/* Actions de Téléchargement & Aperçu */}
+                    <div className="flex items-center gap-2 pt-2 border-t border-border">
+                      <a
+                        href={getCertificateUrl(cert.certificate_file_url)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 py-2 px-3 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-slate-950 flex items-center justify-center gap-1.5 shadow-md shadow-amber-500/10 cursor-pointer"
+                      >
+                        <Download size={14} /> Télécharger
+                      </a>
                       <button
                         type="button"
-                        onClick={() => handleStartQuiz(quiz.id)}
-                        className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
-                          quiz.is_completed
-                            ? 'bg-surface hover:bg-surface-hover border border-border text-text-primary'
-                            : 'btn-primary'
-                        }`}
+                        onClick={() => setPreviewCertUrl(cert.certificate_file_url)}
+                        className="p-2 rounded-xl border border-border hover:bg-surface-raised text-text-secondary hover:text-text-primary cursor-pointer"
+                        title="Aperçu Grand Format"
                       >
-                        <span>{quiz.is_completed ? 'Repasser' : 'Passer'}</span>
-                        <ArrowRight size={14} />
+                        <Eye size={16} />
                       </button>
                     </div>
                   </div>
@@ -584,859 +1263,431 @@ export default function QuizzesPage() {
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* SECTION 2 : MES RÉSULTATS & RELEVÉS PDF (Accessible à TOUS les rôles)     */}
-      {/* ========================================================================= */}
-      {activeTab === 'history' && (
-        <div className="glass-card rounded-3xl border border-border overflow-hidden space-y-4">
-          <div className="p-6 bg-surface border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <h3 className="font-extrabold text-base text-text-primary flex items-center gap-2">
-                <GraduationCap size={20} className="text-primary" />
-                <span>Mes Évaluations Complétées & Relevés de Notes</span>
-              </h3>
-              <p className="text-xs text-text-secondary">
-                Consultez vos scores obtenus et téléchargez à tout moment vos relevés de résultats officiels en PDF.
-              </p>
-            </div>
-          </div>
-
-          <div className="p-4 sm:p-6">
-            {myAttempts.length === 0 ? (
-              <div className="py-12 text-center text-text-secondary space-y-3">
-                <FileText size={40} className="mx-auto opacity-30 text-primary" />
-                <p className="font-bold text-sm text-text-primary">Aucun résultat d'évaluation enregistré</p>
-                <p className="text-xs max-w-sm mx-auto">
-                  Vous n'avez pas encore passé d'évaluation. Rendez-vous dans l'onglet « Évaluations Disponibles » pour commencer !
-                </p>
+      {/* ===================================================================== */}
+      {/* MODAL 1 : ATELIER DE CRÉATION D'ÉVALUATION (CRÉATEURS UNIQUEMENT)      */}
+      {/* ===================================================================== */}
+      {showCreateModal && canManage && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-surface border border-border rounded-3xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl p-6 sm:p-8 space-y-6 my-8 animate-in fade-in zoom-in-95 duration-200">
+            {/* Header Modal */}
+            <div className="flex items-center justify-between border-b border-border pb-4">
+              <div>
+                <span className="text-xs font-bold text-primary uppercase tracking-wider">
+                  Atelier Pédagogique
+                </span>
+                <h2 className="text-xl sm:text-2xl font-black text-text-primary">
+                  Concevoir une Nouvelle Évaluation
+                </h2>
               </div>
-            ) : (
-              <div className="divide-y divide-border border border-border rounded-2xl overflow-hidden bg-white/50">
-                {myAttempts.map((att, idx) => (
-                  <div key={att.id} className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-surface/80 transition-colors">
-                    <div className="space-y-1.5 flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-black flex items-center justify-center shrink-0">
-                          #{idx + 1}
-                        </span>
-                        <h4 className="text-sm font-bold text-text-primary truncate">{att.quiz_title || `Évaluation #${att.quiz_id}`}</h4>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2.5 text-xs text-text-secondary pl-8">
-                        <span>Score : <strong className="text-text-primary font-mono">{att.score} / {att.max_score} pts</strong></span>
-                        <span>•</span>
-                        <span>Passé le : {new Date(att.completed_at).toLocaleDateString('fr-FR')} à {new Date(att.completed_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-3 shrink-0 pl-8 sm:pl-0">
-                      <span className={`px-3 py-1 rounded-xl text-xs font-bold font-mono ${
-                        att.percentage >= 60 
-                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
-                          : 'bg-rose-50 text-rose-700 border border-rose-200'
-                      }`}>
-                        {att.percentage}% • {att.percentage >= 60 ? 'Validé ✓' : 'Non Validé ✗'}
-                      </span>
-
-                      <button
-                        type="button"
-                        onClick={() => handleExportAttemptPDF(att.id)}
-                        disabled={isExportingPdf === att.id}
-                        className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-indigo-600/20 transition-all cursor-pointer"
-                        title="Télécharger le Relevé de Résultats officiel en PDF"
-                      >
-                        {isExportingPdf === att.id ? (
-                          <Loader2 size={14} className="animate-spin" />
-                        ) : (
-                          <Download size={14} />
-                        )}
-                        <span>Exporter PDF</span>
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* SECTION 3 : VUE FORMATEUR & ADMIN (Gestion & Export Global)               */}
-      {/* ========================================================================= */}
-      {activeTab === 'manage' && canManage && (
-        <div className="glass-card rounded-3xl border border-border overflow-hidden space-y-4">
-          <div className="p-6 bg-surface border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <h3 className="font-extrabold text-base text-text-primary flex items-center gap-2">
-                <ShieldCheck size={20} className="text-primary" />
-                <span>Gestion des Évaluations & Rapports Globaux de la Promotion</span>
-              </h3>
-              <p className="text-xs text-text-secondary">
-                Auditez les notes de chaque apprenant et exportez les procès-verbaux d'évaluation en PDF.
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-3">
-              {availableGroups.length > 0 && (
-                <select
-                  value={selectedGroupFilter}
-                  onChange={(e) => setSelectedGroupFilter(e.target.value)}
-                  className="px-3 py-2 rounded-xl bg-background border border-border text-xs font-semibold outline-none focus:border-primary text-text-primary transition-all cursor-pointer"
-                >
-                  <option value="all">🌐 Tous les groupes</option>
-                  {availableGroups.map((grp) => (
-                    <option key={grp.id} value={grp.name}>
-                      👥 {grp.name} {grp.level ? `(${grp.level})` : ''}
-                    </option>
-                  ))}
-                </select>
-              )}
-
               <button
-                onClick={() => setShowCreateModal(true)}
-                className="btn-primary px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0 cursor-pointer"
+                type="button"
+                onClick={() => setShowCreateModal(false)}
+                className="p-2 rounded-xl text-text-secondary hover:text-text-primary hover:bg-surface-raised cursor-pointer"
               >
-                <Plus size={14} /> Créer un Quiz
+                <X size={20} />
               </button>
             </div>
-          </div>
 
-          <div className="divide-y divide-border">
-            {quizzes.length === 0 ? (
-              <div className="p-12 text-center text-text-secondary text-xs">
-                Aucun quiz créé pour le moment. Cliquez sur "Créer un Quiz" pour commencer.
-              </div>
-            ) : (
-              quizzes
-                .filter((quiz) => {
-                  if (selectedGroupFilter === 'all') return true;
-                  const qGrp = (quiz.target_group || 'all').toLowerCase();
-                  if (qGrp === 'all') return true;
-                  return qGrp.includes(selectedGroupFilter.toLowerCase());
-                })
-                .map((quiz) => (
-                <div key={quiz.id} className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-surface/50 transition-colors">
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-2">
-                      <h4 className="text-sm font-bold text-text-primary">{quiz.title}</h4>
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-primary/10 text-primary border border-primary/20 flex items-center gap-1">
-                        <GraduationCap size={10} />
-                        {quiz.target_group && quiz.target_group !== 'all' ? `Groupe : ${quiz.target_group}` : '🌐 Tous groupes'}
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-3 text-xs text-text-secondary">
-                      <span>{quiz.question_count} questions ({quiz.total_points} pts)</span>
-                      <span>•</span>
-                      <span>Durée : {quiz.time_limit_minutes} min</span>
-                      <span>•</span>
-                      <span className="capitalize">Public : {quiz.target_roles ? quiz.target_roles.split(',').join(', ') : 'Tous'}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2.5 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => handleExportGlobalReportPDF(quiz.id)}
-                      disabled={isExportingPdf === quiz.id}
-                      className="px-3.5 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
-                      title="Exporter le Procès-Verbal Global en PDF"
-                    >
-                      {isExportingPdf === quiz.id ? (
-                        <Loader2 size={14} className="animate-spin" />
-                      ) : (
-                        <Download size={14} />
-                      )}
-                      <span>Rapport Global PDF</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleInspectResults(quiz)}
-                      className="px-3.5 py-2 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
-                    >
-                      <BarChart3 size={14} />
-                      <span>Consulter Résultats</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteQuiz(quiz.id)}
-                      className="p-2 rounded-xl text-text-secondary hover:text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
-                      title="Supprimer ce quiz"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* MODAL : PASSER LE QUIZ EN DIRECT (Vue Panoramique Confortable)             */}
-      {/* ========================================================================= */}
-      {activeQuizDetail && (
-        <div className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
-          <div className="glass-card max-w-4xl w-full p-6 sm:p-8 rounded-3xl border border-primary/40 shadow-2xl animate-fade-in-up my-auto max-h-[92vh] flex flex-col">
-            
-            {/* Quiz Result View */}
-            {quizResult ? (
-              <div className="text-center space-y-5 py-2 overflow-y-auto flex-1">
-                <div className={`w-16 h-16 rounded-full mx-auto flex items-center justify-center text-white ${
-                  quizResult.passed ? 'bg-emerald-500 shadow-lg shadow-emerald-500/30' : 'bg-rose-500 shadow-lg shadow-rose-500/30'
-                }`}>
-                  {quizResult.passed ? <Check size={32} /> : <AlertCircle size={32} />}
-                </div>
-
-                <div>
-                  <h3 className="text-2xl font-extrabold text-text-primary">
-                    {quizResult.passed ? 'Félicitations ! Évaluation Réussie' : 'Résultat Insuffisant'}
-                  </h3>
-                  <p className="text-xs text-text-secondary mt-1">
-                    {quizResult.passed 
-                      ? 'Vous avez obtenu la note requise pour valider ce module.'
-                      : 'Vous pouvez réviser le cours et retenter le quiz.'}
-                  </p>
-                </div>
-
-                <div className="p-4 rounded-2xl bg-surface border border-border flex items-center justify-around max-w-md mx-auto shadow-sm">
-                  <div>
-                    <span className="text-xs text-text-secondary block">Score Obtenu</span>
-                    <span className="text-2xl font-black text-primary font-mono">{quizResult.score} / {quizResult.max_score} pts</span>
-                  </div>
-                  <div className="w-px h-10 bg-border" />
-                  <div>
-                    <span className="text-xs text-text-secondary block">Pourcentage</span>
-                    <span className={`text-2xl font-black font-mono ${quizResult.passed ? 'text-emerald-500' : 'text-rose-500'}`}>
-                      {quizResult.percentage}%
-                    </span>
-                  </div>
-                </div>
-
-                {/* Question Review */}
-                <div className="max-h-64 overflow-y-auto space-y-3 text-left p-2">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-text-secondary">Correction des questions :</h4>
-                  {quizResult.review?.map((rev: any, idx: number) => (
-                    <div key={idx} className="p-3.5 rounded-xl bg-surface border border-border text-xs space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-text-primary text-sm">Q{idx + 1}. {rev.question_text}</span>
-                        <span className={`px-2 py-0.5 rounded-md font-bold text-[10px] ${rev.is_correct ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'bg-rose-50 text-rose-600 border border-rose-200'}`}>
-                          {rev.is_correct ? `+${rev.points} pts` : '0 pt'}
-                        </span>
-                      </div>
-                      <p className="text-text-secondary">
-                        Votre choix : <span className={rev.is_correct ? 'text-emerald-500 font-bold' : 'text-rose-500 font-bold'}>
-                          {rev.options[rev.selected_index] || 'Aucune réponse'}
-                        </span>
+            <form onSubmit={handleCreateAssessmentSubmit} className="space-y-6">
+              {/* Type d'évaluation */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-text-secondary uppercase">
+                  Type d'évaluation
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setNewType('QUIZ')}
+                    className={`p-4 rounded-2xl border text-left flex items-start gap-3 transition-all cursor-pointer ${
+                      newType === 'QUIZ'
+                        ? 'bg-primary/10 border-primary text-text-primary shadow-sm'
+                        : 'bg-surface-raised border-border text-text-secondary hover:text-text-primary'
+                    }`}
+                  >
+                    <BookOpen size={20} className={newType === 'QUIZ' ? 'text-primary' : 'text-text-muted'} />
+                    <div>
+                      <h4 className="text-sm font-bold">Quiz Formatif</h4>
+                      <p className="text-[11px] text-text-secondary mt-0.5">
+                        Test régulier d'apprentissage sans délivrance de diplôme officiel.
                       </p>
-                      {!rev.is_correct && (
-                        <p className="text-emerald-600 font-semibold">
-                          ✓ Bonne réponse : {rev.options[rev.correct_index]}
-                        </p>
-                      )}
                     </div>
-                  ))}
-                </div>
-
-                {/* Action Buttons with PDF Export */}
-                <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => handleExportAttemptPDF(quizResult.attempt_id)}
-                    disabled={isExportingPdf === quizResult.attempt_id}
-                    className="w-full sm:w-1/2 py-3.5 rounded-xl font-bold text-xs bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/25 transition-all cursor-pointer"
-                  >
-                    {isExportingPdf === quizResult.attempt_id ? (
-                      <Loader2 size={16} className="animate-spin" />
-                    ) : (
-                      <Download size={16} />
-                    )}
-                    <span>Exporter mon Bilan PDF</span>
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => {
-                      setActiveQuizDetail(null);
-                      setQuizResult(null);
-                    }}
-                    className="w-full sm:w-1/2 btn-primary py-3.5 rounded-xl font-bold text-xs cursor-pointer"
+                    onClick={() => setNewType('CERTIFICATION')}
+                    className={`p-4 rounded-2xl border text-left flex items-start gap-3 transition-all cursor-pointer ${
+                      newType === 'CERTIFICATION'
+                        ? 'bg-amber-500/10 border-amber-500 text-text-primary shadow-sm'
+                        : 'bg-surface-raised border-border text-text-secondary hover:text-text-primary'
+                    }`}
                   >
-                    Terminer & Retourner aux Quiz
+                    <GraduationCap size={20} className={newType === 'CERTIFICATION' ? 'text-amber-400' : 'text-text-muted'} />
+                    <div>
+                      <h4 className="text-sm font-bold">Examen de Certification</h4>
+                      <p className="text-[11px] text-text-secondary mt-0.5">
+                        Génération automatique d'un diplôme officiel pour tout score ≥ 70%.
+                      </p>
+                    </div>
                   </button>
                 </div>
               </div>
-            ) : (
-              /* Quiz Taking Active Screen */
-              <div className="flex flex-col h-full space-y-5 overflow-hidden">
-                {/* Header with Title, Timer & Close */}
-                <div className="flex items-center justify-between pb-3 border-b border-border gap-4 shrink-0">
-                  <div className="min-w-0">
-                    <span className="text-[11px] font-bold text-primary uppercase block">
-                      Question {currentQuestionIndex + 1} sur {activeQuizDetail.questions.length}
-                    </span>
-                    <h3 className="text-base font-extrabold text-text-primary truncate">{activeQuizDetail.title}</h3>
-                  </div>
 
-                  <div className="flex items-center gap-3 shrink-0">
-                    <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-primary/10 border border-primary/20 text-primary font-mono text-sm font-bold shadow-sm">
-                      <Clock size={16} />
-                      <span>{formatTimer(timeLeftSeconds)}</span>
-                    </div>
-
-                    <button
-                      onClick={async () => {
-                        const ok = await confirm({
-                          title: "Quitter le quiz en cours ?",
-                          description: "Voulez-vous vraiment quitter ce quiz ? Vos réponses en cours ne seront pas enregistrées et votre progression sera perdue.",
-                          confirmText: "Quitter le quiz",
-                          cancelText: "Poursuivre le quiz",
-                          variant: "warning",
-                          badgeText: "E-Schola Pro • Session d'Évaluation",
-                          itemName: activeQuizDetail?.title || "Quiz actif",
-                          icon: "warning"
-                        });
-                        if (ok) {
-                          setActiveQuizDetail(null);
-                          setQuizResult(null);
-                        }
-                      }}
-                      className="p-1.5 rounded-xl text-text-secondary hover:text-text-primary hover:bg-surface border border-border transition-colors cursor-pointer"
-                      title="Quitter le quiz"
-                    >
-                      <X size={18} />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Progress bar */}
-                <div className="w-full bg-surface rounded-full h-2 overflow-hidden shrink-0">
-                  <div 
-                    className="bg-primary h-full transition-all duration-300"
-                    style={{ width: `${((currentQuestionIndex + 1) / activeQuizDetail.questions.length) * 100}%` }}
+              {/* Titre & Description */}
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-bold text-text-secondary uppercase">
+                    Titre de l'évaluation *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newTitle}
+                    onChange={e => setNewTitle(e.target.value)}
+                    placeholder="Ex: Certification DevOps, Cloud & Architecture Conteneurisée"
+                    className="w-full mt-1.5 px-4 py-2.5 rounded-xl bg-surface-raised border border-border text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                   />
                 </div>
 
-                {/* Current Question - Scrollable */}
-                {activeQuizDetail.questions[currentQuestionIndex] && (
-                  <div className="space-y-5 overflow-y-auto flex-1 pr-1 py-1">
-                    <h4 className="text-base sm:text-xl font-bold text-text-primary leading-relaxed">
-                      {activeQuizDetail.questions[currentQuestionIndex].question_text}
-                    </h4>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {activeQuizDetail.questions[currentQuestionIndex].options.map((opt, optIdx) => {
-                        const currentQId = activeQuizDetail.questions[currentQuestionIndex].id;
-                        const isSelected = selectedAnswers[currentQId] === optIdx;
-
-                        return (
-                          <button
-                            key={optIdx}
-                            type="button"
-                            onClick={() => setSelectedAnswers(prev => ({ ...prev, [currentQId]: optIdx }))}
-                            className={`w-full p-4 rounded-2xl border text-left transition-all flex items-center justify-between cursor-pointer ${
-                              isSelected
-                                ? 'bg-primary/15 border-primary text-text-primary shadow-md shadow-primary/10 ring-1 ring-primary/30 font-semibold'
-                                : 'bg-surface border-border hover:bg-surface-hover text-text-secondary'
-                            }`}
-                          >
-                            <span className="text-xs sm:text-sm pr-3">{opt}</span>
-                            <div className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 ${
-                              isSelected ? 'border-primary bg-primary text-white' : 'border-border'
-                            }`}>
-                              {isSelected && <Check size={12} />}
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Bottom Navigation */}
-                <div className="flex items-center justify-between pt-3 border-t border-border shrink-0">
-                  <button
-                    onClick={() => setCurrentQuestionIndex(prev => Math.max(0, prev - 1))}
-                    disabled={currentQuestionIndex === 0}
-                    className="px-4 py-2.5 rounded-xl bg-surface border border-border text-xs font-bold text-text-secondary hover:text-text-primary disabled:opacity-30 flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <ArrowLeft size={14} /> Précédent
-                  </button>
-
-                  {currentQuestionIndex < activeQuizDetail.questions.length - 1 ? (
-                    <button
-                      onClick={() => setCurrentQuestionIndex(prev => prev + 1)}
-                      className="px-6 py-2.5 rounded-xl bg-primary text-white text-xs font-bold flex items-center gap-1.5 hover:bg-primary-hover transition-colors cursor-pointer shadow-md shadow-primary/20"
-                    >
-                      <span>Suivant</span>
-                      <ArrowRight size={14} />
-                    </button>
-                  ) : (
-                    <button
-                      onClick={submitQuizAnswers}
-                      disabled={isSubmittingQuiz}
-                      className="btn-primary px-6 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer shadow-lg shadow-primary/25"
-                    >
-                      {isSubmittingQuiz ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
-                      <span>Valider & Obtenir Ma Note</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* MODAL : CONSULTER LES RÉSULTATS DES ÉTUDIANTS (Vue Panoramique)          */}
-      {/* ========================================================================= */}
-      {inspectQuizResults && (
-        <div className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
-          <div className="glass-card max-w-5xl w-full p-6 sm:p-7 rounded-3xl border border-primary/30 space-y-4 max-h-[88vh] flex flex-col animate-fade-in-up my-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-border">
-              <div>
-                <span className="text-[11px] uppercase font-bold text-primary">RÉSULTATS DE L'ÉVALUATION</span>
-                <h3 className="text-base sm:text-lg font-bold text-text-primary">{inspectQuizResults.quiz.title}</h3>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleExportGlobalReportPDF(inspectQuizResults.quiz.id)}
-                  disabled={isExportingPdf === inspectQuizResults.quiz.id}
-                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-indigo-600/20 cursor-pointer transition-all"
-                  title="Exporter le Procès-Verbal Global en PDF"
-                >
-                  {isExportingPdf === inspectQuizResults.quiz.id ? (
-                    <Loader2 size={14} className="animate-spin" />
-                  ) : (
-                    <Download size={14} />
-                  )}
-                  <span>Rapport Global PDF</span>
-                </button>
-
-                <button 
-                  onClick={() => setInspectQuizResults(null)}
-                  className="text-text-secondary hover:text-text-primary font-bold p-1 rounded-lg"
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto divide-y divide-border border border-border/80 rounded-2xl bg-white/50">
-              {inspectQuizResults.attempts.length === 0 ? (
-                <div className="p-12 text-center text-text-secondary text-xs">
-                  Aucun apprenant n'a encore passé cette évaluation.
-                </div>
-              ) : (
-                inspectQuizResults.attempts.map((att) => (
-                  <div key={att.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-surface/80 transition-colors">
-                    <div>
-                      <p className="text-xs font-bold text-text-primary">{att.user_email}</p>
-                      <span className="text-[10px] text-text-secondary uppercase">
-                        Rôle : {att.user_role} • {new Date(att.completed_at).toLocaleDateString()} à {new Date(att.completed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-4 shrink-0">
-                      <div className="text-right">
-                        <span className={`text-sm font-black font-mono block ${
-                          att.percentage >= 60 ? 'text-emerald-600' : 'text-rose-600'
-                        }`}>
-                          {att.score} / {att.max_score} ({att.percentage}%)
-                        </span>
-                        <span className="text-[10px] font-bold text-text-secondary">
-                          {att.percentage >= 60 ? 'Validé ✓' : 'Non validé ✗'}
-                        </span>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => handleExportAttemptPDF(att.id)}
-                        disabled={isExportingPdf === att.id}
-                        className="px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors"
-                        title="Exporter le relevé individuel de cet apprenant en PDF"
-                      >
-                        {isExportingPdf === att.id ? (
-                          <Loader2 size={13} className="animate-spin" />
-                        ) : (
-                          <Download size={13} />
-                        )}
-                        <span>PDF</span>
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-
-            <button
-              onClick={() => setInspectQuizResults(null)}
-              className="w-full py-2.5 rounded-xl bg-surface border border-border text-xs font-semibold text-text-primary hover:bg-surface-hover cursor-pointer"
-            >
-              Fermer
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* MODAL : STUDIO PANORAMIQUE CRÉER UN QUIZ (Vision Rectangle Panoramique)   */}
-      {/* ========================================================================= */}
-      {showCreateModal && (
-        <div className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 overflow-hidden">
-          <div className="glass-card max-w-7xl w-full h-[90vh] max-h-[920px] p-5 sm:p-7 rounded-3xl border border-primary/30 shadow-2xl flex flex-col animate-fade-in-up my-auto overflow-hidden">
-            
-            {/* 1. Header Panoramique */}
-            <div className="flex items-center justify-between pb-3 border-b border-border shrink-0 gap-4">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 rounded-2xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center shrink-0 shadow-sm">
-                  <Sparkles size={20} />
-                </div>
                 <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-primary/15 text-primary">
-                      Studio Pédagogique Panoramique
-                    </span>
-                    <span className="text-xs text-text-secondary hidden sm:inline">•</span>
-                    <span className="text-xs font-semibold text-text-secondary hidden sm:inline">Création & Génération d'Évaluation</span>
-                  </div>
-                  <h3 className="text-base sm:text-lg font-extrabold text-text-primary truncate">
-                    {newTitle || "Nouvelle Évaluation / Quiz"}
-                  </h3>
+                  <label className="text-xs font-bold text-text-secondary uppercase">
+                    Description & Consignes pédagogiques
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={newDescription}
+                    onChange={e => setNewDescription(e.target.value)}
+                    placeholder="Ex: 10 questions pour évaluer vos acquis techniques sur les pipelines CI/CD."
+                    className="w-full mt-1.5 px-4 py-2 rounded-xl bg-surface-raised border border-border text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
                 </div>
               </div>
 
-              {/* Live Metrics Header Badges & Close Button */}
-              <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-                <div className="hidden md:flex items-center gap-2 bg-surface px-3 py-1.5 rounded-xl border border-border text-xs font-bold font-mono">
-                  <span className="text-primary">{newQuestions.length} Questions</span>
-                  <span className="text-border">|</span>
-                  <span className="text-emerald-600 font-bold">
-                    {newQuestions.reduce((acc, q) => acc + (Number(q.points) || 1), 0)} Pts Total
-                  </span>
-                  <span className="text-border">|</span>
-                  <span className="text-amber-600">{newTimeLimit} min</span>
-                </div>
-
-                <button 
-                  type="button"
-                  onClick={() => setShowCreateModal(false)}
-                  className="text-text-secondary hover:text-text-primary p-2 rounded-xl hover:bg-surface border border-transparent hover:border-border transition-colors cursor-pointer"
-                  title="Fermer"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-            </div>
-
-            {/* 2. Main Panoramic 2-Column Grid */}
-            <form onSubmit={handleCreateQuizSubmit} className="flex flex-col lg:flex-row gap-5 flex-1 min-h-0 pt-4 overflow-hidden">
-              
-              {/* Left Column: General Configuration & Actions (40% / lg:w-5/12) */}
-              <div className="lg:w-5/12 flex flex-col justify-between space-y-4 overflow-y-auto pr-1">
-                <div className="space-y-4">
-                  
-                  {/* Title */}
-                  <div>
-                    <label className="block text-[11px] font-bold text-text-secondary uppercase tracking-wider mb-1.5 flex items-center justify-between">
-                      <span>Titre de l'Évaluation *</span>
-                      <span className="text-[10px] text-text-secondary font-normal">Obligatoire</span>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="Ex: Évaluation Chapitre 3 - Algorithmes & Bases de Données"
-                      value={newTitle}
-                      onChange={(e) => setNewTitle(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-border text-xs font-semibold outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 text-text-primary transition-all shadow-sm"
-                    />
+              {/* TOGGLE PRESTATION STANDARD RECOMMANDÉE */}
+              <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                    <Sparkles size={20} />
                   </div>
-
-                  {/* Description */}
                   <div>
-                    <label className="block text-[11px] font-bold text-text-secondary uppercase tracking-wider mb-1.5">
-                      Instructions & Consignes Pédagogiques
-                    </label>
-                    <textarea
-                      rows={3}
-                      placeholder="Indiquez les consignes particulières, les notions abordées ou les conseils pour les apprenants..."
-                      value={newDescription}
-                      onChange={(e) => setNewDescription(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-border text-xs outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 text-text-primary resize-none transition-all shadow-sm"
-                    />
-                  </div>
-
-                  {/* Time limit & Target audience */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-bold text-text-secondary uppercase tracking-wider mb-1.5 flex items-center gap-1">
-                        <Clock size={12} className="text-primary" />
-                        <span>Durée (Minutes) *</span>
-                      </label>
-                      <input
-                        type="number"
-                        min={1}
-                        max={180}
-                        required
-                        value={newTimeLimit}
-                        onChange={(e) => setNewTimeLimit(parseInt(e.target.value) || 15)}
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-border text-xs font-bold font-mono outline-none focus:border-primary text-text-primary transition-all shadow-sm"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-text-secondary uppercase tracking-wider mb-1.5 flex items-center gap-1">
-                        <Users size={12} className="text-primary" />
-                        <span>Public Concerné *</span>
-                      </label>
-                      <select
-                        value={newRoles}
-                        onChange={(e) => setNewRoles(e.target.value)}
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-border text-xs font-medium outline-none focus:border-primary text-text-primary transition-all shadow-sm cursor-pointer"
-                      >
-                        <option value="étudiant,stagiaire,employer">Tous (Étudiants, Stagiaires, Employés)</option>
-                        <option value="étudiant">Étudiants uniquement</option>
-                        <option value="stagiaire">Stagiaires uniquement</option>
-                        <option value="employer">Employés uniquement</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Group / Class Target selector */}
-                  <div>
-                    <label className="block text-[11px] font-bold text-text-secondary uppercase tracking-wider mb-1.5 flex items-center justify-between">
-                      <span className="flex items-center gap-1">
-                        <GraduationCap size={13} className="text-primary" />
-                        <span>Groupe / Promotion Cible *</span>
-                      </span>
-                      <span className="text-[10px] text-text-secondary font-normal">Cloisonnement strict</span>
-                    </label>
-                    <select
-                      value={newTargetGroup}
-                      onChange={(e) => setNewTargetGroup(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-border text-xs font-semibold outline-none focus:border-primary text-text-primary transition-all shadow-sm cursor-pointer"
-                    >
-                      <option value="all">🌐 Tous les groupes (Général / Promotion entière)</option>
-                      {availableGroups.map((grp) => (
-                        <option key={grp.id} value={grp.name}>
-                          👥 {grp.name} {grp.level ? `(${grp.level})` : ''}
-                        </option>
-                      ))}
-                    </select>
-                    <p className="text-[10px] text-text-secondary mt-1">
-                      Les apprenants n'appartenant pas à ce groupe ne pourront ni voir ni passer ce quiz. Les administrateurs y ont toujours accès complet.
+                    <h4 className="text-sm font-bold text-text-primary">
+                      Appliquer la Prestation Standard Recommandée
+                    </h4>
+                    <p className="text-xs text-text-secondary">
+                      Configure en 1 clic le standard académique E-Schola : Seuil de réussite à 70%, 30 minutes de durée, corrections affichées après soumission.
                     </p>
                   </div>
-
-                  {/* Panoramic Live Summary Card */}
-                  <div className="p-4 rounded-2xl bg-gradient-to-br from-primary/5 via-surface to-surface border border-border/80 space-y-2.5 shadow-sm">
-                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-primary flex items-center gap-1.5">
-                      <ShieldCheck size={14} />
-                      <span>Synthèse de l'Évaluation</span>
-                    </span>
-                    <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                      <div className="p-2 rounded-xl bg-surface border border-border/50">
-                        <span className="text-[10px] text-text-secondary block">Questions</span>
-                        <span className="font-extrabold font-mono text-primary text-sm">{newQuestions.length}</span>
-                      </div>
-                      <div className="p-2 rounded-xl bg-surface border border-border/50">
-                        <span className="text-[10px] text-text-secondary block">Barème Total</span>
-                        <span className="font-extrabold font-mono text-emerald-600 text-sm">
-                          {newQuestions.reduce((acc, q) => acc + (Number(q.points) || 1), 0)} pts
-                        </span>
-                      </div>
-                      <div className="p-2 rounded-xl bg-surface border border-border/50">
-                        <span className="text-[10px] text-text-secondary block">Temps Estimé</span>
-                        <span className="font-extrabold font-mono text-amber-600 text-sm">{newTimeLimit}m</span>
-                      </div>
-                    </div>
-                  </div>
-
                 </div>
 
-                {/* Form Actions Footer in Left Column */}
-                <div className="pt-3 border-t border-border flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setShowCreateModal(false)}
-                    className="w-1/3 py-3 rounded-xl bg-surface hover:bg-surface-hover font-semibold border border-border text-text-secondary text-xs transition-colors cursor-pointer"
-                  >
-                    Annuler
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isCreatingQuiz}
-                    className="w-2/3 btn-primary py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-primary/25 cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-all"
-                  >
-                    {isCreatingQuiz ? (
-                      <><Loader2 size={15} className="animate-spin" /> Publication...</>
-                    ) : (
-                      <><Sparkles size={15} /> Publier l'Évaluation</>
-                    )}
-                  </button>
-                </div>
+                <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={isStandardRecommended}
+                    onChange={e => handleToggleStandardRecommended(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-surface-raised peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                </label>
               </div>
 
-              {/* Right Column: Questions Builder Studio (60% / lg:w-7/12) */}
-              <div className="lg:w-7/12 flex flex-col rounded-2xl bg-surface/40 border border-border/80 p-4 space-y-3 overflow-hidden shadow-inner">
-                
-                {/* Right Header: Questions list header & add button */}
-                <div className="flex items-center justify-between pb-2 border-b border-border/60 shrink-0">
-                  <div className="flex items-center gap-2">
-                    <FileQuestion size={16} className="text-primary" />
-                    <h4 className="text-xs uppercase font-extrabold text-text-primary tracking-wider">
-                      Constructeur de Questions ({newQuestions.length})
-                    </h4>
+              {/* Paramètres Avancés (Si Prestation Standard désactivée) */}
+              {!isStandardRecommended && (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 rounded-2xl bg-surface-raised border border-border">
+                  <div>
+                    <label className="text-xs font-bold text-text-secondary uppercase">
+                      Durée limite (min)
+                    </label>
+                    <input
+                      type="number"
+                      min={5}
+                      max={180}
+                      value={newTimeLimit}
+                      onChange={e => setNewTimeLimit(parseInt(e.target.value, 10) || 30)}
+                      className="w-full mt-1.5 px-3 py-2 rounded-xl bg-surface border border-border text-text-primary text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-text-secondary uppercase">
+                      Seuil de passage (%)
+                    </label>
+                    <input
+                      type="number"
+                      min={10}
+                      max={100}
+                      value={newPassingScore}
+                      onChange={e => setNewPassingScore(parseFloat(e.target.value) || 70)}
+                      className="w-full mt-1.5 px-3 py-2 rounded-xl bg-surface border border-border text-text-primary text-xs"
+                    />
+                  </div>
+                  <div className="flex flex-col justify-center">
+                    <label className="flex items-center gap-2 text-xs font-bold text-text-secondary cursor-pointer mt-4">
+                      <input
+                        type="checkbox"
+                        checked={newShowCorrections}
+                        onChange={e => setNewShowCorrections(e.target.checked)}
+                        className="rounded text-primary focus:ring-primary"
+                      />
+                      <span>Afficher la correction</span>
+                    </label>
+                  </div>
+                </div>
+              )}
+
+              {/* Si Certification : Option de Template Custom */}
+              {newType === 'CERTIFICATION' && (
+                <div className="p-4 rounded-2xl bg-amber-500/5 border border-amber-500/20 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <GraduationCap size={16} className="text-amber-400" />
+                      <h4 className="text-xs font-bold text-text-primary uppercase">
+                        Modèle Visuel de Diplôme (Template)
+                      </h4>
+                    </div>
+                    <span className="text-[11px] text-text-muted">
+                      {newCertificateTemplateUrl ? 'Modèle personnalisé actif' : 'Modèle officiel Royal Navy & Gold par défaut'}
+                    </span>
                   </div>
 
+                  <div className="flex items-center gap-3">
+                    <label className="px-4 py-2 rounded-xl text-xs font-bold bg-surface-raised border border-border hover:border-amber-500/50 flex items-center gap-2 cursor-pointer">
+                      {isUploadingTemplate ? <Loader2 size={14} className="animate-spin" /> : <UploadCloud size={14} />}
+                      <span>Téléverser une maquette personnalisée</span>
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg"
+                        onChange={handleTemplateUpload}
+                        className="hidden"
+                      />
+                    </label>
+                    {newCertificateTemplateUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setNewCertificateTemplateUrl(null)}
+                        className="text-xs text-rose-400 hover:underline cursor-pointer"
+                      >
+                        Rétablir le modèle officiel par défaut
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Assignation Cohorte / Groupes */}
+              {availableGroups.length > 0 && (
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-text-secondary uppercase">
+                    Assignation aux Groupes / Cohortes (Optionnel)
+                  </label>
+                  <p className="text-[11px] text-text-muted">
+                    Laissez vide pour rendre l'évaluation accessible à tous les apprenants.
+                  </p>
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {availableGroups.map(g => {
+                      const isSelected = selectedGroupIds.includes(g.id);
+                      return (
+                        <button
+                          key={g.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedGroupIds(prev => 
+                              isSelected ? prev.filter(id => id !== g.id) : [...prev, g.id]
+                            );
+                          }}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                            isSelected
+                              ? 'bg-primary text-white border-primary shadow-sm'
+                              : 'bg-surface-raised text-text-secondary border-border hover:text-text-primary'
+                          }`}
+                        >
+                          {g.name} {g.level ? `(${g.level})` : ''}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Constructeur de Questions QCM */}
+              <div className="space-y-4 pt-4 border-t border-border">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-base font-black text-text-primary">
+                      Questions de l'Évaluation ({builderQuestions.length})
+                    </h3>
+                    <p className="text-xs text-text-secondary">
+                      Définissez l'énoncé, les choix et cochez la bonne réponse.
+                    </p>
+                  </div>
                   <button
                     type="button"
-                    onClick={handleAddQuestionToBuilder}
-                    className="px-3.5 py-1.5 rounded-xl bg-primary text-white hover:bg-primary-hover font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm shadow-primary/20 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+                    onClick={handleAddQuestion}
+                    className="px-3 py-1.5 rounded-xl text-xs font-bold bg-primary/10 text-primary hover:bg-primary/20 flex items-center gap-1.5 cursor-pointer"
                   >
-                    <Plus size={14} />
-                    <span>Ajouter une question</span>
+                    <Plus size={14} /> Ajouter une question
                   </button>
                 </div>
 
-                {/* Questions Scroll Area */}
-                <div className="flex-1 overflow-y-auto space-y-4 pr-1">
-                  {newQuestions.map((q, qIndex) => (
-                    <div 
-                      key={qIndex} 
-                      className="p-4 sm:p-5 rounded-2xl bg-white border border-border/80 shadow-sm space-y-3 relative group transition-all hover:border-primary/40"
-                    >
-                      {/* Question Top Bar */}
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-2">
-                          <span className="w-6 h-6 rounded-full bg-primary/10 text-primary font-bold text-xs flex items-center justify-center">
-                            {qIndex + 1}
-                          </span>
-                          <span className="font-extrabold text-text-primary text-xs">Question #{qIndex + 1}</span>
-                        </div>
-
+                <div className="space-y-4">
+                  {builderQuestions.map((q, qIdx) => (
+                    <div key={qIdx} className="p-5 rounded-2xl bg-surface-raised border border-border space-y-4 relative">
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="text-xs font-extrabold text-primary uppercase">
+                          Question #{qIdx + 1}
+                        </span>
                         <div className="flex items-center gap-3">
-                          {/* Points selector */}
-                          <div className="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1 rounded-lg border border-border/60">
-                            <span className="text-[10px] font-bold text-text-secondary uppercase">Barème :</span>
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs text-text-secondary">Points :</span>
                             <input
                               type="number"
                               min={1}
-                              max={100}
+                              max={20}
                               value={q.points}
-                              onChange={(e) => {
-                                const p = parseInt(e.target.value) || 1;
-                                setNewQuestions(prev => prev.map((item, idx) => idx === qIndex ? { ...item, points: p } : item));
+                              onChange={e => {
+                                const val = parseInt(e.target.value, 10) || 1;
+                                setBuilderQuestions(prev => {
+                                  const updated = [...prev];
+                                  updated[qIdx].points = val;
+                                  return updated;
+                                });
                               }}
-                              className="w-10 text-xs font-mono font-bold text-center bg-white border border-border rounded px-1 py-0.5 outline-none focus:border-primary text-primary"
+                              className="w-14 px-2 py-1 rounded-lg bg-surface border border-border text-xs text-center text-text-primary"
                             />
-                            <span className="text-[10px] font-bold text-text-secondary">pts</span>
                           </div>
 
-                          {/* Delete Question button */}
-                          {newQuestions.length > 1 && (
+                          {builderQuestions.length > 1 && (
                             <button
                               type="button"
-                              onClick={() => setNewQuestions(prev => prev.filter((_, idx) => idx !== qIndex))}
-                              className="p-1 rounded-lg text-text-secondary hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                              onClick={() => handleRemoveQuestion(qIdx)}
+                              className="text-text-muted hover:text-rose-400 p-1 cursor-pointer"
                               title="Supprimer cette question"
                             >
-                              <Trash2 size={14} />
+                              <Trash2 size={16} />
                             </button>
                           )}
                         </div>
                       </div>
 
-                      {/* Question Text Input */}
-                      <div>
-                        <input
-                          type="text"
-                          required
-                          placeholder={`Intitulé de la question #${qIndex + 1} (ex: Quelle est la fonction principale d'un index en base de données ?)...`}
-                          value={q.question_text}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setNewQuestions(prev => prev.map((item, idx) => idx === qIndex ? { ...item, question_text: val } : item));
-                          }}
-                          className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50/70 border border-border text-xs font-semibold outline-none focus:border-primary focus:bg-white text-text-primary transition-all shadow-inner"
-                        />
+                      {/* Énoncé */}
+                      <input
+                        type="text"
+                        required
+                        value={q.content}
+                        onChange={e => {
+                          const val = e.target.value;
+                          setBuilderQuestions(prev => {
+                            const updated = [...prev];
+                            updated[qIdx].content = val;
+                            return updated;
+                          });
+                        }}
+                        placeholder={`Énoncé de la question #${qIdx + 1}`}
+                        className="w-full px-4 py-2.5 rounded-xl bg-surface border border-border text-text-primary text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+
+                      {/* Choix QCM */}
+                      <div className="space-y-2 pt-1">
+                        <span className="text-[11px] font-bold text-text-secondary uppercase">
+                          Options de réponse (Sélectionnez le bouton radio pour marquer la bonne réponse) :
+                        </span>
+                        {q.choices.map((c, cIdx) => (
+                          <div key={cIdx} className="flex items-center gap-3">
+                            <input
+                              type="radio"
+                              name={`correct_${qIdx}`}
+                              checked={c.is_correct}
+                              onChange={() => handleSetCorrectChoice(qIdx, cIdx)}
+                              className="w-4 h-4 text-emerald-500 focus:ring-emerald-500 cursor-pointer"
+                              title="Cocher pour définir comme bonne réponse"
+                            />
+                            <input
+                              type="text"
+                              value={c.content}
+                              onChange={e => {
+                                const val = e.target.value;
+                                setBuilderQuestions(prev => {
+                                  const updated = [...prev];
+                                  updated[qIdx].choices[cIdx].content = val;
+                                  return updated;
+                                });
+                              }}
+                              placeholder={`Option ${String.fromCharCode(65 + cIdx)}${c.is_correct ? ' (Bonne réponse attendue)' : ''}`}
+                              className={`flex-1 px-3 py-2 rounded-xl text-xs border bg-surface ${
+                                c.is_correct
+                                  ? 'border-emerald-500/60 font-bold text-emerald-300'
+                                  : 'border-border text-text-secondary'
+                              }`}
+                            />
+                          </div>
+                        ))}
                       </div>
-
-                      {/* Options 2x2 Grid */}
-                      <div className="space-y-1.5 pt-1">
-                        <div className="flex items-center justify-between text-[10px] uppercase font-bold text-text-secondary">
-                          <span>Options de réponse :</span>
-                          <span className="text-emerald-600 font-extrabold flex items-center gap-1">
-                            <Check size={11} /> Cochez le bouton radio de la BONNE réponse
-                          </span>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                          {q.options.map((opt, optIndex) => {
-                            const isCorrect = q.correct_option_index === optIndex;
-                            return (
-                              <div 
-                                key={optIndex} 
-                                className={`flex items-center gap-2 p-2 rounded-xl border transition-all ${
-                                  isCorrect 
-                                    ? 'bg-emerald-50/70 border-emerald-300 ring-1 ring-emerald-400/20' 
-                                    : 'bg-slate-50/50 border-border/70 hover:border-slate-300'
-                                }`}
-                              >
-                                <label className="flex items-center cursor-pointer pl-1">
-                                  <input
-                                    type="radio"
-                                    name={`correct_${qIndex}`}
-                                    checked={isCorrect}
-                                    onChange={() => {
-                                      setNewQuestions(prev => prev.map((item, idx) => idx === qIndex ? { ...item, correct_option_index: optIndex } : item));
-                                    }}
-                                    className="cursor-pointer accent-emerald-600 w-4 h-4"
-                                    title="Définir comme la bonne réponse"
-                                  />
-                                </label>
-
-                                <input
-                                  type="text"
-                                  required
-                                  placeholder={`Option ${String.fromCharCode(65 + optIndex)}...`}
-                                  value={opt}
-                                  onChange={(e) => {
-                                    const val = e.target.value;
-                                    setNewQuestions(prev => prev.map((item, idx) => {
-                                      if (idx !== qIndex) return item;
-                                      const updatedOpts = [...item.options];
-                                      updatedOpts[optIndex] = val;
-                                      return { ...item, options: updatedOpts };
-                                    }));
-                                  }}
-                                  className={`flex-1 px-2.5 py-1.5 rounded-lg text-xs outline-none transition-colors ${
-                                    isCorrect ? 'bg-white font-bold text-emerald-950 border border-emerald-200' : 'bg-white text-text-primary border border-border/60'
-                                  }`}
-                                />
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-
                     </div>
                   ))}
                 </div>
-
               </div>
 
+              {/* Actions Modal */}
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateModal(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold border border-border hover:bg-surface-raised cursor-pointer"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={isCreatingAssessment}
+                  className="btn-primary px-6 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg shadow-primary/20 cursor-pointer"
+                >
+                  {isCreatingAssessment ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
+                  Publier l'évaluation
+                </button>
+              </div>
             </form>
-
           </div>
         </div>
       )}
 
+      {/* ===================================================================== */}
+      {/* MODAL 2 : APERÇU GRAND FORMAT DU DIPLÔME                               */}
+      {/* ===================================================================== */}
+      {previewCertUrl && (
+        <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-surface border border-border rounded-3xl max-w-4xl w-full p-4 space-y-4 shadow-2xl relative">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+                <GraduationCap size={16} /> Diplôme Officiel E-Schola Pro
+              </span>
+              <button
+                type="button"
+                onClick={() => setPreviewCertUrl(null)}
+                className="p-1.5 rounded-xl text-text-secondary hover:text-text-primary hover:bg-surface-raised cursor-pointer"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="rounded-2xl overflow-hidden border border-border aspect-[3/2] bg-slate-950">
+              <img
+                src={getCertificateUrl(previewCertUrl)}
+                alt="Aperçu du diplôme"
+                className="w-full h-full object-contain"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-3">
+              <a
+                href={getCertificateUrl(previewCertUrl)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-5 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-slate-950 flex items-center gap-2 shadow-lg shadow-amber-500/20 cursor-pointer"
+              >
+                <Download size={14} /> Télécharger le fichier original (PNG)
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-

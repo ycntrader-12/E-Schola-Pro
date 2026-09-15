@@ -1,3 +1,14 @@
+from app.models.assessment import (
+    Assessment,
+    AssessmentAssignment,
+    AssessmentType,
+    AttemptStatus,
+    Choice,
+    Question,
+    UserAnswer,
+    UserAttempt,
+    UserCertificate,
+)
 from app.models.attendance import Attendance
 from app.models.audit_log import AuditLog
 from app.models.classroom import Classroom
@@ -14,4 +25,5 @@ from app.models.task import Task, TaskSubmission
 from app.models.user import User
 from app.models.user_invitation import UserInvitation
 from app.models.user_session import UserSession
+
 

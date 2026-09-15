@@ -11,6 +11,7 @@ from app.models.event import Event, EventDeliverable
 from app.models.group import Group, GroupMember
 from app.models.message import Message
 from app.models.quiz import Quiz, QuizAttempt, QuizQuestion
+from app.models.assessment import Assessment, AssessmentAssignment, UserCertificate
 from app.models.system_setting import SystemSetting
 from app.models.task import Task, TaskSubmission
 from app.models.user import User
@@ -184,6 +185,56 @@ class QuizAttemptAdmin(ModelView, model=QuizAttempt):
     name = "Tentative Quiz"
     name_plural = "Tentatives Quiz"
     icon = "fa-solid fa-chart-simple"
+    category = "Évaluations & Devoirs"
+    category_icon = "fa-solid fa-award"
+
+
+class AssessmentAdmin(ModelView, model=Assessment):
+    column_list = [
+        Assessment.id,
+        Assessment.title,
+        Assessment.type,
+        Assessment.passing_score_percentage,
+        Assessment.time_limit_minutes,
+        Assessment.created_by,
+        Assessment.created_at,
+    ]
+    column_searchable_list = [Assessment.title]
+    column_sortable_list = [Assessment.id, Assessment.title, Assessment.created_at]
+    name = "Évaluation & Examen"
+    name_plural = "Évaluations & Examens"
+    icon = "fa-solid fa-graduation-cap"
+    category = "Évaluations & Devoirs"
+    category_icon = "fa-solid fa-award"
+
+
+class AssessmentAssignmentAdmin(ModelView, model=AssessmentAssignment):
+    column_list = [
+        AssessmentAssignment.id,
+        AssessmentAssignment.assessment_id,
+        AssessmentAssignment.group_id,
+        AssessmentAssignment.assigned_at,
+    ]
+    name = "Assignation d'Évaluation"
+    name_plural = "Assignations d'Évaluations"
+    icon = "fa-solid fa-users"
+    category = "Évaluations & Devoirs"
+    category_icon = "fa-solid fa-award"
+
+
+class UserCertificateAdmin(ModelView, model=UserCertificate):
+    column_list = [
+        UserCertificate.id,
+        UserCertificate.user_id,
+        UserCertificate.assessment_id,
+        UserCertificate.certificate_file_url,
+        UserCertificate.issued_at,
+    ]
+    column_searchable_list = [UserCertificate.id, UserCertificate.certificate_file_url]
+    column_sortable_list = [UserCertificate.id, UserCertificate.issued_at]
+    name = "Certificat & Diplôme"
+    name_plural = "Certificats & Diplômes"
+    icon = "fa-solid fa-certificate"
     category = "Évaluations & Devoirs"
     category_icon = "fa-solid fa-award"
 

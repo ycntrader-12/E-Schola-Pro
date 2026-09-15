@@ -26,6 +26,9 @@ from app.admin import (
     QuizAdmin,
     QuizAttemptAdmin,
     QuizQuestionAdmin,
+    AssessmentAdmin,
+    AssessmentAssignmentAdmin,
+    UserCertificateAdmin,
     SystemSettingAdmin,
     TaskAdmin,
     TaskSubmissionAdmin,
@@ -285,6 +288,9 @@ admin.add_view(GroupMemberAdmin)
 admin.add_view(QuizAdmin)
 admin.add_view(QuizQuestionAdmin)
 admin.add_view(QuizAttemptAdmin)
+admin.add_view(AssessmentAdmin)
+admin.add_view(AssessmentAssignmentAdmin)
+admin.add_view(UserCertificateAdmin)
 admin.add_view(TaskAdmin)
 admin.add_view(TaskSubmissionAdmin)
 
