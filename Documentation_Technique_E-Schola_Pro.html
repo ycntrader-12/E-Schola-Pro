@@ -2156,20 +2156,8 @@ E-Schola Pro/
             <li><strong>Compatibilité Hybride :</strong> Détection automatique et encapsulation optimisée pour les flux YouTube ou lecture native pour les vidéos locales/serveur.</li>
           </ul>
         </li>
-        <li><strong>Inscription &amp; Détail du cours (/courses/{id}) :</strong> Bannière d'inscription, lecteur vidéo HD principal, description étendue, bouton d'accès direct à l'Assistant IA et playlist interactive ordonnée.</li>
-        <li><strong>Assistant Pédagogique IA Connecté aux Cours (Google Gemini &amp; Supports Multi-Formats) :</strong>
-          <ul>
-            <li><strong>Extraction Contextuelle Multi-Sources :</strong> L'assistant s'ancre directement sur le cours choisi pour extraire la structure du cours, ses fichiers supports (documents PDF, fiches de révision) et l'ensemble des leçons vidéo séquencées.</li>
-            <li><strong>Modes Pédagogiques Dédiés :</strong>
-              <ul>
-                <li><em>Questions &amp; Explications :</em> Réponses didactiques approfondies et explications étape par étape adaptées au niveau de l'apprenant.</li>
-                <li><em>Résumés Instantanés :</em> Synthèse en un clic des chapitres, récapitulatif des leçons vidéo et fiches de synthèse concises.</li>
-                <li><em>Traduction Multilingue Intégrée :</em> Traduction assistée multilingue (Français, Anglais, Arabe avec support RTL, Espagnol, Allemand) et passerelle directe avec lien pré-rempli vers Google Traduction multilingue (<code>translate.google.com</code>).</li>
-              </ul>
-            </li>
-            <li><strong>Points d'Accès Ergonomiques :</strong> Bouton <em>« Assistant IA Cours »</em> déployé sur la barre d'outils du catalogue (<code>/courses</code>), sur chaque carte de cours et dans la bannière de la page de cours détaillée (<code>/courses/[id]</code>).</li>
-          </ul>
-        </li>
+        <li><strong>Inscription &amp; Détail du cours (/courses/{id}) :</strong> Bannière d'inscription, lecteur vidéo HD principal, description étendue, téléchargement des documents de cours et playlist interactive ordonnée des leçons vidéo.</li>
+        <li><strong>Barre d'Actions Épurée du Catalogue (/courses) :</strong> Recherche unifiée en temps réel (moteur interne ou passerelle Google externe), filtres par dossiers de compétences, et boutons d'action ergonomiques (<em>« Ajouter une vidéo »</em>, <em>« Créer un cours »</em>). L'assistance IA Gemini est quant à elle centralisée dans la messagerie et le dock d'outils interactif.</li>
         <li><strong>Suppression :</strong> Cascade automatique (vidéos et inscriptions supprimées).</li>
       </ul>
       <div class="screenshot-container">
@@ -2908,7 +2896,7 @@ E-Schola Pro/
         <li><strong>Autorisation Universelle &amp; Démocratique pour Tous les Utilisateurs :</strong>
           <ul>
             <li><em>Tous les Rôles Autorisés sans Exception :</em> Ouvert sans aucune restriction aux <strong>Apprenants</strong> (Étudiants, Stagiaires, Employés), aux <strong>Formateurs &amp; Cadres Pédagogiques</strong> (Formateurs, Pédagogique, DG-RH) et aux <strong>Administrateurs</strong> (Admin, Admin Manager).</li>
-            <li><em>Points d'Accès Pédagogiques Ciblés :</em> Intégré directement au cœur des espaces d'apprentissage : dans le catalogue de cours (<code>CourseSearchClient.tsx</code>), sur la page de visionnage détaillée de chaque cours (<code>/courses/[id]</code>) et dans l'éditeur de messagerie interne (<code>/inbox</code>), préservant la netteté et la sobriété visuelle de la barre latérale et de la barre de navigation.</li>
+            <li><em>Points d'Accès Ciblés :</em> Déployé au sein de l'espace de messagerie interne (<code>/inbox</code>) et dans le dock d'outils interactif (<code>InboxRightDock.tsx</code>), préservant la netteté, l'ergonomie et la sobriété visuelle du catalogue de cours et de la barre de navigation.</li>
           </ul>
         </li>
         <li><strong>Ancrage Contextuel aux Cours Hébergés :</strong>

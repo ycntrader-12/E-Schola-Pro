@@ -3,14 +3,13 @@
 import { useEffect, useState, useRef } from 'react';
 import Image from "next/image";
 import { Link, useRouter } from '@/i18n/routing';
-import { BookOpen, Users, ArrowLeft, Star, Clock, CheckCircle, Loader2, PlayCircle, Plus, Trash2, Upload, Video, Sparkles, AlertCircle } from "lucide-react";
+import { BookOpen, Users, ArrowLeft, Star, Clock, CheckCircle, Loader2, PlayCircle, Plus, Trash2, Upload, Video, AlertCircle, Sparkles } from "lucide-react";
 import { useParams } from 'next/navigation';
 import { apiClient } from '@/lib/api';
 import DownloadCourseButton from "@/components/DownloadCourseButton";
 import YoutubePlayer from "@/components/video/YoutubePlayer";
 import BackButton from "@/components/BackButton";
 import { useConfirm } from '@/context/ConfirmModalContext';
-import GoogleAiAssistModal from "@/components/inbox/GoogleAiAssistModal";
 
 interface CourseVideo {
   id: number;
@@ -60,7 +59,6 @@ export default function CourseDetailPage() {
   const [uploadError, setUploadError] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const [isDeletingCourse, setIsDeletingCourse] = useState(false);
-  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -388,16 +386,6 @@ export default function CourseDetailPage() {
               </button>
             )}
 
-            {/* Assistant IA Cours */}
-            <button 
-              onClick={() => setIsAiModalOpen(true)}
-              className="px-4 py-2.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:opacity-95 text-white font-bold rounded-xl shadow-md shadow-indigo-500/20 flex items-center gap-2 text-xs sm:text-sm transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
-              title="Explications, résumés et traductions par IA"
-            >
-              <Sparkles size={16} className="text-amber-300 animate-pulse" />
-              <span>Assistant IA Cours</span>
-            </button>
-
             {course.document_url && (
               <DownloadCourseButton documentUrl={course.document_url} />
             )}
@@ -633,12 +621,6 @@ export default function CourseDetailPage() {
         </div>
       )}
 
-      {/* Assistant IA Google Gemini Modal pour le Cours */}
-      <GoogleAiAssistModal
-        isOpen={isAiModalOpen}
-        onClose={() => setIsAiModalOpen(false)}
-        defaultCourseId={Number(id)}
-      />
     </div>
   );
 }
