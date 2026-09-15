@@ -213,8 +213,8 @@ export default function GroupMembersModal({ groupId, groupName, onClose }: Group
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 lg:p-8 overflow-y-auto">
-      <div className="bg-white max-w-4xl lg:max-w-5xl xl:max-w-6xl w-full p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-2xl space-y-5 animate-fade-in-up max-h-[92vh] flex flex-col text-slate-900 overflow-hidden">
+    <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 md:p-6 overflow-y-auto">
+      <div className="bg-white max-w-6xl xl:max-w-7xl 2xl:max-w-[1420px] w-[96vw] p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-2xl space-y-5 animate-fade-in-up max-h-[94vh] flex flex-col text-slate-900 overflow-hidden">
         
         {/* Header Panoramique */}
         <div className="flex items-center justify-between pb-4 border-b border-slate-100 shrink-0">
@@ -305,7 +305,7 @@ export default function GroupMembersModal({ groupId, groupName, onClose }: Group
                     )}
                   </div>
 
-                  <div className="h-[250px] overflow-y-auto space-y-1 pr-1 border border-slate-100 rounded-lg p-1.5">
+                  <div className="h-[300px] xl:h-[350px] overflow-y-auto space-y-1.5 pr-1 border border-slate-200/80 rounded-xl p-2 bg-white">
                     {filteredAvailableUsers.length === 0 ? (
                       <p className="text-xs text-slate-400 text-center py-6 italic">Aucun apprenant disponible correspondant.</p>
                     ) : (
@@ -428,7 +428,7 @@ export default function GroupMembersModal({ groupId, groupName, onClose }: Group
                   <p className="text-[11px] text-slate-400 mt-1">Utilisez le panneau de gauche pour affecter des étudiants.</p>
                 </div>
               ) : (
-                <div className="h-[290px] overflow-y-auto space-y-2 pr-1">
+                <div className="h-[320px] xl:h-[370px] overflow-y-auto space-y-2 pr-1">
                   {filteredMembers.map(member => {
                     const displayName = getDisplayName(member);
                     const initial = (displayName.charAt(0) || 'U').toUpperCase();

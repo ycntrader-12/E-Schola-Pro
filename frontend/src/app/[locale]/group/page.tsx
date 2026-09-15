@@ -1048,71 +1048,71 @@ export default function GroupPage() {
         </div>
       )}
 
-      {/* 4. MODAL AJOUTER / MODIFIER UN GROUPE (EN VÉRITABLE RECTANGLE PANORAMIQUE PAYSAGE) */}
+      {/* 4. MODAL AJOUTER / MODIFIER UN GROUPE (FORMAT PANORAMIQUE HAUTE LISIBILITÉ) */}
       {showFormModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs overflow-y-auto p-3 sm:p-5 flex justify-center items-start sm:items-center">
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs overflow-y-auto p-2 sm:p-4 md:p-6 flex justify-center items-start sm:items-center">
           <div className={`bg-white w-full ${
-            editingGroupId ? 'max-w-lg' : 'max-w-4xl lg:max-w-5xl xl:max-w-[1120px]'
-          } rounded-3xl border border-slate-200 shadow-2xl animate-zoom-in text-slate-900 my-auto flex flex-col overflow-hidden`}>
+            editingGroupId ? 'max-w-2xl' : 'max-w-6xl xl:max-w-7xl 2xl:max-w-[1420px] w-[96vw]'
+          } rounded-3xl border border-slate-200 shadow-2xl animate-zoom-in text-slate-900 my-auto flex flex-col overflow-hidden max-h-[94vh]`}>
             
-            {/* En-tête panoramique compact & élégant */}
-            <div className="px-6 sm:px-8 py-3.5 bg-slate-50/80 border-b border-slate-200/80 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-blue-50 border border-blue-200/80 text-[#1877f2] flex items-center justify-center font-bold shrink-0 shadow-2xs">
-                  <Users size={18} />
+            {/* En-tête panoramique spacieux & élégant */}
+            <div className="px-6 sm:px-8 py-4 bg-slate-50/90 border-b border-slate-200/90 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3.5">
+                <div className="w-11 h-11 rounded-2xl bg-blue-50 border border-blue-200/80 text-[#1877f2] flex items-center justify-center font-bold shrink-0 shadow-2xs">
+                  <Users size={20} />
                 </div>
                 <div>
-                  <h3 className="text-base sm:text-lg font-black text-slate-900 flex items-center gap-2">
+                  <h3 className="text-lg sm:text-xl font-black text-slate-900 flex items-center gap-2">
                     <span>{editingGroupId ? "Modifier la classe / groupe" : "Créer un nouveau groupe / classe"}</span>
                   </h3>
-                  <p className="text-xs text-slate-500 font-medium">
+                  <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
                     {editingGroupId 
                       ? "Mettez à jour les paramètres, le niveau et les objectifs pédagogiques." 
                       : "Paramétrez l'intitulé de la promotion et affectez directement ses premiers apprenants."}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2.5">
                 {!editingGroupId && (
-                  <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-[#1877f2] border border-blue-200/80 text-[11px] font-extrabold uppercase tracking-wide">
-                    <Maximize2 size={12} /> Rectangle Panoramique
+                  <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-[#1877f2] border border-blue-200/80 text-xs font-black uppercase tracking-wider">
+                    <Maximize2 size={13} /> Vue Panoramique
                   </span>
                 )}
                 <button 
                   onClick={() => { setShowFormModal(false); setFormError(''); }}
-                  className="text-slate-400 hover:text-slate-700 p-1.5 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
+                  className="text-slate-400 hover:text-slate-700 p-2 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
                   aria-label="Fermer"
                 >
-                  <X size={18} />
+                  <X size={20} />
                 </button>
               </div>
             </div>
 
-            {/* Formulaire panoramique équilibré */}
-            <form onSubmit={handleSubmit} className="flex flex-col overflow-hidden">
-              <div className="p-5 sm:p-6 space-y-4">
+            {/* Formulaire panoramique équilibré & hautement lisible */}
+            <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+              <div className="p-6 sm:p-8 space-y-5 overflow-y-auto flex-1">
                 
                 {formError && (
-                  <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-xl font-semibold text-xs flex items-center gap-2 shrink-0">
-                    <AlertCircle size={15} className="shrink-0 text-red-600" />
+                  <div className="bg-red-50 border border-red-200 text-red-700 p-3.5 rounded-xl font-semibold text-xs sm:text-sm flex items-center gap-2 shrink-0">
+                    <AlertCircle size={16} className="shrink-0 text-red-600" />
                     <span>{formError}</span>
                   </div>
                 )}
 
                 {!editingGroupId ? (
                   /* ─── DISPOSITION EN VÉRITABLE RECTANGLE PANORAMIQUE 2 COLONNES (PAYSAGE) ─── */
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 xl:gap-8 items-stretch">
                     
                     {/* Colonne Gauche : Paramètres de la promotion */}
-                    <div className="lg:col-span-5 flex flex-col justify-between space-y-3">
-                      <div className="space-y-2.5">
-                        <div className="flex items-center gap-2 text-slate-800 pb-1 border-b border-slate-100">
-                          <Layers size={14} className="text-[#1877f2]" />
-                          <h4 className="text-[11px] font-black uppercase tracking-wider text-slate-700">Paramètres de la classe</h4>
+                    <div className="lg:col-span-5 flex flex-col justify-between space-y-4">
+                      <div className="space-y-3.5">
+                        <div className="flex items-center gap-2 text-slate-800 pb-2 border-b border-slate-200">
+                          <Layers size={16} className="text-[#1877f2]" />
+                          <h4 className="text-xs font-black uppercase tracking-wider text-slate-800">Paramètres de la classe</h4>
                         </div>
 
                         <div>
-                          <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                             NOM DU GROUPE / CLASSE <span className="text-rose-500">*</span>
                           </label>
                           <input
@@ -1121,12 +1121,12 @@ export default function GroupPage() {
                             value={newName}
                             onChange={(e) => setNewName(e.target.value)}
                             placeholder="Ex : classe 1, Master 1 - IA, Promotion 2026..."
-                            className="w-full px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-xs text-slate-900 font-semibold placeholder:text-slate-400 transition-all outline-none"
+                            className="w-full px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-sm text-slate-900 font-semibold placeholder:text-slate-400 transition-all outline-none"
                           />
                         </div>
 
                         <div>
-                          <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                             NIVEAU ACADÉMIQUE (OPTIONNEL)
                           </label>
                           <input
@@ -1134,33 +1134,33 @@ export default function GroupPage() {
                             value={newLevel}
                             onChange={(e) => setNewLevel(e.target.value)}
                             placeholder="Ex : Débutant, M1, L3, Année 2..."
-                            className="w-full px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-xs text-slate-900 font-semibold placeholder:text-slate-400 transition-all outline-none"
+                            className="w-full px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-sm text-slate-900 font-semibold placeholder:text-slate-400 transition-all outline-none"
                           />
                         </div>
 
                         <div>
-                          <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                             DESCRIPTION DÉTAILLÉE (OPTIONNEL)
                           </label>
                           <textarea
-                            rows={2}
+                            rows={3}
                             value={newDescription}
                             onChange={(e) => setNewDescription(e.target.value)}
                             placeholder="Objectifs pédagogiques, filière ou précisions..."
-                            className="w-full px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-xs text-slate-900 font-medium placeholder:text-slate-400 transition-all outline-none resize-none leading-relaxed"
+                            className="w-full px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-sm text-slate-900 font-medium placeholder:text-slate-400 transition-all outline-none resize-none leading-relaxed"
                           />
                         </div>
 
                         {isGlobalStaff && (
                           <div>
-                            <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                               FORMATEUR / ENSEIGNANT ASSIGNÉ
                             </label>
                             <select
                               value={assignedInstructorId || ''}
                               onChange={(e) => setAssignedInstructorId(e.target.value ? Number(e.target.value) : null)}
                               disabled={isLoadingInstructors}
-                              className="w-full px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-xs text-slate-900 font-semibold transition-all outline-none"
+                              className="w-full px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-sm text-slate-900 font-semibold transition-all outline-none"
                             >
                               <option value="">-- Aucun formateur assigné (Optionnel) --</option>
                               {instructors.map(inst => (
@@ -1174,9 +1174,9 @@ export default function GroupPage() {
                       </div>
 
                       {/* Carte informative compacte */}
-                      <div className="p-3 rounded-xl bg-gradient-to-br from-blue-50/80 via-blue-50/40 to-slate-50 border border-blue-200/70 text-[11px] space-y-1 shadow-2xs">
+                      <div className="p-3.5 rounded-xl bg-gradient-to-br from-blue-50/80 via-blue-50/40 to-slate-50 border border-blue-200/70 text-xs space-y-1 shadow-2xs">
                         <div className="flex items-center gap-1.5 font-bold text-slate-900">
-                          <Sparkles size={14} className="text-[#1877f2]" />
+                          <Sparkles size={15} className="text-[#1877f2]" />
                           <span>Affectation Immédiate Atomique</span>
                         </div>
                         <p className="leading-relaxed text-slate-600">
@@ -1186,51 +1186,51 @@ export default function GroupPage() {
                     </div>
 
                     {/* Colonne Droite : Affectation des apprenants */}
-                    <div className="lg:col-span-7 bg-slate-50/90 p-4 rounded-2xl border border-slate-200 flex flex-col justify-between shadow-2xs">
-                      <div className="space-y-2.5">
-                        <div className="flex items-center justify-between gap-3 pb-2 border-b border-slate-200">
+                    <div className="lg:col-span-7 bg-slate-50/90 p-5 sm:p-6 rounded-2xl border border-slate-200 flex flex-col justify-between shadow-2xs">
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between gap-3 pb-2.5 border-b border-slate-200">
                           <div className="flex items-center gap-2">
-                            <UserPlus size={15} className="text-[#1877f2]" />
-                            <h4 className="text-[11px] font-black uppercase tracking-wider text-slate-800">
+                            <UserPlus size={17} className="text-[#1877f2]" />
+                            <h4 className="text-xs font-black uppercase tracking-wider text-slate-800">
                               Affecter des membres dès la création
                             </h4>
                           </div>
-                          <span className="text-xs font-black text-[#1877f2] bg-blue-50 border border-blue-200/80 px-2.5 py-0.5 rounded-full shadow-2xs">
+                          <span className="text-xs font-black text-[#1877f2] bg-blue-100/70 border border-blue-200/80 px-3 py-1 rounded-full shadow-2xs">
                             {selectedCreationMemberIds.length} sélectionné{selectedCreationMemberIds.length > 1 ? 's' : ''} / {availableUsersForCreation.length}
                           </span>
                         </div>
 
                         {isLoadingCreationUsers ? (
-                          <div className="py-12 text-center">
-                            <Loader2 size={22} className="animate-spin text-[#1877f2] mx-auto" />
+                          <div className="py-16 text-center">
+                            <Loader2 size={26} className="animate-spin text-[#1877f2] mx-auto" />
                             <p className="text-xs text-slate-500 mt-2 font-medium">Chargement des apprenants éligibles...</p>
                           </div>
                         ) : availableUsersForCreation.length === 0 ? (
-                          <div className="py-8 text-center bg-white rounded-xl border border-dashed border-slate-200 p-4">
-                            <Users size={24} className="text-slate-300 mx-auto mb-1.5" />
-                            <p className="text-xs font-bold text-slate-700">Aucun apprenant disponible</p>
-                            <p className="text-[11px] text-slate-500 mt-0.5">
+                          <div className="py-12 text-center bg-white rounded-xl border border-dashed border-slate-200 p-5">
+                            <Users size={28} className="text-slate-300 mx-auto mb-2" />
+                            <p className="text-sm font-bold text-slate-700">Aucun apprenant disponible</p>
+                            <p className="text-xs text-slate-500 mt-1">
                               Tous les apprenants actuels sont déjà affectés à un groupe.
                             </p>
                           </div>
                         ) : (
-                          <div className="space-y-2">
+                          <div className="space-y-2.5">
                             {/* Barre de recherche et sélection globale */}
-                            <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center justify-between gap-2.5">
                               <div className="relative flex-1">
-                                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                                 <input
                                   type="text"
                                   value={creationUserSearch}
                                   onChange={(e) => setCreationUserSearch(e.target.value)}
                                   placeholder="Filtrer par nom, prénom, email ou rôle..."
-                                  className="w-full pl-8 pr-7 py-1.5 text-xs bg-white border border-slate-200 rounded-lg outline-none focus:border-[#1877f2] focus:ring-1 focus:ring-[#1877f2] transition-all text-slate-900 placeholder:text-slate-400 font-medium"
+                                  className="w-full pl-9 pr-8 py-2 text-xs sm:text-sm bg-white border border-slate-200 rounded-xl outline-none focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 transition-all text-slate-900 placeholder:text-slate-400 font-medium"
                                 />
                                 {creationUserSearch && (
                                   <button
                                     type="button"
                                     onClick={() => setCreationUserSearch('')}
-                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 text-xs font-bold"
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 text-xs font-bold"
                                   >
                                     ✕
                                   </button>
@@ -1239,16 +1239,16 @@ export default function GroupPage() {
                               <button
                                 type="button"
                                 onClick={handleToggleSelectAllCreation}
-                                className="text-[11px] font-bold text-slate-700 hover:text-[#1877f2] hover:border-blue-300 px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg cursor-pointer transition-all shadow-2xs shrink-0"
+                                className="text-xs font-bold text-slate-700 hover:text-[#1877f2] hover:border-blue-300 px-3.5 py-2 bg-white border border-slate-200 rounded-xl cursor-pointer transition-all shadow-2xs shrink-0 active:scale-95"
                               >
                                 {filteredCreationUsers.every(u => selectedCreationMemberIds.includes(u.id)) ? "Désélectionner" : "Tout sélectionner"}
                               </button>
                             </div>
 
-                            {/* Liste défilante compacte et lisible */}
-                            <div className="h-[185px] sm:h-[200px] overflow-y-auto space-y-1 pr-1 border border-slate-200/90 rounded-xl p-1.5 bg-white shadow-inner">
+                            {/* Liste défilante panoramique & aérée */}
+                            <div className="h-[270px] sm:h-[300px] xl:h-[340px] overflow-y-auto space-y-1.5 pr-1.5 border border-slate-200/90 rounded-xl p-2 bg-white shadow-inner">
                               {filteredCreationUsers.length === 0 ? (
-                                <div className="py-6 text-center text-xs text-slate-400">
+                                <div className="py-10 text-center text-xs text-slate-400">
                                   Aucun utilisateur correspondant à la recherche.
                                 </div>
                               ) : (
@@ -1259,29 +1259,29 @@ export default function GroupPage() {
                                     <div
                                       key={u.id}
                                       onClick={() => handleToggleCreationMember(u.id)}
-                                      className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-all text-xs border ${
+                                      className={`flex items-center justify-between p-2.5 sm:p-3 rounded-xl cursor-pointer transition-all border min-h-[46px] ${
                                         isChecked 
                                           ? 'bg-blue-50/90 border-blue-300 shadow-2xs' 
                                           : 'hover:bg-slate-50 border-slate-100'
                                       }`}
                                     >
-                                      <div className="flex items-center gap-2.5 min-w-0">
+                                      <div className="flex items-center gap-3 min-w-0">
                                         <div className="shrink-0">
                                           {isChecked ? (
-                                            <CheckSquare size={16} className="text-[#1877f2]" />
+                                            <CheckSquare size={18} className="text-[#1877f2]" />
                                           ) : (
-                                            <Square size={16} className="text-slate-400" />
+                                            <Square size={18} className="text-slate-400" />
                                           )}
                                         </div>
-                                        <div className="w-7 h-7 rounded-full bg-blue-50 border border-blue-200 text-[#1877f2] flex items-center justify-center font-bold text-[11px] shrink-0">
+                                        <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-blue-50 border border-blue-200 text-[#1877f2] flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs">
                                           {u.email.charAt(0).toUpperCase()}
                                         </div>
                                         <div className="min-w-0">
-                                          <p className="font-bold text-slate-900 truncate text-xs">{displayName}</p>
-                                          <p className="text-[10px] text-slate-500 truncate">{u.email}</p>
+                                          <p className="font-bold text-slate-900 truncate text-xs sm:text-sm">{displayName}</p>
+                                          <p className="text-[11px] sm:text-xs text-slate-500 truncate">{u.email}</p>
                                         </div>
                                       </div>
-                                      <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 shrink-0">
+                                      <span className="text-[10px] sm:text-[11px] font-black uppercase px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 border border-slate-200 shrink-0">
                                         {u.role}
                                       </span>
                                     </div>
@@ -1294,18 +1294,18 @@ export default function GroupPage() {
                       </div>
 
                       {/* Indicateur de bas de liste */}
-                      <div className="pt-2 flex items-center justify-between text-[10px] text-slate-500 font-medium">
+                      <div className="pt-2.5 flex items-center justify-between text-xs text-slate-500 font-medium border-t border-slate-200/70 mt-2">
                         <span>{filteredCreationUsers.length} apprenant(s) éligible(s)</span>
-                        <span>{selectedCreationMemberIds.length} sélectionné(s)</span>
+                        <span className="font-bold text-[#1877f2]">{selectedCreationMemberIds.length} sélectionné(s)</span>
                       </div>
                     </div>
 
                   </div>
                 ) : (
                   /* ─── DISPOSITION EN MODE MODIFICATION ─── */
-                  <div className="space-y-3.5 py-1">
+                  <div className="space-y-4 py-2 max-w-xl mx-auto w-full">
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                         NOM DU GROUPE / CLASSE <span className="text-rose-500">*</span>
                       </label>
                       <input
@@ -1314,12 +1314,12 @@ export default function GroupPage() {
                         value={newName}
                         onChange={(e) => setNewName(e.target.value)}
                         placeholder="Ex : classe 1, Master 1 - IA..."
-                        className="w-full px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-xs text-slate-900 font-semibold placeholder:text-slate-400 transition-all outline-none"
+                        className="w-full px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-sm text-slate-900 font-semibold placeholder:text-slate-400 transition-all outline-none"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                         NIVEAU ACADÉMIQUE (OPTIONNEL)
                       </label>
                       <input
@@ -1327,12 +1327,12 @@ export default function GroupPage() {
                         value={newLevel}
                         onChange={(e) => setNewLevel(e.target.value)}
                         placeholder="Ex : Débutant, M1, L3, Année 2..."
-                        className="w-full px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-xs text-slate-900 font-semibold placeholder:text-slate-400 transition-all outline-none"
+                        className="w-full px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-sm text-slate-900 font-semibold placeholder:text-slate-400 transition-all outline-none"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                         DESCRIPTION DÉTAILLÉE (OPTIONNEL)
                       </label>
                       <textarea
@@ -1340,20 +1340,20 @@ export default function GroupPage() {
                         value={newDescription}
                         onChange={(e) => setNewDescription(e.target.value)}
                         placeholder="Objectifs de la classe, cours ou précisions..."
-                        className="w-full px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-xs text-slate-900 font-medium placeholder:text-slate-400 transition-all outline-none resize-none leading-relaxed"
+                        className="w-full px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-sm text-slate-900 font-medium placeholder:text-slate-400 transition-all outline-none resize-none leading-relaxed"
                       />
                     </div>
 
                     {isGlobalStaff && (
                       <div>
-                        <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                           FORMATEUR / ENSEIGNANT ASSIGNÉ
                         </label>
                         <select
                           value={assignedInstructorId || ''}
                           onChange={(e) => setAssignedInstructorId(e.target.value ? Number(e.target.value) : null)}
                           disabled={isLoadingInstructors}
-                          className="w-full px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-xs text-slate-900 font-semibold transition-all outline-none"
+                          className="w-full px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-sm text-slate-900 font-semibold transition-all outline-none"
                         >
                           <option value="">-- Aucun formateur assigné --</option>
                           {instructors.map(inst => (
@@ -1365,8 +1365,8 @@ export default function GroupPage() {
                       </div>
                     )}
 
-                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 flex items-center gap-2">
-                      <Users size={15} className="text-[#1877f2] shrink-0" />
+                    <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 flex items-center gap-2.5">
+                      <Users size={18} className="text-[#1877f2] shrink-0" />
                       <span>Pour ajouter ou retirer des membres de cette classe, utilisez l'outil de gestion des membres depuis la vue panoramique.</span>
                     </div>
                   </div>
@@ -1375,31 +1375,31 @@ export default function GroupPage() {
               </div>
 
               {/* Barre d'action inférieure panoramique */}
-              <div className="px-6 sm:px-8 py-3 bg-slate-50/80 border-t border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shrink-0">
-                <div className="text-xs text-slate-500 font-semibold">
+              <div className="px-6 sm:px-8 py-3.5 bg-slate-50/90 border-t border-slate-200/90 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
+                <div className="text-xs sm:text-sm text-slate-600 font-semibold">
                   {!editingGroupId ? (
-                    <span>{selectedCreationMemberIds.length} apprenant(s) sélectionné(s) pour cette nouvelle classe</span>
+                    <span><strong className="text-[#1877f2] font-bold">{selectedCreationMemberIds.length}</strong> apprenant(s) sélectionné(s) pour cette nouvelle classe</span>
                   ) : (
                     <span>Mise à jour en direct de la classe</span>
                   )}
                 </div>
 
-                <div className="flex items-center gap-2.5 self-end sm:self-auto">
+                <div className="flex items-center gap-3 self-end sm:self-auto">
                   <button
                     type="button"
                     onClick={() => { setShowFormModal(false); setFormError(''); }}
-                    className="px-4 py-2 bg-white hover:bg-slate-100 rounded-xl font-bold text-slate-700 text-xs transition-colors cursor-pointer border border-slate-200 shadow-2xs"
+                    className="px-5 py-2.5 bg-white hover:bg-slate-100 rounded-xl font-bold text-slate-700 text-xs sm:text-sm transition-colors cursor-pointer border border-slate-200 shadow-2xs active:scale-95"
                   >
                     Annuler
                   </button>
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="btn-primary px-5 py-2 rounded-xl font-bold text-xs flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-blue-500/20 disabled:opacity-50"
+                    className="btn-primary px-6 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-blue-500/20 disabled:opacity-50 active:scale-95"
                   >
                     {isSubmitting ? (
                       <>
-                        <Loader2 size={14} className="animate-spin" />
+                        <Loader2 size={16} className="animate-spin" />
                         <span>Enregistrement...</span>
                       </>
                     ) : (
