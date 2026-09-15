@@ -62,6 +62,15 @@
       box-shadow: 4px 0 24px rgba(15, 23, 42, 0.08);
     }
 
+    @media (min-width: 992px) {
+      .navbar-vertical.navbar-expand-lg.eschola-admin-sidebar {
+        width: 270px !important;
+      }
+      .navbar-vertical.navbar-expand-lg.eschola-admin-sidebar ~ .page-wrapper {
+        margin-left: 270px !important;
+      }
+    }
+
     .eschola-brand-wrapper {
       padding: 20px 14px 18px 14px;
       border-bottom: 1px solid rgba(255, 255, 255, 0.08);
@@ -485,12 +494,26 @@
       margin-bottom: 6px;
     }
 
+    /* Centered Container & Root Wrapper */
+    .container-xl {
+      max-width: 1260px !important;
+      margin-left: auto !important;
+      margin-right: auto !important;
+    }
+
+    .eschola-content-root {
+      display: block !important;
+      width: 100% !important;
+      flex: 0 0 100% !important;
+      max-width: 100% !important;
+    }
+
     /* Light Dashboard Hero & Cards */
     .eschola-hero-card {
       background: #ffffff;
       border: 1px solid #e2e8f0;
-      border-radius: 18px;
-      box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 2px 6px -1px rgba(15, 23, 42, 0.03);
+      border-radius: 20px;
+      box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.06), 0 2px 6px -1px rgba(15, 23, 42, 0.03);
       position: relative;
       overflow: hidden;
     }
@@ -506,40 +529,40 @@
     }
 
     .eschola-stat-box {
-      background: #f8fafc;
+      background: #ffffff;
       border: 1px solid #e2e8f0;
       border-radius: 14px;
-      padding: 10px 18px;
+      padding: 12px 22px;
       text-align: left;
-      min-width: 120px;
+      min-width: 175px;
       display: inline-flex;
       align-items: center;
-      gap: 12px;
+      gap: 14px;
       transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
     }
 
     .eschola-stat-box:hover {
-      background: #ffffff;
+      background: #f8fafc;
       border-color: #cbd5e1;
       transform: translateY(-2px);
-      box-shadow: 0 6px 16px -2px rgba(15, 23, 42, 0.08);
+      box-shadow: 0 8px 18px -2px rgba(15, 23, 42, 0.08);
     }
 
     .eschola-stat-icon-wrap {
-      width: 38px;
-      height: 38px;
-      border-radius: 10px;
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 15px;
+      font-size: 18px;
       flex-shrink: 0;
     }
 
     .eschola-stat-num {
       color: #0f172a;
-      font-size: 22px;
+      font-size: 24px;
       font-weight: 800;
       line-height: 1.1;
       letter-spacing: -0.5px;
@@ -547,16 +570,19 @@
 
     .eschola-stat-label {
       color: #64748b;
-      font-size: 11px;
-      font-weight: 600;
+      font-size: 11.5px;
+      font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.5px;
-      margin-top: 2px;
+      margin-top: 3px;
     }
 
     .eschola-domain-card {
       border-radius: 16px;
+      border: 1px solid #e2e8f0;
+      background: #ffffff;
       transition: transform 0.2s ease, box-shadow 0.2s ease;
+      box-shadow: 0 2px 6px rgba(15, 23, 42, 0.03);
     }
 
     .eschola-domain-card:hover {
