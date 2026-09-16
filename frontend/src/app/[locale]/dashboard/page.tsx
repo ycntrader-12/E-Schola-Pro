@@ -176,7 +176,7 @@ export default function DashboardPage() {
   const handleGoogleSearch = (queryToSearch?: string) => {
     const q = (queryToSearch !== undefined ? queryToSearch : searchQuery).trim();
     if (q) {
-      window.open(`https://www.google.com/search?q=${encodeURIComponent(q)}`, '_blank', 'noopener,noreferrer');
+      router.push(`/courses?engine=google&q=${encodeURIComponent(q)}`);
       setIsSearchDropdownOpen(false);
     }
   };

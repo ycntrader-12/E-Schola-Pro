@@ -1,5 +1,6 @@
 import CourseSearchClient from "@/components/CourseSearchClient";
 import { cookies } from "next/headers";
+import { Suspense } from "react";
 
 async function getCourses() {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
@@ -39,6 +40,15 @@ async function getCourses() {
 export default async function CoursesPage() {
   const courses = await getCourses();
 
-  return <CourseSearchClient initialCourses={courses} />;
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex flex-col items-center justify-center p-8 bg-slate-50 text-slate-500">
+        <div className="w-9 h-9 border-3 border-blue-600 border-t-transparent rounded-full animate-spin mb-3" />
+        <p className="text-xs font-bold text-slate-700">Chargement de la bibliothèque de cours...</p>
+      </div>
+    }>
+      <CourseSearchClient initialCourses={courses} />
+    </Suspense>
+  );
 }
 

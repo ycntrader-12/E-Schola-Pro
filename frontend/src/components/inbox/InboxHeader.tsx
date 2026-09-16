@@ -21,7 +21,7 @@ import {
   ChevronDown,
   ExternalLink,
 } from 'lucide-react';
-import { Link } from '@/i18n/routing';
+import { Link, useRouter } from '@/i18n/routing';
 
 export type SearchMode = 'internal' | 'google' | 'ai';
 
@@ -65,6 +65,7 @@ export const InboxHeader: React.FC<InboxHeaderProps> = ({
     placeholderAi: 'Demander à l\'assistant IA Google Gemini...',
   },
 }) => {
+  const router = useRouter();
   const [isModeDropdownOpen, setIsModeDropdownOpen] = useState(false);
   const [isAppsGridOpen, setIsAppsGridOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
@@ -93,11 +94,7 @@ export const InboxHeader: React.FC<InboxHeaderProps> = ({
   const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       if (searchMode === 'google' && searchQuery.trim()) {
-        window.open(
-          `https://www.google.com/search?q=${encodeURIComponent(searchQuery.trim())}`,
-          '_blank',
-          'noopener,noreferrer'
-        );
+        router.push(`/courses?engine=google&q=${encodeURIComponent(searchQuery.trim())}`);
       } else if (searchMode === 'ai' && searchQuery.trim()) {
         onOpenAiModal();
       }

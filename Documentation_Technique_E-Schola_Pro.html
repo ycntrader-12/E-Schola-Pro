@@ -2267,6 +2267,15 @@ E-Schola Pro/
       <p><strong>Routes Frontend :</strong> <code>/courses</code> · <code>/courses/new</code> · <code>/courses/{id}</code></p>
       <p><strong>Options et propriétés :</strong></p>
       <ul>
+        <li><strong>Design Format Large &amp; Mode Panoramique Widescreen :</strong> L'interface propose un commutateur immersif permettant de basculer instantanément entre le <strong>Format Standard</strong> (largeur contenue <code>max-w-7xl</code>) et le <strong>Mode Panoramique Large</strong> (largeur <code>max-w-[1850px]</code> ultra-large avec marges dynamiques <code>px-4 sm:px-8 xl:px-12</code>). Ce mode étend la grille jusqu'à 5 colonnes sur les écrans 4K/Ultra-Wide (<code>2xl:grid-cols-5</code>), optimise la disposition des dossiers pédagogiques et élargit le lecteur vidéo modal interactif au format cinéma panoramique 16:9 (<code>max-w-7xl</code>).</li>
+        <li><strong>Moteur de Recherche Google Web 100% Intégré (Zéro Sortie Externe) :</strong> En remplacement des redirections externes vers de nouveaux onglets du navigateur, l'explorateur intègre directement le moteur de recherche web sous forme d'onglet applicatif dédié (<em>« Google Web Intégré »</em>) :
+          <ul>
+            <li><strong>Navigateur Web Panoramique Sécurisé (Iframe Sandboxed) :</strong> Cadre haute définition affichant les résultats réels du moteur Google (<code>https://www.google.com/search?igu=1</code>) encapsulés dans un mockup de navigateur moderne avec barre d'adresse SSL, bouton de rafraîchissement dynamique et sélecteur de hauteur (<em>Compact 620px, Panoramique 780px, Cinéma 980px</em>).</li>
+            <li><strong>Fiches Pédagogiques &amp; Documentation (Knowledge Cards) :</strong> Synthèse technique instantanée générant des fiches de savoirs (guides officiels, ateliers pratiques, snippets de code, webinaires) à partir de la requête saisie.</li>
+            <li><strong>Continuité Pédagogique &amp; Correspondances de Cours :</strong> Rapprochement automatique entre les mots-clés recherchés sur le web et les cours ou leçons vidéo hébergés sur la plateforme E-Schola Pro.</li>
+            <li><strong>Chips de Recherche Rapide :</strong> Raccourcis thématiques pré-configurés (<em>Next.js 15, FastAPI, IA/PyTorch, Docker, Cybersécurité OWASP, SQLAlchemy, TailwindCSS</em>) pour une exploration instantanée.</li>
+          </ul>
+        </li>
         <li><strong>Organisation Pédagogique par Dossiers :</strong> Chaque cours est structuré comme un <strong>Dossier de Formation</strong> complet (<code>📁 Dossier #[ID]</code>), regroupant l'ensemble de ses vidéos séquencées (<code>🎬 X leçons vidéo</code>), son support de cours PDF téléchargeable et son formateur référent.</li>
         <li><strong>Design Centré &amp; Thème Officiel E-Schola Pro :</strong> L'en-tête de l'explorateur de cours est intégralement centré (badge institutionnel, titre avec dégradé signature Bleu Facebook <code>#1877f2</code> vers Bleu Profond <code>#0052cc</code>, sous-titre descriptif, métriques cumulées, barre de recherche universelle et boutons d'action harmonisés en Clean White et Bleu Vibrant), garantissant un équilibre visuel parfait et une cohérence totale avec la charte graphique de la plateforme.</li>
         <li><strong>Double Mode d'Exploration :</strong>
@@ -2290,7 +2299,7 @@ E-Schola Pro/
           </ul>
         </li>
         <li><strong>Inscription &amp; Détail du cours (/courses/{id}) :</strong> Bannière d'inscription, lecteur vidéo HD principal, description étendue, téléchargement des documents de cours et playlist interactive ordonnée des leçons vidéo.</li>
-        <li><strong>Barre d'Actions Épurée du Catalogue (/courses) :</strong> Recherche unifiée en temps réel (moteur interne ou passerelle Google externe), filtres par dossiers de compétences, et boutons d'action ergonomiques (<em>« Ajouter une vidéo »</em>, <em>« Créer un cours »</em>). L'assistance IA Gemini est quant à elle centralisée dans la messagerie et le dock d'outils interactif.</li>
+        <li><strong>Barre d'Actions Épurée du Catalogue (/courses) :</strong> Recherche unifiée en temps réel (moteur interne ou onglet Google Web 100% intégré), filtres par dossiers de compétences, et boutons d'action ergonomiques (<em>« Ajouter une vidéo »</em>, <em>« Créer un cours »</em>).</li>
         <li><strong>Suppression :</strong> Cascade automatique (vidéos et inscriptions supprimées).</li>
       </ul>
       <div class="screenshot-container">
