@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Link } from '@/i18n/routing';
 import { Plus } from 'lucide-react';
 import { apiClient } from '@/lib/api';
+import { isStaff } from '@/lib/roles';
 
 export default function CreateCourseButton() {
   const [canCreate, setCanCreate] = useState(false);
@@ -14,10 +15,8 @@ export default function CreateCourseButton() {
       if (token) {
         try {
           const res = await apiClient.get('/users/me');
-          if (res.status === 200) {
-            if (['formateur', 'admin', 'admin_manager', 'pedagogique', 'dg_rh', 'dg/rh'].includes(res.data.role)) {
-              setCanCreate(true);
-            }
+          if (res.status === 200 && isStaff(res.data.role)) {
+            setCanCreate(true);
           }
         } catch (e) {
           console.error('Failed to fetch user', e);

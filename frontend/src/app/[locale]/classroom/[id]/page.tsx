@@ -58,6 +58,7 @@ import {
   Zap
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
+import { isLearner as isLearnerRole, isStaff as isStaffRole } from '@/lib/roles';
 import BackButton from '@/components/BackButton';
 
 interface ClassroomInfo {
@@ -291,9 +292,8 @@ export default function VirtualClassroomLivePage() {
     }
   };
 
-  const userRole = (currentUser?.role || '').toLowerCase();
-  const isLearner = ['etudiant', 'étudiant', 'stagiaire', 'employer'].includes(userRole);
-  const isManager = ['formateur', 'admin', 'admin_manager', 'pedagogique', 'dg_rh', 'dg/rh'].includes(userRole);
+  const isLearner = isLearnerRole(currentUser?.role);
+  const isManager = isStaffRole(currentUser?.role);
   const isHost = isManager || (!!currentUser?.id && !!classroom?.instructor_id && currentUser.id === classroom.instructor_id) || (!!currentUser?.email && !!classroom?.instructor?.email && currentUser.email.toLowerCase() === classroom.instructor.email.toLowerCase());
   const canStopClassroom = !isLearner && isHost;
 

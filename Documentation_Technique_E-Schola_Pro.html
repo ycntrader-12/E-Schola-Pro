@@ -2112,6 +2112,15 @@ E-Schola Pro/
       </ul>
     </div>
 
+    <h3>Gestion Centralisée des Rôles (Core)</h3>
+    <div class="card">
+      <p>Pour assurer une parfaite cohérence de l'autorisation et du filtrage sur l'ensemble du système, l'application utilise des modules de rôles unifiés :</p>
+      <ul>
+        <li><strong>Backend :</strong> <code>backend/app/core/roles.py</code> définit les constantes unifiées (<code>SUPER_ADMIN_ROLES</code>, <code>STAFF_ROLES</code>, etc.) et les prédicats de vérification (<code>is_super_admin()</code>, <code>is_staff()</code>, <code>normalize_role()</code>).</li>
+        <li><strong>Frontend :</strong> <code>frontend/src/lib/roles.ts</code> offre des fonctions de validation robustes côté client (<code>isSuperAdmin()</code>, <code>isAdmin()</code>, <code>isStaff()</code>, <code>isLearner()</code>) et supprime l'usage de listes de chaînes en dur, tout en garantissant un matching fiable sans faille de casse ou d'accent.</li>
+      </ul>
+    </div>
+
     <h3>Matrice de Permissions</h3>
     <table>
       <thead>

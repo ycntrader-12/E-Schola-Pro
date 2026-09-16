@@ -77,6 +77,7 @@ import {
   Zap
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
+import { ADMIN_ROLES, SUPER_ADMIN_ROLES, isAdmin as checkIsAdmin, isStaff as checkIsStaff, isSuperAdmin as checkIsSuperAdmin, isLearner as checkIsLearner, normalizeRole } from '@/lib/roles';
 import BackButton from '@/components/BackButton';
 import RoleSettings from '@/components/profile/RoleSettings';
 import PasswordChange from '@/components/profile/PasswordChange';
@@ -162,8 +163,6 @@ const NON_ADMIN_ROLES = [
   'dg_rh'
 ];
 
-const ADMIN_ROLES = ['admin', 'admin_manager'];
-const SUPER_ADMIN_ROLES = ['admin'];
 const PROTECTED_ROOT_USERNAMES = ['admin_first'];
 const PROTECTED_ROOT_EMAILS = ['admin_first@eschola.pro'];
 
@@ -343,7 +342,7 @@ export default function ProfilePage() {
       description: 'Comptes dotés de privilèges d’administration centrale et de gouvernance système.',
       roles: ADMIN_ROLES,
       defaultRole: 'admin',
-      count: allUsers.filter(u => ADMIN_ROLES.includes(u.role)).length,
+      count: allUsers.filter(u => checkIsAdmin(u.role)).length,
       icon: Shield,
       activeIcon: FolderOpen,
     },
@@ -593,7 +592,7 @@ export default function ProfilePage() {
     e.preventDefault();
     setCreateAccountError('');
 
-    const isAdminTarget = ADMIN_ROLES.includes(newAccountRole);
+    const isAdminTarget = checkIsAdmin(newAccountRole);
 
     if (isAdminTarget) {
       // Admin Exemption: Lightweight Profile
@@ -762,7 +761,7 @@ export default function ProfilePage() {
     setAdminLoading(true);
     try {
       const currentRole = role || user?.role;
-      const isAdm = ADMIN_ROLES.includes(currentRole || '');
+      const isAdm = checkIsAdmin(currentRole || '');
 
       const promises: Promise<any>[] = [
         apiClient.get('/courses/').catch(() => ({ data: [] })),
@@ -803,7 +802,7 @@ export default function ProfilePage() {
       try {
         const res = await apiClient.get('/users/me');
         setUser(res.data);
-        if (ADMIN_ROLES.includes(res.data.role) || ['formateur', 'pedagogique', 'dg_rh', 'dg/rh'].includes(res.data.role)) {
+        if (checkIsStaff(res.data.role)) {
           fetchAdminData(res.data.role);
         }
       } catch (error) {
@@ -966,7 +965,7 @@ export default function ProfilePage() {
           is_active: newStatus,
         });
         setAllUsers((prev) =>
-          prev.map((u) => (ADMIN_ROLES.includes(u.role) || isRootAdmin(u) ? u : { ...u, is_active: newStatus }))
+          prev.map((u) => (checkIsAdmin(u.role) || isRootAdmin(u) ? u : { ...u, is_active: newStatus }))
         );
         setActionMessage({
           type: 'success',
@@ -1005,10 +1004,10 @@ export default function ProfilePage() {
 
   if (!user) return null;
 
-  const isSuperAdmin = SUPER_ADMIN_ROLES.includes(user.role);
-  const isAdminManager = user.role === 'admin_manager';
-  const isAdminUser = ADMIN_ROLES.includes(user.role);
-  const isStaffUser = isAdminUser || ['formateur', 'pedagogique', 'dg_rh', 'dg/rh'].includes(user.role);
+  const isSuperAdmin = checkIsSuperAdmin(user.role);
+  const isAdminManager = normalizeRole(user.role) === 'admin_manager';
+  const isAdminUser = checkIsAdmin(user.role);
+  const isStaffUser = checkIsStaff(user.role);
 
   return (
     <div className="min-h-screen bg-white text-slate-900 px-4 sm:px-8 pt-24 sm:pt-28 pb-16 space-y-8 max-w-7xl mx-auto animate-fade-in-up">
@@ -1127,11 +1126,11 @@ export default function ProfilePage() {
 
             const enabledUsersCount = allUsers.filter(u => u.is_active !== false).length;
             const disabledUsersCount = allUsers.filter(u => u.is_active === false).length;
-            const nonAdminUsersCount = allUsers.filter(u => !ADMIN_ROLES.includes(u.role) && !isRootAdmin(u)).length;
+            const nonAdminUsersCount = allUsers.filter(u => !checkIsAdmin(u.role) && !isRootAdmin(u)).length;
 
             const isSelectedUserRoot = selectedDirectoryUser ? isRootAdmin(selectedDirectoryUser) : false;
             const isSelectedUserCurrent = selectedDirectoryUser ? selectedDirectoryUser.id === user.id : false;
-            const isSelectedUserAdmin = selectedDirectoryUser ? ADMIN_ROLES.includes(selectedDirectoryUser.role) : false;
+            const isSelectedUserAdmin = selectedDirectoryUser ? checkIsAdmin(selectedDirectoryUser.role) : false;
             const canModifySelected = selectedDirectoryUser
               ? (isSuperAdmin ? (!isSelectedUserCurrent && !isSelectedUserRoot) : (!isSelectedUserCurrent && !isSelectedUserAdmin && !isSelectedUserRoot))
               : false;
@@ -1605,7 +1604,7 @@ export default function ProfilePage() {
                             {activeFolderUsers.map((u) => {
                               const isSelected = selectedDirectoryUserId === u.id || (selectedDirectoryUserId === null && selectedDirectoryUser?.id === u.id);
                               const isCurrentUser = u.id === user.id;
-                              const isTargetAdmin = ADMIN_ROLES.includes(u.role);
+                              const isTargetAdmin = checkIsAdmin(u.role);
                               const isRoot = isRootAdmin(u);
                               const canModifyTargetRole = isSuperAdmin ? (!isCurrentUser && !isRoot) : (!isCurrentUser && !isTargetAdmin && !isRoot);
                               const canToggleStatus = isSuperAdmin ? (!isCurrentUser && !isRoot) : (!isCurrentUser && !isTargetAdmin && !isRoot);
@@ -1616,7 +1615,7 @@ export default function ProfilePage() {
                                 ? ALL_ROLES
                                 : (isTargetAdmin ? [u.role] : NON_ADMIN_ROLES);
 
-                              const isLeadershipRole = ADMIN_ROLES.includes(u.role) || u.role === 'dg_rh' || u.role === 'dg/rh' || u.role === 'formateur' || u.role === 'pedagogique';
+                              const isLeadershipRole = checkIsStaff(u.role);
 
                               return (
                                 <tr
@@ -2580,7 +2579,7 @@ export default function ProfilePage() {
                     </select>
 
                     {/* Badge indicatif sur la portée du formulaire */}
-                    {ADMIN_ROLES.includes(newAccountRole) ? (
+                    {checkIsAdmin(newAccountRole) ? (
                       <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[11px]">
                         <ShieldCheck size={15} className="shrink-0" />
                         <span><strong>Exemption Administrateur :</strong> Profil allégé (identifiant et mot de passe uniquement).</span>
@@ -2594,7 +2593,7 @@ export default function ProfilePage() {
                   </div>
 
                   {/* CAS 1 : EXEMPTION ADMIN (PROFIL ALLÉGÉ) */}
-                  {ADMIN_ROLES.includes(newAccountRole) ? (
+                  {checkIsAdmin(newAccountRole) ? (
                     <div className="space-y-3 p-4 rounded-xl bg-surface/50 border border-border">
                       <div>
                         <label className="block text-[11px] font-semibold text-text-secondary mb-1">

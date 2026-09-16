@@ -28,6 +28,7 @@ import {
 import { Link } from '@/i18n/routing';
 import { useTranslations } from 'next-intl';
 import { apiClient } from '@/lib/api';
+import { isStaff } from '@/lib/roles';
 
 interface TaskSubmission {
   id: number;
@@ -122,7 +123,7 @@ export default function AssignmentsPage() {
     fetchInitialData();
   }, []);
 
-  const isManager = ['admin', 'admin_manager', 'formateur', 'pedagogique', 'dg_rh', 'dg/rh'].includes(currentUser?.role || '');
+  const isManager = isStaff(currentUser?.role);
 
   // ---------------------------------------------------------------------------
   // GESTION DE LA SOUMISSION DU LIVRABLE (Apprenant)

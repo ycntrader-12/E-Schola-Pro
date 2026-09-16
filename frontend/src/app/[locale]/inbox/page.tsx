@@ -57,6 +57,7 @@ import {
   Eye,
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
+import { isLearner } from '@/lib/roles';
 import { InboxHeader, SearchMode } from '@/components/inbox/InboxHeader';
 import { InboxSidebar, FolderType } from '@/components/inbox/InboxSidebar';
 import { InboxRightDock } from '@/components/inbox/InboxRightDock';
@@ -223,8 +224,7 @@ export default function InboxMessagesPage() {
     return inboxMessages.filter((m) => !m.is_read).length;
   }, [inboxMessages]);
 
-  const userRole = (currentUser?.role || '').toLowerCase().trim();
-  const isRestrictedRole = ['employer', 'employé', 'étudiant', 'etudiant', 'stagiaire'].includes(userRole);
+  const isRestrictedRole = isLearner(currentUser?.role);
   const canUseBroadcast = currentUser ? !isRestrictedRole : false;
 
   // Star message handler with optimistic UI and database persistence

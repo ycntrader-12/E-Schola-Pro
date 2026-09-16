@@ -26,6 +26,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
+import { isLearner, isStaff, normalizeRole } from '@/lib/roles';
 import GroupMembersModal from '@/components/group/GroupMembersModal';
 import { useConfirm } from '@/context/ConfirmModalContext';
 
@@ -180,7 +181,7 @@ export default function GroupPage() {
       }
 
       // If learner, do not fetch groups
-      if (['etudiant', 'étudiant', 'stagiaire', 'employer'].includes(userRole)) {
+      if (isLearner(userRole)) {
         setIsLoading(false);
         return;
       }
@@ -196,13 +197,9 @@ export default function GroupPage() {
     localStorage.setItem('eschola_group_view_mode', mode);
   };
 
-  const canManage = ['admin', 'admin_manager', 'formateur', 'pedagogique', 'dg_rh', 'dg/rh', 'dgrh'].includes(
-    (currentUser?.role || '').trim().toLowerCase()
-  );
+  const canManage = isStaff(currentUser?.role);
 
-  const isGlobalStaff = ['admin', 'admin_manager', 'pedagogique', 'dg_rh', 'dg/rh', 'dgrh'].includes(
-    (currentUser?.role || '').trim().toLowerCase()
-  );
+  const isGlobalStaff = isStaff(currentUser?.role) && normalizeRole(currentUser?.role) !== 'formateur';
 
   const fetchInstructors = async () => {
     setIsLoadingInstructors(true);
@@ -461,10 +458,9 @@ export default function GroupPage() {
     );
   }
 
-  const userRole = (currentUser?.role || '').trim().toLowerCase();
-  const isLearner = ['etudiant', 'étudiant', 'stagiaire', 'employer'].includes(userRole);
+  const isLearnerUser = isLearner(currentUser?.role);
 
-  if (!isLoading && isLearner) {
+  if (!isLoading && isLearnerUser) {
     return (
       <div className="min-h-screen pt-28 pb-16 flex flex-col items-center justify-center text-center px-4 space-y-4 animate-fade-in">
         <div className="w-16 h-16 rounded-2xl bg-red-50 border border-red-200 text-red-600 flex items-center justify-center shadow-xs">

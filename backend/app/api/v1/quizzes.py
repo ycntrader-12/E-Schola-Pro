@@ -4,6 +4,14 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 
 from app.api.deps import CurrentUser, SessionDep
+from app.core.roles import (
+    ADMIN_ROLES,
+    STAFF_ROLES,
+    is_admin,
+    is_staff,
+    matches_target_role,
+    require_staff,
+)
 from app.models.quiz import Quiz, QuizAttempt, QuizQuestion
 from app.schemas.quiz import (
     QuizAttemptDetailResponse,
@@ -18,8 +26,6 @@ from app.schemas.quiz import (
 )
 
 router = APIRouter()
-ADMIN_ROLES = ["admin", "admin_manager"]
-STAFF_ROLES = ["admin", "admin_manager", "formateur", "pedagogique", "dg_rh"]
 
 
 def check_user_quiz_access(current_user: Any, quiz: Quiz, session: Any) -> bool:
@@ -33,15 +39,12 @@ def check_user_quiz_access(current_user: Any, quiz: Quiz, session: Any) -> bool:
          - 'all', empty or None -> accessible.
          - Otherwise user.group_name or GroupMember table must match.
     """
-    user_role = (current_user.role or "").strip().lower()
-    
     # 1. Staff and Admins have global access
-    if user_role in STAFF_ROLES:
+    if is_staff(current_user):
         return True
         
     # 2. Check Role targeting
-    target_roles = [r.strip().lower() for r in (quiz.target_roles or "").split(",") if r.strip()]
-    if target_roles and "all" not in target_roles and user_role not in target_roles:
+    if not matches_target_role(current_user.role, quiz.target_roles or "all"):
         return False
         
     # 3. Check Group targeting
@@ -94,7 +97,7 @@ def get_quizzes(
     query = session.query(Quiz)
     
     # Optional group filter if provided by staff
-    if group and group.strip() and group.lower() != "all" and current_user.role in STAFF_ROLES:
+    if group and group.strip() and group.lower() != "all" and is_staff(current_user):
         cleaned_grp = group.strip().lower()
         query = query.filter(
             (Quiz.target_group.ilike(f"%{cleaned_grp}%")) | (Quiz.target_group == "all") | (Quiz.target_group.is_(None))
@@ -108,7 +111,7 @@ def get_quizzes(
     )
 
     # Filter for learners based on role and group assignment
-    if current_user.role not in STAFF_ROLES:
+    if not is_staff(current_user):
         quizzes = [q for q in quizzes if check_user_quiz_access(current_user, q, session)]
 
     # Fetch attempts for current user to indicate completion status
@@ -170,7 +173,7 @@ def get_quiz_detail(
             detail="Accès refusé. Cette évaluation est strictement réservée aux membres du groupe assigné.",
         )
 
-    is_manager = current_user.role in STAFF_ROLES
+    is_manager = is_staff(current_user)
 
     questions_data = []
     for q in quiz.questions:
@@ -228,11 +231,10 @@ def create_quiz(
     """
     Create a new quiz with questions. Strictly restricted to Formateurs and Admins.
     """
-    if current_user.role not in STAFF_ROLES:
-        raise HTTPException(
-            status_code=403,
-            detail="Seuls les formateurs et les administrateurs ont le droit de créer ou générer des quiz.",
-        )
+    require_staff(
+        current_user,
+        "Seuls les formateurs et les administrateurs ont le droit de créer ou générer des quiz.",
+    )
 
     if not quiz_in.questions or len(quiz_in.questions) == 0:
         raise HTTPException(
@@ -295,11 +297,10 @@ def delete_quiz(
     """
     Delete a quiz. Strictly restricted to Formateurs and Admins.
     """
-    if current_user.role not in STAFF_ROLES:
-        raise HTTPException(
-            status_code=403,
-            detail="Seuls les formateurs et les administrateurs peuvent supprimer un quiz.",
-        )
+    require_staff(
+        current_user,
+        "Seuls les formateurs et les administrateurs peuvent supprimer un quiz.",
+    )
 
     quiz = session.query(Quiz).filter(Quiz.id == quiz_id).first()
     if not quiz:
@@ -396,11 +397,10 @@ def get_quiz_results(
     View all student results/attempts for a specific quiz.
     Strictly restricted to Formateurs and Admins.
     """
-    if current_user.role not in STAFF_ROLES:
-        raise HTTPException(
-            status_code=403,
-            detail="Seuls les formateurs et les administrateurs peuvent consulter la liste des résultats des apprenants.",
-        )
+    require_staff(
+        current_user,
+        "Seuls les formateurs et les administrateurs peuvent consulter la liste des résultats des apprenants.",
+    )
 
     attempts = (
         session.query(QuizAttempt)
@@ -477,7 +477,7 @@ def get_attempt_details_for_pdf(
         raise HTTPException(status_code=404, detail="Résultat d'évaluation introuvable.")
 
     # Strict ownership check for learners
-    if current_user.role not in STAFF_ROLES and attempt.user_id != current_user.id:
+    if not is_staff(current_user) and attempt.user_id != current_user.id:
         raise HTTPException(
             status_code=403,
             detail="Accès refusé. Les apprenants ne peuvent exporter que leurs propres résultats de quiz.",
@@ -555,11 +555,10 @@ def get_quiz_global_report_for_pdf(
     Get full aggregated report of a quiz for formateurs and admins to export as PDF.
     Strictly restricted to STAFF_ROLES.
     """
-    if current_user.role not in STAFF_ROLES:
-        raise HTTPException(
-            status_code=403,
-            detail="Seuls les formateurs et administrateurs peuvent exporter le rapport global des résultats.",
-        )
+    require_staff(
+        current_user,
+        "Seuls les formateurs et administrateurs peuvent exporter le rapport global des résultats.",
+    )
 
     quiz = session.query(Quiz).filter(Quiz.id == quiz_id).first()
     if not quiz:

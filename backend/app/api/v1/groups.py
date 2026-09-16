@@ -18,21 +18,13 @@ from app.schemas.group import (
 router = APIRouter()
 
 
-ADMIN_ROLES = ["admin", "admin_manager"]
-GLOBAL_VIEW_ROLES = ["admin", "admin_manager", "pedagogique", "dg_rh", "dg/rh", "dgrh"]
-STAFF_ROLES = ["admin", "admin_manager", "formateur", "pedagogique", "dg_rh", "dg/rh", "dgrh"]
-LEARNER_ROLES = ["etudiant", "étudiant", "stagiaire", "employer"]
+from app.core.roles import ADMIN_ROLES, STAFF_ROLES, is_admin, is_staff, normalize_role
+
+GLOBAL_VIEW_ROLES = {"admin", "admin_manager", "pedagogique", "dg_rh"}
 
 
 def is_staff_role(role: str | None) -> bool:
-    if not role:
-        return False
-    r = role.strip().lower()
-    return (
-        r in STAFF_ROLES 
-        or r.replace(" ", "_") in STAFF_ROLES 
-        or r.replace("/", "_") in STAFF_ROLES
-    )
+    return is_staff(role)
 
 
 def is_global_view_role(role: str | None) -> bool:

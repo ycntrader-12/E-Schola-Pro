@@ -55,7 +55,8 @@ CurrentUser = Annotated[User, Depends(get_current_user)]
 
 
 def get_current_admin_user(current_user: CurrentUser) -> User:
-    if current_user.role not in ["admin", "admin_manager"]:
+    from app.core.roles import is_admin
+    if not is_admin(current_user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="The user doesn't have enough privileges",
@@ -67,7 +68,8 @@ CurrentAdminUser = Annotated[User, Depends(get_current_admin_user)]
 
 
 def get_current_super_admin_user(current_user: CurrentUser) -> User:
-    if current_user.role != "admin":
+    from app.core.roles import is_super_admin
+    if not is_super_admin(current_user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Seul le rôle administrateur principal (admin) dispose des privilèges requis pour cette opération.",
@@ -76,4 +78,17 @@ def get_current_super_admin_user(current_user: CurrentUser) -> User:
 
 
 CurrentSuperAdminUser = Annotated[User, Depends(get_current_super_admin_user)]
+
+
+def get_current_staff_user(current_user: CurrentUser) -> User:
+    from app.core.roles import is_staff
+    if not is_staff(current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Accès réservé aux formateurs et à l'administration.",
+        )
+    return current_user
+
+
+CurrentStaffUser = Annotated[User, Depends(get_current_staff_user)]
 

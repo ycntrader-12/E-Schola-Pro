@@ -15,8 +15,9 @@ from app.schemas.course import (
     CourseAiAssistResponse,
 )
 
+from app.core.roles import ADMIN_ROLES, is_admin, is_staff, require_staff
+
 router = APIRouter()
-ADMIN_ROLES = ["admin", "admin_manager"]
 
 
 @router.get("/", response_model=list[CourseResponse])
@@ -43,11 +44,8 @@ def create_course(
     """
     Create new course.
     """
-    # Verify if current_user.role is authorized
-    if current_user.role not in ["formateur", "pedagogique", "dg_rh"] + ADMIN_ROLES:
-        raise HTTPException(
-            status_code=403, detail="Not enough permissions to upload courses"
-        )
+    # Verify if current_user is authorized staff
+    require_staff(current_user, "Seuls les formateurs et l'administration ont l'autorisation de créer des cours.")
 
     # Sanitize cover image and document URLs against injection/XSS
     clean_cover = sanitize_attachment_url(course_in.cover_image_url) if course_in.cover_image_url else None
@@ -94,9 +92,9 @@ def delete_course(
     if not course:
         raise HTTPException(status_code=404, detail="Course not found")
 
-    if current_user.role not in ADMIN_ROLES and course.instructor_id != current_user.id:
+    if not is_admin(current_user) and course.instructor_id != current_user.id:
         raise HTTPException(
-            status_code=403, detail="Not enough permissions to delete this course"
+            status_code=403, detail="Vous n'avez pas l'autorisation de supprimer ce cours."
         )
 
     session.delete(course)
@@ -118,10 +116,10 @@ def add_course_video(
     if not course:
         raise HTTPException(status_code=404, detail="Course not found")
 
-    if current_user.role not in ADMIN_ROLES and course.instructor_id != current_user.id:
+    if not is_admin(current_user) and course.instructor_id != current_user.id:
         raise HTTPException(
             status_code=403,
-            detail="Not enough permissions to add videos to this course",
+            detail="Vous n'avez pas l'autorisation d'ajouter des vidéos à ce cours.",
         )
 
     clean_video_url = sanitize_attachment_url(video_in.video_url) if video_in.video_url else None
@@ -155,8 +153,8 @@ def delete_course_video(
     if not course:
         raise HTTPException(status_code=404, detail="Course not found")
 
-    if current_user.role not in ADMIN_ROLES and course.instructor_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not enough permissions")
+    if not is_admin(current_user) and course.instructor_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Vous n'avez pas l'autorisation de supprimer cette vidéo.")
 
     video = (
         session.query(CourseVideo)

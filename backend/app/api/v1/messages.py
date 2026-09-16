@@ -6,6 +6,15 @@ from sqlalchemy import desc, func, or_
 
 from app.api.deps import CurrentUser, SessionDep
 from app.core.rate_limiter import rate_limiter
+from app.core.roles import (
+    ADMIN_ROLES,
+    STAFF_ROLES,
+    is_admin,
+    is_learner,
+    is_staff,
+    normalize_role,
+    require_admin,
+)
 from app.core.sanitizer import (
     sanitize_attachment_url,
     sanitize_filename,
@@ -17,9 +26,6 @@ from app.models.user import User
 from app.schemas.message import MessageCreate, MessageReport, MessageResponse
 
 router = APIRouter()
-
-ADMIN_ROLES = ["admin", "admin_manager"]
-RESTRICTED_BROADCAST_ROLES = ["employer", "employé", "étudiant", "etudiant", "stagiaire"]
 
 
 @router.get("/inbox", response_model=list[MessageResponse])
@@ -176,7 +182,7 @@ def send_or_save_message(
     clean_attachment_type = sanitize_text(msg_in.attachment_type, max_length=50) if msg_in.attachment_type else None
 
     # 3. Anti-Spam: Recipient Count Limitation for Non-Staff Users
-    if user_role in RESTRICTED_BROADCAST_ROLES:
+    if is_learner(current_user):
         unique_targets = set()
         for rid in (msg_in.recipient_ids or []):
             if rid and rid > 0:
@@ -207,7 +213,7 @@ def send_or_save_message(
 
     # 4. Envoi Général / Broadcast Restriction Check
     if is_broadcast_req:
-        if user_role in RESTRICTED_BROADCAST_ROLES:
+        if is_learner(current_user):
             raise HTTPException(
                 status_code=403,
                 detail="L'envoi de messages généraux (Broadcast / All) est strictement interdit pour les employés, étudiants et stagiaires.",
@@ -523,7 +529,7 @@ def get_message_detail(
     if (
         msg.sender_id != current_user.id
         and msg.recipient_id != current_user.id
-        and current_user.role not in ADMIN_ROLES
+        and not is_admin(current_user)
     ):
         raise HTTPException(status_code=403, detail="Accès non autorisé à ce message.")
 
@@ -553,7 +559,7 @@ def mark_message_as_read(
     if not msg:
         raise HTTPException(status_code=404, detail="Message introuvable.")
 
-    if msg.recipient_id != current_user.id and current_user.role not in ADMIN_ROLES:
+    if msg.recipient_id != current_user.id and not is_admin(current_user):
         raise HTTPException(status_code=403, detail="Accès non autorisé.")
 
     msg.is_read = True
@@ -578,7 +584,7 @@ def mark_message_as_unread(
     if not msg:
         raise HTTPException(status_code=404, detail="Message introuvable.")
 
-    if msg.recipient_id != current_user.id and current_user.role not in ADMIN_ROLES:
+    if msg.recipient_id != current_user.id and not is_admin(current_user):
         raise HTTPException(status_code=403, detail="Accès non autorisé.")
 
     msg.is_read = False
@@ -605,7 +611,7 @@ def toggle_star_message(
     if (
         msg.sender_id != current_user.id
         and msg.recipient_id != current_user.id
-        and current_user.role not in ADMIN_ROLES
+        and not is_admin(current_user)
     ):
         raise HTTPException(status_code=403, detail="Accès non autorisé.")
 
@@ -632,7 +638,7 @@ def restore_message_from_trash(
     if (
         msg.sender_id != current_user.id
         and msg.recipient_id != current_user.id
-        and current_user.role not in ADMIN_ROLES
+        and not is_admin(current_user)
     ):
         raise HTTPException(status_code=403, detail="Accès non autorisé.")
 
@@ -658,7 +664,7 @@ def delete_message(
     if (
         msg.sender_id != current_user.id
         and msg.recipient_id != current_user.id
-        and current_user.role not in ADMIN_ROLES
+        and not is_admin(current_user)
     ):
         raise HTTPException(
             status_code=403, detail="Accès non autorisé pour supprimer ce message."
@@ -713,7 +719,7 @@ def report_message(
     is_involved = (
         msg.recipient_id == current_user.id
         or msg.sender_id == current_user.id
-        or current_user.role in ADMIN_ROLES
+        or is_admin(current_user)
     )
     if not is_involved:
         raise HTTPException(
@@ -721,7 +727,7 @@ def report_message(
             detail="Accès non autorisé : vous ne pouvez signaler qu'un message dont vous êtes le destinataire direct.",
         )
 
-    if msg.sender_id == current_user.id and current_user.role not in ADMIN_ROLES:
+    if msg.sender_id == current_user.id and not is_admin(current_user):
         raise HTTPException(
             status_code=400,
             detail="Vous ne pouvez pas signaler un message que vous avez vous-même rédigé.",
@@ -738,7 +744,7 @@ def report_message(
     # A) All admins and admin_managers
     admin_targets = (
         session.query(User)
-        .filter(User.role.in_(["admin", "admin_manager"]))
+        .filter(User.role.in_(ADMIN_ROLES))
         .all()
     )
 
@@ -921,8 +927,8 @@ def report_message(
     session.commit()
     session.refresh(msg)
 
-    admin_count = len([u for u in recipient_list if u.role in ["admin", "admin_manager"]])
-    formateur_count = len([u for u in recipient_list if u.role in ["formateur", "pedagogique"]])
+    admin_count = len([u for u in recipient_list if is_admin(u)])
+    formateur_count = len([u for u in recipient_list if is_staff(u) and not is_admin(u)])
 
     return {
         "message": (

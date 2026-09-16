@@ -24,6 +24,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
+import { isStaff } from '@/lib/roles';
 
 interface OptionItem {
   id: string | number;
@@ -248,7 +249,7 @@ export default function AttendancePerformanceWidget() {
         const res = await apiClient.get('/attendance/my-stats');
         const myData = res.data;
         
-        const isMgr = ['formateur', 'pedagogique', 'dg_rh', 'dg/rh', 'admin', 'admin_manager'].includes(myData.user_role);
+        const isMgr = isStaff(myData.user_role);
         setIsManager(isMgr);
         
         if (isMgr) {

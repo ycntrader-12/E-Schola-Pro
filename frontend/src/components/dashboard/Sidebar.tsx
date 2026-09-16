@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { LayoutDashboard, Inbox, BookOpen, CheckSquare, Settings, Video, Award, UserCheck, Calendar, X, GraduationCap, Users, ShieldCheck, Compass } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { apiClient } from '@/lib/api';
+import { isAdmin, isLearner, isStaff, normalizeRole } from '@/lib/roles';
 
 interface SidebarProps {
   isOpen?: boolean;
@@ -76,48 +77,61 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
           try {
             const userRes = await apiClient.get('/users/me');
             if (userRes.data?.role) {
-              const freshRole = String(userRes.data.role).trim().toLowerCase();
-              setUserRole(freshRole);
-              localStorage.setItem('user_role', freshRole);
-            }
-          } catch {}
-
-          const res = await apiClient.get('/messages/unread-count').catch(() => ({ data: { unread_count: 0 } }));
-          setUnreadCount(res.data?.unread_count || 0);
-        } else {
-          setUserRole(null);
-          localStorage.removeItem('user_role');
-        }
-      } catch {}
+        const res = await apiClient.get('/messages/unread-count');
+        setUnreadCount(res.data.count || 0);
+      } catch {
+        // Silently fail if not logged in
+      }
     };
+    fetchUnread();
 
-    fetchUserData();
+    const interval = setInterval(fetchUnread, 30000); // 30s polling
+    return () => clearInterval(interval);
+  }, []);
+
+  // Update userRole on route changes
+  useEffect(() => {
+    const syncRole = () => {
+      const stored = localStorage.getItem('user_role');
+      if (stored) {
+        setUserRole(normalizeRole(stored));
+        return;
+      }
+      const token = localStorage.getItem('access_token');
+      if (token) {
+        try {
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          setUserRole(normalizeRole(payload.role));
+        } catch {
+          // ignore
+        }
+      }
+    };
+    syncRole();
 
     const handleAuthUpdate = () => {
-      fetchUserData();
+      syncRole();
     };
 
-    window.addEventListener('auth_user_updated', handleAuthUpdate);
     window.addEventListener('storage', handleAuthUpdate);
-
+    window.addEventListener('auth_update', handleAuthUpdate);
     return () => {
-      window.removeEventListener('auth_user_updated', handleAuthUpdate);
       window.removeEventListener('storage', handleAuthUpdate);
+      window.removeEventListener('auth_update', handleAuthUpdate);
     };
   }, [pathname]);
 
-  // Permissions:
+  // Standardized RBAC Permissions:
   // Strictly forbidden for learners: étudiant, etudiant, stagiaire, employer
-  // Authorized for staff: admin, admin_manager, formateur, pedagogique
-  const normalizedRole = (userRole || '').trim().toLowerCase();
-  const isLearner = ['etudiant', 'étudiant', 'stagiaire', 'employer'].includes(normalizedRole);
-  const isStaff = ['admin', 'admin_manager', 'formateur', 'pedagogique', 'dg_rh', 'dg/rh', 'dgrh'].includes(normalizedRole);
-  const isAdmin = ['admin', 'admin_manager'].includes(normalizedRole);
-  const canViewGroups = isStaff && !isLearner;
+  // Authorized for staff: admin, admin_manager, formateur, pedagogique, dg_rh
+  const isLearnerUser = isLearner(userRole);
+  const isStaffUser = isStaff(userRole);
+  const isAdminUser = isAdmin(userRole);
+  const canViewGroups = isStaffUser && !isLearnerUser;
 
   const navItems = [
     { name: t('dashboard'), href: '/dashboard', icon: LayoutDashboard },
-    ...(isAdmin ? [{ name: t('administration'), href: '/admin', icon: ShieldCheck }] : []),
+    ...(isAdminUser ? [{ name: t('administration'), href: '/admin', icon: ShieldCheck }] : []),
     ...(canViewGroups ? [{ name: t('group'), href: '/group', icon: Users }] : []),
     { name: t('calendar'), href: '/calendar', icon: Calendar },
     { name: t('virtual_classroom'), href: '/classroom', icon: Video },

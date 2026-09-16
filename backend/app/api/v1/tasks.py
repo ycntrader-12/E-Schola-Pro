@@ -16,8 +16,9 @@ from app.schemas.task import (
     TaskSubmissionResponse,
 )
 
+from app.core.roles import is_staff, matches_target_role, require_staff, STAFF_ROLES
+
 router = APIRouter()
-STAFF_ROLES = ["admin", "admin_manager", "formateur", "pedagogique", "dg_rh"]
 
 
 def seed_default_tasks_if_empty(db: Session, current_user: User):
@@ -72,20 +73,14 @@ def get_tasks(
 ):
     seed_default_tasks_if_empty(db, current_user)
 
-    is_manager = current_user.role in STAFF_ROLES
+    is_manager = is_staff(current_user)
 
     if is_manager:
         tasks = db.query(Task).order_by(Task.created_at.desc()).all()
     else:
-        # Filter for learners based on target_role
-        tasks = (
-            db.query(Task)
-            .filter(
-                (Task.target_role == "all") | (Task.target_role == current_user.role)
-            )
-            .order_by(Task.created_at.desc())
-            .all()
-        )
+        # Filter for learners based on target_role with normalized role matching
+        all_tasks = db.query(Task).order_by(Task.created_at.desc()).all()
+        tasks = [t for t in all_tasks if matches_target_role(current_user.role, t.target_role)]
 
     # Attach submission if any
     task_responses = []
@@ -152,11 +147,10 @@ def create_task(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if current_user.role not in STAFF_ROLES:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Seuls les formateurs et administrateurs peuvent attribuer des devoirs.",
-        )
+    require_staff(
+        current_user,
+        "Seuls les formateurs et administrateurs peuvent attribuer des devoirs.",
+    )
 
     task = Task(
         title=task_in.title,
@@ -199,11 +193,7 @@ def get_task_submissions(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if current_user.role not in STAFF_ROLES:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Accès réservé au corps pédagogique.",
-        )
+    require_staff(current_user, "Accès réservé au corps pédagogique et à l'administration.")
 
     submissions = (
         db.query(TaskSubmission).filter(TaskSubmission.task_id == task_id).all()
@@ -336,11 +326,7 @@ def grade_submission(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if current_user.role not in STAFF_ROLES:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Accès réservé au corps pédagogique.",
-        )
+    require_staff(current_user, "Accès réservé au corps pédagogique et à l'administration.")
 
     sub_obj = (
         db.query(TaskSubmission).filter(TaskSubmission.id == submission_id).first()
@@ -376,11 +362,7 @@ def delete_task(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if current_user.role not in STAFF_ROLES:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Accès réservé au corps pédagogique.",
-        )
+    require_staff(current_user, "Accès réservé au corps pédagogique et à l'administration.")
 
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task:

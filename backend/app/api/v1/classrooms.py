@@ -6,6 +6,16 @@ from fastapi import APIRouter, HTTPException
 
 from app.api.deps import CurrentUser, SessionDep
 from app.core.rate_limiter import rate_limiter
+from app.core.roles import (
+    ADMIN_ROLES,
+    STAFF_ROLES,
+    is_admin,
+    is_learner,
+    is_staff,
+    matches_target_role,
+    require_admin,
+    require_staff,
+)
 from app.core.sanitizer import sanitize_attachment_url, sanitize_text
 from app.models.attendance import Attendance
 from app.models.classroom import Classroom
@@ -30,10 +40,6 @@ def generate_room_code() -> str:
     return f"{raw[:3]}-{raw[3:7]}-{raw[7:]}"
 
 
-ADMIN_ROLES = ["admin", "admin_manager"]
-STAFF_ROLES = ["admin", "admin_manager", "formateur", "pedagogique", "dg_rh"]
-
-
 @router.get("/", response_model=list[ClassroomResponse])
 def get_classrooms(
     session: SessionDep,
@@ -48,8 +54,7 @@ def get_classrooms(
     """
     query = session.query(Classroom).filter(Classroom.is_active == True)
 
-    user_role = (current_user.role or "").strip().lower()
-    if user_role not in STAFF_ROLES:
+    if not is_staff(current_user):
         # Collect user group IDs & name
         user_group_ids = []
         user_group_memberships = (
@@ -78,11 +83,9 @@ def get_classrooms(
                 continue
 
             # 3. Target roles match
-            if room.target_roles:
-                roles = [r.strip().lower() for r in room.target_roles.split(",") if r.strip()]
-                if user_role in roles:
-                    accessible.append(room)
-                    continue
+            if room.target_roles and matches_target_role(current_user.role, room.target_roles):
+                accessible.append(room)
+                continue
 
             # 4. Target groups match
             if room.target_groups:
@@ -123,11 +126,10 @@ def create_classroom(
     """
     Create a new virtual classroom. Restricted to formateurs, pedagogique, and admins.
     """
-    if current_user.role not in ["formateur", "pedagogique", "dg_rh"] + ADMIN_ROLES:
-        raise HTTPException(
-            status_code=403,
-            detail="Seuls les formateurs et administrateurs peuvent créer une salle vidéo conférence.",
-        )
+    require_staff(
+        current_user,
+        "Seuls les formateurs et administrateurs peuvent créer une salle vidéo conférence.",
+    )
 
     room_code = (
         classroom_in.room_id.strip().lower()
@@ -319,7 +321,7 @@ def join_classroom(
         raise HTTPException(status_code=404, detail="Salle vidéo conférence introuvable.")
 
     # We only track attendance for non-instructors
-    if current_user.id != classroom.instructor_id and current_user.role not in ["formateur", "pedagogique", "dg_rh"] + ADMIN_ROLES:
+    if current_user.id != classroom.instructor_id and not is_staff(current_user):
         # Find today's attendance record for this session
         att = session.query(Attendance).filter(
             Attendance.user_id == current_user.id,
@@ -353,15 +355,10 @@ def stop_classroom(
     Strictly forbidden for learners, interns, and employees (etudiant, stagiaire, employer).
     Only authorized for formateurs, pedagogique, and admins.
     """
-    user_role = (current_user.role or "").strip().lower()
-    LEARNER_ROLES = ["etudiant", "étudiant", "stagiaire", "employer"]
-    STAFF_ROLES = ["admin", "admin_manager", "formateur", "pedagogique", "dg_rh"]
-
-    if user_role in LEARNER_ROLES or user_role not in STAFF_ROLES:
-        raise HTTPException(
-            status_code=403,
-            detail="Accès interdit : les étudiants, stagiaires et employés ne sont pas autorisés à arrêter la salle vidéo conférence.",
-        )
+    require_staff(
+        current_user,
+        "Accès interdit : les étudiants, stagiaires et employés ne sont pas autorisés à arrêter la salle vidéo conférence.",
+    )
 
     cleaned_id = room_id.strip().lower()
     classroom = session.query(Classroom).filter(Classroom.room_id == cleaned_id).first()
@@ -392,15 +389,10 @@ def delete_classroom(
     Close or delete a virtual classroom. Restricted to staff (formateur, admin) only.
     Strictly forbidden for learners, interns, and employees.
     """
-    user_role = (current_user.role or "").strip().lower()
-    LEARNER_ROLES = ["etudiant", "étudiant", "stagiaire", "employer"]
-    STAFF_ROLES = ["admin", "admin_manager", "formateur", "pedagogique", "dg_rh"]
-
-    if user_role in LEARNER_ROLES or user_role not in STAFF_ROLES:
-        raise HTTPException(
-            status_code=403,
-            detail="Accès interdit : les étudiants, stagiaires et employés ne sont pas autorisés à supprimer la salle vidéo conférence.",
-        )
+    require_staff(
+        current_user,
+        "Accès interdit : les étudiants, stagiaires et employés ne sont pas autorisés à supprimer la salle vidéo conférence.",
+    )
 
     cleaned_id = room_id.strip().lower()
     classroom = session.query(Classroom).filter(Classroom.room_id == cleaned_id).first()
@@ -420,11 +412,10 @@ def purge_classroom_history(
     """
     Permanently delete all closed (inactive) virtual classrooms from history. Admin only.
     """
-    if current_user.role not in ADMIN_ROLES:
-        raise HTTPException(
-            status_code=403,
-            detail="Seul un administrateur peut supprimer l'historique.",
-        )
+    require_admin(
+        current_user,
+        "Seul un administrateur peut supprimer l'historique.",
+    )
 
     deleted_count = (
         session.query(Classroom).filter(Classroom.is_active == False).delete()
@@ -459,11 +450,10 @@ def create_or_update_subgroups(room_id: str, payload: dict, current_user: Curren
     """
     Create and launch breakout rooms. Strictly Formateurs and Admins.
     """
-    if current_user.role not in ["formateur", "pedagogique", "dg_rh"] + ADMIN_ROLES:
-        raise HTTPException(
-            status_code=403,
-            detail="Seuls les formateurs et administrateurs peuvent créer et lancer des sous-groupes.",
-        )
+    require_staff(
+        current_user,
+        "Seuls les formateurs et administrateurs peuvent créer et lancer des sous-groupes.",
+    )
 
     cleaned_id = room_id.strip().lower()
     ROOM_SUBGROUPS[cleaned_id] = {
@@ -480,11 +470,10 @@ def close_room_subgroups(room_id: str, current_user: CurrentUser):
     """
     Close all breakout rooms and recall all participants to main room. Strictly Formateurs and Admins.
     """
-    if current_user.role not in ["formateur", "pedagogique", "dg_rh"] + ADMIN_ROLES:
-        raise HTTPException(
-            status_code=403,
-            detail="Seuls les formateurs et administrateurs peuvent clôturer les sous-groupes.",
-        )
+    require_staff(
+        current_user,
+        "Seuls les formateurs et administrateurs peuvent clôturer les sous-groupes.",
+    )
 
     cleaned_id = room_id.strip().lower()
     ROOM_SUBGROUPS[cleaned_id] = {
@@ -515,7 +504,7 @@ def get_room_messages(room_id: str, current_user: CurrentUser):
             rec == "everyone"
             or rec == user_email
             or snd == user_email
-            or current_user.role in ADMIN_ROLES
+            or is_admin(current_user)
             or rec.startswith("subgroup:")
         ):
             visible.append(m)
@@ -588,7 +577,7 @@ def get_join_requests(room_id: str, session: SessionDep, current_user: CurrentUs
     classroom = session.query(Classroom).filter(Classroom.room_id == cleaned_id).first()
     if not classroom:
         raise HTTPException(status_code=404, detail="Salle vidéo conférence introuvable.")
-    if current_user.id != classroom.instructor_id and current_user.role not in ADMIN_ROLES + ["formateur", "pedagogique", "dg_rh", "dg/rh"]:
+    if current_user.id != classroom.instructor_id and not is_staff(current_user):
         raise HTTPException(status_code=403, detail="Seul le formateur peut consulter les demandes d'accès.")
     
     return ROOM_JOIN_REQUESTS.get(cleaned_id, [])
@@ -605,7 +594,7 @@ def submit_join_request(room_id: str, session: SessionDep, current_user: Current
         raise HTTPException(status_code=404, detail="Salle vidéo conférence introuvable.")
 
     # Instructor and admins are automatically approved
-    if current_user.id == classroom.instructor_id or current_user.role in ADMIN_ROLES + ["formateur", "pedagogique", "dg_rh"]:
+    if current_user.id == classroom.instructor_id or is_staff(current_user):
         return {"status": "approved", "message": "Accès formateur direct."}
 
     # Check if user is in allowed_users list
@@ -646,7 +635,7 @@ def approve_join_request(room_id: str, user_id: int, session: SessionDep, curren
     classroom = session.query(Classroom).filter(Classroom.room_id == cleaned_id).first()
     if not classroom:
         raise HTTPException(status_code=404, detail="Salle vidéo conférence introuvable.")
-    if current_user.id != classroom.instructor_id and current_user.role not in ADMIN_ROLES + ["formateur", "pedagogique", "dg_rh", "dg/rh"]:
+    if current_user.id != classroom.instructor_id and not is_staff(current_user):
         raise HTTPException(status_code=403, detail="Seul le formateur peut approuver les demandes.")
 
     reqs = ROOM_JOIN_REQUESTS.get(cleaned_id, [])
@@ -673,7 +662,7 @@ def approve_all_join_requests(room_id: str, session: SessionDep, current_user: C
     classroom = session.query(Classroom).filter(Classroom.room_id == cleaned_id).first()
     if not classroom:
         raise HTTPException(status_code=404, detail="Salle vidéo conférence introuvable.")
-    if current_user.id != classroom.instructor_id and current_user.role not in ADMIN_ROLES + ["formateur", "pedagogique", "dg_rh", "dg/rh"]:
+    if current_user.id != classroom.instructor_id and not is_staff(current_user):
         raise HTTPException(status_code=403, detail="Seul le formateur peut approuver les demandes.")
 
     reqs = ROOM_JOIN_REQUESTS.get(cleaned_id, [])
@@ -703,7 +692,7 @@ def reject_join_request(room_id: str, user_id: int, session: SessionDep, current
     classroom = session.query(Classroom).filter(Classroom.room_id == cleaned_id).first()
     if not classroom:
         raise HTTPException(status_code=404, detail="Salle vidéo conférence introuvable.")
-    if current_user.id != classroom.instructor_id and current_user.role not in ADMIN_ROLES + ["formateur", "pedagogique", "dg_rh", "dg/rh"]:
+    if current_user.id != classroom.instructor_id and not is_staff(current_user):
         raise HTTPException(status_code=403, detail="Seul le formateur peut rejeter les demandes.")
 
     reqs = ROOM_JOIN_REQUESTS.get(cleaned_id, [])
@@ -724,7 +713,7 @@ def get_join_status(room_id: str, session: SessionDep, current_user: CurrentUser
     if not classroom:
         raise HTTPException(status_code=404, detail="Salle vidéo conférence introuvable.")
 
-    if current_user.id == classroom.instructor_id or current_user.role in ADMIN_ROLES + ["formateur", "pedagogique", "dg_rh"]:
+    if current_user.id == classroom.instructor_id or is_staff(current_user):
         return {"status": "approved"}
 
     allowed_list = [u.strip().lower() for u in (classroom.allowed_users or "").split(",") if u.strip()]
@@ -750,7 +739,7 @@ def update_room_settings(room_id: str, payload: dict, session: SessionDep, curre
     classroom = session.query(Classroom).filter(Classroom.room_id == cleaned_id).first()
     if not classroom:
         raise HTTPException(status_code=404, detail="Salle vidéo conférence introuvable.")
-    if current_user.id != classroom.instructor_id and current_user.role not in ADMIN_ROLES:
+    if current_user.id != classroom.instructor_id and not is_admin(current_user):
         raise HTTPException(status_code=403, detail="Non autorisé à modifier les paramètres.")
 
     if "allow_screen_sharing" in payload:
@@ -792,12 +781,10 @@ def invite_users_to_classroom(
     """
     Send invitations to users or groups for a virtual classroom. Restricted to Formateurs & Admins.
     """
-    user_role = (current_user.role or "").strip().lower()
-    if user_role not in STAFF_ROLES:
-        raise HTTPException(
-            status_code=403,
-            detail="Seuls les formateurs et administrateurs peuvent envoyer des invitations.",
-        )
+    require_staff(
+        current_user,
+        "Seuls les formateurs et administrateurs peuvent envoyer des invitations.",
+    )
 
     cleaned_id = room_id.strip().lower()
     classroom = session.query(Classroom).filter(Classroom.room_id == cleaned_id).first()

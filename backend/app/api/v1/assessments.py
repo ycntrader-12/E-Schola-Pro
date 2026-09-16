@@ -8,6 +8,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from app.api.deps import CurrentUser, SessionDep
+from app.core.roles import STAFF_ROLES, is_staff, require_staff
 from app.models.assessment import (
     Assessment,
     AssessmentAssignment,
@@ -27,8 +28,10 @@ from app.schemas.assessment import (
     AssessmentUpdate,
     AssignedGroupOut,
     AttemptReviewOut,
+    ChoiceIn,
     ChoiceOut,
     ChoiceReviewOut,
+    QuestionIn,
     QuestionOut,
     QuestionReviewOut,
     StartAttemptResponse,
@@ -39,12 +42,11 @@ from app.services.certificate_service import generate_certificate_document
 
 router = APIRouter()
 
-CREATOR_ROLES = ["admin", "admin_manager", "formateur", "pedagogique", "dg_rh"]
+CREATOR_ROLES = STAFF_ROLES
 
 
 def is_creator(user: Any) -> bool:
-    role = (user.role or "").strip().lower()
-    return role in CREATOR_ROLES
+    return is_staff(user)
 
 
 def check_user_access_to_assessment(user: Any, assessment: Assessment, db: Session) -> bool:

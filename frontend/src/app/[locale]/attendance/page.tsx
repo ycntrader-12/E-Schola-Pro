@@ -26,6 +26,7 @@ import {
 import { Link } from '@/i18n/routing';
 import { useTranslations, useLocale } from 'next-intl';
 import { apiClient } from '@/lib/api';
+import { isStaff } from '@/lib/roles';
 import { useConfirm } from '@/context/ConfirmModalContext';
 
 interface Learner {
@@ -135,7 +136,7 @@ export default function AttendancePage() {
   const [newGroup, setNewGroup] = useState('');
   const [isAddingLearner, setIsAddingLearner] = useState(false);
 
-  const isManager = ['formateur', 'admin', 'admin_manager'].includes(currentUser?.role || '');
+  const isManager = isStaff(currentUser?.role);
 
   // 1. Fetch current user, learners, groups & history
   const fetchData = async () => {

@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useRouter } from '@/i18n/routing';
-import { Upload, Loader2, ArrowLeft } from 'lucide-react';
+import { Upload, Loader2, ArrowLeft, ShieldAlert } from 'lucide-react';
+import { isLearner } from '@/lib/roles';
 
 export default function CreateCoursePage() {
   const router = useRouter();
@@ -12,6 +13,24 @@ export default function CreateCoursePage() {
   const [documentFile, setDocumentFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Guard: Strictly redirect learners away from course creation
+  useEffect(() => {
+    const storedRole = localStorage.getItem('user_role');
+    if (storedRole && isLearner(storedRole)) {
+      router.replace('/courses');
+      return;
+    }
+    const rawUser = localStorage.getItem('user');
+    if (rawUser) {
+      try {
+        const u = JSON.parse(rawUser);
+        if (isLearner(u.role)) {
+          router.replace('/courses');
+        }
+      } catch {}
+    }
+  }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

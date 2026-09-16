@@ -132,15 +132,15 @@ def get_my_dashboard_performance(session: SessionDep, current_user: CurrentUser)
     )
 
 
-ADMIN_ROLES = ["admin", "admin_manager"]
-STAFF_ROLES = ["admin", "admin_manager", "formateur", "pedagogique", "dg_rh"]
+from app.core.roles import ADMIN_ROLES, STAFF_ROLES, is_staff, require_staff
 
 
 @router.get("/user-stats/{user_id}", response_model=DashboardPerformanceOut)
 def get_user_dashboard_performance(user_id: int, session: SessionDep, current_user: CurrentUser):
-    if current_user.role not in STAFF_ROLES:
+    if current_user.id != user_id and not is_staff(current_user):
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé."
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Accès refusé : Vous ne pouvez consulter que vos propres statistiques de présence.",
         )
 
     target_user = session.query(User).filter(User.id == user_id).first()
@@ -205,10 +205,7 @@ def get_my_attendance_records(
 # --------------------------------------------------------------------------
 @router.get("/groups", response_model=list[str])
 def get_attendance_groups(session: SessionDep, current_user: CurrentUser):
-    if current_user.role not in STAFF_ROLES:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé."
-        )
+    require_staff(current_user, "Accès réservé aux formateurs et administrateurs.")
 
     results = (
         session.query(User.group_name)
@@ -226,11 +223,7 @@ def get_attendance_groups(session: SessionDep, current_user: CurrentUser):
 def get_learners_for_attendance(
     session: SessionDep, current_user: CurrentUser, group_name: str | None = Query(None)
 ):
-    if current_user.role not in STAFF_ROLES:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Seuls les formateurs et administrateurs peuvent accéder à la liste des apprenants.",
-        )
+    require_staff(current_user, "Seuls les formateurs et administrateurs peuvent accéder à la liste des apprenants.")
 
     query = session.query(User).filter(
         User.role.in_(["étudiant", "stagiaire", "employer"])
@@ -244,10 +237,7 @@ def get_learners_for_attendance(
 
 @router.post("/learners", response_model=UserSimpleOut)
 def add_learner_to_group(payload: dict, session: SessionDep, current_user: CurrentUser):
-    if current_user.role not in STAFF_ROLES:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé."
-        )
+    require_staff(current_user, "Accès réservé aux formateurs et administrateurs.")
 
     email = payload.get("email", "").strip().lower()
     role = payload.get("role", "étudiant")
@@ -295,11 +285,10 @@ def get_attendance_records(
     user_id: int | None = Query(None),
     status_filter: str | None = Query(None),
 ):
-    if current_user.role not in STAFF_ROLES:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Accès interdit : seuls les formateurs et administrateurs peuvent consulter la feuille d'émargement globale.",
-        )
+    require_staff(
+        current_user,
+        "Accès interdit : seuls les formateurs et administrateurs peuvent consulter la feuille d'émargement globale.",
+    )
 
     query = session.query(Attendance)
     if target_date:
@@ -320,11 +309,10 @@ def get_attendance_records(
 def batch_record_attendance(
     payload: AttendanceBatchCreate, session: SessionDep, current_user: CurrentUser
 ):
-    if current_user.role not in STAFF_ROLES:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Accès refusé : Seuls les formateurs et administrateurs peuvent pointer les présences.",
-        )
+    require_staff(
+        current_user,
+        "Accès refusé : Seuls les formateurs et administrateurs peuvent pointer les présences.",
+    )
 
     saved_records = []
     for item in payload.records:
@@ -371,10 +359,7 @@ def batch_record_attendance(
 def record_single_attendance(
     payload: AttendanceCreate, session: SessionDep, current_user: CurrentUser
 ):
-    if current_user.role not in STAFF_ROLES:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé."
-        )
+    require_staff(current_user, "Accès réservé aux formateurs et administrateurs.")
 
     new_record = Attendance(
         user_id=payload.user_id,
@@ -398,10 +383,7 @@ def record_single_attendance(
 def delete_attendance(
     attendance_id: int, session: SessionDep, current_user: CurrentUser
 ):
-    if current_user.role not in STAFF_ROLES:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé."
-        )
+    require_staff(current_user, "Accès réservé aux formateurs et administrateurs.")
 
     record = session.query(Attendance).filter(Attendance.id == attendance_id).first()
     if not record:
@@ -417,10 +399,7 @@ def delete_attendance(
 # --------------------------------------------------------------------------
 @router.get("/overview", response_model=GlobalAttendanceOverview)
 def get_attendance_global_overview(session: SessionDep, current_user: CurrentUser):
-    if current_user.role not in STAFF_ROLES:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé."
-        )
+    require_staff(current_user, "Accès réservé aux formateurs et administrateurs.")
 
     today = date.today()
     total_records = session.query(Attendance).count()

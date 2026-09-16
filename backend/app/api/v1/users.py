@@ -23,15 +23,23 @@ from app.schemas.user import (
     UserUpdate,
     UserUpdatePassword,
 )
+from app.core.roles import (
+    ADMIN_ROLES,
+    SUPER_ADMIN_ROLES,
+    is_admin,
+    is_super_admin,
+    is_staff,
+    is_learner,
+    normalize_role,
+    require_admin,
+    require_super_admin,
+)
 from app.services.audit_service import extract_client_ip
 from app.services.email_service import send_role_change_email
 from app.services.welcome import send_welcome_message
 
 router = APIRouter()
 
-
-ADMIN_ROLES = ["admin", "admin_manager"]
-SUPER_ADMIN_ROLES = ["admin"]
 PROTECTED_ROOT_USERNAMES = ["admin_first"]
 PROTECTED_ROOT_EMAILS = ["admin_first@eschola.pro"]
 
@@ -213,10 +221,8 @@ def create_user(
             status_code=403,
             detail="Les inscriptions publiques sont actuellement suspendues par l'administration de l'établissement.",
         )
-    requested_role = user_in.role.lower().strip()
-    if requested_role in ["dg/rh", "dgrh", "dg-rh"]:
-        requested_role = "dg_rh"
-    if requested_role in ADMIN_ROLES or requested_role in ["formateur", "pedagogique", "dg_rh"]:
+    requested_role = normalize_role(user_in.role)
+    if is_staff(requested_role):
         raise HTTPException(
             status_code=403,
             detail="Le rôle de formateur, DG/RH ou d'administrateur ne peut pas être choisi publiquement. Il doit être attribué par un administrateur.",
@@ -540,10 +546,7 @@ def read_users(
     """
     Retrieve all users. (Admin and Admin Managers)
     """
-    if current_user.role.lower() not in ADMIN_ROLES:
-        raise HTTPException(
-            status_code=403, detail="Not enough permissions. Admin only."
-        )
+    require_admin(current_user)
     users = session.query(User).offset(skip).limit(limit).all()
     return users
 
@@ -562,16 +565,9 @@ def update_user_role(
     """
     Update user role. (Admin and Admin Manager with strict restrictions)
     """
-    if current_user.role.lower() not in ADMIN_ROLES:
-        raise HTTPException(
-            status_code=403, detail="Not enough permissions. Admin only."
-        )
+    require_admin(current_user)
 
-    raw_role = role_in.role.strip().lower()
-    if raw_role in ["dg/rh", "dgrh", "dg-rh"]:
-        new_role = "dg_rh"
-    else:
-        new_role = raw_role
+    new_role = normalize_role(role_in.role)
 
     if new_role not in [r.lower() for r in VALID_ROLES]:
         raise HTTPException(
@@ -592,13 +588,13 @@ def update_user_role(
     # Restrictions for ADMIN_MANAGER
     if current_user.role.lower() == "admin_manager":
         # Cannot assign ADMIN or ADMIN_MANAGER
-        if new_role in ADMIN_ROLES:
+        if is_admin(new_role):
             raise HTTPException(
                 status_code=403,
                 detail="Un ADMIN_MANAGER ne peut pas donner ou attribuer de rôles administratifs (ADMIN, ADMIN_MANAGER).",
             )
         # Cannot modify a user that is already an ADMIN or ADMIN_MANAGER
-        if user.role.lower() in ADMIN_ROLES:
+        if is_admin(user):
             raise HTTPException(
                 status_code=403,
                 detail="Un ADMIN_MANAGER ne peut pas modifier les permissions ou le rôle d'un compte administrateur.",
@@ -649,11 +645,10 @@ def bulk_update_users_status(
     Règles de sécurité strictes :
     - Les comptes 'admin', 'admin_manager' et le compte racine 'admin_first' sont STRICTEMENT EXCLUS et restent protégés.
     """
-    if current_user.role.lower() not in ADMIN_ROLES:
-        raise HTTPException(
-            status_code=403,
-            detail="Droits insuffisants. Seuls les administrateurs et directeurs peuvent modifier le statut en masse.",
-        )
+    require_admin(
+        current_user,
+        "Droits insuffisants. Seuls les administrateurs et directeurs peuvent modifier le statut en masse.",
+    )
 
     query = session.query(User).filter(
         ~func.lower(User.role).in_(ADMIN_ROLES),
@@ -700,11 +695,10 @@ def update_user_status(
     - Un utilisateur ne peut pas désactiver son propre compte connecté.
     - Un admin_manager ne peut pas désactiver un admin ou un admin_manager.
     """
-    if current_user.role.lower() not in ADMIN_ROLES:
-        raise HTTPException(
-            status_code=403,
-            detail="Droits insuffisants. Seuls les administrateurs et directeurs peuvent modifier le statut d'un compte.",
-        )
+    require_admin(
+        current_user,
+        "Droits insuffisants. Seuls les administrateurs et directeurs peuvent modifier le statut d'un compte.",
+    )
 
     user = session.query(User).filter(User.id == user_id).first()
     if not user:
@@ -725,7 +719,7 @@ def update_user_status(
         )
 
     # Restrictions pour admin_manager
-    if current_user.role.lower() == "admin_manager" and user.role.lower() in ADMIN_ROLES:
+    if current_user.role.lower() == "admin_manager" and is_admin(user):
         raise HTTPException(
             status_code=403,
             detail="Un ADMIN_MANAGER ne peut pas modifier le statut d'activation d'un compte administrateur.",
@@ -754,10 +748,7 @@ def delete_user(
     """
     Delete a user. (Admin and Admin Manager with restrictions)
     """
-    if current_user.role.lower() not in ADMIN_ROLES:
-        raise HTTPException(
-            status_code=403, detail="Not enough permissions. Admin only."
-        )
+    require_admin(current_user)
 
     if user_id == current_user.id:
         raise HTTPException(
@@ -775,7 +766,7 @@ def delete_user(
             detail="Le compte administrateur racine 'admin_first' est intouchable et ne peut en aucun cas être supprimé.",
         )
 
-    if current_user.role.lower() == "admin_manager" and user.role.lower() in ADMIN_ROLES:
+    if current_user.role.lower() == "admin_manager" and is_admin(user):
         raise HTTPException(
             status_code=403,
             detail="Un ADMIN_MANAGER ne peut pas supprimer un compte administrateur.",
@@ -857,14 +848,13 @@ def admin_create_user(
     """
     Create a new user directly from Admin Panel (Admin and Admin Manager with restrictions).
     """
-    if current_user.role.lower() not in ADMIN_ROLES:
-        raise HTTPException(
-            status_code=403,
-            detail="Seul un administrateur peut créer des comptes depuis ce panneau.",
-        )
+    require_admin(
+        current_user,
+        "Seul un administrateur peut créer des comptes depuis ce panneau.",
+    )
 
-    target_role = user_in.role.lower()
-    if current_user.role.lower() == "admin_manager" and target_role in ADMIN_ROLES:
+    target_role = normalize_role(user_in.role)
+    if current_user.role.lower() == "admin_manager" and is_admin(target_role):
         raise HTTPException(
             status_code=403,
             detail="Un ADMIN_MANAGER ne peut pas créer de compte avec un rôle administrateur (ADMIN ou ADMIN_MANAGER).",
@@ -908,7 +898,7 @@ def admin_create_user(
         )
 
     # 2. Check if admin exemption applies
-    is_admin_role = target_role in ADMIN_ROLES
+    is_admin_role = is_admin(target_role)
     if is_admin_role:
         # Lightweight admin profile
         user = User(
@@ -1010,8 +1000,7 @@ def admin_reset_password(
     """
     Reset password for a user. (Admin only, or Admin Manager for non-superadmin users)
     """
-    if current_user.role.lower() not in ADMIN_ROLES:
-        raise HTTPException(status_code=403, detail="Admin only.")
+    require_admin(current_user)
     user = session.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Utilisateur introuvable.")
@@ -1023,7 +1012,7 @@ def admin_reset_password(
             detail="Le mot de passe du compte administrateur racine 'admin_first' est intouchable. Seul 'admin_first' peut modifier son mot de passe.",
         )
 
-    if current_user.role.lower() == "admin_manager" and user.role.lower() in SUPER_ADMIN_ROLES and current_user.id != user.id:
+    if current_user.role.lower() == "admin_manager" and is_super_admin(user) and current_user.id != user.id:
         raise HTTPException(
             status_code=403,
             detail="Un ADMIN_MANAGER ne peut pas réinitialiser le mot de passe d'un administrateur principal.",
@@ -1162,11 +1151,7 @@ def admin_update_user(
     """
     Update any user's profile details and role (Admin and Admin Manager with restrictions).
     """
-    current_role = (current_user.role or "").strip().lower()
-    if current_role not in ADMIN_ROLES:
-        raise HTTPException(
-            status_code=403, detail="Seul un administrateur peut modifier des comptes d'utilisateurs."
-        )
+    require_admin(current_user, "Seul un administrateur peut modifier des comptes d'utilisateurs.")
 
     user = session.query(User).filter(User.id == user_id).first()
     if not user:
@@ -1179,8 +1164,7 @@ def admin_update_user(
             detail="Le compte administrateur racine 'admin_first' est intouchable et ne peut pas être modifié par un autre gestionnaire ou administrateur.",
         )
 
-    target_user_role = (user.role or "").strip().lower()
-    if current_role == "admin_manager" and target_user_role in ADMIN_ROLES and current_user.id != user.id:
+    if current_user.role.lower() == "admin_manager" and is_admin(user) and current_user.id != user.id:
         raise HTTPException(
             status_code=403,
             detail="Un ADMIN_MANAGER ne peut pas modifier un compte administrateur.",
@@ -1222,26 +1206,8 @@ def admin_update_user(
     role_changed = False
     old_role = user.role or "étudiant"
     if user_in.role is not None:
-        raw_role = user_in.role.strip().lower()
-        role_map = {
-            "etudiant": "étudiant",
-            "étudiant": "étudiant",
-            "formateur": "formateur",
-            "stagiaire": "stagiaire",
-            "employer": "employer",
-            "employe": "employer",
-            "employé": "employer",
-            "pedagogique": "pedagogique",
-            "admin": "admin",
-            "admin_manager": "admin_manager",
-            "admin_limited": "admin_manager",  # admin_limited is deactivated, mapped to admin_manager
-            "dg_rh": "dg_rh",
-            "dg/rh": "dg_rh",
-            "dgrh": "dg_rh",
-            "dg-rh": "dg_rh",
-        }
-        normalized_role = role_map.get(raw_role, raw_role)
-        if current_role == "admin_manager" and normalized_role in ADMIN_ROLES:
+        normalized_role = normalize_role(user_in.role)
+        if current_user.role.lower() == "admin_manager" and is_admin(normalized_role):
             raise HTTPException(status_code=403, detail="Un ADMIN_MANAGER ne peut pas accorder de rôle administrateur.")
         if normalized_role != old_role:
             role_changed = True
@@ -1278,7 +1244,7 @@ def admin_update_user(
                 status_code=400,
                 detail="Vous ne pouvez pas désactiver votre propre compte.",
             )
-        if current_role == "admin_manager" and target_user_role in ADMIN_ROLES:
+        if current_user.role.lower() == "admin_manager" and is_admin(user):
             raise HTTPException(
                 status_code=403,
                 detail="Un ADMIN_MANAGER ne peut pas désactiver un compte administrateur.",

@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { useConfirm } from '@/context/ConfirmModalContext';
+import { isStaff } from '@/lib/roles';
 
 // ============================================================================
 // TYPES & INTERFACES
@@ -214,9 +215,7 @@ export default function QuizzesPage() {
   const [isCreatingAssessment, setIsCreatingAssessment] = useState(false);
 
   // RBAC Permission Check
-  const canManage = ['formateur', 'pedagogique', 'dg_rh', 'dg/rh', 'admin', 'admin_manager'].includes(
-    currentUser?.role?.toLowerCase() || ''
-  );
+  const canManage = isStaff(currentUser?.role);
 
   // 1. Initial Data Fetching
   const fetchData = async () => {
