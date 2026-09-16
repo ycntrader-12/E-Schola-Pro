@@ -143,6 +143,21 @@ interface QuizAttemptItem {
   completed_at: string;
 }
 
+interface RoleFolder {
+  id: string;
+  name: string;
+  fullName: string;
+  shortName: string;
+  ouPath: string;
+  subtitle: string;
+  description: string;
+  roles: readonly string[];
+  defaultRole: string;
+  count: number;
+  icon: any;
+  activeIcon: any;
+}
+
 const ALL_ROLES = [
   'étudiant',
   'formateur',
@@ -317,7 +332,7 @@ export default function ProfilePage() {
     return Array.from(setG).sort();
   }, [systemGroups, allUsers]);
 
-  const ROLE_FOLDERS = useMemo(() => [
+  const ROLE_FOLDERS: RoleFolder[] = useMemo(() => [
     {
       id: 'all',
       name: 'Tous les comptes',
@@ -429,10 +444,11 @@ export default function ProfilePage() {
     setIsCreateUserModalOpen(true);
   };
 
-  const filterUsersForFolder = (folderRoles: string[]) => {
+  const filterUsersForFolder = (folderRoles: readonly string[]) => {
     return allUsers.filter(u => {
       // 1. Filtrage par rôle de dossier
-      if (!folderRoles.includes(u.role)) return false;
+      const normRole = normalizeRole(u.role);
+      if (!folderRoles.some(r => normalizeRole(r) === normRole)) return false;
 
       // 2. Filtrage par Statut Compte AD (UAC)
       if (directoryStatusFilter === 'active' && u.is_active === false) return false;
@@ -2563,7 +2579,7 @@ export default function ProfilePage() {
                         Rôle assigné au compte *
                       </label>
                       <span className="text-[11px] font-bold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-lg border border-blue-200">
-                        📁 {ROLE_FOLDERS.find(f => f.roles.includes(newAccountRole))?.name || 'Dossier Général'}
+                        📁 {ROLE_FOLDERS.find(f => f.roles.some(r => normalizeRole(r) === normalizeRole(newAccountRole)))?.name || 'Dossier Général'}
                       </span>
                     </div>
                     <select

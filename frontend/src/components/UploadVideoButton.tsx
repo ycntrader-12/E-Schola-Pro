@@ -24,32 +24,26 @@ interface UploadVideoButtonProps {
 
 export default function UploadVideoButton({ courses }: UploadVideoButtonProps) {
   const router = useRouter();
-  const [isOpen, setIsOpen] = useState(false);
-  const [canUpload, setCanUpload] = useState(false);
   const [currentUser, setCurrentUser] = useState<UserMe | null>(null);
+  const [canUpload, setCanUpload] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Form states
   const [selectedCourseId, setSelectedCourseId] = useState<string>('');
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [orderIndex, setOrderIndex] = useState(1);
+  const [videoTitle, setVideoTitle] = useState('');
+  const [videoDescription, setVideoDescription] = useState('');
   const [videoFile, setVideoFile] = useState<File | null>(null);
 
   // Status states
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
 
   const resetForm = () => {
     setSelectedCourseId('');
-    setTitle('');
-    setDescription('');
-    setOrderIndex(1);
+    setVideoTitle('');
+    setVideoDescription('');
     setVideoFile(null);
     setError('');
-    setSuccess(false);
-    setUploadProgress(0);
   };
 
   const [isDragging, setIsDragging] = useState(false);
@@ -70,8 +64,8 @@ export default function UploadVideoButton({ courses }: UploadVideoButtonProps) {
     if (file && file.type.startsWith('video/')) {
       setVideoFile(file);
       setError('');
-      if (!title) {
-        setTitle(file.name.substring(0, file.name.lastIndexOf('.')) || file.name);
+      if (!videoTitle) {
+        setVideoTitle(file.name.substring(0, file.name.lastIndexOf('.')) || file.name);
       }
     } else {
       setError("Le fichier déposé n'est pas une vidéo valide.");

@@ -77,15 +77,25 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
           try {
             const userRes = await apiClient.get('/users/me');
             if (userRes.data?.role) {
-        const res = await apiClient.get('/messages/unread-count');
-        setUnreadCount(res.data.count || 0);
+              const r = normalizeRole(userRes.data.role);
+              setUserRole(r);
+              localStorage.setItem('user_role', r);
+            }
+          } catch {}
+
+          const res = await apiClient.get('/messages/unread-count').catch(() => ({ data: { unread_count: 0 } }));
+          setUnreadCount(res.data?.unread_count || 0);
+        } else {
+          setUserRole(null);
+          localStorage.removeItem('user_role');
+        }
       } catch {
         // Silently fail if not logged in
       }
     };
-    fetchUnread();
+    fetchUserData();
 
-    const interval = setInterval(fetchUnread, 30000); // 30s polling
+    const interval = setInterval(fetchUserData, 30000); // 30s polling
     return () => clearInterval(interval);
   }, []);
 
