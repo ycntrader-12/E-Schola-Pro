@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { Link, useRouter } from '@/i18n/routing';
 import { apiClient } from '@/lib/api';
-import { Cpu, Eye, EyeOff, Mail, ShieldAlert, AlertCircle } from 'lucide-react';
+import { Cpu, Eye, EyeOff, Mail, ShieldAlert, AlertCircle, Zap } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import BackButton from '@/components/BackButton';
 
@@ -194,6 +194,18 @@ export default function LoginPage() {
           {t('no_account')}{' '}
           <Link href="/register" className="text-[#1877f2] font-bold hover:underline">
             {t('sign_up_link')}
+          </Link>
+        </div>
+
+        {/* Quick Demo & Test Bench Access */}
+        <div className="pt-2">
+          <Link
+            href="/demo"
+            className="w-full py-2.5 px-3 rounded-2xl bg-amber-50/80 hover:bg-amber-100/90 border border-amber-200/80 text-amber-900 text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-xs group cursor-pointer"
+            title="Accéder au Portail Démo & Banc d'Essai"
+          >
+            <Zap size={14} className="text-amber-600 group-hover:scale-110 transition-transform" />
+            <span>Portail Démo &amp; Banc d'Essai (1-Clic)</span>
           </Link>
         </div>
 

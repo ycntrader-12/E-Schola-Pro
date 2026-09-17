@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Banc d'Essai &amp; Portail Démo — E-Schola Pro</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #1877f2;
+      --primary-dark: #0052cc;
+      --primary-light: #e7f0fe;
+      --bg: #0b1120;
+      --card-bg: rgba(17, 24, 39, 0.85);
+      --card-border: rgba(255, 255, 255, 0.1);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --emerald: #10b981;
+      --amber: #f59e0b;
+      --purple: #8b5cf6;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: radial-gradient(circle at 50% 0%, #172554 0%, #0b1120 75%);
+      color: var(--text-main);
+      min-height: 100vh;
+      padding: 40px 20px;
+      line-height: 1.5;
+    }
+
+    .container {
+      max-width: 1300px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+    }
+
+    /* Top Bar / Header */
+    .header {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 28px;
+      padding: 32px;
+      backdrop-filter: blur(16px);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
+    }
+
+    .header-info h1 {
+      font-size: 28px;
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .header-info h1 span.brand {
+      background: linear-gradient(135deg, #60a5fa, #1877f2, #38bdf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .badge-tag {
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(24, 119, 242, 0.2);
+      border: 1px solid rgba(24, 119, 242, 0.4);
+      color: #93c5fd;
+    }
+
+    .header-info p {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 6px;
+      max-width: 700px;
+    }
+
+    /* Status Badges */
+    .status-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .status-pill {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 8px 14px;
+      border-radius: 14px;
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .dot-green { background: #10b981; box-shadow: 0 0 10px #10b981; }
+    .dot-blue { background: #38bdf8; box-shadow: 0 0 10px #38bdf8; }
+
+    /* Feature Banner */
+    .banner-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+      gap: 20px;
+    }
+
+    .banner-card {
+      background: linear-gradient(135deg, rgba(30, 58, 138, 0.3) 0%, rgba(17, 24, 39, 0.9) 100%);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      border-radius: 24px;
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 20px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 15px 30px -10px rgba(0, 0, 0, 0.4);
+    }
+
+    .banner-card.emerald {
+      background: linear-gradient(135deg, rgba(6, 78, 59, 0.3) 0%, rgba(17, 24, 39, 0.9) 100%);
+      border-color: rgba(16, 185, 129, 0.3);
+    }
+
+    .banner-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      width: fit-content;
+    }
+
+    .banner-badge.blue {
+      background: rgba(59, 130, 246, 0.2);
+      color: #93c5fd;
+      border: 1px solid rgba(59, 130, 246, 0.4);
+    }
+
+    .banner-badge.emerald {
+      background: rgba(16, 185, 129, 0.2);
+      color: #6ee7b7;
+      border: 1px solid rgba(16, 185, 129, 0.4);
+    }
+
+    .banner-card h3 {
+      font-size: 19px;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .banner-card p {
+      font-size: 13px;
+      color: #cbd5e1;
+      line-height: 1.6;
+    }
+
+    .btn-action {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 20px;
+      border-radius: 14px;
+      font-size: 13px;
+      font-weight: 700;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+
+    .btn-blue {
+      background: #1877f2;
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(24, 119, 242, 0.4);
+    }
+
+    .btn-blue:hover {
+      background: #166fe5;
+      transform: translateY(-2px);
+    }
+
+    .btn-emerald {
+      background: #10b981;
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
+    }
+
+    .btn-emerald:hover {
+      background: #059669;
+      transform: translateY(-2px);
+    }
+
+    /* Section Titles */
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* Accounts Grid */
+    .accounts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 18px;
+    }
+
+    .account-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 22px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 16px;
+      backdrop-filter: blur(12px);
+      transition: border-color 0.2s ease;
+    }
+
+    .account-card:hover {
+      border-color: rgba(59, 130, 246, 0.5);
+    }
+
+    .account-role {
+      font-size: 14px;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .account-tag {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      color: #cbd5e1;
+    }
+
+    .cred-box {
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .cred-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .cred-val {
+      color: #93c5fd;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .cred-val:hover {
+      text-decoration: underline;
+    }
+
+    /* Modules Grid */
+    .modules-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .module-item {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 18px;
+      padding: 20px;
+      text-decoration: none;
+      color: inherit;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 12px;
+      transition: all 0.2s ease;
+    }
+
+    .module-item:hover {
+      transform: translateY(-3px);
+      border-color: rgba(59, 130, 246, 0.6);
+      box-shadow: 0 10px 25px -5px rgba(24, 119, 242, 0.2);
+    }
+
+    .module-title {
+      font-size: 14px;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .module-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .module-route {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: #60a5fa;
+    }
+
+    /* System Footer */
+    .footer-bar {
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 20px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .links-group {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .links-group a {
+      color: #93c5fd;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .links-group a:hover {
+      text-decoration: underline;
+    }
+
+    /* Notification Toast */
+    #copyToast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #10b981;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 700;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+      display: none;
+      z-index: 1000;
+      animation: fadeIn 0.2s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+
+    <!-- 1. EN-TÊTE PRINCIPALE -->
+    <header class="header">
+      <div class="header-info">
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+          <span class="badge-tag">Banc d'Essai Officiel</span>
+          <span class="badge-tag" style="background: rgba(16, 185, 129, 0.2); border-color: rgba(16, 185, 129, 0.4); color: #6ee7b7;">Version Prête au Test</span>
+        </div>
+        <h1>Portail Démo &amp; Tests • <span class="brand">E-Schola Pro</span></h1>
+        <p>
+          Page autonome de test pour explorer tous les modules de la plateforme en conditions réelles, tester le Mode Panoramique Widescreen, la Recherche Google Web Intégrée et basculer entre les différents rôles.
+        </p>
+      </div>
+
+      <div class="status-group">
+        <div class="status-pill">
+          <span class="dot dot-green"></span>
+          <span>Frontend : <strong style="color: #fff;">http://localhost:3000</strong></span>
+        </div>
+        <div class="status-pill">
+          <span class="dot dot-blue"></span>
+          <span>Backend : <strong style="color: #fff;">http://127.0.0.1:8000</strong></span>
+        </div>
+      </div>
+    </header>
+
+    <!-- 2. CARTES VEDETTES : MODE PANORAMIQUE & GOOGLE INTÉGRÉ -->
+    <section class="banner-grid">
+      <!-- Panoramique -->
+      <div class="banner-card">
+        <div>
+          <div class="banner-badge blue">🖥️ Format Large • Widescreen 100%</div>
+          <h3 style="margin-top: 12px;">Explorateur de Cours Panoramique</h3>
+          <p style="margin-top: 8px;">
+            Affichage étendu jusqu’à 1850px avec disposition en 5 colonnes pour grands écrans et lecteur vidéo cinéma grand angle 16:9 sans bandes noires.
+          </p>
+        </div>
+        <div>
+          <a href="http://localhost:3000/fr/courses" target="_blank" class="btn-action btn-blue">
+            <span>Tester le Mode Panoramique</span>
+            <span>→</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Google Web Intégré -->
+      <div class="banner-card emerald">
+        <div>
+          <div class="banner-badge emerald">🌐 Zéro Redirection Externe</div>
+          <h3 style="margin-top: 12px;">Recherche Google Web 100% Intégrée</h3>
+          <p style="margin-top: 8px;">
+            Les recherches web s'affichent directement dans l'application via un cadre de navigation panoramique sécurisé, sans ouvrir d'onglets externes Google.
+          </p>
+        </div>
+        <div>
+          <a href="http://localhost:3000/fr/courses?engine=google&q=next.js+react" target="_blank" class="btn-action btn-emerald">
+            <span>Tester Google Intégré</span>
+            <span>→</span>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. COMPTES DE TEST PAR RÔLE -->
+    <section>
+      <div class="section-header">
+        <h2 class="section-title">🛡️ Identifiants des Comptes de Test (RBAC)</h2>
+        <span style="font-size: 12px; color: var(--text-muted);">Cliquez sur un identifiant pour le copier</span>
+      </div>
+
+      <div class="accounts-grid" style="margin-top: 14px;">
+        <!-- Super Admin -->
+        <div class="account-card">
+          <div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <span class="account-role">Super-Administrateur</span>
+              <span class="account-tag" style="color: #60a5fa; border: 1px solid rgba(96, 165, 250, 0.3);">👑 Racine</span>
+            </div>
+            <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">
+              Accès total : console Active Directory, gestion BDD SQLAdmin, rôles.
+            </p>
+            <div class="cred-box">
+              <div class="cred-row">
+                <span style="color: #94a3b8;">Email :</span>
+                <span class="cred-val" onclick="copyText('admin_first@eschola.pro')">admin_first@eschola.pro</span>
+              </div>
+              <div class="cred-row">
+                <span style="color: #94a3b8;">Pass :</span>
+                <span class="cred-val" onclick="copyText('Admin@1212')">Admin@1212</span>
+              </div>
+            </div>
+          </div>
+          <a href="http://localhost:3000/fr/login" target="_blank" class="btn-action btn-blue" style="font-size: 12px; padding: 8px 14px;">
+            Se connecter sur le portail
+          </a>
+        </div>
+
+        <!-- Admin Manager -->
+        <div class="account-card">
+          <div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <span class="account-role">Administrateur Central</span>
+              <span class="account-tag" style="color: #a78bfa; border: 1px solid rgba(167, 139, 250, 0.3);">🛡️ Admin</span>
+            </div>
+            <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">
+              Gestion des cours, validation des inscriptions et des certificats.
+            </p>
+            <div class="cred-box">
+              <div class="cred-row">
+                <span style="color: #94a3b8;">Email :</span>
+                <span class="cred-val" onclick="copyText('admin@eschola.pro')">admin@eschola.pro</span>
+              </div>
+              <div class="cred-row">
+                <span style="color: #94a3b8;">Pass :</span>
+                <span class="cred-val" onclick="copyText('Abc1234')">Abc1234</span>
+              </div>
+            </div>
+          </div>
+          <a href="http://localhost:3000/fr/login" target="_blank" class="btn-action btn-blue" style="font-size: 12px; padding: 8px 14px;">
+            Se connecter sur le portail
+          </a>
+        </div>
+
+        <!-- Formateur / Enseignant -->
+        <div class="account-card">
+          <div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <span class="account-role">Formateur &amp; Enseignant</span>
+              <span class="account-tag" style="color: #c084fc; border: 1px solid rgba(192, 132, 252, 0.3);">👨‍🏫 Enseignant</span>
+            </div>
+            <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">
+              Gestion des cours, notation des devoirs, salles vidéo et émargement.
+            </p>
+            <div class="cred-box">
+              <div class="cred-row">
+                <span style="color: #94a3b8;">Email :</span>
+                <span class="cred-val" onclick="copyText('formateur@eschola.pro')">formateur@eschola.pro</span>
+              </div>
+              <div class="cred-row">
+                <span style="color: #94a3b8;">Pass :</span>
+                <span class="cred-val" onclick="copyText('Abc1234')">Abc1234</span>
+              </div>
+            </div>
+          </div>
+          <a href="http://localhost:3000/fr/login" target="_blank" class="btn-action btn-blue" style="font-size: 12px; padding: 8px 14px;">
+            Se connecter sur le portail
+          </a>
+        </div>
+
+        <!-- DG / RH -->
+        <div class="account-card">
+          <div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <span class="account-role">Direction &amp; RH</span>
+              <span class="account-tag" style="color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.3);">👔 DG / RH</span>
+            </div>
+            <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">
+              Suivi global des promotions, effectifs salariés et conformité.
+            </p>
+            <div class="cred-box">
+              <div class="cred-row">
+                <span style="color: #94a3b8;">Email :</span>
+                <span class="cred-val" onclick="copyText('dgrh@eschola.pro')">dgrh@eschola.pro</span>
+              </div>
+              <div class="cred-row">
+                <span style="color: #94a3b8;">Pass :</span>
+                <span class="cred-val" onclick="copyText('Abc1234')">Abc1234</span>
+              </div>
+            </div>
+          </div>
+          <a href="http://localhost:3000/fr/login" target="_blank" class="btn-action btn-blue" style="font-size: 12px; padding: 8px 14px;">
+            Se connecter sur le portail
+          </a>
+        </div>
+
+        <!-- Employé Salarié -->
+        <div class="account-card">
+          <div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <span class="account-role">Salarié Entreprise</span>
+              <span class="account-tag" style="color: #34d399; border: 1px solid rgba(52, 211, 153, 0.3);">💼 Salarié</span>
+            </div>
+            <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">
+              Montée en compétences : cours, devoirs et obtention de diplômes.
+            </p>
+            <div class="cred-box">
+              <div class="cred-row">
+                <span style="color: #94a3b8;">Email :</span>
+                <span class="cred-val" onclick="copyText('alami.salma@eschola.pro')">alami.salma@eschola.pro</span>
+              </div>
+              <div class="cred-row">
+                <span style="color: #94a3b8;">Pass :</span>
+                <span class="cred-val" onclick="copyText('Abc1234')">Abc1234</span>
+              </div>
+            </div>
+          </div>
+          <a href="http://localhost:3000/fr/login" target="_blank" class="btn-action btn-blue" style="font-size: 12px; padding: 8px 14px;">
+            Se connecter sur le portail
+          </a>
+        </div>
+
+        <!-- Étudiant Académique -->
+        <div class="account-card">
+          <div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <span class="account-role">Étudiant Académique</span>
+              <span class="account-tag" style="color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3);">🎓 Étudiant</span>
+            </div>
+            <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">
+              Formation initiale : suivi des leçons vidéo, devoirs et examens.
+            </p>
+            <div class="cred-box">
+              <div class="cred-row">
+                <span style="color: #94a3b8;">Email :</span>
+                <span class="cred-val" onclick="copyText('student_test_1@eschola.pro')">student_test_1@eschola.pro</span>
+              </div>
+              <div class="cred-row">
+                <span style="color: #94a3b8;">Pass :</span>
+                <span class="cred-val" onclick="copyText('Abc1234')">Abc1234</span>
+              </div>
+            </div>
+          </div>
+          <a href="http://localhost:3000/fr/login" target="_blank" class="btn-action btn-blue" style="font-size: 12px; padding: 8px 14px;">
+            Se connecter sur le portail
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. MATRICE DE TEST DES 15 MODULES DE L'APPLICATION -->
+    <section>
+      <div class="section-header">
+        <h2 class="section-title">📂 Accès Direct aux Modules Applicatifs</h2>
+        <span style="font-size: 12px; color: var(--text-muted);">Cliquez pour ouvrir l'écran correspondant</span>
+      </div>
+
+      <div class="modules-grid" style="margin-top: 14px;">
+        <a href="http://localhost:3000/fr/demo" target="_blank" class="module-item" style="border-color: rgba(59, 130, 246, 0.5);">
+          <div>
+            <div class="module-title">⚡ Portail Démo Intégré (Next.js)</div>
+            <div class="module-desc">Version applicative avec boutons de connexion automatique express en 1 clic.</div>
+          </div>
+          <div class="module-route">http://localhost:3000/fr/demo →</div>
+        </a>
+
+        <a href="http://localhost:3000/fr/courses" target="_blank" class="module-item">
+          <div>
+            <div class="module-title">🖥️ Cours &amp; Mode Panoramique</div>
+            <div class="module-desc">Bibliothèque thématique, dossiers dépliables et lecteur vidéo 16:9 panoramique.</div>
+          </div>
+          <div class="module-route">/fr/courses →</div>
+        </a>
+
+        <a href="http://localhost:3000/fr/courses?engine=google&q=python+fastapi" target="_blank" class="module-item">
+          <div>
+            <div class="module-title">🌐 Recherche Google Intégrée</div>
+            <div class="module-desc">Recherche web directe au sein de la page avec fiches de savoirs et zéro popup.</div>
+          </div>
+          <div class="module-route">/fr/courses?engine=google →</div>
+        </a>
+
+        <a href="http://localhost:3000/fr/dashboard" target="_blank" class="module-item">
+          <div>
+            <div class="module-title">📊 Tableau de Bord Principal</div>
+            <div class="module-desc">Métriques personnelles, cours récents et barre de recherche multi-moteurs.</div>
+          </div>
+          <div class="module-route">/fr/dashboard →</div>
+        </a>
+
+        <a href="http://localhost:3000/fr/profile" target="_blank" class="module-item">
+          <div>
+            <div class="module-title">👤 Profil &amp; Active Directory</div>
+            <div class="module-desc">Gestion des utilisateurs, rôles RBAC, sécurité et console d'annuaire.</div>
+          </div>
+          <div class="module-route">/fr/profile →</div>
+        </a>
+
+        <a href="http://localhost:3000/fr/inbox" target="_blank" class="module-item">
+          <div>
+            <div class="module-title">💬 ScholaPro Inbox</div>
+            <div class="module-desc">Messagerie interne sécurisée, pièces jointes, brouillons et recherche.</div>
+          </div>
+          <div class="module-route">/fr/inbox →</div>
+        </a>
+
+        <a href="http://localhost:3000/fr/certifications" target="_blank" class="module-item">
+          <div>
+            <div class="module-title">🎓 Évaluations &amp; Certifications</div>
+            <div class="module-desc">Passage des examens officiels et délivrance automatique de diplômes PDF.</div>
+          </div>
+          <div class="module-route">/fr/certifications →</div>
+        </a>
+
+        <a href="http://localhost:3000/fr/tasks" target="_blank" class="module-item">
+          <div>
+            <div class="module-title">📝 Tâches &amp; Devoirs</div>
+            <div class="module-desc">Dépôt de livrables, suivi des dates limites et appréciations des enseignants.</div>
+          </div>
+          <div class="module-route">/fr/tasks →</div>
+        </a>
+
+        <a href="http://localhost:3000/fr/group" target="_blank" class="module-item">
+          <div>
+            <div class="module-title">👥 Groupes &amp; Promotions</div>
+            <div class="module-desc">Organisation par filières, affectation des étudiants et formateurs référents.</div>
+          </div>
+          <div class="module-route">/fr/group →</div>
+        </a>
+
+        <a href="http://localhost:3000/fr/calendar" target="_blank" class="module-item">
+          <div>
+            <div class="module-title">📅 Calendrier &amp; Planning</div>
+            <div class="module-desc">Planning hebdomadaire interactif, sessions en visio et examens planifiés.</div>
+          </div>
+          <div class="module-route">/fr/calendar →</div>
+        </a>
+
+        <a href="http://localhost:3000/fr/classroom" target="_blank" class="module-item">
+          <div>
+            <div class="module-title">📹 Salles Vidéo WebRTC</div>
+            <div class="module-desc">Classes virtuelles interactives, audio/vidéo UDP temps réel et chat.</div>
+          </div>
+          <div class="module-route">/fr/classroom →</div>
+        </a>
+
+        <a href="http://localhost:3000/fr/admin" target="_blank" class="module-item">
+          <div>
+            <div class="module-title">🛠️ Console Supervision Sécurité</div>
+            <div class="module-desc">Supervision administrative centrale, audit des actions et contrôles système.</div>
+          </div>
+          <div class="module-route">/fr/admin →</div>
+        </a>
+      </div>
+    </section>
+
+    <!-- 5. PIED DE PAGE : LIENS SYSTÈME & DOCS -->
+    <footer class="footer-bar">
+      <div>
+        <strong>E-Schola Pro</strong> — Environnement Démo &amp; Validation Locale
+      </div>
+
+      <div class="links-group">
+        <a href="http://127.0.0.1:8000/docs" target="_blank">Swagger OpenAPI (Backend)</a>
+        <span>•</span>
+        <a href="http://127.0.0.1:8000/admin" target="_blank">SQLAdmin (BDD)</a>
+        <span>•</span>
+        <a href="Documentation_Technique_E-Schola_Pro.html" target="_blank">Documentation Technique Complète</a>
+      </div>
+    </footer>
+
+  </div>
+
+  <div id="copyToast">Copié dans le presse-papiers !</div>
+
+  <script>
+    function copyText(val) {
+      navigator.clipboard.writeText(val).then(() => {
+        const toast = document.getElementById('copyToast');
+        toast.style.display = 'block';
+        setTimeout(() => {
+          toast.style.display = 'none';
+        }, 1800);
+      });
+    }
+  </script>
+</body>
+</html>

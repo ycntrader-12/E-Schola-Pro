@@ -60,6 +60,28 @@ def init_db(db: Session) -> None:
             db.add(admin_standard)
             db.commit()
             print("[Init DB] Compte administrateur standard 'admin' initialisé avec succès.")
+
+        # 3. Compte formateur standard
+        formateur_standard = (
+            db.query(User)
+            .filter(
+                (func.lower(User.username) == "formateur")
+                | (func.lower(User.email) == "formateur@eschola.pro")
+            )
+            .first()
+        )
+        if not formateur_standard:
+            formateur_standard = User(
+                email="formateur@eschola.pro",
+                username="formateur",
+                hashed_password=get_password_hash("Abc1234"),
+                role="formateur",
+                nom="Enseignant",
+                prenom="Formateur Démo",
+            )
+            db.add(formateur_standard)
+            db.commit()
+            print("[Init DB] Compte formateur standard 'formateur' initialisé avec succès.")
     except Exception as e:
         db.rollback()
-        print(f"[Init DB Notice] Erreur lors de l'initialisation des administrateurs : {e}")
+        print(f"[Init DB Notice] Erreur lors de l'initialisation des administrateurs/formateurs : {e}")

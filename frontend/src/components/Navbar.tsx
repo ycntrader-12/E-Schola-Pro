@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Link, usePathname, useRouter } from '@/i18n/routing';
 import Image from 'next/image';
-import { LogOut, User, GraduationCap, MessageSquare, Video, LayoutDashboard, Compass } from 'lucide-react';
+import { LogOut, User, GraduationCap, MessageSquare, Video, LayoutDashboard, Compass, Zap } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { apiClient } from '@/lib/api';
 import LanguageSwitcher from './LanguageSwitcher';
@@ -244,6 +244,14 @@ export default function Navbar() {
             </div>
           ) : (
             <>
+              <Link 
+                href="/demo"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200/80 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
+                title="Portail Démo & Banc d'Essai"
+              >
+                <Zap size={14} className="text-amber-600" />
+                <span>Démo</span>
+              </Link>
               <Link 
                 href="/login"
                 className="hidden sm:block text-sm font-bold text-[#65676b] hover:text-[#050505] transition-colors px-2 py-1"

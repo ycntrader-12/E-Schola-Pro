@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { usePathname, Link } from '@/i18n/routing';
 import Image from 'next/image';
-import { LayoutDashboard, Inbox, BookOpen, CheckSquare, Settings, Video, Award, UserCheck, Calendar, X, GraduationCap, Users, ShieldCheck, Compass } from 'lucide-react';
+import { LayoutDashboard, Inbox, BookOpen, CheckSquare, Settings, Video, Award, UserCheck, Calendar, X, GraduationCap, Users, ShieldCheck, Compass, Zap } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { apiClient } from '@/lib/api';
 import { isAdmin, isLearner, isStaff, normalizeRole } from '@/lib/roles';
@@ -269,7 +269,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
         <div className="px-6 mb-2 text-[11px] font-bold text-blue-200/70 uppercase tracking-wider shrink-0">
           {t('settings')}
         </div>
-        <div className="px-3 shrink-0">
+        <div className="px-3 shrink-0 space-y-1">
           <Link
             href="/profile"
             onClick={() => setIsOpen && setIsOpen(false)}
@@ -286,6 +286,28 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
               }`} 
             />
             <span>{t('settings').charAt(0).toUpperCase() + t('settings').slice(1).toLowerCase()}</span>
+          </Link>
+
+          <Link
+            href="/demo"
+            onClick={() => setIsOpen && setIsOpen(false)}
+            className={`w-full group flex items-center justify-between px-3.5 py-2 rounded-xl transition-all text-sm font-medium ${
+              pathname === '/demo' || pathname.startsWith('/demo')
+                ? 'bg-[#2563eb] text-white font-bold shadow-md shadow-blue-600/30'
+                : 'text-amber-200/90 hover:bg-white/10 hover:text-white'
+            }`}
+            title="Ouvrir le Portail Démo & Banc d'Essai"
+          >
+            <div className="flex items-center gap-3">
+              <Zap 
+                size={18} 
+                className="text-amber-400 group-hover:scale-110 transition-transform" 
+              />
+              <span>Portail Démo</span>
+            </div>
+            <span className="px-1.5 py-0.5 rounded-full text-[9px] font-black bg-amber-400/20 text-amber-300 border border-amber-400/30 uppercase">
+              Banc
+            </span>
           </Link>
         </div>
       </aside>
