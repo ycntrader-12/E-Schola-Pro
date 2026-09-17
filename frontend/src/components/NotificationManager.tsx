@@ -5,6 +5,8 @@ import { useRouter } from '@/i18n/routing';
 import { apiClient } from '@/lib/api';
 import { playNotificationSound } from '@/lib/sound';
 import { MessageSquare, Video, X, ExternalLink, Bell } from 'lucide-react';
+import GuestInviteModal, { ClassroomInviteNotification } from './classroom/GuestInviteModal';
+
 
 interface ToastNotification {
   id: string;
@@ -18,6 +20,8 @@ interface ToastNotification {
 export default function NotificationManager() {
   const router = useRouter();
   const [toasts, setToasts] = useState<ToastNotification[]>([]);
+  const [activeInvite, setActiveInvite] = useState<ClassroomInviteNotification | null>(null);
+  const [isProcessingInvite, setIsProcessingInvite] = useState(false);
   const prevUnreadRef = useRef<number | null>(null);
   const prevPendingInvitesRef = useRef<number | null>(null);
   const isInitialFetchRef = useRef(true);
@@ -61,9 +65,40 @@ export default function NotificationManager() {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
+  const handleAcceptInvite = async (invitationId: number, roomId: string) => {
+    setIsProcessingInvite(true);
+    try {
+      await apiClient.post(`/classrooms/invitations/${invitationId}/accept`);
+      setActiveInvite(null);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('classroom_updated'));
+      }
+      router.push(`/classroom/${roomId}`);
+    } catch {
+      setActiveInvite(null);
+    } finally {
+      setIsProcessingInvite(false);
+    }
+  };
+
+  const handleDeclineInvite = async (invitationId: number) => {
+    setIsProcessingInvite(true);
+    try {
+      await apiClient.post(`/classrooms/invitations/${invitationId}/decline`);
+      setActiveInvite(null);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('classroom_updated'));
+      }
+    } catch {
+      setActiveInvite(null);
+    } finally {
+      setIsProcessingInvite(false);
+    }
+  };
+
   useEffect(() => {
     const checkNotifications = async () => {
-      const token = localStorage.getItem('access_token');
+      const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
       if (!token) {
         prevUnreadRef.current = null;
         prevPendingInvitesRef.current = null;
@@ -72,10 +107,9 @@ export default function NotificationManager() {
       }
 
       try {
-        const [unreadRes, invitesRes, roomsRes] = await Promise.all([
+        const [unreadRes, invitesRes] = await Promise.all([
           apiClient.get('/messages/unread-count').catch(() => ({ data: { unread_count: 0 } })),
           apiClient.get('/classrooms/invitations/my-invitations').catch(() => ({ data: [] })),
-          apiClient.get('/classrooms/').catch(() => ({ data: [] })),
         ]);
 
         const currentUnread = unreadRes.data?.unread_count || 0;
@@ -116,6 +150,23 @@ export default function NotificationManager() {
             actionUrl: '/classroom',
             actionText: 'Rejoindre la salle',
           });
+
+          // Show interactive modal for the latest pending invitation
+          if (Array.isArray(invitesRes.data) && invitesRes.data.length > 0) {
+            const latest = invitesRes.data[0];
+            if (latest.status === 'pending' && latest.classroom) {
+              const inviterName = latest.inviter?.email ? latest.inviter.email.split('@')[0] : 'Formateur';
+              setActiveInvite({
+                invitation_id: latest.id,
+                room_id: latest.classroom.room_id,
+                room_title: latest.classroom.title,
+                inviter_name: inviterName,
+                inviter_email: latest.inviter?.email,
+                created_at: latest.created_at,
+              });
+            }
+          }
+
           window.dispatchEvent(new CustomEvent('classroom_updated', { detail: { pending_invites: currentInvites } }));
         }
 
@@ -148,68 +199,81 @@ export default function NotificationManager() {
     };
   }, []);
 
-  if (toasts.length === 0) return null;
-
   return (
-    <div className="fixed top-20 right-4 z-[9999] flex flex-col gap-3 max-w-sm w-full pointer-events-none">
-      {toasts.map((toast) => (
-        <div
-          key={toast.id}
-          className={`pointer-events-auto p-4 rounded-2xl shadow-2xl border backdrop-blur-xl transition-all duration-300 animate-in slide-in-from-top-4 fade-in ${
-            toast.type === 'invitation'
-              ? 'bg-slate-900/95 border-emerald-500/40 text-white shadow-emerald-500/10'
-              : 'bg-slate-900/95 border-blue-500/40 text-white shadow-blue-500/10'
-          }`}
-        >
-          <div className="flex items-start gap-3">
+    <>
+      {/* Interactive Incoming Call Modal for Classroom Invitations */}
+      <GuestInviteModal
+        invite={activeInvite}
+        isOpen={!!activeInvite}
+        onAccept={handleAcceptInvite}
+        onDecline={handleDeclineInvite}
+        isProcessing={isProcessingInvite}
+      />
+
+      {/* Floating Notifications / Toasts */}
+      {toasts.length > 0 && (
+        <div className="fixed top-20 right-4 z-[9999] flex flex-col gap-3 max-w-sm w-full pointer-events-none">
+          {toasts.map((toast) => (
             <div
-              className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+              key={toast.id}
+              className={`pointer-events-auto p-4 rounded-2xl shadow-2xl border backdrop-blur-xl transition-all duration-300 animate-in slide-in-from-top-4 fade-in ${
                 toast.type === 'invitation'
-                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                  : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                  ? 'bg-slate-900/95 border-emerald-500/40 text-white shadow-emerald-500/10'
+                  : 'bg-slate-900/95 border-blue-500/40 text-white shadow-blue-500/10'
               }`}
             >
-              {toast.type === 'invitation' ? (
-                <Video size={20} className="animate-pulse" />
-              ) : (
-                <MessageSquare size={20} className="animate-bounce" />
-              )}
-            </div>
-
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between gap-1">
-                <h4 className="text-xs font-bold text-white truncate">{toast.title}</h4>
-                <button
-                  type="button"
-                  onClick={() => removeToast(toast.id)}
-                  className="p-1 text-slate-400 hover:text-white rounded-lg transition-colors cursor-pointer"
-                  title="Fermer"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-              <p className="text-[11px] text-slate-300 mt-1 leading-relaxed">{toast.body}</p>
-              <div className="mt-2.5 flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    removeToast(toast.id);
-                    router.push(toast.actionUrl);
-                  }}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer ${
+              <div className="flex items-start gap-3">
+                <div
+                  className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
                     toast.type === 'invitation'
-                      ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
-                      : 'bg-[#1877f2] hover:bg-blue-600 text-white'
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                      : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
                   }`}
                 >
-                  <span>{toast.actionText}</span>
-                  <ExternalLink size={12} />
-                </button>
+                  {toast.type === 'invitation' ? (
+                    <Video size={20} className="animate-pulse" />
+                  ) : (
+                    <MessageSquare size={20} className="animate-bounce" />
+                  )}
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-1">
+                    <h4 className="text-xs font-bold text-white truncate">{toast.title}</h4>
+                    <button
+                      type="button"
+                      onClick={() => removeToast(toast.id)}
+                      className="p-1 text-slate-400 hover:text-white rounded-lg transition-colors cursor-pointer"
+                      title="Fermer"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-slate-300 mt-1 leading-relaxed">{toast.body}</p>
+                  <div className="mt-2.5 flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        removeToast(toast.id);
+                        router.push(toast.actionUrl);
+                      }}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer ${
+                        toast.type === 'invitation'
+                          ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                          : 'bg-[#1877f2] hover:bg-blue-600 text-white'
+                      }`}
+                    >
+                      <span>{toast.actionText}</span>
+                      <ExternalLink size={12} />
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
+          ))}
         </div>
-      ))}
-    </div>
+      )}
+    </>
   );
 }
+

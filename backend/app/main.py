@@ -1,6 +1,6 @@
 import os
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Query, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqladmin import Admin
@@ -194,6 +194,17 @@ async def add_security_headers(request: Request, call_next):
 
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
+
+
+@app.websocket("/ws/classroom/{room_id}")
+async def ws_classroom_direct_endpoint(
+    websocket: WebSocket,
+    room_id: str,
+    token: str = Query(None),
+):
+    from app.services.classroom_signaling import signaling_manager
+    await signaling_manager.handle_connection(websocket, room_id, token)
+
 
 
 # --- SQLAdmin Authentication Backend ---

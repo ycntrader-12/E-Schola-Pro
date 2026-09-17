@@ -41,3 +41,11 @@ def create_access_token(
         to_encode["email"] = email
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm="HS256")
     return encoded_jwt
+
+
+def decode_token(token: str) -> dict | None:
+    try:
+        return jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+    except Exception:
+        return None
+

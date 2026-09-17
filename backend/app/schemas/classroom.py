@@ -36,6 +36,9 @@ class ClassroomResponse(ClassroomBase):
 class ClassroomInviteCreate(BaseModel):
     user_ids: list[int] | None = None
     group_ids: list[int] | None = None
+    send_email: bool = True
+    send_notification: bool = True
+    pre_enroll_attendance: bool = True
 
 
 class ClassroomInvitationResponse(BaseModel):

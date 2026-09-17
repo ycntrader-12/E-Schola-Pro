@@ -2,7 +2,7 @@ from datetime import datetime, date
 from typing import Any
 import uuid
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query, WebSocket, WebSocketDisconnect
 
 from app.api.deps import CurrentUser, SessionDep
 from app.core.rate_limiter import rate_limiter
@@ -29,6 +29,7 @@ from app.schemas.classroom import (
     ClassroomInviteCreate,
     ClassroomInvitationResponse,
 )
+from app.services.classroom_signaling import signaling_manager
 from app.services.email_service import send_classroom_invitation_email
 
 router = APIRouter()
@@ -826,51 +827,54 @@ def invite_users_to_classroom(
             )
             session.add(inv)
 
-        # Ensure attendance record
-        att = session.query(Attendance).filter(
-            Attendance.user_id == target_user.id,
-            Attendance.date == date.today(),
-            Attendance.session_name == classroom.title
-        ).first()
-        if not att:
-            session.add(Attendance(
-                user_id=target_user.id,
-                date=date.today(),
-                status="absent",
-                session_name=classroom.title,
-                remarks=f"Invitation Salle vidéo conférence : {classroom.title}"
-            ))
+        # Ensure attendance record if pre_enroll_attendance is enabled
+        if getattr(payload, "pre_enroll_attendance", True):
+            att = session.query(Attendance).filter(
+                Attendance.user_id == target_user.id,
+                Attendance.date == date.today(),
+                Attendance.session_name == classroom.title
+            ).first()
+            if not att:
+                session.add(Attendance(
+                    user_id=target_user.id,
+                    date=date.today(),
+                    status="absent",
+                    session_name=classroom.title,
+                    remarks=f"Invitation Salle vidéo conférence : {classroom.title}"
+                ))
 
-        # Send invitation Message
-        invitation_body = (
-            f"Bonjour {target_user.email.split('@')[0]},\n\n"
-            f"Vous êtes invité(e) par **{current_user.email}** à rejoindre la Salle vidéo conférence en direct : **{classroom.title}**.\n\n"
-            f"📌 **Code de la salle :** `{classroom.room_id}`\n\n"
-            f"👉 Cliquez sur le bouton **Accepter l'invitation** sur la page des Salles vidéo conférence ou ci-dessous pour intégrer la session immédiatement."
-        )
-        msg = Message(
-            sender_id=current_user.id,
-            recipient_id=target_user.id,
-            subject=f"🎓 Invitation Salle vidéo conférence : {classroom.title}",
-            body=invitation_body,
-        )
-        session.add(msg)
+        # Send invitation Message if send_notification is enabled
+        if getattr(payload, "send_notification", True):
+            invitation_body = (
+                f"Bonjour {target_user.email.split('@')[0]},\n\n"
+                f"Vous êtes invité(e) par **{current_user.email}** à rejoindre la Salle vidéo conférence en direct : **{classroom.title}**.\n\n"
+                f"📌 **Code de la salle :** `{classroom.room_id}`\n\n"
+                f"👉 Cliquez sur le bouton **Accepter l'invitation** sur la page des Salles vidéo conférence ou ci-dessous pour intégrer la session immédiatement."
+            )
+            msg = Message(
+                sender_id=current_user.id,
+                recipient_id=target_user.id,
+                subject=f"🎓 Invitation Salle vidéo conférence : {classroom.title}",
+                body=invitation_body,
+            )
+            session.add(msg)
         count += 1
 
-        # Dispatch transactional invitation email
-        try:
-            if target_user.email and "@" in target_user.email:
-                target_name = f"{target_user.prenom or ''} {target_user.nom or ''}".strip() or target_user.username or target_user.email.split("@")[0]
-                inviter_name = f"{current_user.prenom or ''} {current_user.nom or ''}".strip() or current_user.email
-                send_classroom_invitation_email(
-                    to_email=target_user.email,
-                    user_name=target_name,
-                    room_title=classroom.title,
-                    room_id=classroom.room_id,
-                    inviter_name=inviter_name,
-                )
-        except Exception as mail_err:
-            print(f"[WARN] Email d'invitation salle non envoyé à {target_user.email}: {mail_err}")
+        # Dispatch transactional invitation email if send_email is enabled
+        if getattr(payload, "send_email", True):
+            try:
+                if target_user.email and "@" in target_user.email:
+                    target_name = f"{target_user.prenom or ''} {target_user.nom or ''}".strip() or target_user.username or target_user.email.split("@")[0]
+                    inviter_name = f"{current_user.prenom or ''} {current_user.nom or ''}".strip() or current_user.email
+                    send_classroom_invitation_email(
+                        to_email=target_user.email,
+                        user_name=target_name,
+                        room_title=classroom.title,
+                        room_id=classroom.room_id,
+                        inviter_name=inviter_name,
+                    )
+            except Exception as mail_err:
+                print(f"[WARN] Email d'invitation salle non envoyé à {target_user.email}: {mail_err}")
 
     session.commit()
     print(f"[Audit Invitation] {count} invitation(s) envoyée(s) pour la Salle vidéo conférence '{classroom.title}' ({classroom.room_id}) par {current_user.email}.")
@@ -1109,6 +1113,91 @@ def get_webrtc_signals(room_id: str, current_user: CurrentUser):
         ROOM_WEBRTC_SIGNALS[cleaned_id][user_email] = []
 
     return signals
+
+
+# =========================================================================
+# WEBSOCKET SIGNALING SERVER (SFU / WAITING ROOM / SEGMENTED CHAT)
+# =========================================================================
+
+@router.websocket("/{room_id}/ws")
+async def classroom_websocket_endpoint(
+    websocket: WebSocket,
+    room_id: str,
+    token: str = Query(None),
+):
+    """
+    Point de terminaison WebSocket pour la signalisation SFU temps réel :
+    - Authentification JWT
+    - Gestion de la salle d'attente (Knock, Admit, Reject, Block, Kick)
+    - Signalisation SFU (Pub/Sub tracks, SDP, ICE Candidates)
+    - Chat segmenté (Global, Privé 1-à-1, Breakout rooms)
+    """
+    await signaling_manager.handle_connection(websocket, room_id, token)
+
+
+@router.get("/{room_id}/state")
+def get_live_classroom_state(
+    room_id: str,
+    current_user: CurrentUser,
+):
+    """
+    Récupère l'état en direct de la salle géré par le gestionnaire de signalisation.
+    """
+    state = signaling_manager.get_room_state(room_id)
+    if not state:
+        return {
+            "room_id": room_id.strip().lower(),
+            "active_peers_count": 0,
+            "waiting_count": 0,
+            "blocked_count": 0,
+            "active_peers": [],
+            "waiting_users": [],
+            "blocked_user_ids": []
+        }
+    return state
+
+
+@router.post("/{room_id}/block-user/{user_id}")
+async def block_classroom_user(
+    room_id: str,
+    user_id: int,
+    session: SessionDep,
+    current_user: CurrentUser,
+):
+    """
+    Bannit définitivement un utilisateur de la salle de visioconférence (Hôte / Admin).
+    """
+    cleaned_id = room_id.strip().lower()
+    classroom = session.query(Classroom).filter(Classroom.room_id == cleaned_id).first()
+    if not classroom:
+        raise HTTPException(status_code=404, detail="Salle vidéo conférence introuvable.")
+    if current_user.id != classroom.instructor_id and not is_staff(current_user):
+        raise HTTPException(status_code=403, detail="Seul l'hôte peut bloquer un utilisateur.")
+
+    await signaling_manager.block_user_rest(cleaned_id, user_id)
+    return {"message": f"Utilisateur #{user_id} bloqué de la session.", "room_id": cleaned_id, "user_id": user_id}
+
+
+@router.delete("/{room_id}/block-user/{user_id}")
+async def unblock_classroom_user(
+    room_id: str,
+    user_id: int,
+    session: SessionDep,
+    current_user: CurrentUser,
+):
+    """
+    Débloque un utilisateur pour lui permettre de rejoindre à nouveau la salle.
+    """
+    cleaned_id = room_id.strip().lower()
+    classroom = session.query(Classroom).filter(Classroom.room_id == cleaned_id).first()
+    if not classroom:
+        raise HTTPException(status_code=404, detail="Salle vidéo conférence introuvable.")
+    if current_user.id != classroom.instructor_id and not is_staff(current_user):
+        raise HTTPException(status_code=403, detail="Seul l'hôte peut débloquer un utilisateur.")
+
+    await signaling_manager.unblock_user_rest(cleaned_id, user_id)
+    return {"message": f"Utilisateur #{user_id} débloqué.", "room_id": cleaned_id, "user_id": user_id}
+
 
 
 

@@ -60,6 +60,8 @@ import {
 import { apiClient } from '@/lib/api';
 import { isLearner as isLearnerRole, isStaff as isStaffRole } from '@/lib/roles';
 import BackButton from '@/components/BackButton';
+import { SFUWebRTCClient } from '@/lib/sfuClient';
+import HostModerationModal from '@/components/classroom/HostModerationModal';
 
 interface ClassroomInfo {
   id: number;
@@ -95,11 +97,16 @@ interface ChatAttachment {
 interface ChatMessage {
   id: string;
   sender: string;
+  sender_name?: string;
+  sender_id?: number;
   sender_role?: string;
   text?: string;
   time: string;
   isMe: boolean;
-  recipient: string; // 'everyone', user email, or 'subgroup:ID'
+  channel?: 'global' | 'private' | 'subgroup';
+  recipient?: string; // 'everyone', user email, or 'subgroup:ID'
+  recipient_id?: number;
+  recipient_name?: string;
   subgroup_id?: string;
   attachment?: ChatAttachment;
 }
@@ -220,6 +227,7 @@ export default function VirtualClassroomLivePage() {
   const screenVideoRef = useRef<HTMLVideoElement | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const screenStreamRef = useRef<MediaStream | null>(null);
+  const sfuClientRef = useRef<SFUWebRTCClient | null>(null);
 
   // WebRTC TCP/UDP Protocol & Audio Processor State
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -412,6 +420,148 @@ export default function VirtualClassroomLivePage() {
     };
     if (roomId) init();
   }, [roomId]);
+
+  // SFU WebRTC Real-Time Signaling & Media State Synchronization
+  useEffect(() => {
+    if (!roomId || !currentUser) return;
+    const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+    if (!token) return;
+
+    const client = new SFUWebRTCClient(roomId, {
+      onRoomJoined: (data) => {
+        if (data.is_host) {
+          setJoinStatus('approved');
+          if (Array.isArray(data.waiting_users)) {
+            setPendingRequests(data.waiting_users.map((u: any) => ({
+              user_id: u.id,
+              user_name: u.name,
+              user_email: u.email,
+              user_role: u.role,
+              requested_at: u.requested_at,
+              status: 'pending'
+            })));
+          }
+        }
+        if (Array.isArray(data.active_peers)) {
+          const remotes = data.active_peers.filter((p: any) => p.email.toLowerCase() !== currentUser?.email?.toLowerCase());
+          setActiveWebrtcPeers(remotes);
+        }
+        if (data.subgroups) {
+          setSubgroupsState(data.subgroups);
+        }
+      },
+      onWaitingRoomStatus: (status) => {
+        if (status === 'pending') {
+          setJoinStatus('pending');
+        }
+      },
+      onWaitingRoomKnock: (user) => {
+        playKnockSound();
+        setPendingRequests((prev) => {
+          if (prev.some((r) => r.user_id === user.id)) return prev;
+          return [...prev, {
+            user_id: user.id,
+            user_name: user.name,
+            user_email: user.email,
+            user_role: user.role,
+            requested_at: user.requested_at,
+            status: 'pending'
+          }];
+        });
+      },
+      onWaitingRoomUpdated: (waitingList) => {
+        setPendingRequests(waitingList.map((u: any) => ({
+          user_id: u.id,
+          user_name: u.name,
+          user_email: u.email,
+          user_role: u.role,
+          requested_at: u.requested_at,
+          status: 'pending'
+        })));
+      },
+      onAdmitted: () => {
+        setJoinStatus('approved');
+        showNotification("Accès Accordé", "Votre demande a été approuvée par l'hôte. Bienvenue dans la salle !", "success");
+      },
+      onRejected: () => {
+        setJoinStatus('rejected');
+      },
+      onBlocked: (msg) => {
+        setJoinStatus('rejected');
+        showNotification("Accès Bloqué", msg || "Vous avez été bloqué de cette session.", "error");
+      },
+      onKicked: (msg) => {
+        stopAllMedia();
+        showNotification("Session Clôturée", msg || "Vous avez été exclu de la session par le formateur.", "error");
+        setTimeout(() => router.push('/classroom'), 3000);
+      },
+      onPeerJoined: (peer) => {
+        setActiveWebrtcPeers((prev) => {
+          if (prev.some((p) => p.id === peer.id)) return prev;
+          return [...prev, peer];
+        });
+      },
+      onPeerLeft: (peerId) => {
+        setActiveWebrtcPeers((prev) => prev.filter((p) => p.id !== peerId));
+      },
+      onChatMessage: (message) => {
+        setChatMessages((prev) => {
+          if (prev.some((m) => m.id === message.id)) return prev;
+          const mappedMsg: ChatMessage = {
+            id: message.id,
+            sender: message.sender,
+            sender_name: message.sender_name,
+            sender_id: message.sender_id,
+            sender_role: message.sender_role,
+            text: message.text,
+            time: message.time,
+            channel: message.channel,
+            recipient: message.recipient || 'everyone',
+            recipient_id: message.recipient_id,
+            recipient_name: message.recipient_name,
+            subgroup_id: message.subgroup_id,
+            attachment: message.attachment as ChatAttachment | undefined,
+            isMe: message.sender_id === currentUser?.id || message.sender?.toLowerCase() === currentUser?.email?.toLowerCase()
+          };
+          return [...prev, mappedMsg];
+        });
+      },
+      onPeerMediaState: (peerId, state) => {
+        setActiveWebrtcPeers((prev) => prev.map((p) => p.id === peerId ? { ...p, media_state: state } : p));
+      },
+      onRemoteMute: (byHost) => {
+        setIsMicMuted(true);
+        if (localStreamRef.current) {
+          localStreamRef.current.getAudioTracks().forEach((t) => (t.enabled = false));
+        }
+        showNotification("Microphone Coupé", `Votre micro a été coupé par ${byHost || "l'hôte"}.`, "info");
+      },
+      onNetworkStats: (latency, transport) => {
+        setNetworkLatency(latency);
+        setNetworkTransport(transport as any);
+      }
+    });
+
+    client.connect(token);
+    sfuClientRef.current = client;
+
+    return () => {
+      client.disconnect();
+      sfuClientRef.current = null;
+    };
+  }, [roomId, currentUser?.id]);
+
+  // Synchronize local media state changes over SFU signaling
+  useEffect(() => {
+    sfuClientRef.current?.updateMediaState({
+      is_mic_muted: isMicMuted,
+      is_camera_off: isCameraOff,
+      is_screen_sharing: isScreenSharing,
+      is_speaking: isSpeaking,
+      audio_level: audioLevel,
+      transport_protocol: networkTransport
+    });
+  }, [isMicMuted, isCameraOff, isScreenSharing, isSpeaking, audioLevel, networkTransport]);
 
   const stopAllMedia = () => {
     if (audioAnimFrameRef.current) {
@@ -824,6 +974,16 @@ export default function VirtualClassroomLivePage() {
       attachment
     };
 
+    // Emit instantaneously via SFU signaling WebSocket
+    const wsChannel = chatFilter === 'public' ? 'global' : chatFilter === 'private' ? 'private' : 'subgroup';
+    sfuClientRef.current?.sendChatMessage({
+      channel: wsChannel,
+      text: newMessage.trim(),
+      recipient_email: finalRecipient,
+      subgroup_id: finalSubgroupId,
+      attachment
+    });
+
     try {
       const res = await apiClient.post(`/classrooms/${roomId}/messages`, msgPayload);
       const newMsg: ChatMessage = {
@@ -992,7 +1152,7 @@ export default function VirtualClassroomLivePage() {
     );
   }
 
-  if (joinStatus === 'rejected') {
+  if (joinStatus === 'rejected' || (joinStatus as string) === 'blocked') {
     return (
       <div className="h-[100dvh] w-screen flex flex-col items-center justify-center px-4 text-center bg-[#0b0f19] text-white">
         <div className="glass-card p-8 sm:p-10 max-w-md w-full space-y-6 border border-red-500/40 shadow-2xl">
@@ -1000,9 +1160,13 @@ export default function VirtualClassroomLivePage() {
             <X size={36} />
           </div>
           <div className="space-y-2">
-            <h2 className="text-xl sm:text-2xl font-extrabold text-white">Accès Refusé</h2>
+            <h2 className="text-xl sm:text-2xl font-extrabold text-white">
+              {(joinStatus as string) === 'blocked' ? 'Accès Bloqué' : 'Accès Refusé'}
+            </h2>
             <p className="text-gray-300 text-xs sm:text-sm leading-relaxed">
-              Le formateur a refusé la demande d'accès à cette session de salle vidéo conférence.
+              {(joinStatus as string) === 'blocked'
+                ? "Vous avez été exclu et bloqué de cette session de visioconférence par le formateur."
+                : "Le formateur a refusé la demande d'accès à cette session de salle vidéo conférence."}
             </p>
           </div>
           <Link href="/classroom" className="btn-primary py-3 rounded-xl block font-bold text-xs sm:text-sm">
@@ -1511,7 +1675,7 @@ export default function VirtualClassroomLivePage() {
                             <span>{msg.time}</span>
                             {isPrivate && (
                               <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full bg-purple-500/20 text-purple-300 text-[9px] font-bold border border-purple-500/30">
-                                <Lock size={9} /> {msg.isMe ? `Privé à ${msg.recipient.split('@')[0]}` : 'Privé'}
+                                <Lock size={9} /> {msg.isMe ? `Privé à ${msg.recipient?.split('@')[0] || msg.recipient_name || 'destinataire'}` : 'Privé'}
                               </span>
                             )}
                             {isSubgroup && (
@@ -2104,81 +2268,48 @@ export default function VirtualClassroomLivePage() {
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL GESTION DES DEMANDES D'ACCÈS (Formateur / Hôte)                      */}
+      {/* MODAL GESTION DES DEMANDES D'ACCÈS & MODÉRATION (Hôte / Formateur)         */}
       {/* ========================================================================= */}
-      {showRequestsModal && (
-        <div className="fixed inset-0 z-[100] bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-          <div className="bg-white max-w-lg w-full p-6 sm:p-7 rounded-3xl border border-slate-200 shadow-2xl space-y-4 text-slate-900 animate-zoom-in my-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2.5 text-[#1877f2] font-extrabold text-sm sm:text-base">
-                <div className="w-8 h-8 rounded-xl bg-blue-50 border border-blue-200/60 text-[#1877f2] flex items-center justify-center font-bold shrink-0">
-                  <Shield size={18} />
-                </div>
-                <h3 className="text-base font-extrabold text-slate-900">Demandes d'accès à la classe ({pendingRequests.length})</h3>
-              </div>
-              <div className="flex items-center gap-2">
-                {pendingRequests.length > 1 && (
-                  <button
-                    onClick={handleApproveAllRequests}
-                    className="btn-primary px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1 shadow-xs cursor-pointer"
-                  >
-                    <Check size={13} /> Tout accepter
-                  </button>
-                )}
-                <button
-                  onClick={() => setShowRequestsModal(false)}
-                  className="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 transition-colors text-sm font-bold cursor-pointer"
-                  aria-label="Fermer"
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
+      <HostModerationModal
+        isOpen={showRequestsModal}
+        onClose={() => setShowRequestsModal(false)}
+        waitingUsers={pendingRequests.map(r => ({
+          id: r.user_id,
+          name: r.user_name,
+          email: r.user_email,
+          role: r.user_role,
+          requested_at: r.requested_at
+        }))}
+        activePeers={activeWebrtcPeers}
+        onAdmit={(uid) => {
+          handleApproveRequest(uid);
+          sfuClientRef.current?.hostAdmitUser(uid);
+        }}
+        onAdmitAll={() => {
+          handleApproveAllRequests();
+          sfuClientRef.current?.hostAdmitAll();
+        }}
+        onReject={(uid) => {
+          handleRejectRequest(uid);
+          sfuClientRef.current?.hostRejectUser(uid);
+        }}
+        onBlock={(uid) => {
+          sfuClientRef.current?.hostBlockUser(uid);
+          setPendingRequests(prev => prev.filter(r => r.user_id !== uid));
+          setActiveWebrtcPeers(prev => prev.filter(p => p.id !== uid));
+        }}
+        onKick={(uid) => {
+          sfuClientRef.current?.hostKickUser(uid);
+          setActiveWebrtcPeers(prev => prev.filter(p => p.id !== uid));
+        }}
+        onMuteUser={(uid) => {
+          sfuClientRef.current?.hostMuteUser(uid);
+        }}
+        onMuteAll={() => {
+          sfuClientRef.current?.hostMuteAll();
+        }}
+      />
 
-            {pendingRequests.length === 0 ? (
-              <div className="py-8 text-center text-xs text-slate-500 space-y-2">
-                <CheckCircle2 size={32} className="mx-auto text-emerald-500 opacity-80" />
-                <p className="font-medium">Aucune demande d'accès en attente pour le moment.</p>
-              </div>
-            ) : (
-              <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
-                {pendingRequests.map((req) => (
-                  <div key={req.user_id} className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-3 text-xs">
-                    <div className="min-w-0 space-y-0.5">
-                      <p className="font-bold text-slate-900 truncate">{req.user_name} ({req.user_email.split('@')[0]})</p>
-                      <p className="text-[10px] text-slate-500 font-medium">Rôle : {req.user_role} · Demande à {req.requested_at}</p>
-                    </div>
-
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button
-                        onClick={() => handleRejectRequest(req.user_id)}
-                        className="px-3 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 font-bold border border-red-200 flex items-center gap-1 transition-colors text-xs cursor-pointer"
-                      >
-                        <X size={13} /> Rejeter
-                      </button>
-                      <button
-                        onClick={() => handleApproveRequest(req.user_id)}
-                        className="btn-primary px-3.5 py-1.5 rounded-xl font-bold flex items-center gap-1 text-xs cursor-pointer shadow-md shadow-blue-500/20"
-                      >
-                        <Check size={13} /> Approuver
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div className="pt-3 border-t border-slate-100 text-right">
-              <button
-                onClick={() => setShowRequestsModal(false)}
-                className="px-4 py-2.5 rounded-xl border border-slate-300 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition-all text-xs cursor-pointer"
-              >
-                Fermer
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ========================================================================= */}
       {/* MODAL PARAMÈTRES EN DIRECT DE LA SALLE (Formateur / Hôte)                  */}

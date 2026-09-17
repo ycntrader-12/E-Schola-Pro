@@ -88,6 +88,16 @@ export default function ClassroomHubPage() {
   const [isPurging, setIsPurging] = useState(false);
   const [fetchError, setFetchError] = useState('');
 
+  // Individual user search & multi-channel automation
+  const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [userSearchResults, setUserSearchResults] = useState<Array<{ id: number; name: string; email: string; role: string }>>([]);
+  const [isSearchingUsers, setIsSearchingUsers] = useState(false);
+  const [selectedUsers, setSelectedUsers] = useState<Array<{ id: number; name: string; email: string; role: string }>>([]);
+  const [sendEmailInvite, setSendEmailInvite] = useState(true);
+  const [sendNotificationInvite, setSendNotificationInvite] = useState(true);
+  const [preEnrollAttendance, setPreEnrollAttendance] = useState(true);
+
+
   const extractErrorMessage = (err: any, fallback: string): string => {
     if (err?.response?.status === 401) return 'Session expirée. Veuillez vous reconnecter.';
     if (err?.message === 'Network Error' || !err?.response) {
@@ -210,6 +220,34 @@ export default function ClassroomHubPage() {
     router.push(`/classroom/${code}`);
   };
 
+  // Debounced search for individual participants
+  useEffect(() => {
+    if (!userSearchQuery.trim()) {
+      setUserSearchResults([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setIsSearchingUsers(true);
+      try {
+        const res = await apiClient.get(`/users/search?q=${encodeURIComponent(userSearchQuery.trim())}`);
+        if (Array.isArray(res.data)) {
+          const mapped = res.data.map((u: any) => ({
+            id: u.id,
+            name: `${u.prenom || ''} ${u.nom || ''}`.trim() || u.username || u.email.split('@')[0],
+            email: u.email,
+            role: u.role,
+          }));
+          setUserSearchResults(mapped);
+        }
+      } catch {
+        setUserSearchResults([]);
+      } finally {
+        setIsSearchingUsers(false);
+      }
+    }, 280);
+    return () => clearTimeout(timer);
+  }, [userSearchQuery]);
+
   const handleCreateRoom = async (e: React.FormEvent) => {
     e.preventDefault();
     setCreateError('');
@@ -230,6 +268,18 @@ export default function ClassroomHubPage() {
         allow_screen_sharing: allowScreenSharing,
         requires_approval: requiresApproval,
       });
+
+      // Automated multi-channel invitations dispatch
+      if (selectedUsers.length > 0 || (autoInvitations && selectedGroupIds.length > 0)) {
+        await apiClient.post(`/classrooms/${res.data.room_id}/invite`, {
+          user_ids: selectedUsers.map((u) => u.id),
+          group_ids: selectedGroupIds,
+          send_email: sendEmailInvite,
+          send_notification: sendNotificationInvite,
+          pre_enroll_attendance: preEnrollAttendance,
+        }).catch(() => {});
+      }
+
       setIsModalOpen(false);
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('classroom_updated'));
@@ -242,6 +292,7 @@ export default function ClassroomHubPage() {
       setIsCreating(false);
     }
   };
+
 
 
   const [stopConfirmRoomId, setStopConfirmRoomId] = useState<string | null>(null);
@@ -307,33 +358,41 @@ export default function ClassroomHubPage() {
     <div className="min-h-screen px-4 py-24 max-w-6xl mx-auto space-y-12">
       <BackButton className="mb-[-20px]" />
       
-      {/* Hero Section */}
+      {/* Hero Section - Isolated for Creator/Host/Admin vs Learner */}
       <div className="glass-card p-8 md:p-12 relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-8 border border-border shadow-xl">
         <div className="space-y-4 max-w-xl z-10">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/10 text-red-500 border border-red-500/30 text-xs font-bold uppercase tracking-wider">
-            <Radio size={14} className="animate-pulse" /> Direct & Visioconférence
+            <Radio size={14} className="animate-pulse" /> {canCreateClass ? 'Studio Formateur & Visioconférence SFU' : 'Espace Apprenant & Visioconférence'}
           </div>
           <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight leading-tight">
-            Salles <span className="text-brand-gradient">vidéo conférence</span>
+            {canCreateClass ? (
+              <>Studio <span className="text-brand-gradient">Visioconférence</span></>
+            ) : (
+              <>Salles <span className="text-brand-gradient">vidéo conférence</span></>
+            )}
           </h1>
           <p className="text-text-secondary text-base leading-relaxed">
-            Rejoignez des sessions de cours en direct avec vos formateurs et camarades. Activez votre caméra, votre micro et partagez votre écran pour collaborer.
+            {canCreateClass ? (
+              "Créez des sessions de cours en direct, gérez les salles d'attente avec modération granulaire (accepter, refuser, bloquer) et diffusez vos invitations par groupe ou individuellement."
+            ) : (
+              "Rejoignez des sessions de cours en direct avec vos formateurs et camarades. Activez votre caméra, votre micro et échangez via le chat public ou privé."
+            )}
           </p>
 
-          {/* Join by Code Form */}
+          {/* Join by Code Form (Accessible to all) */}
           <form onSubmit={handleJoinByCode} className="pt-2 flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
               <input
                 type="text"
                 value={joinCode}
                 onChange={(e) => setJoinCode(e.target.value)}
-                placeholder="Ex: abc-defg-hij ou code..."
+                placeholder="Ex: abc-defg-hij ou code de salle..."
                 className="w-full px-4 py-3 rounded-xl bg-surface border border-border focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm text-text-primary placeholder:text-text-secondary"
               />
             </div>
             <button
               type="submit"
-              className="px-6 py-3 bg-surface hover:bg-surface-hover border border-border text-text-primary rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 shrink-0"
+              className="px-6 py-3 bg-surface hover:bg-surface-hover border border-border text-text-primary rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 shrink-0 cursor-pointer"
             >
               Rejoindre <ArrowRight size={16} />
             </button>
@@ -341,25 +400,37 @@ export default function ClassroomHubPage() {
           {joinError && <p className="text-xs text-red-400 font-medium">{joinError}</p>}
         </div>
 
-        {/* Right CTA / Action */}
+        {/* Right CTA / Action Panel */}
         <div className="flex flex-col gap-4 w-full md:w-auto z-10">
-          {canCreateClass && (
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="btn-primary px-8 py-4 rounded-2xl font-bold shadow-lg flex items-center justify-center gap-3 text-base"
-            >
-              <Plus size={20} /> Nouvelle Salle vidéo conférence
-            </button>
-          )}
-          <div className="p-4 rounded-2xl bg-surface/50 border border-border text-xs text-text-secondary space-y-1">
-            <div className="flex items-center gap-2 text-text-primary font-semibold">
-              <CheckCircle2 size={14} className="text-primary" /> Matériel requis :
+          {canCreateClass ? (
+            <div className="space-y-3">
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="btn-primary w-full px-8 py-4 rounded-2xl font-extrabold shadow-lg flex items-center justify-center gap-3 text-base cursor-pointer"
+              >
+                <Plus size={20} /> Nouvelle Salle de Visioconférence
+              </button>
+              <div className="p-4 rounded-2xl bg-surface/60 border border-border text-xs text-text-secondary space-y-1.5 shadow-sm">
+                <div className="flex items-center gap-2 text-text-primary font-bold">
+                  <CheckCircle2 size={14} className="text-primary" /> Outils Modérateur :
+                </div>
+                <p>• Architecture SFU & Transmission HD</p>
+                <p>• Salle d'attente (Accepter / Rejeter / Bloquer)</p>
+                <p>• Envois d'invitations multi-canaux (Mail & Push)</p>
+              </div>
             </div>
-            <p>• Microphone pour intervenir</p>
-            <p>• Caméra pour la vidéo</p>
-            <p>• Partage d'écran PC intégré</p>
-          </div>
+          ) : (
+            <div className="p-4 rounded-2xl bg-surface/60 border border-border text-xs text-text-secondary space-y-1.5">
+              <div className="flex items-center gap-2 text-text-primary font-bold">
+                <CheckCircle2 size={14} className="text-primary" /> Matériel Requis :
+              </div>
+              <p>• Microphone pour intervenir</p>
+              <p>• Caméra pour le direct</p>
+              <p>• Chat segmenté (public & privé)</p>
+            </div>
+          )}
         </div>
+
 
         {/* Decorative blur circle */}
         <div className="absolute right-0 top-0 w-80 h-80 rounded-full bg-primary/10 blur-[100px] pointer-events-none" />
@@ -788,6 +859,124 @@ export default function ClassroomHubPage() {
                     })}
                   </div>
                 )}
+              </div>
+
+              {/* Individual User Search & Selection Section */}
+              <div className="pt-3 border-t-2 border-slate-200 space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-5 h-5 bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-200 rounded-none">
+                    <Search size={12} />
+                  </div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-900">
+                    Invitations individuelles par apprenant (optionnel)
+                  </label>
+                </div>
+
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={userSearchQuery}
+                    onChange={(e) => setUserSearchQuery(e.target.value)}
+                    placeholder="Rechercher par nom, prénom ou email..."
+                    className="w-full px-4 py-2.5 bg-white border border-slate-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none text-xs text-slate-900 placeholder:text-slate-400 rounded-none"
+                  />
+                  {isSearchingUsers && (
+                    <div className="absolute right-3 top-2.5">
+                      <Loader2 size={16} className="animate-spin text-blue-600" />
+                    </div>
+                  )}
+
+                  {/* Autocomplete dropdown */}
+                  {userSearchResults.length > 0 && (
+                    <div className="absolute z-20 left-0 right-0 mt-1 bg-white border-2 border-blue-200 shadow-xl max-h-48 overflow-y-auto">
+                      {userSearchResults.map((usr) => {
+                        const isAlreadySelected = selectedUsers.some((u) => u.id === usr.id);
+                        return (
+                          <div
+                            key={usr.id}
+                            onClick={() => {
+                              if (!isAlreadySelected) {
+                                setSelectedUsers((prev) => [...prev, usr]);
+                              }
+                              setUserSearchQuery('');
+                              setUserSearchResults([]);
+                            }}
+                            className={`p-2.5 border-b border-slate-100 flex items-center justify-between cursor-pointer text-xs ${
+                              isAlreadySelected ? 'bg-slate-100 text-slate-400' : 'hover:bg-blue-50 text-slate-900'
+                            }`}
+                          >
+                            <div>
+                              <p className="font-bold">{usr.name}</p>
+                              <p className="text-[10px] text-slate-500">{usr.email}</p>
+                            </div>
+                            <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 bg-slate-200 text-slate-700">
+                              {usr.role}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Selected Users Badges */}
+                {selectedUsers.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {selectedUsers.map((usr) => (
+                      <span
+                        key={usr.id}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-100 text-blue-900 border border-blue-200 text-xs font-semibold"
+                      >
+                        <span>{usr.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedUsers((prev) => prev.filter((u) => u.id !== usr.id))}
+                          className="hover:text-red-600 cursor-pointer font-bold"
+                        >
+                          ✕
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Automated Multi-Channel Dispatch Options */}
+              <div className="pt-3 border-t-2 border-slate-200 space-y-3">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-900">
+                  Canaux d'automatisation des invitations
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                  <label className={`p-2.5 border flex items-center gap-2 cursor-pointer ${sendEmailInvite ? 'bg-blue-50 border-blue-500 text-blue-900 font-bold' : 'bg-slate-50 border-slate-300 text-slate-700'}`}>
+                    <input
+                      type="checkbox"
+                      checked={sendEmailInvite}
+                      onChange={(e) => setSendEmailInvite(e.target.checked)}
+                      className="accent-blue-600 w-4 h-4"
+                    />
+                    <span>📧 E-mail transactionnel</span>
+                  </label>
+
+                  <label className={`p-2.5 border flex items-center gap-2 cursor-pointer ${sendNotificationInvite ? 'bg-blue-50 border-blue-500 text-blue-900 font-bold' : 'bg-slate-50 border-slate-300 text-slate-700'}`}>
+                    <input
+                      type="checkbox"
+                      checked={sendNotificationInvite}
+                      onChange={(e) => setSendNotificationInvite(e.target.checked)}
+                      className="accent-blue-600 w-4 h-4"
+                    />
+                    <span>🔔 Notification native</span>
+                  </label>
+
+                  <label className={`p-2.5 border flex items-center gap-2 cursor-pointer ${preEnrollAttendance ? 'bg-blue-50 border-blue-500 text-blue-900 font-bold' : 'bg-slate-50 border-slate-300 text-slate-700'}`}>
+                    <input
+                      type="checkbox"
+                      checked={preEnrollAttendance}
+                      onChange={(e) => setPreEnrollAttendance(e.target.checked)}
+                      className="accent-blue-600 w-4 h-4"
+                    />
+                    <span>📝 Émargement auto</span>
+                  </label>
+                </div>
               </div>
 
               {/* Modal Footer Actions (Fixed inside form bottom - Light Mode UX) */}
