@@ -3,6 +3,7 @@ from typing import Any
 import uuid
 
 from fastapi import APIRouter, HTTPException, Query, WebSocket, WebSocketDisconnect
+from sqlalchemy import func
 
 from app.api.deps import CurrentUser, SessionDep
 from app.core.rate_limiter import rate_limiter
@@ -80,6 +81,16 @@ def get_classrooms(
 
             # 2. Public rooms
             if not room.is_private:
+                accessible.append(room)
+                continue
+
+            # 2b. User has an invitation (pending or accepted)
+            user_has_invitation = session.query(ClassroomInvitation).filter(
+                ClassroomInvitation.classroom_id == room.id,
+                ClassroomInvitation.invitee_id == current_user.id,
+                ClassroomInvitation.status.in_(["pending", "accepted"])
+            ).first()
+            if user_has_invitation:
                 accessible.append(room)
                 continue
 
@@ -717,8 +728,17 @@ def get_join_status(room_id: str, session: SessionDep, current_user: CurrentUser
     if current_user.id == classroom.instructor_id or is_staff(current_user):
         return {"status": "approved"}
 
+    # Check if user has an invitation (pending or accepted)
+    has_inv = session.query(ClassroomInvitation).filter(
+        ClassroomInvitation.classroom_id == classroom.id,
+        ClassroomInvitation.invitee_id == current_user.id,
+        ClassroomInvitation.status.in_(["pending", "accepted"])
+    ).first()
+    if has_inv:
+        return {"status": "approved"}
+
     allowed_list = [u.strip().lower() for u in (classroom.allowed_users or "").split(",") if u.strip()]
-    if str(current_user.id) in allowed_list or current_user.email.lower() in allowed_list:
+    if str(current_user.id) in allowed_list or (current_user.email and current_user.email.lower() in allowed_list):
         return {"status": "approved"}
 
     if not classroom.requires_approval:
@@ -758,13 +778,15 @@ def update_room_settings(room_id: str, payload: dict, session: SessionDep, curre
 @router.get("/invitations/my-invitations", response_model=list[ClassroomInvitationResponse])
 def get_my_invitations(session: SessionDep, current_user: CurrentUser) -> Any:
     """
-    Get all pending virtual classroom invitations for the current user.
+    Get all pending virtual classroom invitations for the current user for active classrooms.
     """
     invitations = (
         session.query(ClassroomInvitation)
+        .join(Classroom, ClassroomInvitation.classroom_id == Classroom.id)
         .filter(
             ClassroomInvitation.invitee_id == current_user.id,
-            ClassroomInvitation.status == "pending"
+            ClassroomInvitation.status == "pending",
+            Classroom.is_active == True
         )
         .order_by(ClassroomInvitation.created_at.desc())
         .all()
@@ -782,15 +804,19 @@ def invite_users_to_classroom(
     """
     Send invitations to users or groups for a virtual classroom. Restricted to Formateurs & Admins.
     """
-    require_staff(
-        current_user,
-        "Seuls les formateurs et administrateurs peuvent envoyer des invitations.",
-    )
-
     cleaned_id = room_id.strip().lower()
     classroom = session.query(Classroom).filter(Classroom.room_id == cleaned_id).first()
     if not classroom:
         raise HTTPException(status_code=404, detail="Salle vidéo conférence introuvable.")
+
+    if current_user.id != classroom.instructor_id and not is_staff(current_user):
+        raise HTTPException(
+            status_code=403,
+            detail="Seuls les formateurs, administrateurs ou l'hôte de la salle peuvent envoyer des invitations.",
+        )
+
+    # Ensure room is active when invitations are being sent
+    classroom.is_active = True
 
     targeted_user_ids = set()
 
@@ -803,6 +829,14 @@ def invite_users_to_classroom(
         for gm in group_members:
             targeted_user_ids.add(gm.user_id)
 
+        # Also resolve learners matching Group.name in User.group_name
+        selected_groups = session.query(Group).filter(Group.id.in_(payload.group_ids)).all()
+        for grp in selected_groups:
+            if grp.name:
+                users_by_group_name = session.query(User).filter(func.lower(User.group_name) == grp.name.strip().lower()).all()
+                for ug in users_by_group_name:
+                    targeted_user_ids.add(ug.id)
+
     targeted_user_ids.discard(current_user.id)
 
     if not targeted_user_ids:
@@ -810,12 +844,23 @@ def invite_users_to_classroom(
 
     invited_users = session.query(User).filter(User.id.in_(targeted_user_ids)).all()
     count = 0
+
+    # Ensure targeted users are pre-authorized in allowed_users so they can access the room without hindrance
+    allowed = [a.strip().lower() for a in (classroom.allowed_users or "").split(",") if a.strip()]
     for target_user in invited_users:
-        # Check if pending invitation exists
+        u_email = (target_user.email or "").strip().lower()
+        u_id = str(target_user.id)
+        if u_email and u_email not in allowed:
+            allowed.append(u_email)
+        if u_id not in allowed:
+            allowed.append(u_id)
+    classroom.allowed_users = ",".join(allowed)
+
+    for target_user in invited_users:
+        # Check if invitation exists (pending or otherwise)
         existing_inv = session.query(ClassroomInvitation).filter(
             ClassroomInvitation.classroom_id == classroom.id,
             ClassroomInvitation.invitee_id == target_user.id,
-            ClassroomInvitation.status == "pending"
         ).first()
 
         if not existing_inv:
@@ -826,6 +871,10 @@ def invite_users_to_classroom(
                 status="pending"
             )
             session.add(inv)
+        else:
+            existing_inv.status = "pending"
+            existing_inv.inviter_id = current_user.id
+            existing_inv.created_at = datetime.utcnow()
 
         # Ensure attendance record if pre_enroll_attendance is enabled
         if getattr(payload, "pre_enroll_attendance", True):
@@ -846,10 +895,10 @@ def invite_users_to_classroom(
         # Send invitation Message if send_notification is enabled
         if getattr(payload, "send_notification", True):
             invitation_body = (
-                f"Bonjour {target_user.email.split('@')[0]},\n\n"
-                f"Vous êtes invité(e) par **{current_user.email}** à rejoindre la Salle vidéo conférence en direct : **{classroom.title}**.\n\n"
+                f"Bonjour {target_user.prenom or target_user.email.split('@')[0]},\n\n"
+                f"Vous êtes invité(e) par **{current_user.prenom or ''} {current_user.nom or current_user.email}** à rejoindre la Salle vidéo conférence en direct : **{classroom.title}**.\n\n"
                 f"📌 **Code de la salle :** `{classroom.room_id}`\n\n"
-                f"👉 Cliquez sur le bouton **Accepter l'invitation** sur la page des Salles vidéo conférence ou ci-dessous pour intégrer la session immédiatement."
+                f"👉 Cliquez sur le bouton **Accepter l'invitation** sur la page des Salles vidéo conférence ou sur la notification pour intégrer la session immédiatement."
             )
             msg = Message(
                 sender_id=current_user.id,
@@ -879,6 +928,129 @@ def invite_users_to_classroom(
     session.commit()
     print(f"[Audit Invitation] {count} invitation(s) envoyée(s) pour la Salle vidéo conférence '{classroom.title}' ({classroom.room_id}) par {current_user.email}.")
     return {"message": f"{count} invitation(s) envoyée(s) avec succès.", "invited_count": count}
+
+
+@router.get("/{room_id}/invitations", response_model=list[ClassroomInvitationResponse])
+def get_classroom_invitations(
+    room_id: str,
+    session: SessionDep,
+    current_user: CurrentUser,
+) -> Any:
+    """
+    Get all invitations sent for a specific classroom (Host & Staff).
+    """
+    cleaned_id = room_id.strip().lower()
+    classroom = session.query(Classroom).filter(Classroom.room_id == cleaned_id).first()
+    if not classroom:
+        raise HTTPException(status_code=404, detail="Salle vidéo conférence introuvable.")
+
+    if current_user.id != classroom.instructor_id and not is_staff(current_user):
+        raise HTTPException(
+            status_code=403,
+            detail="Seul l'hôte ou les administrateurs peuvent consulter la liste des invitations.",
+        )
+
+    invitations = (
+        session.query(ClassroomInvitation)
+        .filter(ClassroomInvitation.classroom_id == classroom.id)
+        .order_by(ClassroomInvitation.created_at.desc())
+        .all()
+    )
+    return invitations
+
+
+@router.delete("/{room_id}/invitations/{invitation_id}")
+def cancel_classroom_invitation(
+    room_id: str,
+    invitation_id: int,
+    session: SessionDep,
+    current_user: CurrentUser,
+) -> Any:
+    """
+    Cancel/delete an invitation (Host & Staff only).
+    """
+    cleaned_id = room_id.strip().lower()
+    classroom = session.query(Classroom).filter(Classroom.room_id == cleaned_id).first()
+    if not classroom:
+        raise HTTPException(status_code=404, detail="Salle vidéo conférence introuvable.")
+
+    if current_user.id != classroom.instructor_id and not is_staff(current_user):
+        raise HTTPException(status_code=403, detail="Seul l'hôte peut annuler une invitation.")
+
+    inv = session.query(ClassroomInvitation).filter(
+        ClassroomInvitation.id == invitation_id,
+        ClassroomInvitation.classroom_id == classroom.id,
+    ).first()
+
+    if not inv:
+        raise HTTPException(status_code=404, detail="Invitation introuvable.")
+
+    session.delete(inv)
+    session.commit()
+    return {"message": "Invitation annulée avec succès.", "invitation_id": invitation_id}
+
+
+@router.post("/{room_id}/invitations/{invitation_id}/resend")
+def resend_classroom_invitation(
+    room_id: str,
+    invitation_id: int,
+    session: SessionDep,
+    current_user: CurrentUser,
+) -> Any:
+    """
+    Resend an invitation notification and email.
+    """
+    cleaned_id = room_id.strip().lower()
+    classroom = session.query(Classroom).filter(Classroom.room_id == cleaned_id).first()
+    if not classroom:
+        raise HTTPException(status_code=404, detail="Salle vidéo conférence introuvable.")
+
+    if current_user.id != classroom.instructor_id and not is_staff(current_user):
+        raise HTTPException(status_code=403, detail="Seul l'hôte peut relancer une invitation.")
+
+    inv = session.query(ClassroomInvitation).filter(
+        ClassroomInvitation.id == invitation_id,
+        ClassroomInvitation.classroom_id == classroom.id,
+    ).first()
+
+    if not inv:
+        raise HTTPException(status_code=404, detail="Invitation introuvable.")
+
+    target_user = inv.invitee
+    if not target_user:
+        raise HTTPException(status_code=404, detail="Utilisateur invité introuvable.")
+
+    # Re-dispatch Message notification
+    invitation_body = (
+        f"Rappel : Bonjour {target_user.email.split('@')[0]},\n\n"
+        f"Vous êtes invité(e) par **{current_user.email}** à rejoindre la Salle vidéo conférence : **{classroom.title}**.\n\n"
+        f"📌 **Code de la salle :** `{classroom.room_id}`"
+    )
+    msg = Message(
+        sender_id=current_user.id,
+        recipient_id=target_user.id,
+        subject=f"🎓 Rappel Invitation : {classroom.title}",
+        body=invitation_body,
+    )
+    session.add(msg)
+
+    # Re-dispatch email if available
+    try:
+        if target_user.email and "@" in target_user.email:
+            target_name = f"{target_user.prenom or ''} {target_user.nom or ''}".strip() or target_user.username or target_user.email.split("@")[0]
+            inviter_name = f"{current_user.prenom or ''} {current_user.nom or ''}".strip() or current_user.email
+            send_classroom_invitation_email(
+                to_email=target_user.email,
+                user_name=target_name,
+                room_title=classroom.title,
+                room_id=classroom.room_id,
+                inviter_name=inviter_name,
+            )
+    except Exception as e:
+        print(f"[WARN] Resend email failed: {e}")
+
+    session.commit()
+    return {"message": f"Invitation relancée pour {target_user.email}."}
 
 
 @router.post("/invitations/{invitation_id}/accept")

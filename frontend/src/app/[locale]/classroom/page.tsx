@@ -20,10 +20,12 @@ import {
   VideoOff,
   Info,
   Check,
-  X
+  X,
+  UserPlus
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import BackButton from '@/components/BackButton';
+import ClassroomInviteModal from '@/components/classroom/ClassroomInviteModal';
 
 interface Classroom {
   id: number;
@@ -96,6 +98,7 @@ export default function ClassroomHubPage() {
   const [sendEmailInvite, setSendEmailInvite] = useState(true);
   const [sendNotificationInvite, setSendNotificationInvite] = useState(true);
   const [preEnrollAttendance, setPreEnrollAttendance] = useState(true);
+  const [selectedRoomForInvite, setSelectedRoomForInvite] = useState<{ roomId: string; title: string } | null>(null);
 
 
   const extractErrorMessage = (err: any, fallback: string): string => {
@@ -270,7 +273,7 @@ export default function ClassroomHubPage() {
       });
 
       // Automated multi-channel invitations dispatch
-      if (selectedUsers.length > 0 || (autoInvitations && selectedGroupIds.length > 0)) {
+      if (selectedUsers.length > 0 || selectedGroupIds.length > 0) {
         await apiClient.post(`/classrooms/${res.data.room_id}/invite`, {
           user_ids: selectedUsers.map((u) => u.id),
           group_ids: selectedGroupIds,
@@ -614,6 +617,16 @@ export default function ClassroomHubPage() {
                       >
                         <Video size={16} /> Rejoindre la classe
                       </Link>
+                      {canCreateClass && (
+                        <button
+                          onClick={() => setSelectedRoomForInvite({ roomId: room.room_id, title: room.title })}
+                          className="px-3 py-3 bg-surface hover:bg-surface/80 text-text-primary border border-border rounded-xl font-bold transition-colors flex items-center justify-center gap-1.5 shrink-0 text-xs cursor-pointer shadow-xs"
+                          title="Inviter des apprenants ou des groupes entiers"
+                        >
+                          <UserPlus size={15} />
+                          <span className="hidden sm:inline">Inviter</span>
+                        </button>
+                      )}
                       {canStopClassroom && (
                         <button
                           onClick={() => handleStopClassroom(room.room_id)}
@@ -1090,6 +1103,26 @@ export default function ClassroomHubPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL INVITATIONS PARTICIPANTS & GROUPES                                  */}
+      {/* ========================================================================= */}
+      {selectedRoomForInvite && (
+        <ClassroomInviteModal
+          isOpen={!!selectedRoomForInvite}
+          onClose={() => setSelectedRoomForInvite(null)}
+          roomId={selectedRoomForInvite.roomId}
+          roomTitle={selectedRoomForInvite.title}
+          isHost={canCreateClass}
+          onInvitedSuccess={(cnt) => {
+            showNotification(
+              "Invitations Envoyées",
+              `${cnt} participant(s) ou groupe(s) invité(s) avec succès !`,
+              "success"
+            );
+          }}
+        />
       )}
 
       {/* ========================================================================= */}

@@ -50,6 +50,7 @@ class ClassroomInvitationResponse(BaseModel):
     created_at: datetime
     classroom: ClassroomResponse | None = None
     inviter: UserResponse | None = None
+    invitee: UserResponse | None = None
 
     class Config:
         from_attributes = True

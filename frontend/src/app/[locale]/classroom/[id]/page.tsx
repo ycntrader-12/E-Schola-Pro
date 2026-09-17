@@ -55,13 +55,15 @@ import {
   VolumeX,
   Gauge,
   Server,
-  Zap
+  Zap,
+  UserPlus
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { isLearner as isLearnerRole, isStaff as isStaffRole } from '@/lib/roles';
 import BackButton from '@/components/BackButton';
 import { SFUWebRTCClient } from '@/lib/sfuClient';
 import HostModerationModal from '@/components/classroom/HostModerationModal';
+import ClassroomInviteModal from '@/components/classroom/ClassroomInviteModal';
 
 interface ClassroomInfo {
   id: number;
@@ -139,6 +141,7 @@ export default function VirtualClassroomLivePage() {
   const [joinStatus, setJoinStatus] = useState<'checking' | 'approved' | 'pending' | 'rejected'>('checking');
   const [pendingRequests, setPendingRequests] = useState<JoinRequestItem[]>([]);
   const [showRequestsModal, setShowRequestsModal] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showStopModal, setShowStopModal] = useState(false);
   const [isStoppingRoom, setIsStoppingRoom] = useState(false);
@@ -343,12 +346,11 @@ export default function VirtualClassroomLivePage() {
         return;
       }
       try {
-        const [userRes, roomRes, subgroupsRes, messagesRes, learnersRes, webrtcConfigRes] = await Promise.all([
+        const [userRes, roomRes, subgroupsRes, messagesRes, webrtcConfigRes] = await Promise.all([
           apiClient.get('/users/me'),
           apiClient.get(`/classrooms/${roomId}`),
           apiClient.get(`/classrooms/${roomId}/subgroups`).catch(() => ({ data: { is_active: false, timer_minutes: 15, subgroups: [] } })),
           apiClient.get(`/classrooms/${roomId}/messages`).catch(() => ({ data: [] })),
-          apiClient.get('/attendance/learners').catch(() => ({ data: [] })),
           apiClient.get(`/classrooms/${roomId}/webrtc/config`).catch(() => ({ data: null })),
           apiClient.post(`/classrooms/${roomId}/join`).catch(() => ({}))
         ]);
@@ -382,15 +384,6 @@ export default function VirtualClassroomLivePage() {
 
         if (subgroupsRes.data) {
           setSubgroupsState(subgroupsRes.data);
-        }
-
-        if (learnersRes.data && learnersRes.data.length > 0) {
-          const list = learnersRes.data.map((l: any) => ({
-            email: l.email,
-            role: l.role,
-            isOnline: true
-          }));
-          setParticipantsList(list);
         }
 
         if (messagesRes.data && messagesRes.data.length > 0) {
@@ -1232,6 +1225,16 @@ export default function VirtualClassroomLivePage() {
             </button>
           )}
 
+          {/* Invite Participants & Groups button */}
+          <button
+            onClick={() => setShowInviteModal(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-primary to-blue-600 hover:from-primary-hover hover:to-blue-500 text-white text-xs font-bold shadow-md shadow-primary/25 transition-all cursor-pointer"
+            title="Inviter des apprenants ou des groupes entiers"
+          >
+            <UserPlus size={14} />
+            <span className="hidden sm:inline">Inviter</span>
+          </button>
+
           {/* Host Settings button */}
           {isHost && (
             <button
@@ -1428,22 +1431,6 @@ export default function VirtualClassroomLivePage() {
               </div>
             ) : null}
 
-            {/* Simulated Instructor Tile */}
-            <div className="relative rounded-2xl overflow-hidden bg-[#1f2937] border border-white/10 flex flex-col items-center justify-center shadow-lg group aspect-video min-h-[120px]">
-              <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gradient-to-tr from-primary to-secondary p-0.5 flex items-center justify-center shadow-md">
-                <div className="w-full h-full rounded-full bg-[#1f2937] flex items-center justify-center text-lg sm:text-xl font-bold text-white">
-                  {instructorName.charAt(0).toUpperCase()}
-                </div>
-              </div>
-              <p className="mt-2 font-bold text-[10px] sm:text-xs text-gray-200 truncate px-2">{instructorName} (Hôte)</p>
-              <div className="absolute top-2 right-2 flex items-center gap-1 px-1.5 py-0.5 bg-black/50 backdrop-blur rounded-full text-[9px] font-semibold text-green-400 border border-white/10">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" /> Direct
-              </div>
-              <div className="absolute bottom-2 left-2 flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/50 backdrop-blur text-[9px] sm:text-[10px] font-semibold">
-                <Mic size={10} className="text-green-400" />
-              </div>
-            </div>
-
             {/* Local User Camera Tile with Audio Level VU-Meter & Speaking Glow */}
             <div className={`relative rounded-2xl overflow-hidden bg-black border transition-all duration-200 aspect-video min-h-[120px] flex flex-col items-center justify-center shadow-lg ${
               isSpeaking
@@ -1475,7 +1462,7 @@ export default function VirtualClassroomLivePage() {
               {/* User Name, Status Tags & Dynamic Audio VU-Meter */}
               <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between gap-1.5 px-2 py-0.5 rounded-full bg-black/70 backdrop-blur text-[9px] sm:text-[10px] font-semibold border border-white/10 z-10">
                 <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="truncate max-w-[70px] sm:max-w-[110px]">{myName} (Vous)</span>
+                  <span className="truncate max-w-[70px] sm:max-w-[120px]">{myName} (Vous{isHost ? ', Hôte' : ''})</span>
                   {isMicMuted ? (
                     <MicOff size={10} className="text-red-400 shrink-0" />
                   ) : (
@@ -1512,55 +1499,59 @@ export default function VirtualClassroomLivePage() {
             </div>
 
             {/* Active Remote Peers Tiles with Real-Time WebRTC Audio & Video States */}
-            {activeWebrtcPeers.length > 0 ? (
-              activeWebrtcPeers.map((peer, idx) => (
-                <div
-                  key={peer.email || idx}
-                  className={`relative rounded-2xl overflow-hidden bg-[#1f2937] border transition-all duration-200 flex flex-col items-center justify-center shadow-lg aspect-video min-h-[120px] ${
-                    peer.is_speaking && !peer.is_mic_muted
-                      ? 'border-emerald-400 ring-4 ring-emerald-500/50 shadow-emerald-500/20'
-                      : 'border-white/10'
-                  }`}
+            {activeWebrtcPeers.map((peer, idx) => (
+              <div
+                key={peer.email || peer.id || idx}
+                className={`relative rounded-2xl overflow-hidden bg-[#1f2937] border transition-all duration-200 flex flex-col items-center justify-center shadow-lg aspect-video min-h-[120px] ${
+                  peer.media_state?.is_speaking && !peer.media_state?.is_mic_muted
+                    ? 'border-emerald-400 ring-4 ring-emerald-500/50 shadow-emerald-500/20'
+                    : 'border-white/10'
+                }`}
+              >
+                <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-surface border-2 border-border flex items-center justify-center text-lg font-bold text-gray-200 shadow-inner transition-transform ${
+                  peer.media_state?.is_speaking && !peer.media_state?.is_mic_muted ? 'scale-110 ring-2 ring-emerald-400' : ''
+                }`}>
+                  {peer.name ? peer.name.charAt(0).toUpperCase() : peer.email.charAt(0).toUpperCase()}
+                </div>
+                <p className="mt-2 font-semibold text-[10px] sm:text-xs text-gray-200 capitalize truncate px-2 max-w-[95%]">
+                  {peer.name || peer.email.split('@')[0]} {peer.is_host ? '(Hôte)' : ''}
+                </p>
+
+                <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between px-2 py-0.5 rounded-full bg-black/60 backdrop-blur text-[9px] font-semibold text-gray-300">
+                  <span className="text-[9px] text-gray-400 uppercase truncate max-w-[70px]">{peer.role}</span>
+                  {peer.media_state?.is_mic_muted ? (
+                    <MicOff size={10} className="text-red-400 shrink-0" />
+                  ) : (
+                    <Mic size={10} className={peer.media_state?.is_speaking ? "text-emerald-400 animate-pulse shrink-0" : "text-green-400 shrink-0"} />
+                  )}
+                </div>
+
+                <div className="absolute top-2 right-2 flex items-center gap-1 px-1.5 py-0.5 bg-black/60 backdrop-blur rounded text-[8px] font-mono text-emerald-400 border border-white/10">
+                  <span className="w-1 h-1 rounded-full bg-emerald-400" />
+                  <span>{peer.media_state?.transport_protocol || 'UDP'}</span>
+                </div>
+              </div>
+            ))}
+
+            {/* Empty State when alone in the room */}
+            {activeWebrtcPeers.length === 0 && (
+              <div className="col-span-1 md:col-span-2 lg:col-span-2 rounded-2xl border border-dashed border-white/15 bg-white/[0.02] p-4 sm:p-6 flex flex-col items-center justify-center text-center space-y-2.5 min-h-[140px] aspect-video">
+                <div className="w-10 h-10 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-gray-400">
+                  <UsersIcon size={20} className="opacity-70" />
+                </div>
+                <div className="space-y-0.5 max-w-xs">
+                  <p className="text-xs sm:text-sm font-bold text-gray-200">En attente de participants</p>
+                  <p className="text-[10px] sm:text-[11px] text-gray-400">
+                    Vous êtes seul dans la salle. Invitez des apprenants ou des groupes entiers à vous rejoindre.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowInviteModal(true)}
+                  className="px-3.5 py-1.5 rounded-xl bg-primary hover:bg-primary-hover text-white text-[11px] sm:text-xs font-bold transition-all flex items-center gap-1.5 shadow-md shadow-primary/20 cursor-pointer"
                 >
-                  <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-surface border-2 border-border flex items-center justify-center text-lg font-bold text-gray-200 shadow-inner transition-transform ${
-                    peer.is_speaking && !peer.is_mic_muted ? 'scale-110 ring-2 ring-emerald-400' : ''
-                  }`}>
-                    {peer.name ? peer.name.charAt(0).toUpperCase() : peer.email.charAt(0).toUpperCase()}
-                  </div>
-                  <p className="mt-2 font-semibold text-[10px] text-gray-300 capitalize truncate px-2 max-w-[95%]">
-                    {peer.name || peer.email.split('@')[0]}
-                  </p>
-
-                  <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between px-2 py-0.5 rounded-full bg-black/60 backdrop-blur text-[9px] font-semibold text-gray-300">
-                    <span className="text-[9px] text-gray-400 uppercase truncate max-w-[70px]">{peer.role}</span>
-                    {peer.is_mic_muted ? (
-                      <MicOff size={10} className="text-red-400 shrink-0" />
-                    ) : (
-                      <Mic size={10} className={peer.is_speaking ? "text-emerald-400 animate-pulse shrink-0" : "text-green-400 shrink-0"} />
-                    )}
-                  </div>
-
-                  <div className="absolute top-2 right-2 flex items-center gap-1 px-1.5 py-0.5 bg-black/60 backdrop-blur rounded text-[8px] font-mono text-emerald-400 border border-white/10">
-                    <span className="w-1 h-1 rounded-full bg-emerald-400" />
-                    <span>{peer.transport_protocol || 'UDP'}</span>
-                  </div>
-                </div>
-              ))
-            ) : (
-              /* Fallback Participants List when no active remote peer detected */
-              participantsList.map((participant, idx) => (
-                <div key={idx} className="relative rounded-2xl overflow-hidden bg-[#1f2937] border border-white/10 flex flex-col items-center justify-center shadow-lg group aspect-video min-h-[120px]">
-                  <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-surface border-2 border-border flex items-center justify-center text-lg font-bold text-gray-300 shadow-inner">
-                    {participant.email.split('.')[0].charAt(0).toUpperCase()}
-                  </div>
-                  <p className="mt-2 font-semibold text-[10px] text-gray-300 capitalize truncate px-2 max-w-[95%]">
-                    {participant.email.split('@')[0].replace('.', ' ')}
-                  </p>
-                  <div className="absolute bottom-2 left-2 flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-black/50 backdrop-blur text-[9px] font-semibold text-gray-400">
-                    <MicOff size={10} />
-                  </div>
-                </div>
-              ))
+                  <UserPlus size={13} /> Inviter des participants
+                </button>
+              </div>
             )}
 
           </div>
@@ -1579,7 +1570,7 @@ export default function VirtualClassroomLivePage() {
                   {activeSidePanel === 'chat' ? (
                     <><MessageSquare size={16} className="text-primary" /> Discussion en Direct</>
                   ) : (
-                    <><UsersIcon size={16} className="text-secondary" /> Participants ({participantsList.length + 2})</>
+                    <><UsersIcon size={16} className="text-secondary" /> Participants ({activeWebrtcPeers.length + 1})</>
                   )}
                 </h3>
                 <button
@@ -1629,14 +1620,11 @@ export default function VirtualClassroomLivePage() {
                         style={{ color: '#ffffff', backgroundColor: '#1e293b' }}
                       >
                         <option value="everyone" disabled className="bg-slate-900 text-white">Sélectionner un participant...</option>
-                        <option value={classroom.instructor?.email || 'formateur@eschola.pro'} className="bg-slate-900 text-white">
-                          👨‍🏫 {instructorName} (Formateur)
-                        </option>
-                        {participantsList
-                          .filter(p => p.email.toLowerCase() !== currentUser?.email.toLowerCase())
+                        {activeWebrtcPeers
+                          .filter(p => p.email?.toLowerCase() !== currentUser?.email?.toLowerCase())
                           .map(p => (
-                            <option key={p.email} value={p.email} className="bg-slate-900 text-white">
-                              👤 {p.email.split('@')[0]} ({p.role})
+                            <option key={p.email || p.id} value={p.email} className="bg-slate-900 text-white">
+                              👤 {p.name || p.email.split('@')[0]} ({p.role}) {p.is_host ? '— Hôte' : ''}
                             </option>
                           ))
                         }
@@ -1890,28 +1878,15 @@ export default function VirtualClassroomLivePage() {
                   </div>
                 )}
 
-                {/* Formateur */}
-                <div className="flex items-center justify-between p-2.5 sm:p-3 rounded-xl bg-white/5 border border-white/5">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-xs shrink-0">
-                      {instructorName.charAt(0).toUpperCase()}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold truncate">{instructorName}</p>
-                      <p className="text-[10px] text-cyan-400 font-semibold">Formateur / Hôte</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <button
-                      onClick={() => handleInitiatePrivateChat(classroom.instructor?.email || 'formateur@eschola.pro')}
-                      className="px-2 py-1 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 text-[10px] font-bold border border-purple-500/30 flex items-center gap-1"
-                      title="Envoyer un message privé"
-                    >
-                      <Lock size={10} /> Privé
-                    </button>
-                    <Mic size={14} className="text-green-400 ml-1" />
-                  </div>
+                {/* Invite CTA Button */}
+                <div className="pb-1">
+                  <button
+                    onClick={() => setShowInviteModal(true)}
+                    className="w-full py-2 px-3 bg-gradient-to-r from-primary to-blue-600 hover:from-primary-hover hover:to-blue-500 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-md shadow-primary/20 transition-all cursor-pointer"
+                  >
+                    <UserPlus size={14} />
+                    <span>Inviter des participants</span>
+                  </button>
                 </div>
 
                 {/* Current user */}
@@ -1921,41 +1896,48 @@ export default function VirtualClassroomLivePage() {
                       {myName.charAt(0).toUpperCase()}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-xs font-bold truncate">{myName} (Vous)</p>
+                      <p className="text-xs font-bold truncate">{myName} (Vous{isHost ? ', Hôte' : ''})</p>
                       <p className="text-[10px] text-gray-400 uppercase">{currentUser?.role || 'Étudiant'}</p>
                     </div>
                   </div>
                   {isMicMuted ? <MicOff size={14} className="text-red-400 shrink-0" /> : <Mic size={14} className="text-green-400 shrink-0" />}
                 </div>
 
-                {/* Other participants */}
-                {participantsList
-                  .filter(p => p.email.toLowerCase() !== currentUser?.email.toLowerCase())
-                  .map(p => (
-                    <div key={p.email} className="flex items-center justify-between p-2.5 sm:p-3 rounded-xl bg-white/5 border border-white/5">
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs shrink-0">
-                          {p.email.charAt(0).toUpperCase()}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-xs font-bold text-gray-200 truncate">{p.email.split('@')[0]}</p>
-                          <p className="text-[10px] text-gray-400 uppercase">{p.role}</p>
-                        </div>
+                {/* Real Active WebRTC Peers in Room */}
+                {activeWebrtcPeers.map(p => (
+                  <div key={p.email || p.id} className="flex items-center justify-between p-2.5 sm:p-3 rounded-xl bg-white/5 border border-white/5">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs shrink-0">
+                        {(p.name || p.email).charAt(0).toUpperCase()}
                       </div>
-
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <button
-                          onClick={() => handleInitiatePrivateChat(p.email)}
-                          className="px-2 py-1 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 text-[10px] font-bold border border-purple-500/30 flex items-center gap-1"
-                          title="Message privé"
-                        >
-                          <Lock size={10} /> Privé
-                        </button>
-                        <MicOff size={14} className="text-gray-500" />
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-gray-200 truncate">{p.name || p.email.split('@')[0]} {p.is_host ? '(Hôte)' : ''}</p>
+                        <p className="text-[10px] text-gray-400 uppercase">{p.role}</p>
                       </div>
                     </div>
-                  ))
-                }
+
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        onClick={() => handleInitiatePrivateChat(p.email)}
+                        className="px-2 py-1 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 text-[10px] font-bold border border-purple-500/30 flex items-center gap-1"
+                        title="Message privé"
+                      >
+                        <Lock size={10} /> Privé
+                      </button>
+                      {p.media_state?.is_mic_muted ? <MicOff size={14} className="text-red-400" /> : <Mic size={14} className="text-green-400" />}
+                    </div>
+                  </div>
+                ))}
+
+                {activeWebrtcPeers.length === 0 && (
+                  <div className="py-6 text-center text-xs text-gray-400 space-y-2">
+                    <UsersIcon size={22} className="mx-auto text-gray-500 opacity-60" />
+                    <p className="font-semibold text-gray-300">Aucun autre participant dans la salle</p>
+                    <p className="text-[11px] text-gray-500 max-w-[200px] mx-auto">
+                      Utilisez le bouton ci-dessus pour inviter des apprenants ou des groupes entiers.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -2087,17 +2069,25 @@ export default function VirtualClassroomLivePage() {
 
         </div>
 
-        {/* Right Action Icons (Participants) */}
+        {/* Right Action Icons (Invite & Participants) */}
         <div className="flex items-center gap-2 shrink-0 ml-2">
+          <button
+            onClick={() => setShowInviteModal(true)}
+            className="p-2.5 sm:p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all cursor-pointer"
+            title="Inviter des participants ou des groupes"
+          >
+            <UserPlus size={18} />
+          </button>
+
           <button
             onClick={() => setActiveSidePanel(activeSidePanel === 'participants' ? null : 'participants')}
             className={`p-2.5 sm:p-3 rounded-full transition-all relative ${activeSidePanel === 'participants' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'
               }`}
-            title="Participants"
+            title="Participants connectés"
           >
             <UsersIcon size={18} />
             <span className="absolute -top-1 -right-1 px-1.5 py-0.2 rounded-full bg-primary text-[9px] font-bold text-white">
-              {participantsList.length + 2}
+              {activeWebrtcPeers.length + 1}
             </span>
           </button>
         </div>
@@ -2646,6 +2636,24 @@ export default function VirtualClassroomLivePage() {
           </div>
         </div>
       )}
+
+      {/* ========================================================================= */}
+      {/* MODAL INVITATIONS PARTICIPANTS & GROUPES (Temps Réel)                     */}
+      {/* ========================================================================= */}
+      <ClassroomInviteModal
+        isOpen={showInviteModal}
+        onClose={() => setShowInviteModal(false)}
+        roomId={roomId}
+        roomTitle={classroom?.title || roomId}
+        isHost={isHost}
+        onInvitedSuccess={(cnt) => {
+          showNotification(
+            "Invitations Envoyées",
+            `${cnt} participant(s) ou groupe(s) invité(s) avec succès ! Les invitations ont été transmises en direct.`,
+            "success"
+          );
+        }}
+      />
 
       {/* ========================================================================= */}
       {/* MODAL CENTRÉE : NOTIFICATIONS & ALERTES SYSTÈME                            */}

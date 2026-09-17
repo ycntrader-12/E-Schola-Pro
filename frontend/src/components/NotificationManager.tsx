@@ -113,20 +113,16 @@ export default function NotificationManager() {
         ]);
 
         const currentUnread = unreadRes.data?.unread_count || 0;
-        const currentInvites = Array.isArray(invitesRes.data)
-          ? invitesRes.data.filter((i: any) => i.status === 'pending').length
-          : 0;
+        const pendingList = Array.isArray(invitesRes.data)
+          ? invitesRes.data.filter((i: any) => i.status === 'pending' && i.classroom && i.classroom.is_active !== false)
+          : [];
+        const currentInvites = pendingList.length;
 
-        // Skip sound/toast on initial load, only record baseline
-        if (isInitialFetchRef.current) {
-          prevUnreadRef.current = currentUnread;
-          prevPendingInvitesRef.current = currentInvites;
-          isInitialFetchRef.current = false;
-          return;
-        }
+        const hasNewInvites = prevPendingInvitesRef.current !== null && currentInvites > prevPendingInvitesRef.current;
+        const isInitial = isInitialFetchRef.current;
 
         // 1. Detect New Messages
-        if (prevUnreadRef.current !== null && currentUnread > prevUnreadRef.current) {
+        if (!isInitial && prevUnreadRef.current !== null && currentUnread > prevUnreadRef.current) {
           const delta = currentUnread - prevUnreadRef.current;
           playNotificationSound('message');
           showToast({
@@ -139,46 +135,62 @@ export default function NotificationManager() {
           window.dispatchEvent(new CustomEvent('messages_updated', { detail: { unread_count: currentUnread } }));
         }
 
-        // 2. Detect New Classroom / Video Conference Invitations
-        if (prevPendingInvitesRef.current !== null && currentInvites > prevPendingInvitesRef.current) {
-          const delta = currentInvites - prevPendingInvitesRef.current;
-          playNotificationSound('invitation');
-          showToast({
-            type: 'invitation',
-            title: delta === 1 ? 'Nouvelle invitation : Salle vidéo conférence 🎥' : `${delta} nouvelles invitations : Salles vidéo conférence 🎥`,
-            body: 'Un formateur vous a invité à rejoindre une session en direct.',
-            actionUrl: '/classroom',
-            actionText: 'Rejoindre la salle',
-          });
+        // 2. Detect & Display Classroom / Video Conference Invitations
+        if (currentInvites > 0) {
+          // If brand new invitation arrived OR user logged in / refreshed with active invites
+          if (hasNewInvites || (isInitial && currentInvites > 0)) {
+            playNotificationSound('invitation');
+            const topInvite = pendingList[0];
+            showToast({
+              type: 'invitation',
+              title: 'Nouvelle invitation : Visioconférence en direct 🎥',
+              body: topInvite?.classroom?.title 
+                ? `Invitation à rejoindre "${topInvite.classroom.title}"`
+                : 'Un formateur vous invite à rejoindre une salle de visioconférence.',
+              actionUrl: '/classroom',
+              actionText: 'Voir la salle',
+            });
+          }
 
-          // Show interactive modal for the latest pending invitation
-          if (Array.isArray(invitesRes.data) && invitesRes.data.length > 0) {
-            const latest = invitesRes.data[0];
-            if (latest.status === 'pending' && latest.classroom) {
-              const inviterName = latest.inviter?.email ? latest.inviter.email.split('@')[0] : 'Formateur';
-              setActiveInvite({
+          // Trigger interactive Accept/Decline modal if not currently open
+          setActiveInvite((currentModal) => {
+            if (currentModal) {
+              const stillValid = pendingList.some((i: any) => i.id === currentModal.invitation_id);
+              if (stillValid) return currentModal;
+            }
+            if (pendingList.length > 0) {
+              const latest = pendingList[0];
+              const inviterName = latest.inviter?.prenom || latest.inviter?.nom
+                ? `${latest.inviter.prenom || ''} ${latest.inviter.nom || ''}`.trim()
+                : latest.inviter?.email ? latest.inviter.email.split('@')[0] : 'Formateur';
+
+              return {
                 invitation_id: latest.id,
                 room_id: latest.classroom.room_id,
                 room_title: latest.classroom.title,
                 inviter_name: inviterName,
                 inviter_email: latest.inviter?.email,
                 created_at: latest.created_at,
-              });
+              };
             }
-          }
+            return null;
+          });
 
           window.dispatchEvent(new CustomEvent('classroom_updated', { detail: { pending_invites: currentInvites } }));
+        } else {
+          setActiveInvite(null);
         }
 
         prevUnreadRef.current = currentUnread;
         prevPendingInvitesRef.current = currentInvites;
+        isInitialFetchRef.current = false;
       } catch {
         // Silently catch background polling errors
       }
     };
 
     checkNotifications();
-    const interval = setInterval(checkNotifications, 8000);
+    const interval = setInterval(checkNotifications, 5000);
 
     const onMessagesUpdated = () => {
       checkNotifications();

@@ -32,6 +32,7 @@ from app.core.roles import (
     is_learner,
     normalize_role,
     require_admin,
+    require_staff,
     require_super_admin,
 )
 from app.services.audit_service import extract_client_ip
@@ -544,9 +545,9 @@ def read_users(
     limit: int = 100,
 ) -> Any:
     """
-    Retrieve all users. (Admin and Admin Managers)
+    Retrieve all users. (Admin and Staff)
     """
-    require_admin(current_user)
+    require_staff(current_user)
     users = session.query(User).offset(skip).limit(limit).all()
     return users
 

@@ -1563,13 +1563,22 @@ E-Schola Pro/
       <thead><tr><th>Colonne</th><th>Type</th><th>Contraintes</th><th>Description</th></tr></thead>
       <tbody>
         <tr><td><code>id</code></td><td>Integer</td><td>PK</td><td>Identifiant unique de l'invitation</td></tr>
-        <tr><td><code>classroom_id</code></td><td>Integer</td><td>FK → classrooms.id</td><td>Salle vidéo conférence associée</td></tr>
+        <tr><td><code>classroom_id</code></td><td>Integer</td><td>FK → classrooms.id, CASCADE</td><td>Salle vidéo conférence associée</td></tr>
         <tr><td><code>inviter_id</code></td><td>Integer</td><td>FK → users.id</td><td>Formateur / Admin ayant envoyé l'invitation</td></tr>
-        <tr><td><code>invitee_id</code></td><td>Integer</td><td>FK → users.id</td><td>Apprenant destinataire invité</td></tr>
-        <tr><td><code>status</code></td><td>String</td><td>Default: "pending"</td><td>Statut de l'invitation (<code>pending</code>, <code>accepted</code>, <code>declined</code>)</td></tr>
-        <tr><td><code>created_at</code></td><td>DateTime</td><td>Auto</td><td>Horodatage d'envoi</td></tr>
+        <tr><td><code>invitee_id</code></td><td>Integer</td><td>FK → users.id, CASCADE</td><td>Apprenant destinataire invité (relation SQLAlchemy vers <code>User</code> pour hydratation du profil complet)</td></tr>
+        <tr><td><code>status</code></td><td>String</td><td>Default: "pending"</td><td>Statut de l'invitation en temps réel : <code>pending</code> (en attente de décision), <code>accepted</code> (acceptée par l'invité), <code>declined</code> (refusée formellement)</td></tr>
+        <tr><td><code>created_at</code></td><td>DateTime</td><td>Auto</td><td>Horodatage d'envoi et de traçabilité</td></tr>
       </tbody>
     </table>
+    <div class="info-box" style="margin-top: 14px;">
+      <strong>Cycle de Vie &amp; Gestion des Invitations (Schéma ClassroomInvitationResponse) :</strong>
+      Le schéma d'exposition API inclut l'objet imbriqué <code>invitee: UserResponse | None</code>, permettant aux interfaces de visualiser instantanément l'identité, l'avatar WebP, l'e-mail et le rôle de chaque personne invitée. Le cycle de vie complet permet :
+      <ul style="margin: 8px 0 0 20px;">
+        <li><strong>Émission ciblée :</strong> Par sélection d'utilisateurs individuels ou par groupe complet avec dispatch multi-canal (email HTML + notification in-app).</li>
+        <li><strong>Suivi &amp; Relance :</strong> L'hôte ou l'administrateur peut lister les invitations émises (<code>GET /{room_id}/invitations</code>), relancer un invité avec renvoi automatique d'email et de notification (<code>POST /{room_id}/invitations/{id}/resend</code>) ou annuler/révoquer l'invitation (<code>DELETE /{room_id}/invitations/{id}</code>).</li>
+        <li><strong>Décision Réactive :</strong> L'apprenant peut accepter (<code>POST /invitations/{id}/accept</code>) ou refuser formellement (<code>POST /invitations/{id}/decline</code>) avec mise à jour immédiate du statut.</li>
+      </ul>
+    </div>
     <div class="info-box" style="margin-top: 14px;">
       <strong>Architecture Mémoire &amp; Machine à États SFU (ClassroomSignalingManager) :</strong>
       Pour garantir une réactivité sub-milliseconde lors des visioconférences en direct, le serveur SFU maintient un état en mémoire vive (RAM) synchronisé avec la base de données :
@@ -1849,7 +1858,7 @@ E-Schola Pro/
     <table>
       <thead><tr><th>Méthode</th><th>Endpoint</th><th>Description</th><th>Accès</th></tr></thead>
       <tbody class="endpoint-row">
-        <tr><td><span class="badge badge-get">GET</span></td><td><code>/users/</code></td><td>Lister tous les utilisateurs</td><td>Admin, Admin Manager</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/users/</code></td><td>Lister tous les utilisateurs (support de pagination et filtrage par rôle). <strong>Accessible au Personnel Enseignant &amp; Staff (Formateurs, DG/RH)</strong> pour le ciblage nominatif des invitations de visioconférence et attributions de devoirs.</td><td>Admin, Admin Manager, Formateur, DG/RH, Pédagogique</td></tr>
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/users/me</code></td><td>Profil de l'utilisateur connecté</td><td>Authentifié</td></tr>
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/users/search</code></td><td>Recherche d'utilisateurs par nom, prénom, email ou nom d'utilisateur (Matching ILIKE, limite paramétrable) avec payload <code>UserMinimalRead</code></td><td>Authentifié</td></tr>
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/users/check-username</code></td><td>Vérifier la disponibilité d'un nom d'utilisateur en temps réel. <strong>Protection anti-énumération :</strong> Rate limited à 30 req/min.</td><td>Public (Rate Limited)</td></tr>
@@ -1969,24 +1978,28 @@ E-Schola Pro/
     <table>
       <thead><tr><th>Méthode</th><th>Endpoint</th><th>Description</th><th>Accès</th></tr></thead>
       <tbody class="endpoint-row">
-        <tr><td><span class="badge badge-get">GET</span></td><td><code>/classrooms/</code></td><td>Lister les salles vidéo conférence actives (filtrage intelligent par rôle/groupe pour apprenants et accès complet pour formateurs/admins)</td><td>Authentifié</td></tr>
-        <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/</code></td><td>Créer une salle avec configuration avancée (salle privée, sans invitations auto par défaut, écran désactivé, approbation d'accès, génération d'invitations et emails d'invitation avec URL directe, traçabilité [AUDIT])</td><td>Admin, Formateur</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/classrooms/</code></td><td>Lister les salles vidéo conférence actives (filtrage intelligent par rôle/groupe et inclusion automatique des salles où l'utilisateur possède une invitation active)</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/</code></td><td>Créer une salle avec configuration avancée (salle privée, écran désactivé, approbation d'accès, génération et envoi d'invitations multi-cibles utilisateurs/groupes, traçabilité [AUDIT])</td><td>Admin, Formateur</td></tr>
         <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/{room_id}/join</code></td><td>Rejoindre et tracker l'assiduité (retards et présences)</td><td>Authentifié</td></tr>
-        <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/{room_id}/join-request</code></td><td>Soumettre une demande pour rejoindre la salle d'attente</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/{room_id}/join-request</code></td><td>Soumettre une demande pour rejoindre la salle d'attente (si l'utilisateur n'est pas pré-approuvé)</td><td>Authentifié</td></tr>
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/classrooms/{room_id}/join-requests</code></td><td>Consulter les demandes d'accès en attente</td><td>Formateur, Admin</td></tr>
         <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/{room_id}/join-requests/{uid}/approve</code></td><td>Approuver la demande d'accès d'un participant</td><td>Formateur, Admin</td></tr>
         <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/{room_id}/join-requests/approve-all</code></td><td>Approuver en lot l'ensemble des demandes d'accès en attente</td><td>Formateur, Admin</td></tr>
         <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/{room_id}/join-requests/{uid}/reject</code></td><td>Rejeter la demande d'accès d'un participant</td><td>Formateur, Admin</td></tr>
-        <tr><td><span class="badge badge-get">GET</span></td><td><code>/classrooms/{room_id}/join-status</code></td><td>Vérifier le statut d'approbation pour rejoindre la salle</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/classrooms/{room_id}/join-status</code></td><td>Vérifier le statut d'approbation d'accès : <strong>statut <code>'approved'</code> immédiat</strong> si l'utilisateur possède une invitation valide (pending ou accepted), sinon statut de la file d'attente / salle d'attente</td><td>Authentifié</td></tr>
         <tr><td><span class="badge badge-patch">PATCH</span></td><td><code>/classrooms/{room_id}/settings</code></td><td>Modifier les paramètres en direct de la salle (écran, salle d'attente, confidentialité)</td><td>Formateur, Admin</td></tr>
         <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/{room_id}/stop</code></td><td>Arrêter/clôturer la salle vidéo conférence en direct pour tous les participants (Strictement interdit aux étudiants, stagiaires et employés)</td><td>Admin, Formateur, Pédagogique</td></tr>
-        <tr><td><span class="badge badge-get">GET</span></td><td><code>/classrooms/invitations/my-invitations</code></td><td>Lister les invitations en attente reçues par l'utilisateur connecté</td><td>Authentifié</td></tr>
-        <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/{room_id}/invite</code></td><td>Inviter des apprenants ou groupes avec options automatisées : envoi d'emails transactionnels HTML (<code>send_email</code>), notifications natives in-app (<code>send_notification</code>) et pré-inscription sur la feuille d'émargement (<code>pre_enroll_attendance</code>).</td><td>Admin, Formateur, Pédagogique</td></tr>
-        <tr><td><span class="badge badge-get" style="background: var(--accent-purple-bg); color: var(--accent-purple-text); border-color: #e9d5ff;">WS</span></td><td><code>/classrooms/{room_id}/ws</code> · <code>/ws/classroom/{room_id}</code></td><td>Serveur de signalisation WebRTC SFU temps réel : authentification JWT, validation des codes d'entrée, machine à états de la salle d'attente, négociation SDP Offer/Answer, échange de candidats ICE, routage de flux simulcast, modération hôte et chat segmenté.</td><td>Authentifié (Jeton JWT)</td></tr>
-        <tr><td><span class="badge badge-get">GET</span></td><td><code>/classrooms/{room_id}/state</code></td><td>Consulter l'état en direct de la session SFU (participants connectés, file d'attente d'admission active, liste des utilisateurs bloqués).</td><td>Formateur, Admin</td></tr>
-        <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/{room_id}/block-user/{user_id}</code></td><td>Bannir et expulser immédiatement un participant : déconnexion WebSocket immédiate avec code de fermeture 4003, retrait des autorisations BDD et mise en liste noire de session.</td><td>Formateur, Admin</td></tr>
-        <tr><td><span class="badge badge-delete">DELETE</span></td><td><code>/classrooms/{room_id}/block-user/{user_id}</code></td><td>Débloquer un utilisateur précédemment exclu pour lui permettre de formuler une nouvelle demande d'accès.</td><td>Formateur, Admin</td></tr>
-        <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/invitations/{id}/accept</code></td><td>Accepter l'invitation, enregistrer la présence et obtenir le code de salle</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/classrooms/invitations/my-invitations</code></td><td>Lister les invitations en attente reçues par l'utilisateur connecté pour des <strong>sessions actives en direct</strong> (<code>Classroom.is_active == True</code>) avec profils enrichis de l'hôte et de la salle</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/classrooms/{room_id}/invitations</code></td><td>Lister exhaustivement toutes les invitations émises pour cette visioconférence avec profils enrichis des invités (nom, prénom, username, avatar WebP, rôle), horodatage et statuts en direct (<code>pending</code>, <code>accepted</code>, <code>declined</code>)</td><td>Admin, Formateur (hôte/créateur), Pédagogique</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/{room_id}/invite</code></td><td>Inviter des apprenants individuels ou des groupes entiers (résolution croisée <code>GroupMember</code> et <code>User.group_name</code>) avec réactivation automatique de la salle (<code>is_active=True</code>), pré-approbation d'accès sans salle d'attente (<code>allowed_users</code>), envoi d'emails transactionnels HTML (<code>send_email</code>) et notifications push natives (<code>send_notification</code>)</td><td>Admin, Formateur (hôte/créateur), Pédagogique</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/{room_id}/invitations/{invitation_id}/resend</code></td><td>Renvoyer/relancer une invitation en attente avec réémission instantanée de l'email transactionnel HTML et de la notification push in-app</td><td>Admin, Formateur (hôte/créateur), Pédagogique</td></tr>
+        <tr><td><span class="badge badge-delete">DELETE</span></td><td><code>/classrooms/{room_id}/invitations/{invitation_id}</code></td><td>Annuler/révoquer une invitation en attente pour la salle vidéo conférence</td><td>Admin, Formateur (hôte/créateur), Pédagogique</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/invitations/{id}/accept</code></td><td>Accepter l'invitation, enregistrer la présence et obtenir le code de salle pour accès direct immédiat</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/invitations/{id}/decline</code></td><td>Refuser formellement l'invitation reçue (mise à jour du statut <code>declined</code>, masquage de l'appel entrant et synchronisation temps réel)</td><td>Authentifié</td></tr>
+        <tr><td><span class="badge badge-get" style="background: var(--accent-purple-bg); color: var(--accent-purple-text); border-color: #e9d5ff;">WS</span></td><td><code>/classrooms/{room_id}/ws</code> · <code>/ws/classroom/{room_id}</code></td><td>Serveur de signalisation WebRTC SFU temps réel : authentification JWT, validation des codes d'entrée, machine à états de la salle d'attente, négociation SDP Offer/Answer, échange de candidats ICE, routage de flux simulcast, modération hôte et chat segmenté</td><td>Authentifié (Jeton JWT)</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/classrooms/{room_id}/state</code></td><td>Consulter l'état en direct de la session SFU (participants connectés, file d'attente d'admission active, liste des utilisateurs bloqués)</td><td>Formateur, Admin</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/{room_id}/block-user/{user_id}</code></td><td>Bannir et expulser immédiatement un participant : déconnexion WebSocket immédiate avec code de fermeture 4003, retrait des autorisations BDD et mise en liste noire de session</td><td>Formateur, Admin</td></tr>
+        <tr><td><span class="badge badge-delete">DELETE</span></td><td><code>/classrooms/{room_id}/block-user/{user_id}</code></td><td>Débloquer un utilisateur précédemment exclu pour lui permettre de formuler une nouvelle demande d'accès</td><td>Formateur, Admin</td></tr>
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/classrooms/{room_id}/webrtc/config</code></td><td>Configuration WebRTC ICE Servers (STUN/TURN over UDP &amp; TCP/TLS, topologie réseau et codecs Opus/VP8)</td><td>Authentifié</td></tr>
         <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/{room_id}/webrtc/ping</code></td><td>Heartbeat de présence et télémétrie des pairs (états micro, caméra, parole, VU-mètre, protocole UDP/TCP)</td><td>Authentifié</td></tr>
         <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/{room_id}/webrtc/signal</code></td><td>Échange de signaux WebRTC (SDP Offers, Answers et candidats ICE UDP/TCP en direct ou broadcast)</td><td>Authentifié</td></tr>
@@ -2520,104 +2533,84 @@ E-Schola Pro/
       </div>
     </div>
 
-    <h3>Module 7 — Salles Vidéo Conférence (Architecture WebRTC SFU &amp; Signalisation Temps Réel)</h3>
+    <h3>Module 7 — Salles Vidéo Conférence (Architecture WebRTC SFU, Zéro Utilisateur Factice &amp; Invitations Réelles)</h3>
     <div class="card">
       <p><strong>Route Frontend :</strong> <code>/classroom</code> · <code>/classroom/{id}</code></p>
       <p><strong>Spécifications &amp; Architecture Industrielle :</strong></p>
       <ul>
-        <li><strong>Architecture WebRTC SFU (Selective Forwarding Unit) :</strong>
+        <li><strong>Règle Fondamentale : Zéro Utilisateur Virtuel ou Hors-Ligne par Défaut (Affichage Exclusif des Connectés Réels) :</strong>
           <ul>
-            <li><em>Élimination de la Saturation Mesh O(N²) :</em> Dans une topologie Mesh classique, chaque participant doit émettre N-1 flux montants, saturant la bande passante dès 4 à 5 participants. L'architecture SFU E-Schola Pro adopte un modèle en étoile dans lequel chaque client n'émet qu'<strong>un unique flux montant (Simulcast multi-niveaux High / Med / Low)</strong>. Le serveur SFU distribue sélectivement les flux vidéo et audio aux pairs abonnés, réduisant la consommation de bande passante montante de plus de 80% et garantissant une fluidité absolue à 60 FPS.</li>
-            <li><em>Transport Média Hybride UDP &amp; Relais TCP/TLS :</em> Négociation automatique du transport prioritaire SRTP/SCTP sur UDP (&lt; 30 ms de latence), avec basculement transparent sur TCP/TLS (ports 443/80) via serveurs STUN/TURN (Google STUN, Twilio STUN/TURN) pour traverser les pare-feux d'entreprise stricts.</li>
-            <li><em>Télémétrie &amp; Analyse Réseau en Direct :</em> Calcul continu de la latence aller-retour (RTT), suivi du transport actif (🟢 UDP / 🔵 TCP) et détection dynamique de perte de paquets.</li>
+            <li><em>Élimination Totale des Tuiles Statiques &amp; Factices :</em> Lors de l'ouverture ou de la connexion à une salle de visioconférence (<code>/classroom/{id}</code>), la plateforme <strong>n'affiche aucun utilisateur par défaut</strong>. Toutes les injections artificielles d'apprenants hors-ligne issus de la base et la fausse tuile simulée de l'hôte ont été formellement supprimées.</li>
+            <li><em>Affichage Strictement Indexé sur les Pairs Réels Connectés :</em> La grille vidéo principale et le volet latéral des participants rendent <strong>exclusivement</strong> l'utilisateur local (avec la mention <em>« Vous, Hôte »</em> ou <em>« Vous »</em>) et les pairs ayant effectivement établi un flux WebRTC / SFU actif (<code>activeWebrtcPeers</code>).</li>
+            <li><em>État Épuré &amp; Action Immédiate en Solo :</em> Si l'utilisateur est le seul participant connecté dans la salle, la grille affiche une bannière épurée <em>« Vous êtes seul dans la salle »</em> accompagnée d'un bouton d'action directe <strong>« Inviter des participants »</strong> ouvrant instantanément la modale d'invitation.</li>
+            <li><em>Compteur de Participants 100% Réel :</em> L'indicateur numérique affiché dans la barre supérieure reflète avec une exactitude absolue le nombre réel de personnes en ligne en direct (<code>activeWebrtcPeers.length + 1</code>).</li>
           </ul>
         </li>
-        <li><strong>Serveur de Signalisation WebSocket Temps Réel (FastAPI &amp; Asyncio) :</strong>
+
+        <li><strong>Système Complet d'Invitations Multi-Cibles &amp; Modale Dédiée (ClassroomInviteModal) :</strong>
           <ul>
-            <li><em>Canal Bidirectionnel Full-Duplex :</em> Point d'accès WebSocket <code>/ws/classroom/{room_id}</code> et <code>/api/v1/classrooms/{room_id}/ws</code> géré par le singleton <code>ClassroomSignalingManager</code> avec verrous asynchrones <code>asyncio.Lock</code>.</li>
-            <li><em>Authentification Robuste JWT :</em> Validation systématique du jeton d'accès Bearer lors de la connexion initiale via <code>decode_token()</code>. Extraction des métadonnées (nom, rôle, email, permissions).</li>
-            <li><em>Validation des Codes d'Entrée :</em> Contrôle automatique de conformité de l'identifiant de salle et du code d'invitation avec rejet immédiat des requêtes non autorisées.</li>
-            <li><em>Heartbeat &amp; Résilience :</em> Échange périodique de signaux <code>ping</code> / <code>pong</code> avec détection instantanée des déconnexions et diffusion de l'événement <code>peer_left</code> aux autres participants.</li>
+            <li><em>Accès Ergonomique Universel :</em> Bouton d'action <strong>« Inviter »</strong> intégré en 4 emplacements stratégiques : barre d'en-tête supérieure de la visioconférence, volet latéral des participants, barre de contrôles inférieure, et cartes de sessions actives sur le hub <code>/classroom</code>.</li>
+            <li><em>Interface Tabulaire Moderne en 3 Onglets :</em>
+              <ul>
+                <li><strong>Onglet 1 — Apprenants Individuels :</strong> Recherche textuelle asynchrone dérebondie (300 ms) sur le nom, prénom, email ou nom d'utilisateur. Filtrage par rôle avec badges haute lisibilité. Cases à cocher individuelles, bouton global <em>« Tout sélectionner »</em> et compteur dynamique de sélection en temps réel.</li>
+                <li><strong>Onglet 2 — Groupes &amp; Promotions :</strong> Sélection de promotions/classes complètes avec affichage dynamique du nombre de membres inscrits pour inviter une cohorte entière en un seul clic.</li>
+                <li><strong>Onglet 3 — Suivi des Invitations de la Salle :</strong> Tableau de bord de traçabilité en direct des invitations émises pour la salle active (<code>GET /{room_id}/invitations</code>). Affichage du profil complet de l'invité (avatar WebP, nom, prénom, email, rôle), de l'horodatage d'envoi et des badges d'état colorés : 🟡 <strong>En attente</strong>, 🟢 <strong>Acceptée</strong>, 🔴 <strong>Refusée</strong>. Actions directes : bouton de relance (<code>resend</code>) réémettant l'email et la notification in-app, et bouton d'annulation/révocation (<code>delete</code>).</li>
+              </ul>
+            </li>
+            <li><em>Canaux d'Expédition Automatisés :</em> Cases à cocher indépendantes pour l'envoi d'e-mails transactionnels HTML (avec lien direct d'accès et code de session) et de notifications push natives in-app.</li>
           </ul>
         </li>
-        <li><strong>Boîte de Dialogue Modale pour l'Hôte (HostModerationModal) :</strong>
+
+        <li><strong>Boîte de Dialogue Interactive pour l'Utilisateur Invité (GuestInviteModal &amp; NotificationManager) :</strong>
           <ul>
-            <li><em>Gestion Complète de la Salle d'Attente :</em> Affichage instantané des demandes d'accès avec l'identité de l'apprenant, son rôle et son horodatage. Boutons d'action immédiate : 🟢 <strong>Accepter</strong>, 🔴 <strong>Refuser</strong>, ⛔ <strong>Bloquer définitivement</strong> et ⚡ <strong>Tout Accepter</strong> en lot.</li>
-            <li><em>Modération des Participants Actifs :</em> Contrôle granulaire de la session en direct avec coupure du microphone d'un participant à distance (<code>host_mute_user</code>), coupure générale de tous les micros sauf l'hôte (<code>host_mute_all</code>), expulsion temporaire de la session (<code>host_kick</code>, code 4002) et bannissement irréversible (<code>host_block</code>, code 4003).</li>
-            <li><em>Dialogue de Confirmation Sécurisé :</em> Tout bannissement d'un utilisateur déclenche une fenêtre de confirmation modale explicite prévenant les erreurs de manipulation et persistant le blocage en base de données.</li>
-          </ul>
-        </li>
-        <li><strong>Boîte de Dialogue Modale pour l'Utilisateur Invité (GuestInviteModal) :</strong>
-          <ul>
-            <li><em>Expérience d'Appel Entrant Immersive :</em> Dès l'émission d'une invitation, une boîte de dialogue modale flottante s'affiche au premier plan sur l'écran de l'invité (gérée globalement par <code>NotificationManager.tsx</code> sur toute l'application).</li>
-            <li><em>Effet Visuel &amp; Sonore :</em> Icône caméra avec pulsation lumineuse cyan/bleu, carillon harmonique Web Audio API en boucle, affichage clair du titre de la session, du nom du formateur et du badge de code de salle.</li>
-            <li><em>Décision Rapide :</em> Deux boutons d'action ergonomiques : 🟢 <strong>Accepter et Rejoindre</strong> (redirection instantanée vers <code>/classroom/{id}</code> avec validation de présence) et ⚪ <strong>Refuser</strong> (fermeture propre et mise à jour du statut en base).</li>
-          </ul>
-        </li>
-        <li><strong>Tableau de Bord Isolé (Studio Formateur / Admin vs Espace Apprenant) :</strong>
-          <ul>
-            <li><em>Séparation Visuelle &amp; Fonctionnelle Nette :</em> Le hub <code>/classroom</code> présente un Studio Formateur dédié aux formateurs et administrateurs avec formulaire complet de configuration, et un Espace Apprenant épuré centré sur la consultation des sessions autorisées et le statut des invitations.</li>
-            <li><em>Recherche d'Utilisateurs Dérebondie :</em> Assistant d'ajout d'utilisateurs individuels avec recherche textuelle asynchrone dérebondie (300 ms) via <code>/users/search?q=...</code>, exclusion automatique de l'hôte et affichage de pastilles d'utilisateurs amovibles.</li>
-            <li><em>Automatisation Multi-Canal en 1 Clic :</em> Options activables individuellement pour chaque session :
-              <ul style="margin-top: 4px;">
-                <li>📧 <strong>Notification par E-mail :</strong> Envoi automatique d'un email transactionnel HTML formaté avec lien d'accès direct et code de salle.</li>
-                <li>🔔 <strong>Notification Native In-App :</strong> Déclenchement de la modale d'invitation en direct et des toasts sonores pour les apprenants connectés.</li>
-                <li>📋 <strong>Pré-inscription Émargement :</strong> Inscription préventive automatique sur la feuille de présence de la session.</li>
+            <li><em>Interception Globale &amp; Rétention au Rechargement :</em> Gérée de façon centralisée par <code>NotificationManager.tsx</code> au niveau racine. L'arrivée d'une invitation déclenche immédiatement la modale au premier plan, et toute invitation en attente existante est automatiquement présentée dès la connexion ou le rechargement de page.</li>
+            <li><em>Filtrage Strict des Sessions Actives (Zéro Invitation Fantôme) :</em> L'endpoint <code>/classrooms/invitations/my-invitations</code> et le gestionnaire <code>NotificationManager</code> vérifient systématiquement <code>Classroom.is_active == True</code>, éliminant définitivement les reliquats d'invitations vers des salles fermées ou obsolètes.</li>
+            <li><em>Admission Directe Instantanée (Zéro Salle d'Attente pour les Invités) :</em> Dès qu'un utilisateur reçoit ou accepte une invitation, l'API <code>GET /classrooms/{room_id}/join-status</code> lui délivre immédiatement le statut <code>'approved'</code> et l'inscrit dans <code>classroom.allowed_users</code>, lui permettant de rejoindre la salle en 1 clic sans rester bloqué en attente de validation manuelle par l'hôte.</li>
+            <li><em>Signal Harmonique &amp; Visuel :</em> Carillon audio continu synthétisé par la Web Audio API, halo lumineux pulsé cyan/bleu, titre de la session, nom du formateur hôte et badge du code de salle.</li>
+            <li><em>Décision Rapide en Deux Clics :</em>
+              <ul>
+                <li>🟢 <strong>Accepter et Rejoindre :</strong> Validation automatique de présence, obtention du jeton d'accès et redirection instantanée vers la visioconférence <code>/classroom/{id}</code> avec flux vidéo 60 FPS immédiat.</li>
+                <li>🔴 <strong>Refuser l'invitation :</strong> Déclenchement de l'endpoint <code>POST /classrooms/invitations/{id}/decline</code>, arrêt instantané du signal sonore, fermeture propre de la modale et mise à jour du statut en base.</li>
               </ul>
             </li>
           </ul>
         </li>
-        <li><strong>Système de Chat Multi-Canaux Segmenté :</strong>
+
+        <li><strong>Boîte de Dialogue &amp; Bannière d'Admission pour le Créateur / Hôte (HostModerationModal &amp; Knocking) :</strong>
           <ul>
-            <li><em>Canal Global :</em> Discussion plénière accessible à l'ensemble des participants de la session avec horodatage et rôle de l'émetteur.</li>
-            <li><em>Canal Privé 1-à-1 Étanche :</em> Messagerie privée directe entre deux utilisateurs (filtrage strict côté serveur garantissant qu'aucun autre participant ne reçoit les trames privées). Sélecteur de destinataire dans l'en-tête du chat avec badge « Privé » violet haute visibilité.</li>
-            <li><em>Canal Sous-Groupes (Breakout Rooms) :</em> Cloisonnement étanche des conversations par atelier pour les sessions de travaux pratiques en sous-commissions.</li>
-            <li><em>Pièces Jointes &amp; Émojis :</em> Support complet du partage de documents (PDF, tableurs, présentations), images et vidéos avec barre d'outils dédiée et sélecteur d'émojis expressifs.</li>
+            <li><em>Bannière Flottante Haute Visibilité :</em> En cas de salle privée avec salle d'attente, chaque demande d'accès déclenche une bannière supérieure animée avec carillon discret (400Hz &rarr; 600Hz) et boutons d'action immédiate : 🟢 <strong>« Accepter l'accès »</strong>, 🔴 <strong>« Refuser »</strong> et <strong>« Tout accepter »</strong> en lot.</li>
+            <li><em>Modale de Modération Complète :</em> Gestion granulaire avec onglet <em>Salle d'attente</em> et onglet <em>Participants actifs</em>. Contrôles hôte avancés : coupure individuelle du micro (<code>host_mute_user</code>), coupure générale (<code>host_mute_all</code>), expulsion temporaire (code 4002) et bannissement irréversible persistant en base avec dialogue de confirmation 3D sécurisé.</li>
           </ul>
         </li>
-        <li><strong>Moteur Audio Studio &amp; Microphone VAD 60 FPS :**
+
+        <li><strong>Architecture WebRTC SFU (Selective Forwarding Unit) :</strong>
           <ul>
-            <li><em>Traitement Haute Fidélité Opus 48 kHz :</em> Annulation d'Écho Acoustique (AEC), Suppression Active du Bruit (NS) et Contrôle Automatique de Gain (AGC).</li>
-            <li><em>VU-Mètre &amp; Voice Activity Detection (VAD) :</em> Analyseur de spectre Web Audio API (<code>AnalyserNode</code>) calculant l'amplitude RMS en temps réel avec anneau d'élocution vert émeraude réactif autour de l'avatar/vidéo.</li>
+            <li><em>Élimination de la Saturation Mesh O(N²) :</em> Modèle en étoile où chaque participant n'émet qu'un unique flux montant (Simulcast High/Med/Low). Le serveur SFU route sélectivement les flux, réduisant l'usage de bande passante montante de 80% et garantissant 60 FPS constants.</li>
+            <li><em>Transport Hybride UDP &amp; Relais TCP/TLS :</em> Négociation prioritaire SRTP/SCTP sur UDP (&lt; 30 ms de latence) avec bascule transparente sur TCP/TLS (ports 443/80) via serveurs STUN/TURN (Google STUN, Twilio TURN).</li>
+            <li><em>Télémétrie en Direct :</em> Calcul continu de la latence RTT, indicateur visuel de protocole (🟢 UDP / 🔵 TCP) et console de diagnostic réseau/matériel intégrée.</li>
           </ul>
         </li>
-        <li><strong>Capture Vidéo Adaptative &amp; Partage d'Écran HD :** Flux jusqu'à 1080p/720p avec basculement caméra frontale/dorsale sur mobile (<code>facingMode</code>) et capture fluide <code>getDisplayMedia</code> pour le partage d'écran PC.</li>
-        <li><strong>Modal Professionnelle de Clôture de Session :</strong> Dialogue de fin de visioconférence avec fond flouté (glassmorphism), compte à rebours dynamique de 10 secondes et redirection automatique vers le hub.</li>
-      </ul>
+
+        <li><strong>Serveur de Signalisation WebSocket Découplé (FastAPI &amp; Asyncio) :</strong>
           <ul>
-            <li><em>Transport Média Primaire UDP (SRTP / SCTP) :</em> Transmission audio et vidéo à latence ultra-faible (&lt; 35 ms) sans blocage d'en-tête, garantissant une synchronisation labiale et une fluidité 60 FPS parfaites.</li>
-            <li><em>Fallback Résilient TCP / TLS (Port 443 / 80) :</em> Bascule automatique et transparente via les serveurs relais STUN/TURN lorsque les réseaux d'entreprise ou pare-feux bloquent le protocole UDP.</li>
-            <li><em>Topologie des Serveurs ICE :</em> Découverte dynamique de candidats locaux (Host), réflexifs (Google STUN <code>stun.l.google.com:19302</code>, Twilio <code>global.stun.twilio.com:3478</code>) et relais TURN.</li>
-            <li><em>Signaling FastAPI Découplé :</em> Endpoints REST temps réel (<code>/webrtc/config</code>, <code>/webrtc/ping</code>, <code>/webrtc/signal</code>, <code>/webrtc/signals</code>) pour l'échange d'offres/réponses SDP et de candidats ICE.</li>
+            <li><em>Canal Full-Duplex Sécurisé :</em> Endpoints <code>/ws/classroom/{room_id}</code> et <code>/api/v1/classrooms/{room_id}/ws</code> gérés par <code>ClassroomSignalingManager</code> avec verrous asynchrones.</li>
+            <li><em>Authentification Robuste JWT :</em> Décodage systématique du Bearer Token à la négociation initiale avec vérification des rôles et permissions.</li>
+            <li><em>Heartbeat &amp; Résilience :</em> Échange continu <code>ping</code>/<code>pong</code> et notification instantanée de départ des pairs (<code>peer_left</code>).</li>
           </ul>
         </li>
-        <li><strong>Moteur Voix &amp; Microphone Professionnel (Web Audio API &amp; VAD) :**
+
+        <li><strong>Moteur Audio Studio 48 kHz &amp; Microphone VAD 60 FPS :</strong>
           <ul>
-            <li><em>Qualité Studio 48 kHz Opus :</em> Pistes audio configurées avec Annulation d'Écho Acoustique (AEC), Suppression Active du Bruit de fond (NS) et Contrôle Automatique de Gain (AGC).</li>
-            <li><em>VU-Mètre Dynamique &amp; Détection de Parole (Voice Activity Detection) :</em> Analyseur spectral Web Audio API (<code>AnalyserNode</code>) calculant l'amplitude RMS en temps réel avec anneau lumineux d'élocution vert émeraude (halo réactif) autour de l'avatar/vidéo et jauge de volume live.</li>
-            <li><em>Contrôle Mute / Unmute Réactif :</em> Coupure matérielle et logicielle instantanée avec diffusion de l'état du micro aux autres pairs connectés.</li>
+            <li><em>Qualité Studio Opus :</em> Annulation d'écho (AEC), suppression de bruit (NS) et contrôle automatique de gain (AGC).</li>
+            <li><em>VU-Mètre &amp; Détection de Parole (VAD) :</em> Analyseur spectral Web Audio API (<code>AnalyserNode</code>) calculant l'amplitude RMS en temps réel avec anneau d'élocution vert émeraude dynamique autour de la tuile active.</li>
           </ul>
         </li>
-        <li><strong>Webcam &amp; Flux Vidéo Haute Définition Adaptatif :**
-          <ul>
-            <li><em>Capture Vidéo HD Adaptative :</em> Résolution jusqu'à 1080p/720p avec replis automatiques résilients pour appareils mobiles ou connexions restreintes, accélération matérielle VP8/H.264.</li>
-            <li><em>Commutation Caméra Mobile (Frontale / Dorsale) :</em> Basculement instantané <code>facingMode: 'user' | 'environment'</code> sans coupure de communication.</li>
-            <li><em>Partage d'Écran PC &amp; Mobile :</em> Capture <code>getDisplayMedia</code> avec transmission simultanée et bascule automatique sur la grille centrale.</li>
-          </ul>
-        </li>
-        <li><strong>Console de Diagnostic Réseau &amp; Matériel Intégrée (Bouton d'En-tête) :** Modale immersive affichant en temps réel le protocole de transport actif (🟢 UDP / 🔵 TCP), la latence RTT estimée, le VU-mètre microphone live, la résolution et le framerate de la webcam, ainsi que la topologie complète des serveurs STUN/TURN.</li>
-        <li><strong>Système d'Invitations Interactif, Notifications Sonores Temps Réel &amp; Par Email :</strong> Possibilité pour les Formateurs, Administrateurs et Responsables Pédagogiques d'inviter des apprenants ou groupes ciblés. Dès l'émission d'une invitation, l'apprenant concerné est immédiatement alerté par <strong>carillon sonore Web Audio API ascendant (Do5 &rarr; Mi5 &rarr; Sol5)</strong>, un toast interactif flottant avec bouton d'action directe « Rejoindre la salle », une notification système de bureau et un badge animé vert émeraude avec compteur dynamique sur la Navbar et le Dashboard. Les apprenants reçoivent également un email transactionnel complet avec code et lien direct d'accès, ainsi qu'un bandeau interactif sur le hub (<code>/classroom</code>) avec les boutons 🟢 <strong>Accepter l'invitation</strong> (redirection immédiate) et 🔴 <strong>Décliner</strong> (synchronisation instantanée de l'interface via <code>classroom_updated</code>). Toutes les invitations sont persistées en base PostgreSQL dans <code>classroom_invitations</code>.</li>
-        <li><strong>Filtrage Intelligent &amp; Résilience du Hub Salles Vidéo Conférence (/classroom) :</strong> Chargement découplé et tolérant aux pannes avec extraction automatique des messages d'erreur FastAPI. Visibilité basée sur les rôles et groupes (salles publiques ou ciblées pour les apprenants, toutes les salles pour l'équipe pédagogique et admins).</li>
-        <li><strong>Création & Confidentialité :</strong> Titre, description, identifiant unique et salle privée par défaut.</li>
-        <li><strong>Gestion des Invitations :</strong> Désactivation des invitations automatiques par défaut. Ajout manuel de participants ou par groupe sélectionné.</li>
-        <li><strong>Contrôle du Partage d'Écran :</strong> Désactivé par défaut. Activable/désactivable en direct par le formateur depuis le panneau de configuration.</li>
-        <li><strong>Salle d'Attente &amp; Bannière d'Admission en Temps Réel (Bouton d'Acceptation Direct pour le Créateur) :</strong> Toute demande pour rejoindre une salle privée est soumise à validation instantanée par le créateur ou l'animateur. L'hôte bénéficie d'une <strong>bannière flottante haute visibilité centrée en haut de l'écran</strong> affichant l'identité de l'apprenant en attente avec des boutons d'action immédiate en un clic : <strong>🟢 « Accepter l'accès »</strong>, <strong>🔴 « Refuser »</strong> et <strong>« Tout accepter »</strong>. Dès l'arrivée d'une demande, un <strong>carillon discret synthétisé Web Audio API (signal de porte 400Hz &rarr; 600Hz)</strong> avertit l'hôte. Les contrôles d'admission sont également intégrés en temps réel dans l'onglet « Participants » du panneau latéral et dans une modale dédiée avec validation par lot (endpoint <code>POST /classrooms/{room_id}/join-requests/approve-all</code>). Les permissions d'approbation sont accordées au formateur créateur (<code>classroom.instructor_id</code>) ainsi qu'aux administrateurs et responsables pédagogiques.</li>
-        <li><strong>Modal Professionnelle de Fin de Session &amp; Zéro Popup Navigateur :</strong> Suppression définitive des alertes natives du navigateur (<code>alert()</code> / <code>confirm()</code>) qui affichaient des popups génériques brutes. Lorsqu'une visioconférence est arrêtée par le formateur ou l'administrateur, une <strong>boîte de dialogue modale au design professionnel s'affiche au centre de l'écran</strong> avec fond flouté (glassmorphism), icône visuelle <code>VideoOff</code>, message clair expliquant la clôture de la session, compte à rebours dynamique de 10 secondes et bouton direct de retour immédiat vers le hub <code>/classroom</code>.</li>
-        <li><strong>Messagerie Instantanée & Émojis :</strong> Rendu immédiat des messages dans le chat avec sélecteur d'émojis expressifs intégré.</li>
-        <li><strong>Émargement & Assiduité Intégrés :</strong> Enregistrement automatique lors du passage de la salle d'attente à la session en direct.</li>
-        <li><strong>Sous-Groupes (Breakout Rooms) &amp; Modales Mode Clair UX :</strong> Modale de création et répartition des ateliers en mode clair à haute lisibilité.</li>
-        <li><strong>Arrêt de la Salle Vidéo Conférence &amp; Sécurité RBAC :</strong> Option d'arrêt de la session en direct accessible depuis le hub (<code>/classroom</code>) et la barre de contrôles (<code>/classroom/{id}</code>) avec modale de confirmation centrée. <strong>Restrictions de sécurité strictes :</strong> Réservé exclusivement aux formateurs, administrateurs et responsables pédagogiques. <em>Strictement interdit et masqué pour les étudiants, stagiaires et employés</em> (avec vérification et rejet HTTP 403 côté API backend FastAPI). Lors de l'arrêt, la session est fermée pour tous les membres et les participants connectés sont automatiquement redirigés via la modale de clôture professionnelle.</li>
-        <li><strong>Gestion &amp; Clôture :</strong> Le formateur ou l'administrateur peut fermer la session, clôturer les ateliers et purger l'historique des salles inactives via des boîtes de dialogue de confirmation immersives intégrées.</li>
+
+        <li><strong>Flux Vidéo HD Adaptatif &amp; Partage d'Écran :</strong> Capture jusqu'à 1080p/720p, bascule caméra avant/arrière sur mobile (<code>facingMode</code>) et capture fluide de partage d'écran PC (<code>getDisplayMedia</code>).</li>
+
+        <li><strong>Système de Chat Multi-Canaux :</strong> Canal global plénier, canaux privés étanches 1-à-1 avec badge distinctif, et canaux sous-groupes (ateliers de travail), avec partage de fichiers et émojis intégrés.</li>
+
+        <li><strong>Modal Professionnelle de Clôture de Session :</strong> Lorsqu'une visioconférence est terminée par l'hôte ou l'administrateur, une modale soignée au centre de l'écran (fond flouté, icône <code>VideoOff</code>, compte à rebours de 10 secondes) informe les participants et assure une redirection fluide vers <code>/classroom</code>.</li>
       </ul>
       <div class="screenshot-container">
         <div class="screenshot-header">
@@ -2929,19 +2922,32 @@ E-Schola Pro/
       </ul>
     </div>
 
-    <h3>Moteur Client WebRTC SFU &amp; Modales de Visioconférence (sfuClient.ts &amp; Composants Dédiés)</h3>
+    <h3>Moteur Client WebRTC SFU, Rendu de Présence Réelle &amp; Modales de Visioconférence</h3>
     <div class="card">
       <p>L'architecture frontend de visioconférence est organisée de manière modulaire, réactive et strictement typée en TypeScript :</p>
       <ul>
-        <li><strong>Client WebRTC SFU (sfuClient.ts) :</strong> Classe autonome responsable du cycle de vie complet de la communication temps réel :
+        <li><strong>Rendu Réel &amp; Élimination des Tuiles Factices (classroom/[id]/page.tsx) :</strong>
           <ul>
-            <li><em>Connexion WebSocket Résiliente :</em> Reconnexion automatique exponentielle en cas d'interruption réseau avec conservation de l'état de session.</li>
-            <li><em>Signalisation Découplée :</em> Méthodes d'envoi et d'écoute d'événements : <code>join_room</code>, <code>knock</code>, <code>track_published</code>, <code>sfu_offer</code>, <code>sfu_answer</code>, <code>ice_candidate</code>, <code>chat_message</code>, <code>media_state_change</code>, <code>host_admit</code>, <code>host_reject</code>, <code>host_block</code>, <code>host_kick</code>, <code>host_mute_user</code>, <code>host_mute_all</code>.</li>
-            <li><em>Détection de Parole (VAD) &amp; Latence RTT :</em> Analyseur de volume RMS intégré à 60 FPS et mesure continue du Round Trip Time (RTT).</li>
+            <li><em>Zéro Utilisateur Virtuel par Défaut :</em> Élimination totale de tout chargement pré-rempli d'apprenants hors-ligne ou de faux hôte simulé. Seuls l'utilisateur local et les pairs ayant une connexion active WebRTC SFU (<code>activeWebrtcPeers</code>) disposent d'une tuile vidéo.</li>
+            <li><em>Bannière Réactive en Solo :</em> Si l'utilisateur est seul dans la salle, affichage d'un conteneur central épuré invitant à ajouter des participants via le bouton <strong>« Inviter des participants »</strong>.</li>
+            <li><em>Compteur Réel à 60 FPS :</em> Synchronisation continue du compteur d'en-tête (<code>activeWebrtcPeers.length + 1</code>).</li>
           </ul>
         </li>
-        <li><strong>Modale d'Administration Hôte (HostModerationModal.tsx) :</strong> Boîte de dialogue d'administration avec double onglet « Salle d'attente » et « Participants actifs », compteurs dynamiques en temps réel, actions unitaires et en masse, et dialogue de confirmation de blocage irréversible.</li>
-        <li><strong>Modale d'Invitation Entrante (GuestInviteModal.tsx) :</strong> Composant monté globalement dans <code>NotificationManager.tsx</code>, interceptant les invitations reçues en temps réel pour afficher un dialogue d'appel entrant avec pulsation visuelle, sonnerie Web Audio API continue et boutons d'acceptation immédiate ou rejet.</li>
+        <li><strong>Modale d'Invitation Complète Multi-Cibles (ClassroomInviteModal.tsx) :</strong>
+          <ul>
+            <li><em>Navigation par 3 Onglets Ergonomiques :</em>
+              <ul>
+                <li><strong>Onglet Utilisateurs :</strong> Recherche dérebondie (300 ms) via <code>/users/search?q=...</code>, filtrage par rôle avec badges colorés, sélection unitaire ou globale (« Tout sélectionner »).</li>
+                <li><strong>Onglet Groupes :</strong> Sélection de promotions entières avec affichage du nombre de membres calculé en direct.</li>
+                <li><strong>Onglet Suivi Invitations :</strong> Tableau de bord de traçabilité en direct des invitations de la salle avec badges de statut (<code>pending</code>, <code>accepted</code>, <code>declined</code>), relance en 1 clic (<code>resend</code>) et annulation (<code>delete</code>).</li>
+              </ul>
+            </li>
+            <li><em>Déclencheurs Multi-Canaux :</em> Checkboxes pour activer l'envoi d'e-mails transactionnels HTML et de notifications in-app avec lien direct. Accessible depuis l'en-tête de salle, le footer, la sidebar et le hub.</li>
+          </ul>
+        </li>
+        <li><strong>Modale d'Invitation Entrante Côté Apprenant (GuestInviteModal.tsx &amp; NotificationManager.tsx) :</strong> Composant monté globalement dans <code>NotificationManager.tsx</code>, interceptant immédiatement les invitations reçues ainsi que les invitations en attente dès le rechargement de page. Boîte de dialogue flottante avec pulsation lumineuse, carillon harmonique continu Web Audio API, bouton 🟢 <strong>Accepter et Rejoindre</strong> (redirection immédiate) et bouton 🔴 <strong>Refuser l'invitation</strong> (appel <code>POST /classrooms/invitations/{id}/decline</code>).</li>
+        <li><strong>Modale d'Administration Hôte &amp; Salle d'Attente (HostModerationModal.tsx) :</strong> Boîte de dialogue d'administration avec double onglet « Salle d'attente » et « Participants actifs », compteurs dynamiques en temps réel, actions unitaires et en masse, et dialogue de confirmation de blocage irréversible. Couplée à la bannière d'admission en direct en haut de la salle.</li>
+        <li><strong>Client WebRTC SFU (sfuClient.ts) :</strong> Classe autonome responsable du cycle de vie complet de la communication temps réel (reconnexion automatique exponentielle, signalisation full-duplex, détection VAD à 60 FPS et télémétrie RTT).</li>
       </ul>
     </div>
 
