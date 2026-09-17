@@ -2812,18 +2812,6 @@ E-Schola Pro/
         <li><strong>Moteur de Recherche Dédié :</strong> Filtre instantanément l'ensemble des fiches d'aide, checklists et questions de la modale en temps réel.</li>
       </ul>
     </div>
-
-    <h3>Module 16 — Portail Démo & Banc d'Essai Interactif (/demo &amp; Demo_E-Schola_Pro.html)</h3>
-    <div class="card">
-      <p><strong>Composants & Fichiers :</strong> <code>frontend/src/app/[locale]/demo/page.tsx</code> &amp; <code>Demo_E-Schola_Pro.html</code></p>
-      <p>Le <strong>Portail Démo &amp; Banc d'Essai</strong> constitue l'environnement de validation industrielle de la plateforme, permettant aux évaluateurs et auditeurs de tester immédiatement l'intégralité des 15 modules et des fonctionnalités avancées sans configuration préalable.</p>
-      <ul>
-        <li><strong>Connexion Express en 1 Clic (RBAC Test Bench) :</strong> 6 comptes préconfigurés couvrant l'ensemble de la hiérarchie des rôles (Super-Administrateur racine <code>admin_first</code>, Administrateur gouvernance <code>admin</code>, Formateur référent <code>formateur</code>, Direction &amp; RH <code>dgrh_test</code>, Salarié entreprise <code>alami.salma</code>, Étudiant académique <code>student_test_1</code>). L'authentification s'exécute automatiquement via token JWT sécurisé sans saisie manuelle.</li>
-        <li><strong>Matrice Interactive des Modules :</strong> Cartographie complète de l'application avec accès direct aux 15 modules (Mode Panoramique 4K Widescreen <code>/courses</code>, Moteur Google Web Intégré sans redirection externe <code>/courses?engine=google</code>, Dashboard central, Inbox, Salles de visioconférence WebRTC, Certifications officielles, etc.).</li>
-        <li><strong>Surveillance de Santé des Services :</strong> Sondes actives surveillant la connectivité du Frontend Next.js (port 3000) et de l'API FastAPI (port 8000), affichant le statut temps réel et l'utilisateur connecté.</li>
-        <li><strong>Accès Hybride Standalone &amp; Web :</strong> Disponible à la fois comme route interne de l'application (<code>/demo</code>) avec boutons dans la barre supérieure (<a href="#navbar">Navbar</a>), le menu latéral (<a href="#sidebar">Sidebar</a>) et la page de connexion (<a href="#login">Login</a>), et comme page HTML autonome (<code>Demo_E-Schola_Pro.html</code>) exécutable sans serveur.</li>
-      </ul>
-    </div>
 </section>
 
     <!-- ===================================================================== -->
@@ -2850,25 +2838,10 @@ E-Schola Pro/
         <li>✅ <strong>Présences &amp; Émargement</strong> → <code>/attendance</code></li>
         <li>📋 <strong>Tâches &amp; Devoirs</strong> → <code>/tasks</code></li>
       </ol>
+      <p>Section inférieure séparée :</p>
       <ol start="11">
         <li>⚙️ <strong>Mon Profil</strong> → <code>/profile</code></li>
-        <li>⚡ <strong>Portail Démo &amp; Banc d'Essai</strong> → <code>/demo</code> (ou fichier autonome <code>Demo_E-Schola_Pro.html</code>)</li>
       </ol>
-    </div>
-
-    <h3>Portail Démo &amp; Banc d'Essai Interactif (/demo &amp; Demo_E-Schola_Pro.html)</h3>
-    <div class="card">
-      <p>Un environnement de démonstration et de validation indépendant a été déployé pour permettre le test exhaustif et immédiat de l'ensemble de la plateforme :</p>
-      <ul>
-        <li><strong>Double Accès Démo :</strong>
-          <ul>
-            <li><strong>Portail Web Interactif (<code>/demo</code>) :</strong> Interface Next.js complète intégrant les boutons de <em>Connexion Express en 1 Clic</em> pour chaque rôle (Super-Admin, Admin Central, Direction/RH, Employé, Étudiant), sans avoir à saisir manuellement d'identifiants.</li>
-            <li><strong>Fichier Autonome Direct (<code>Demo_E-Schola_Pro.html</code>) :</strong> Page HTML indépendante ouvrable par simple double-clic dans tout navigateur, sans dépendance serveur, regroupant la cartographie complète des modules, les indicateurs d'état et les raccourcis de test.</li>
-          </ul>
-        </li>
-        <li><strong>Matrice Complète des 15 Modules :</strong> Liens directs vers chaque écran applicatif avec paramètres de test préconfigurés (ex: Mode Panoramique <code>/courses</code>, Moteur Google Web Intégré <code>/courses?engine=google&amp;q=next.js+react</code>, Examens certifiants <code>/certifications</code>, etc.).</li>
-        <li><strong>Surveillance de Santé des Services :</strong> Indicateurs visuels en temps réel du statut du Frontend (port 3000) et du Backend FastAPI (port 8000).</li>
-      </ul>
     </div>
 
     <h3>Barre de Navigation Supérieure (Navbar) &amp; Bouton Dashboard Centralisé</h3>
