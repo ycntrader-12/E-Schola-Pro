@@ -20,8 +20,10 @@ from app.core.security import decode_token
 from app.db.database import SessionLocal
 from app.models.classroom import Classroom
 from app.models.user import User
+from app.services.mediasoup_sfu import mediasoup_sfu_manager
 
 logger = logging.getLogger("classroom_signaling")
+
 
 
 class ClassroomSignalingManager:
@@ -302,7 +304,97 @@ class ClassroomSignalingManager:
                             pass
 
             # -------------------------------------------------------------
-            # SIGNALISATION SFU (Tracks, SDP, ICE Candidates)
+            # SIGNALISATION SFU (Mediasoup / Janus C++ Engine)
+            # -------------------------------------------------------------
+            elif msg_type == "mediasoup_get_router_rtp_capabilities":
+                rtp_caps = await mediasoup_sfu_manager.get_router_rtp_capabilities(cleaned_id)
+                client_entry = room["clients"].get(user_id)
+                if client_entry:
+                    await client_entry["ws"].send_text(json.dumps({
+                        "type": "mediasoup_router_rtp_capabilities",
+                        "request_id": msg.get("request_id"),
+                        "rtpCapabilities": rtp_caps
+                    }))
+
+            elif msg_type == "mediasoup_create_webrtc_transport":
+                direction = msg.get("direction", "send")
+                transport_options = await mediasoup_sfu_manager.create_webrtc_transport(cleaned_id, user_id, direction)
+                client_entry = room["clients"].get(user_id)
+                if client_entry:
+                    await client_entry["ws"].send_text(json.dumps({
+                        "type": "mediasoup_webrtc_transport_created",
+                        "request_id": msg.get("request_id"),
+                        "direction": direction,
+                        "transportOptions": transport_options
+                    }))
+
+            elif msg_type == "mediasoup_connect_webrtc_transport":
+                transport_id = msg.get("transport_id")
+                dtls_params = msg.get("dtlsParameters", {})
+                success = await mediasoup_sfu_manager.connect_webrtc_transport(cleaned_id, transport_id, dtls_params)
+                client_entry = room["clients"].get(user_id)
+                if client_entry:
+                    await client_entry["ws"].send_text(json.dumps({
+                        "type": "mediasoup_webrtc_transport_connected",
+                        "request_id": msg.get("request_id"),
+                        "transport_id": transport_id,
+                        "success": success
+                    }))
+
+            elif msg_type == "mediasoup_produce":
+                transport_id = msg.get("transport_id")
+                kind = msg.get("kind", "video")
+                rtp_params = msg.get("rtpParameters", {})
+                producer_info = await mediasoup_sfu_manager.create_producer(
+                    cleaned_id, user_id, transport_id, kind, rtp_params, msg.get("appData")
+                )
+                
+                # Enregistrer la piste publiée
+                if user_id not in room["published_tracks"]:
+                    room["published_tracks"][user_id] = {}
+                room["published_tracks"][user_id][kind] = {
+                    "kind": kind,
+                    "producer_id": producer_info["id"],
+                    "stream_id": f"{user_id}_{kind}",
+                    "published_at": datetime.utcnow().strftime("%H:%M:%S")
+                }
+
+                client_entry = room["clients"].get(user_id)
+                if client_entry:
+                    await client_entry["ws"].send_text(json.dumps({
+                        "type": "mediasoup_produced",
+                        "request_id": msg.get("request_id"),
+                        "producer_id": producer_info["id"],
+                        "kind": kind
+                    }))
+
+                # Notifier les autres participants admis qu'une piste Mediasoup C++ est publiée
+                await self._broadcast_to_admitted(cleaned_id, {
+                    "type": "track_published",
+                    "publisher_id": user_id,
+                    "publisher_email": user["email"],
+                    "publisher_name": user["name"],
+                    "kind": kind,
+                    "producer_id": producer_info["id"],
+                    "stream_id": f"{user_id}_{kind}"
+                }, exclude_id=user_id)
+
+            elif msg_type == "mediasoup_consume":
+                producer_id = msg.get("producer_id")
+                rtp_caps = msg.get("rtpCapabilities", {})
+                consumer_info = await mediasoup_sfu_manager.create_consumer(
+                    cleaned_id, user_id, producer_id, rtp_caps
+                )
+                client_entry = room["clients"].get(user_id)
+                if client_entry:
+                    await client_entry["ws"].send_text(json.dumps({
+                        "type": "mediasoup_consumed",
+                        "request_id": msg.get("request_id"),
+                        "consumerOptions": consumer_info
+                    }))
+
+            # -------------------------------------------------------------
+            # SIGNALISATION SFU CLASSIQUE (Tracks, SDP, ICE Candidates)
             # -------------------------------------------------------------
             elif msg_type == "track_published":
                 # Peer annonce la publication d'une piste montante vers le hub SFU
@@ -354,6 +446,7 @@ class ClassroomSignalingManager:
                 else:
                     # Relai SFU broadcast à tous les participants admis
                     await self._broadcast_to_admitted(cleaned_id, envelope, exclude_id=user_id)
+
 
             # -------------------------------------------------------------
             # ÉTATS MÉDIA EN TEMPS RÉEL (Micro, Caméra, Écran, Détection Voix)

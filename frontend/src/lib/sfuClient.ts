@@ -8,7 +8,10 @@
  * - Le chat segmenté (Global, Privé 1-à-1 étanche, Sous-groupes)
  */
 
+import { MediasoupSFUAdapter } from './mediasoupClient';
+
 export interface SFUPeer {
+
   id: number;
   email: string;
   name: string;
@@ -97,10 +100,14 @@ export class SFUWebRTCClient {
   private localStream: MediaStream | null = null;
   private screenStream: MediaStream | null = null;
 
+  public mediasoupAdapter: MediasoupSFUAdapter;
+
   constructor(roomId: string, callbacks: SFUClientCallbacks = {}) {
     this.roomId = roomId.trim().toLowerCase();
     this.callbacks = callbacks;
+    this.mediasoupAdapter = new MediasoupSFUAdapter((msg) => this.send(msg));
   }
+
 
   public connect(token: string) {
     this.token = token;
@@ -168,7 +175,12 @@ export class SFUWebRTCClient {
 
   private handleIncomingMessage(msg: any) {
     const type = msg.type;
+    if (type && type.startsWith('mediasoup_')) {
+      this.mediasoupAdapter.handleSignalMessage(msg);
+      return;
+    }
     switch (type) {
+
       case 'room_joined':
         this.callbacks.onRoomJoined?.(msg);
         break;

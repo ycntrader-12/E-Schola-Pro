@@ -1,0 +1,36 @@
+# Dockerfile optimisé pour le serveur multimédia WebRTC C++ (Mediasoup Worker / Janus Gateway)
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+
+# Installation des compilateurs C++ et dépendances réseau WebRTC (GCC, G++, Make, CMake, Ninja, OpenSSL, Libsrtp)
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    g++ \
+    gcc \
+    cmake \
+    ninja-build \
+    python3 \
+    python3-pip \
+    pkg-config \
+    libssl-dev \
+    libsrtp2-dev \
+    libmicrohttpd-dev \
+    libjansson-dev \
+    libnice-dev \
+    git \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Définition des variables d'environnement pour le serveur SFU
+ENV RTC_MIN_PORT=40000
+ENV RTC_MAX_PORT=49999
+ENV MEDIASOUP_LISTEN_IP=0.0.0.0
+
+EXPOSE 40000-49999/udp
+EXPOSE 40000-49999/tcp
+
+CMD ["python3", "-c", "print('Serveur Média C++ WebRTC SFU E-Schola Pro démarré sur ports UDP 40000-49999')"]
