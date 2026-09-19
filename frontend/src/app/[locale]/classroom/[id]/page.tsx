@@ -56,7 +56,8 @@ import {
   Gauge,
   Server,
   Zap,
-  UserPlus
+  UserPlus,
+  Reply
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { isLearner as isLearnerRole, isStaff as isStaffRole } from '@/lib/roles';
@@ -199,6 +200,7 @@ export default function VirtualClassroomLivePage() {
   const [chatFilter, setChatFilter] = useState<'public' | 'private' | 'subgroup'>('public');
   const [targetRecipient, setTargetRecipient] = useState<string>('everyone');
   const [newMessage, setNewMessage] = useState('');
+  const chatInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
@@ -518,6 +520,18 @@ export default function VirtualClassroomLivePage() {
           };
           return [...prev, mappedMsg];
         });
+
+        // Auto-set targetRecipient if user receives a private message and currently has 'everyone'
+        if (message.recipient && message.recipient !== 'everyone' && !message.recipient.startsWith('subgroup:')) {
+          if (message.sender && message.sender.toLowerCase() !== currentUser?.email?.toLowerCase()) {
+            setTargetRecipient((currentRec) => {
+              if (currentRec === 'everyone') {
+                return message.sender;
+              }
+              return currentRec;
+            });
+          }
+        }
       },
       onPeerMediaState: (peerId, state) => {
         setActiveWebrtcPeers((prev) => prev.map((p) => p.id === peerId ? { ...p, media_state: state } : p));
@@ -957,6 +971,18 @@ export default function VirtualClassroomLivePage() {
     } else if (chatFilter === 'subgroup') {
       finalRecipient = `subgroup:${currentActiveSubgroupId || 'default'}`;
       finalSubgroupId = currentActiveSubgroupId || 'default';
+    } else if (chatFilter === 'private') {
+      if (finalRecipient === 'everyone' || !finalRecipient) {
+        const available = activeWebrtcPeers.find(p => p.email?.toLowerCase() !== currentUser?.email?.toLowerCase())
+          || participantsList.find(p => p.email?.toLowerCase() !== currentUser?.email?.toLowerCase());
+        if (available?.email) {
+          finalRecipient = available.email;
+          setTargetRecipient(available.email);
+        } else {
+          showNotification("Destinataire manquant", "Veuillez choisir un participant à qui envoyer ce message privé.", "error");
+          return;
+        }
+      }
     }
 
     const msgPayload = {
@@ -969,9 +995,11 @@ export default function VirtualClassroomLivePage() {
 
     // Emit instantaneously via SFU signaling WebSocket
     const wsChannel = chatFilter === 'public' ? 'global' : chatFilter === 'private' ? 'private' : 'subgroup';
+    const recipientPeer = activeWebrtcPeers.find(p => p.email?.toLowerCase() === finalRecipient.toLowerCase());
     sfuClientRef.current?.sendChatMessage({
       channel: wsChannel,
       text: newMessage.trim(),
+      recipient_id: recipientPeer?.id,
       recipient_email: finalRecipient,
       subgroup_id: finalSubgroupId,
       attachment
@@ -1016,6 +1044,20 @@ export default function VirtualClassroomLivePage() {
     setActiveSidePanel('chat');
     setChatFilter('private');
     setTargetRecipient(email);
+    setTimeout(() => {
+      chatInputRef.current?.focus();
+    }, 100);
+  };
+
+  const handleSelectPrivateTab = () => {
+    setChatFilter('private');
+    if (targetRecipient === 'everyone') {
+      const available = activeWebrtcPeers.find(p => p.email?.toLowerCase() !== currentUser?.email?.toLowerCase())
+        || participantsList.find(p => p.email?.toLowerCase() !== currentUser?.email?.toLowerCase());
+      if (available?.email) {
+        setTargetRecipient(available.email);
+      }
+    }
   };
 
   // Subgroups
@@ -1593,7 +1635,7 @@ export default function VirtualClassroomLivePage() {
                       📢 Groupe
                     </button>
                     <button
-                      onClick={() => setChatFilter('private')}
+                      onClick={handleSelectPrivateTab}
                       className={`flex-1 py-1.5 text-[10px] sm:text-[11px] font-bold rounded-md transition-all ${chatFilter === 'private' ? 'bg-purple-600 text-white shadow-sm' : 'text-gray-400 hover:text-white'}`}
                     >
                       🔒 Privé
@@ -1620,14 +1662,20 @@ export default function VirtualClassroomLivePage() {
                         style={{ color: '#ffffff', backgroundColor: '#1e293b' }}
                       >
                         <option value="everyone" disabled className="bg-slate-900 text-white">Sélectionner un participant...</option>
-                        {activeWebrtcPeers
-                          .filter(p => p.email?.toLowerCase() !== currentUser?.email?.toLowerCase())
-                          .map(p => (
-                            <option key={p.email || p.id} value={p.email} className="bg-slate-900 text-white">
-                              👤 {p.name || p.email.split('@')[0]} ({p.role}) {p.is_host ? '— Hôte' : ''}
-                            </option>
-                          ))
-                        }
+                        {Array.from(
+                          new Map(
+                            [
+                              ...activeWebrtcPeers.map(p => ({ email: p.email, label: `${p.name || p.email.split('@')[0]} (${p.role}) ${p.is_host ? '— Hôte' : ''}` })),
+                              ...participantsList.map(p => ({ email: p.email, label: `${p.email.split('@')[0]} (${p.role})` }))
+                            ]
+                            .filter(p => p.email && p.email.toLowerCase() !== currentUser?.email?.toLowerCase())
+                            .map(p => [p.email.toLowerCase(), p])
+                          ).values()
+                        ).map(p => (
+                          <option key={p.email} value={p.email} className="bg-slate-900 text-white">
+                            👤 {p.label}
+                          </option>
+                        ))}
                       </select>
                     </div>
                   )}
@@ -1648,7 +1696,11 @@ export default function VirtualClassroomLivePage() {
                   {chatMessages
                     .filter(msg => {
                       if (chatFilter === 'public') return msg.recipient === 'everyone';
-                      if (chatFilter === 'private') return msg.recipient !== 'everyone' && !msg.recipient?.startsWith('subgroup:');
+                      if (chatFilter === 'private') {
+                        const isPriv = msg.recipient !== 'everyone' && !msg.recipient?.startsWith('subgroup:');
+                        if (!isPriv) return false;
+                        return msg.sender?.toLowerCase() === currentUser?.email?.toLowerCase() || msg.recipient?.toLowerCase() === currentUser?.email?.toLowerCase();
+                      }
                       if (chatFilter === 'subgroup') return msg.recipient?.startsWith('subgroup:');
                       return true;
                     })
@@ -1662,9 +1714,21 @@ export default function VirtualClassroomLivePage() {
                             <span className="font-semibold">{msg.sender.split('@')[0]}</span>
                             <span>{msg.time}</span>
                             {isPrivate && (
-                              <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full bg-purple-500/20 text-purple-300 text-[9px] font-bold border border-purple-500/30">
-                                <Lock size={9} /> {msg.isMe ? `Privé à ${msg.recipient?.split('@')[0] || msg.recipient_name || 'destinataire'}` : 'Privé'}
-                              </span>
+                              <div className="flex items-center gap-1">
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full bg-purple-500/20 text-purple-300 text-[9px] font-bold border border-purple-500/30">
+                                  <Lock size={9} /> {msg.isMe ? `Privé à ${msg.recipient?.split('@')[0] || msg.recipient_name || 'destinataire'}` : `Privé de ${msg.sender.split('@')[0]}`}
+                                </span>
+                                {!msg.isMe && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleInitiatePrivateChat(msg.sender)}
+                                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-purple-600/50 hover:bg-purple-600 text-white text-[9px] font-bold transition-colors ml-1 cursor-pointer"
+                                    title={`Répondre en privé à ${msg.sender}`}
+                                  >
+                                    <Reply size={9} /> Répondre
+                                  </button>
+                                )}
+                              </div>
                             )}
                             {isSubgroup && (
                               <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full bg-indigo-500/20 text-indigo-300 text-[9px] font-bold border border-indigo-500/30">
@@ -1802,6 +1866,7 @@ export default function VirtualClassroomLivePage() {
                   </button>
 
                   <input
+                    ref={chatInputRef}
                     type="text"
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
