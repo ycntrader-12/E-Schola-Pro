@@ -197,12 +197,19 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {/* Sign up prompt */}
-        <div className="text-center text-xs text-slate-500 pt-3 border-t border-slate-100">
-          {t('no_account')}{' '}
-          <Link href="/register" className="text-[#1877f2] font-bold hover:underline">
-            {t('sign_up_link')}
-          </Link>
+        {/* Sign up prompt & Forgot Password link */}
+        <div className="text-center text-xs text-slate-500 pt-3 border-t border-slate-100 space-y-2">
+          <div>
+            {t('no_account')}{' '}
+            <Link href="/register" className="text-[#1877f2] font-bold hover:underline">
+              {t('sign_up_link')}
+            </Link>
+          </div>
+          <div>
+            <Link href="/forgot-password" className="text-[#1877f2] font-medium hover:underline inline-flex items-center gap-1 transition-colors">
+              <span>{t('forgot_password')}</span>
+            </Link>
+          </div>
         </div>
 
       </div>
