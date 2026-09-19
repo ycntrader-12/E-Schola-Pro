@@ -1830,6 +1830,7 @@ E-Schola Pro/
         <tr><td><code>id</code></td><td>Integer</td><td>PK, Auto-increment</td><td>Identifiant unique du jeton</td></tr>
         <tr><td><code>user_id</code></td><td>Integer</td><td>FK → users.id, CASCADE</td><td>Utilisateur propriétaire de la demande de réinitialisation</td></tr>
         <tr><td><code>token</code></td><td>String(255)</td><td>Unique, Indexé, Not Null</td><td>Jeton cryptographique sécurisé unique (secrets.token_urlsafe)</td></tr>
+        <tr><td><code>code</code></td><td>String(10)</td><td>Nullable, Indexé</td><td>Code de confirmation numérique à 6 chiffres (ex: 849201)</td></tr>
         <tr><td><code>created_at</code></td><td>DateTime</td><td>Auto, Not Null</td><td>Horodatage de création de la demande</td></tr>
         <tr><td><code>expires_at</code></td><td>DateTime</td><td>Not Null</td><td>Horodatage d'expiration (1 heure par défaut)</td></tr>
         <tr><td><code>is_used</code></td><td>Boolean</td><td>Default: False, Not Null</td><td>Indicateur à usage unique (True dès réinitialisation réussie)</td></tr>
@@ -2906,10 +2907,10 @@ E-Schola Pro/
       <p><strong>Flux complet et sécurisé de réinitialisation :</strong></p>
       <ul>
         <li><strong>Lien « Mot de Passe Oublié » :</strong> Intégré directement sur la page de connexion (<code>/login</code>), permettant de basculer vers l'interface de saisie d'email <code>/forgot-password</code>.</li>
-        <li><strong>Génération de Token Cryptographique &amp; Expiration (1 Heure) :</strong> Génération d'un token aléatoire sécurisé (<code>secrets.token_urlsafe(32)</code>) enregistré dans la table <code>password_reset_tokens</code> avec horodatage d'expiration <code>expires_at</code> fixé à 60 minutes.</li>
+        <li><strong>Génération de Token &amp; Code à 6 Chiffres (Expiration 1h) :</strong> Génération simultanée d'un jeton aléatoire sécurisé (<code>secrets.token_urlsafe(32)</code>) et d'un code de confirmation numérique à 6 chiffres (ex: <code>849201</code>) enregistrés dans la table <code>password_reset_tokens</code> avec horodatage d'expiration <code>expires_at</code> fixé à 60 minutes.</li>
         <li><strong>Protection Anti-Énumération &amp; Anti-Spam :</strong> La demande d'email renvoie une réponse générique identique (empêchant de déterminer si un e-mail est inscrit) et applique un rate-limiting strict par IP (max 5 req/min) et par e-mail (max 3 req/5min).</li>
-        <li><strong>Email Transactionnel HTML :</strong> Envoi automatique d'un email au design institutionnel E-Schola Pro contenant le bouton et le lien direct de réinitialisation <code>https://e-schola-pro-production.up.railway.app/reset-password?token=...</code>.</li>
-        <li><strong>Validation Dynamique du Token &amp; Hachage Bcrypt :</strong> À l'ouverture de <code>/reset-password</code>, l'application vérifie la validité du token via l'API <code>GET /password-reset/verify-token/{token}</code> (non expiré, non utilisé). La soumission valide le nouveau mot de passe (minimum 6 caractères), l'enregistre haché avec <code>bcrypt</code>, marque le token comme utilisé (<code>is_used=True</code>) et génère une entrée d'audit <code>PASSWORD_RESET_SUCCESS</code>.</li>
+        <li><strong>Email Transactionnel HTML &amp; Support d'Emails Externes :</strong> Envoi d'un email au design institutionnel E-Schola Pro contenant à la fois le code à 6 chiffres mis en valeur dans un badge haute lisibilité et le bouton de réinitialisation directe <code>https://e-schola-pro-production.up.railway.app/reset-password?token=...</code>. Le service supporte l'expédition vers tout domaine e-mail interne ou externe (Gmail, Outlook, Yahoo, domaines d'entreprise...).</li>
+        <li><strong>Double Validation Dynamique (Jeton ou Code 6 Chiffres) &amp; Hachage Bcrypt :</strong> L'utilisateur peut au choix cliquer sur le lien direct ou saisir manuellement son code à 6 chiffres dans l'interface <code>/reset-password</code>. L'API <code>GET /password-reset/verify-token/{token}</code> vérifie le jeton ou le code. La soumission valide le nouveau mot de passe (minimum 6 caractères), l'enregistre haché avec <code>bcrypt</code>, marque l'enregistrement comme utilisé (<code>is_used=True</code>) et génère une entrée d'audit <code>PASSWORD_RESET_SUCCESS</code>.</li>
       </ul>
     </div>
 </section>

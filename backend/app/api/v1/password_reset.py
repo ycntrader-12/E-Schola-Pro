@@ -5,6 +5,7 @@ from typing import Any, Dict
 
 from fastapi import APIRouter, HTTPException, Request, status
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 
 from app.api.deps import SessionDep
 from app.core import security
@@ -43,9 +44,9 @@ async def request_password_reset(
     """
     Initiates password reset process:
     - Checks rate limit by IP and target email
-    - Generates unique secure token with expiration (1 hour)
-    - Persists token in database
-    - Sends validation link email
+    - Generates unique secure token & 6-digit confirmation code with expiration (1 hour)
+    - Persists token and code in database
+    - Sends validation email with link and 6-digit code (supports internal & external emails)
     - Generic response to prevent user enumeration
     """
     client_ip = extract_client_ip(request)
@@ -65,7 +66,7 @@ async def request_password_reset(
         action_name="demandes de réinitialisation pour cet email",
     )
 
-    # Search user
+    # Search user by email or username
     user = (
         session.query(User)
         .filter(
@@ -84,13 +85,15 @@ async def request_password_reset(
             PasswordResetToken.is_used == False,
         ).update({"is_used": True}, synchronize_session=False)
 
-        # Generate unique secure token
+        # Generate unique secure token AND 6-digit numeric confirmation code
         token_str = secrets.token_urlsafe(32)
+        code_str = f"{secrets.randbelow(900000) + 100000:06d}"
         expires_at = datetime.utcnow() + timedelta(hours=1)
 
         db_token = PasswordResetToken(
             user_id=user.id,
             token=token_str,
+            code=code_str,
             created_at=datetime.utcnow(),
             expires_at=expires_at,
             is_used=False,
@@ -104,12 +107,13 @@ async def request_password_reset(
         ).rstrip("/")
         reset_url = f"{frontend_url}/reset-password?token={token_str}"
 
-        # Send email
+        # Send email with link and 6-digit confirmation code (works for external emails)
         user_display_name = user.prenom or user.nom or user.username or "Utilisateur"
         send_password_reset_email(
             to_email=user.email,
             user_name=user_display_name,
             reset_url=reset_url,
+            confirmation_code=code_str,
         )
 
         log_audit_event(
@@ -119,7 +123,7 @@ async def request_password_reset(
             user_email=user.email,
             resource_type="user",
             resource_id=user.id,
-            details="Demande de réinitialisation de mot de passe générée avec succès",
+            details=f"Demande de réinitialisation générée avec succès (Code: {code_str})",
             status="SUCCESS",
             request=request,
         )
@@ -128,7 +132,7 @@ async def request_password_reset(
     return {
         "message": (
             "Si l'adresse saisie correspond à un compte actif, "
-            "un lien de réinitialisation de mot de passe vient de vous être envoyé par email. "
+            "un email contenant votre code de confirmation à 6 chiffres et le lien de réinitialisation viennent de vous être envoyés. "
             "Veuillez vérifier votre boîte de réception et vos indésirables."
         )
     }
@@ -140,13 +144,19 @@ async def verify_password_reset_token(
     session: SessionDep,
 ) -> PasswordResetVerifyResponse:
     """
-    Verifies token validity:
-    - Checks token existence in DB
-    - Checks if token is not expired and not used
+    Verifies token or 6-digit code validity:
+    - Checks token or code existence in DB
+    - Checks if token/code is not expired and not used
     """
+    clean_token = token.strip()
     token_obj = (
         session.query(PasswordResetToken)
-        .filter(PasswordResetToken.token == token)
+        .filter(
+            or_(
+                PasswordResetToken.token == clean_token,
+                PasswordResetToken.code == clean_token,
+            )
+        )
         .first()
     )
 
@@ -154,7 +164,7 @@ async def verify_password_reset_token(
         return PasswordResetVerifyResponse(
             valid=False,
             masked_email=None,
-            message="Le jeton de réinitialisation est invalide, déjà utilisé ou expiré.",
+            message="Le jeton ou code de réinitialisation est invalide, déjà utilisé ou expiré.",
         )
 
     user = session.query(User).filter(User.id == token_obj.user_id).first()
@@ -163,7 +173,7 @@ async def verify_password_reset_token(
     return PasswordResetVerifyResponse(
         valid=True,
         masked_email=masked,
-        message="Jeton de réinitialisation valide.",
+        message="Code de réinitialisation valide.",
     )
 
 
@@ -174,8 +184,8 @@ async def reset_password(
     session: SessionDep,
 ) -> Dict[str, str]:
     """
-    Resets password using a verified token:
-    - Verifies token validity
+    Resets password using a verified token or 6-digit confirmation code:
+    - Verifies token/code validity
     - Hashes new password with bcrypt
     - Updates user record in DB
     - Marks token as used (single-use)
@@ -189,10 +199,14 @@ async def reset_password(
         action_name="validations de réinitialisation",
     )
 
+    clean_token = payload.token.strip()
     token_obj = (
         session.query(PasswordResetToken)
         .filter(
-            PasswordResetToken.token == payload.token,
+            or_(
+                PasswordResetToken.token == clean_token,
+                PasswordResetToken.code == clean_token,
+            ),
             PasswordResetToken.is_used == False,
         )
         .first()
@@ -201,7 +215,7 @@ async def reset_password(
     if not token_obj or datetime.utcnow() > token_obj.expires_at:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Le lien de réinitialisation est invalide ou a expiré. Veuillez refaire une demande.",
+            detail="Le code ou lien de réinitialisation est invalide ou a expiré. Veuillez refaire une demande.",
         )
 
     user = session.query(User).filter(User.id == token_obj.user_id).first()
@@ -240,7 +254,7 @@ async def reset_password(
         user_email=user.email,
         resource_type="user",
         resource_id=user.id,
-        details="Mot de passe réinitialisé avec succès via jeton d'accès unique",
+        details="Mot de passe réinitialisé avec succès via code de confirmation",
         status="SUCCESS",
         request=request,
     )

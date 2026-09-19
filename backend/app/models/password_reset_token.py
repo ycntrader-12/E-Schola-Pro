@@ -11,6 +11,7 @@ class PasswordResetToken(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     token = Column(String(255), unique=True, index=True, nullable=False)
+    code = Column(String(10), nullable=True, index=True)  # Code de confirmation à 6 chiffres
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     expires_at = Column(DateTime, nullable=False)
     is_used = Column(Boolean, default=False, nullable=False)
@@ -18,4 +19,4 @@ class PasswordResetToken(Base):
     user = relationship("User", backref="reset_tokens")
 
     def __str__(self):
-        return f"PasswordResetToken(user_id={self.user_id}, used={self.is_used})"
+        return f"PasswordResetToken(user_id={self.user_id}, code={self.code}, used={self.is_used})"

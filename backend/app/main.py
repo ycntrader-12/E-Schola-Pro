@@ -121,12 +121,18 @@ async def lifespan(app: FastAPI):
                         conn.execute(text("ALTER TABLE groups ADD COLUMN instructor_id INTEGER REFERENCES users(id)"))
                         conn.commit()
                         print("[Database Migration] Colonne instructor_id ajoutée avec succès sur la table groups.")
+                    pwd_cols = [row[1] for row in conn.execute(text("PRAGMA table_info(password_reset_tokens)")).fetchall()]
+                    if pwd_cols and "code" not in pwd_cols:
+                        conn.execute(text("ALTER TABLE password_reset_tokens ADD COLUMN code VARCHAR(10)"))
+                        conn.commit()
+                        print("[Database Migration] Colonne code ajoutée avec succès sur la table password_reset_tokens.")
                 elif dialect == "postgresql":
                     conn.execute(text("ALTER TABLE quizzes ADD COLUMN IF NOT EXISTS target_group VARCHAR DEFAULT 'all'"))
                     conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE"))
                     conn.execute(text("ALTER TABLE messages ADD COLUMN IF NOT EXISTS read_at TIMESTAMP"))
                     conn.execute(text("ALTER TABLE groups ADD COLUMN IF NOT EXISTS creator_id INTEGER REFERENCES users(id)"))
                     conn.execute(text("ALTER TABLE groups ADD COLUMN IF NOT EXISTS instructor_id INTEGER REFERENCES users(id)"))
+                    conn.execute(text("ALTER TABLE password_reset_tokens ADD COLUMN IF NOT EXISTS code VARCHAR(10)"))
                     conn.commit()
             except Exception as mig_err:
                 print(f"[Database Migration Notice] {mig_err}")

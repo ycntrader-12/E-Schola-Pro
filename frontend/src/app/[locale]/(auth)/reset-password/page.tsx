@@ -5,19 +5,22 @@ import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
 import { Link, useRouter } from '@/i18n/routing';
 import { apiClient } from '@/lib/api';
-import { Eye, EyeOff, CheckCircle2, AlertCircle, ShieldCheck, Lock, ArrowRight, RefreshCw, Key } from 'lucide-react';
+import { Eye, EyeOff, CheckCircle2, AlertCircle, ShieldCheck, Lock, ArrowRight, RefreshCw, Key, Binary } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import BackButton from '@/components/BackButton';
 
 function ResetPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const token = searchParams.get('token') || '';
+  const urlToken = searchParams.get('token') || '';
 
   const t = useTranslations('Auth');
   const tCommon = useTranslations('Common');
 
-  const [verifying, setVerifying] = useState(true);
+  const [activeToken, setActiveToken] = useState(urlToken);
+  const [manualCode, setManualCode] = useState('');
+
+  const [verifying, setVerifying] = useState(false);
   const [tokenValid, setTokenValid] = useState(false);
   const [maskedEmail, setMaskedEmail] = useState<string | null>(null);
   const [verifyMessage, setVerifyMessage] = useState('');
@@ -31,46 +34,43 @@ function ResetPasswordForm() {
   const [resetSuccess, setResetSuccess] = useState(false);
   const [formError, setFormError] = useState('');
 
-  // Validate token on component mount
-  useEffect(() => {
-    let isMounted = true;
-    if (!token) {
-      setVerifying(false);
-      setTokenValid(false);
-      setVerifyMessage("Aucun jeton de réinitialisation fourni dans l'adresse URL.");
-      return;
-    }
+  const verifyCodeOrToken = async (targetToken: string) => {
+    if (!targetToken.trim()) return;
+    setVerifying(true);
+    setVerifyMessage('');
+    setFormError('');
 
-    const checkToken = async () => {
-      try {
-        const res = await apiClient.get(`/password-reset/verify-token/${encodeURIComponent(token)}`);
-        if (isMounted) {
-          if (res.data?.valid) {
-            setTokenValid(true);
-            setMaskedEmail(res.data?.masked_email || null);
-          } else {
-            setTokenValid(false);
-            setVerifyMessage(res.data?.message || "Le lien de réinitialisation est invalide ou expiré.");
-          }
-        }
-      } catch (err: any) {
-        if (isMounted) {
-          setTokenValid(false);
-          setVerifyMessage("Impossible de vérifier la validité du lien. Veuillez vérifier votre connexion.");
-        }
-      } finally {
-        if (isMounted) {
-          setVerifying(false);
-        }
+    try {
+      const res = await apiClient.get(`/password-reset/verify-token/${encodeURIComponent(targetToken.trim())}`);
+      if (res.data?.valid) {
+        setTokenValid(true);
+        setActiveToken(targetToken.trim());
+        setMaskedEmail(res.data?.masked_email || null);
+      } else {
+        setTokenValid(false);
+        setVerifyMessage(res.data?.message || "Le lien ou code de réinitialisation est invalide ou expiré.");
       }
-    };
+    } catch (err: any) {
+      setTokenValid(false);
+      setVerifyMessage("Impossible de vérifier la validité du code. Veuillez vérifier votre connexion.");
+    } finally {
+      setVerifying(false);
+    }
+  };
 
-    checkToken();
+  // Auto-verify token from URL on mount
+  useEffect(() => {
+    if (urlToken) {
+      verifyCodeOrToken(urlToken);
+    }
+  }, [urlToken]);
 
-    return () => {
-      isMounted = false;
-    };
-  }, [token]);
+  const handleManualVerify = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (manualCode.trim()) {
+      verifyCodeOrToken(manualCode.trim());
+    }
+  };
 
   // Password strength logic
   const getPasswordStrength = (pwd: string): { label: string; color: string; score: number } => {
@@ -107,7 +107,7 @@ function ResetPasswordForm() {
 
     try {
       await apiClient.post('/password-reset/reset-password', {
-        token: token,
+        token: activeToken,
         new_password: newPassword,
       });
       setResetSuccess(true);
@@ -146,8 +146,8 @@ function ResetPasswordForm() {
         <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
           Nouveau mot de passe
         </h2>
-        <p className="text-slate-500 text-xs sm:text-sm">
-          Définissez un nouveau mot de passe robuste pour votre compte.
+        <p className="text-slate-500 text-xs sm:text-sm leading-relaxed">
+          Validez votre code à 6 chiffres ou votre lien puis définissez votre nouveau mot de passe.
         </p>
       </div>
 
@@ -155,42 +155,7 @@ function ResetPasswordForm() {
       {verifying && (
         <div className="py-12 text-center space-y-3">
           <RefreshCw size={28} className="animate-spin text-[#1877f2] mx-auto" />
-          <p className="text-slate-600 text-xs font-semibold">Vérification de la validité du lien...</p>
-        </div>
-      )}
-
-      {/* Invalid / Expired Token View */}
-      {!verifying && !tokenValid && !resetSuccess && (
-        <div className="space-y-5 py-2 animate-fade-in">
-          <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 space-y-2 text-xs">
-            <div className="flex items-start gap-2.5">
-              <AlertCircle size={20} className="text-rose-600 shrink-0 mt-0.5" />
-              <div className="space-y-1">
-                <p className="font-bold text-rose-950 text-sm">Lien Invalide ou Expiré</p>
-                <p className="leading-relaxed text-rose-800 text-[11px]">{verifyMessage}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-[11px] text-slate-600">
-            <p>Pour des raisons de sécurité, les liens de réinitialisation expirent après 1 heure et ne peuvent être utilisés qu'une seule fois.</p>
-          </div>
-
-          <div className="pt-2 space-y-2">
-            <Link
-              href="/forgot-password"
-              className="w-full py-3 rounded-xl text-xs font-extrabold text-white bg-[#1877f2] hover:bg-[#166fe5] transition-all shadow-md shadow-blue-500/25 flex items-center justify-center gap-2"
-            >
-              <Key size={15} />
-              <span>Demander un nouveau lien</span>
-            </Link>
-            <Link
-              href="/login"
-              className="w-full py-2.5 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors flex items-center justify-center"
-            >
-              Retour à la page de connexion
-            </Link>
-          </div>
+          <p className="text-slate-600 text-xs font-semibold">Vérification de la validité du code...</p>
         </div>
       )}
 
@@ -219,12 +184,59 @@ function ResetPasswordForm() {
         </div>
       )}
 
+      {/* Manual Code Input View (If no token or token invalid) */}
+      {!verifying && !tokenValid && !resetSuccess && (
+        <div className="space-y-4 py-1 animate-fade-in">
+          {verifyMessage && (
+            <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 text-xs flex items-start gap-2.5">
+              <AlertCircle size={18} className="text-rose-600 shrink-0 mt-0.5" />
+              <span>{verifyMessage}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleManualVerify} className="space-y-3">
+            <div>
+              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                Code de confirmation à 6 chiffres
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={manualCode}
+                  onChange={(e) => setManualCode(e.target.value.toUpperCase().trim())}
+                  required
+                  maxLength={64}
+                  className="w-full px-3.5 py-2.5 pl-10 rounded-xl bg-white border border-slate-300 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-slate-900 font-mono tracking-widest text-center text-sm font-bold outline-none transition-all placeholder-slate-400 shadow-xs uppercase"
+                  placeholder="EX: 849201"
+                />
+                <Binary size={16} className="absolute inset-y-0 left-3 my-auto text-slate-400 pointer-events-none" />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={!manualCode.trim()}
+              className="w-full py-2.5 rounded-xl text-xs font-extrabold text-white bg-[#1877f2] hover:bg-[#166fe5] disabled:opacity-50 transition-all shadow-md shadow-blue-500/20 flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <Key size={15} />
+              <span>Valider le code de confirmation</span>
+            </button>
+          </form>
+
+          <div className="pt-2 text-center">
+            <Link href="/forgot-password" className="text-xs text-slate-500 hover:text-[#1877f2] font-semibold underline">
+              Demander un nouveau code par email
+            </Link>
+          </div>
+        </div>
+      )}
+
       {/* Reset Password Form */}
       {!verifying && tokenValid && !resetSuccess && (
         <form onSubmit={handleSubmit} className="space-y-4 text-xs animate-fade-in">
           {maskedEmail && (
             <div className="p-2.5 bg-blue-50/70 rounded-xl border border-blue-100 text-[11px] text-blue-900 flex items-center justify-between">
-              <span className="font-medium text-slate-600">Compte associé :</span>
+              <span className="font-medium text-slate-600">Compte vérifié :</span>
               <span className="font-mono font-bold text-blue-800">{maskedEmail}</span>
             </div>
           )}

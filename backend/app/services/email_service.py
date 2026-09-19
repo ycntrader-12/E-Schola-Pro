@@ -439,22 +439,43 @@ def send_password_reset_email(
     to_email: str,
     user_name: str,
     reset_url: str,
+    confirmation_code: Optional[str] = None,
 ) -> bool:
     """
-    Sends a secure password reset link.
+    Sends a secure password reset link and optional 6-digit confirmation code.
+    Supports internal and external email addresses.
     """
-    subject = "Réinitialisation de votre mot de passe - E-Schola Pro"
+    subject = "🔒 Code de confirmation & réinitialisation de votre mot de passe - E-Schola Pro"
     preheader = "Demande de réinitialisation de mot de passe sur E-Schola Pro."
+
+    code_html = ""
+    if confirmation_code:
+        code_html = f"""
+        <div style="background-color: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 12px; padding: 20px; text-align: center; margin: 24px 0;">
+            <span style="display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #64748b; font-weight: 700; margin-bottom: 8px;">
+                🔑 Votre Code de Confirmation (6 chiffres)
+            </span>
+            <div style="font-family: 'JetBrains Mono', Consolas, monospace; font-size: 32px; font-weight: 900; letter-spacing: 8px; color: #1877f2; background: #ffffff; padding: 12px 24px; border-radius: 8px; border: 1px solid #cbd5e1; display: inline-block; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                {confirmation_code}
+            </div>
+            <p style="margin: 10px 0 0 0; font-size: 12px; color: #64748b;">
+                Ce code expire dans <strong>60 minutes</strong> et ne peut être utilisé qu'une seule fois.
+            </p>
+        </div>
+        """
 
     body_content = f"""
     <p style="margin: 0 0 16px 0;">
         Bonjour <strong>{user_name}</strong>,
     </p>
     <p style="margin: 0 0 16px 0;">
-        Une demande de réinitialisation de mot de passe a été initiée pour votre compte associé à l'adresse <strong>{to_email}</strong>.
+        Une demande de réinitialisation de mot de passe a été initiée pour votre compte (<strong>{to_email}</strong>).
     </p>
-    <p style="margin: 0 0 20px 0;">
-        Pour définir un nouveau mot de passe, veuillez cliquer sur le bouton ci-dessous :
+    
+    {code_html}
+
+    <p style="margin: 0 0 16px 0;">
+        Vous pouvez saisir le code à 6 chiffres ci-dessus dans l'interface de réinitialisation, ou cliquer directement sur le bouton ci-dessous :
     </p>
     """
 
