@@ -178,6 +178,36 @@ export default function VirtualClassroomLivePage() {
     } catch {}
   };
 
+  const playChatMessageSound = (isPrivate: boolean) => {
+    try {
+      const AudioCtxClass = typeof window !== 'undefined' ? (window.AudioContext || (window as any).webkitAudioContext) : null;
+      if (!AudioCtxClass) return;
+      const audioCtx = new AudioCtxClass();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      if (isPrivate) {
+        // High-pitch dual tone for private message (E5 -> A5)
+        osc.frequency.setValueAtTime(659.25, audioCtx.currentTime);
+        osc.frequency.setValueAtTime(880.00, audioCtx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.3);
+      } else {
+        // Gentle double tone for global chat message (C5 -> E5)
+        osc.frequency.setValueAtTime(523.25, audioCtx.currentTime);
+        osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.08);
+        gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.25);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.25);
+      }
+    } catch {}
+  };
+
   // Emojis state
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const popularEmojis = ['😊', '👍', '❤️', '🎉', '👏', '🔥', '🙋‍♂️', '📚', '💡', '❓', '🖐️', '🎓', '🚀', '💻', '💯', '✋', '🙏', '⚡', '⭐', '✅'];
@@ -210,6 +240,7 @@ export default function VirtualClassroomLivePage() {
 
   // Chat messages
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
 
   // Breakout Rooms / Sous-groupes state
   const [subgroupsState, setSubgroupsState] = useState<RoomSubgroupsState>({
@@ -500,6 +531,9 @@ export default function VirtualClassroomLivePage() {
         setActiveWebrtcPeers((prev) => prev.filter((p) => p.id !== peerId));
       },
       onChatMessage: (message) => {
+        const isMe = message.sender_id === currentUser?.id || message.sender?.toLowerCase() === currentUser?.email?.toLowerCase();
+        const isPriv = message.recipient && message.recipient !== 'everyone' && !message.recipient.startsWith('subgroup:');
+
         setChatMessages((prev) => {
           if (prev.some((m) => m.id === message.id)) return prev;
           const mappedMsg: ChatMessage = {
@@ -516,13 +550,24 @@ export default function VirtualClassroomLivePage() {
             recipient_name: message.recipient_name,
             subgroup_id: message.subgroup_id,
             attachment: message.attachment as ChatAttachment | undefined,
-            isMe: message.sender_id === currentUser?.id || message.sender?.toLowerCase() === currentUser?.email?.toLowerCase()
+            isMe
           };
           return [...prev, mappedMsg];
         });
 
+        // Trigger audio beep and toast notification for incoming messages from others
+        if (!isMe) {
+          playChatMessageSound(!!isPriv);
+          setUnreadChatCount((prev) => prev + 1);
+          showNotification(
+            isPriv ? "💬 Message Privé Reçu" : "💬 Message Groupe Reçu",
+            `${(message.sender_name || message.sender).split('@')[0]}: ${message.text || 'Pièce jointe'}`,
+            "info"
+          );
+        }
+
         // Auto-set targetRecipient if user receives a private message and currently has 'everyone'
-        if (message.recipient && message.recipient !== 'everyone' && !message.recipient.startsWith('subgroup:')) {
+        if (isPriv) {
           if (message.sender && message.sender.toLowerCase() !== currentUser?.email?.toLowerCase()) {
             setTargetRecipient((currentRec) => {
               if (currentRec === 'everyone') {
@@ -1044,6 +1089,7 @@ export default function VirtualClassroomLivePage() {
     setActiveSidePanel('chat');
     setChatFilter('private');
     setTargetRecipient(email);
+    setUnreadChatCount(0);
     setTimeout(() => {
       chatInputRef.current?.focus();
     }, 100);
@@ -1051,6 +1097,7 @@ export default function VirtualClassroomLivePage() {
 
   const handleSelectPrivateTab = () => {
     setChatFilter('private');
+    setUnreadChatCount(0);
     if (targetRecipient === 'everyone') {
       const available = activeWebrtcPeers.find(p => p.email?.toLowerCase() !== currentUser?.email?.toLowerCase())
         || participantsList.find(p => p.email?.toLowerCase() !== currentUser?.email?.toLowerCase());
@@ -2084,7 +2131,10 @@ export default function VirtualClassroomLivePage() {
 
           {/* Chat Button (Prominent in main action bar) */}
           <button
-            onClick={() => setActiveSidePanel(activeSidePanel === 'chat' ? null : 'chat')}
+            onClick={() => {
+              setActiveSidePanel(activeSidePanel === 'chat' ? null : 'chat');
+              setUnreadChatCount(0);
+            }}
             className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all relative shrink-0 ${activeSidePanel === 'chat'
                 ? 'bg-primary text-white shadow-md shadow-primary/30'
                 : 'bg-white/10 hover:bg-white/20 text-white'
@@ -2092,7 +2142,13 @@ export default function VirtualClassroomLivePage() {
             title="Ouvrir la discussion"
           >
             <MessageSquare size={18} />
-            <span className="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+            {unreadChatCount > 0 ? (
+              <span className="absolute -top-1 -right-1 px-1.5 py-0.5 text-[9px] font-bold rounded-full bg-red-500 text-white animate-bounce shadow-md">
+                {unreadChatCount}
+              </span>
+            ) : (
+              <span className="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+            )}
           </button>
 
           {/* Breakout Rooms Button (Formateurs & Admins) */}
