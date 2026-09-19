@@ -490,6 +490,42 @@ def send_password_reset_email(
     return send_email(to_email=to_email, subject=subject, html_content=html)
 
 
+def send_no_account_found_email(to_email: str) -> bool:
+    """
+    Sends an email informing the user that a password reset was requested for this email,
+    but no active account was found, with a link to create an account.
+    """
+    frontend_url = os.getenv("FRONTEND_URL", "https://e-schola-pro-production.up.railway.app").rstrip("/")
+    register_url = f"{frontend_url}/register"
+    subject = "Information concernant votre demande de mot de passe - E-Schola Pro"
+    preheader = "Demande de réinitialisation de mot de passe sur E-Schola Pro."
+
+    body_content = f"""
+    <p style="margin: 0 0 16px 0;">
+        Bonjour,
+    </p>
+    <p style="margin: 0 0 16px 0;">
+        Une demande de réinitialisation de mot de passe a été soumise pour l'adresse <strong>{to_email}</strong>.
+    </p>
+    <p style="margin: 0 0 16px 0;">
+        Cependant, aucun compte n'est actuellement associé à cette adresse e-mail sur la plateforme <strong>E-Schola Pro</strong>.
+    </p>
+    <p style="margin: 0 0 20px 0;">
+        Si vous n'avez pas encore de compte ou si vous souhaitez en créer un, cliquez sur le bouton ci-dessous :
+    </p>
+    """
+
+    html = get_base_html_template(
+        title="Aucun compte associé",
+        preheader=preheader,
+        body_content=body_content,
+        action_url=register_url,
+        action_text="Créer un compte E-Schola Pro",
+    )
+
+    return send_email(to_email=to_email, subject=subject, html_content=html)
+
+
 def send_notification_email(
     to_email: str,
     subject: str,
