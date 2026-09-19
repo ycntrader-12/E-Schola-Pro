@@ -73,7 +73,7 @@ function ResetPasswordForm() {
   }, [token]);
 
   // Password strength logic
-  const getPasswordStrength = (pwd: str): { label: str; color: str; score: number } => {
+  const getPasswordStrength = (pwd: string): { label: string; color: string; score: number } => {
     if (!pwd) return { label: '', color: 'bg-slate-200', score: 0 };
     let score = 0;
     if (pwd.length >= 6) score += 1;
