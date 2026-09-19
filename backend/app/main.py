@@ -35,6 +35,7 @@ from app.admin import (
     UserAdmin,
     UserInvitationAdmin,
     UserSessionAdmin,
+    PasswordResetTokenAdmin,
 )
 from app.api.main import api_router
 from app.core.config import is_in_railway, is_production, settings
@@ -287,6 +288,7 @@ admin = Admin(
 admin.add_view(UserAdmin)
 admin.add_view(UserSessionAdmin)
 admin.add_view(UserInvitationAdmin)
+admin.add_view(PasswordResetTokenAdmin)
 
 # 2. Formations & Cours
 admin.add_view(CourseAdmin)

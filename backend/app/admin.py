@@ -17,6 +17,7 @@ from app.models.task import Task, TaskSubmission
 from app.models.user import User
 from app.models.user_invitation import UserInvitation
 from app.models.user_session import UserSession
+from app.models.password_reset_token import PasswordResetToken
 
 
 # ==============================================================================
@@ -66,6 +67,24 @@ class UserInvitationAdmin(ModelView, model=UserInvitation):
     name = "Invitation Utilisateur"
     name_plural = "Invitations Utilisateurs"
     icon = "fa-solid fa-envelope"
+    category = "Utilisateurs & Accès"
+    category_icon = "fa-solid fa-users-gear"
+
+
+class PasswordResetTokenAdmin(ModelView, model=PasswordResetToken):
+    column_list = [
+        PasswordResetToken.id,
+        PasswordResetToken.user_id,
+        PasswordResetToken.token,
+        PasswordResetToken.is_used,
+        PasswordResetToken.expires_at,
+        PasswordResetToken.created_at,
+    ]
+    column_searchable_list = [PasswordResetToken.token]
+    column_sortable_list = [PasswordResetToken.id, PasswordResetToken.created_at, PasswordResetToken.expires_at]
+    name = "Jeton de Réinitialisation"
+    name_plural = "Jetons de Réinitialisation"
+    icon = "fa-solid fa-key"
     category = "Utilisateurs & Accès"
     category_icon = "fa-solid fa-users-gear"
 

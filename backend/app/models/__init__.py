@@ -25,5 +25,6 @@ from app.models.task import Task, TaskSubmission
 from app.models.user import User
 from app.models.user_invitation import UserInvitation
 from app.models.user_session import UserSession
+from app.models.password_reset_token import PasswordResetToken
 
 
