@@ -78,6 +78,9 @@ export interface SFUClientCallbacks {
   onSubgroupsState?: (state: any) => void;
   onRemoteMute?: (byHost: string) => void;
   onNetworkStats?: (latency: number, transport: string) => void;
+  onWebRTCOffer?: (senderId: number, senderEmail: string, payload: any) => void;
+  onWebRTCAnswer?: (senderId: number, senderEmail: string, payload: any) => void;
+  onWebRTCIceCandidate?: (senderId: number, senderEmail: string, payload: any) => void;
   onError?: (err: any) => void;
 }
 
@@ -232,6 +235,18 @@ export class SFUWebRTCClient {
       case 'remote_mute':
         this.callbacks.onRemoteMute?.(msg.by_host);
         break;
+      case 'webrtc_offer':
+      case 'sfu_offer':
+        this.callbacks.onWebRTCOffer?.(msg.sender_id, msg.sender_email, msg.payload);
+        break;
+      case 'webrtc_answer':
+      case 'sfu_answer':
+        this.callbacks.onWebRTCAnswer?.(msg.sender_id, msg.sender_email, msg.payload);
+        break;
+      case 'webrtc_ice_candidate':
+      case 'ice_candidate':
+        this.callbacks.onWebRTCIceCandidate?.(msg.sender_id, msg.sender_email, msg.payload);
+        break;
     }
   }
 
@@ -353,6 +368,21 @@ export class SFUWebRTCClient {
 
   public updateSubgroups(subgroupsState: any) {
     this.send({ type: 'subgroups_update', subgroups_state: subgroupsState });
+  }
+
+  // -------------------------------------------------------------
+  // WebRTC P2P/SFU SIGNALING (SDP & ICE)
+  // -------------------------------------------------------------
+  public sendWebRTCOffer(recipientId?: number, recipientEmail?: string, payload?: any) {
+    this.send({ type: 'webrtc_offer', recipient_id: recipientId, recipient_email: recipientEmail, payload });
+  }
+
+  public sendWebRTCAnswer(recipientId?: number, recipientEmail?: string, payload?: any) {
+    this.send({ type: 'webrtc_answer', recipient_id: recipientId, recipient_email: recipientEmail, payload });
+  }
+
+  public sendWebRTCIceCandidate(recipientId?: number, recipientEmail?: string, payload?: any) {
+    this.send({ type: 'webrtc_ice_candidate', recipient_id: recipientId, recipient_email: recipientEmail, payload });
   }
 
   // -------------------------------------------------------------

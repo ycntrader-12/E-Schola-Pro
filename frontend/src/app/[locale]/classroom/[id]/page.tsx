@@ -178,6 +178,39 @@ export default function VirtualClassroomLivePage() {
     } catch {}
   };
 
+  const RemotePeerVideo = ({ stream, isCameraOff, fallbackName }: { stream?: MediaStream; isCameraOff?: boolean; fallbackName: string }) => {
+    const videoRef = useRef<HTMLVideoElement>(null);
+
+    useEffect(() => {
+      if (videoRef.current && stream) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play().catch(() => {});
+      }
+    }, [stream]);
+
+    return (
+      <div className="absolute inset-0 w-full h-full flex items-center justify-center">
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          webkit-playsinline="true"
+          className={`w-full h-full object-cover ${isCameraOff || !stream ? 'hidden' : 'block'}`}
+        />
+        {(isCameraOff || !stream) && (
+          <div className="flex flex-col items-center justify-center space-y-1.5 z-10">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-primary/20 border-2 border-primary/50 flex items-center justify-center text-lg font-bold text-primary transition-all">
+              {fallbackName.charAt(0).toUpperCase()}
+            </div>
+            <p className="text-[9px] text-gray-400">
+              {isCameraOff ? 'Caméra désactivée' : 'Connexion du flux...'}
+            </p>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const playChatMessageSound = (isPrivate: boolean) => {
     try {
       const AudioCtxClass = typeof window !== 'undefined' ? (window.AudioContext || (window as any).webkitAudioContext) : null;
@@ -275,6 +308,76 @@ export default function VirtualClassroomLivePage() {
   const [showDiagnosticsModal, setShowDiagnosticsModal] = useState(false);
   const [webrtcConfig, setWebrtcConfig] = useState<any>(null);
   const [activeWebrtcPeers, setActiveWebrtcPeers] = useState<any[]>([]);
+  const [remoteStreams, setRemoteStreams] = useState<{ [key: string]: MediaStream }>({});
+  const peerConnectionsRef = useRef<Map<string | number, RTCPeerConnection>>(new Map());
+
+  const rtcConfig: RTCConfiguration = {
+    iceServers: [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+      { urls: 'stun:stun2.l.google.com:19302' },
+      { urls: 'stun:stun3.l.google.com:19302' },
+      { urls: 'stun:stun4.l.google.com:19302' }
+    ]
+  };
+
+  const createPeerConnection = async (peerId: number, peerEmail: string, isInitiator: boolean) => {
+    if (!peerId && !peerEmail) return null;
+    const primaryKey = peerId || peerEmail;
+
+    if (peerConnectionsRef.current.has(primaryKey)) {
+      try {
+        peerConnectionsRef.current.get(primaryKey)?.close();
+      } catch {}
+      peerConnectionsRef.current.delete(primaryKey);
+    }
+
+    const pc = new RTCPeerConnection(rtcConfig);
+    peerConnectionsRef.current.set(primaryKey, pc);
+    if (peerId) peerConnectionsRef.current.set(peerId, pc);
+    if (peerEmail) peerConnectionsRef.current.set(peerEmail, pc);
+
+    // Add local tracks (Audio & Video)
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach((track) => {
+        pc.addTrack(track, localStreamRef.current!);
+      });
+    }
+
+    // ICE Candidate handler
+    pc.onicecandidate = (event) => {
+      if (event.candidate) {
+        sfuClientRef.current?.sendWebRTCIceCandidate(peerId, peerEmail, event.candidate.toJSON());
+      }
+    };
+
+    // Remote Track handler
+    pc.ontrack = (event) => {
+      const [incomingStream] = event.streams;
+      if (incomingStream) {
+        setRemoteStreams((prev) => ({
+          ...prev,
+          [peerId]: incomingStream,
+          [peerEmail]: incomingStream
+        }));
+      }
+    };
+
+    if (isInitiator) {
+      try {
+        const offer = await pc.createOffer({
+          offerToReceiveAudio: true,
+          offerToReceiveVideo: true
+        });
+        await pc.setLocalDescription(offer);
+        sfuClientRef.current?.sendWebRTCOffer(peerId, peerEmail, offer);
+      } catch (err) {
+        console.error("Error creating WebRTC offer:", err);
+      }
+    }
+
+    return pc;
+  };
   const [networkLatency, setNetworkLatency] = useState(28); // ms
   const [mediaStats, setMediaStats] = useState({
     videoResolution: '1280 × 720 (HD)',
@@ -471,6 +574,9 @@ export default function VirtualClassroomLivePage() {
         if (Array.isArray(data.active_peers)) {
           const remotes = data.active_peers.filter((p: any) => p.email.toLowerCase() !== currentUser?.email?.toLowerCase());
           setActiveWebrtcPeers(remotes);
+          remotes.forEach((peer: any) => {
+            createPeerConnection(peer.id, peer.email, true);
+          });
         }
         if (data.subgroups) {
           setSubgroupsState(data.subgroups);
@@ -518,17 +624,68 @@ export default function VirtualClassroomLivePage() {
       },
       onKicked: (msg) => {
         stopAllMedia();
-        showNotification("Session Clôturée", msg || "Vous avez été exclu de la session par le formateur.", "error");
-        setTimeout(() => router.push('/classroom'), 3000);
+        setJoinStatus('rejected');
+        showNotification("Session Terminée", msg || "Vous avez été retiré de la session par l'hôte.", "error");
       },
       onPeerJoined: (peer) => {
         setActiveWebrtcPeers((prev) => {
           if (prev.some((p) => p.id === peer.id)) return prev;
           return [...prev, peer];
         });
+        if (peer.email?.toLowerCase() !== currentUser?.email?.toLowerCase()) {
+          createPeerConnection(peer.id, peer.email, true);
+        }
       },
       onPeerLeft: (peerId) => {
         setActiveWebrtcPeers((prev) => prev.filter((p) => p.id !== peerId));
+        const pc = peerConnectionsRef.current.get(peerId);
+        if (pc) {
+          pc.close();
+          peerConnectionsRef.current.delete(peerId);
+        }
+        setRemoteStreams((prev) => {
+          const next = { ...prev };
+          delete next[peerId];
+          return next;
+        });
+      },
+      onWebRTCOffer: async (senderId, senderEmail, offer) => {
+        if (senderEmail?.toLowerCase() === currentUser?.email?.toLowerCase()) return;
+        const key = senderId || senderEmail;
+        let pc = peerConnectionsRef.current.get(key);
+        if (!pc) {
+          pc = (await createPeerConnection(senderId, senderEmail, false)) || undefined;
+        }
+        if (pc) {
+          try {
+            await pc.setRemoteDescription(new RTCSessionDescription(offer));
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            sfuClientRef.current?.sendWebRTCAnswer(senderId, senderEmail, answer);
+          } catch (err) {
+            console.error("Error handling WebRTC offer:", err);
+          }
+        }
+      },
+      onWebRTCAnswer: async (senderId, senderEmail, answer) => {
+        const key = senderId || senderEmail;
+        const pc = peerConnectionsRef.current.get(key);
+        if (pc && pc.signalingState !== 'stable') {
+          try {
+            await pc.setRemoteDescription(new RTCSessionDescription(answer));
+          } catch (err) {
+            console.error("Error setting remote answer:", err);
+          }
+        }
+      },
+      onWebRTCIceCandidate: async (senderId, senderEmail, candidate) => {
+        const key = senderId || senderEmail;
+        const pc = peerConnectionsRef.current.get(key);
+        if (pc && candidate) {
+          try {
+            await pc.addIceCandidate(new RTCIceCandidate(candidate));
+          } catch (err) {}
+        }
       },
       onChatMessage: (message) => {
         const isMe = message.sender_id === currentUser?.id || message.sender?.toLowerCase() === currentUser?.email?.toLowerCase();
@@ -801,6 +958,19 @@ export default function VirtualClassroomLivePage() {
       }
       setIsCameraOff(false);
       setIsMicMuted(false);
+
+      // Attach new local tracks to existing WebRTC peer connections
+      peerConnectionsRef.current.forEach((pc) => {
+        stream.getTracks().forEach((track) => {
+          const senders = pc.getSenders();
+          const existingSender = senders.find((s) => s.track?.kind === track.kind);
+          if (existingSender) {
+            existingSender.replaceTrack(track);
+          } else {
+            pc.addTrack(track, stream);
+          }
+        });
+      });
     } catch (err: any) {
       console.warn("Camera/Mic permission status:", err?.name, err?.message);
       setIsCameraOff(true);
@@ -1587,7 +1757,7 @@ export default function VirtualClassroomLivePage() {
               </div>
             </div>
 
-            {/* Active Remote Peers Tiles with Real-Time WebRTC Audio & Video States */}
+            {/* Active Remote Peers Tiles with Real-Time WebRTC Audio & Video Streams */}
             {activeWebrtcPeers.map((peer, idx) => (
               <div
                 key={peer.email || peer.id || idx}
@@ -1597,16 +1767,17 @@ export default function VirtualClassroomLivePage() {
                     : 'border-white/10'
                 }`}
               >
-                <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-surface border-2 border-border flex items-center justify-center text-lg font-bold text-gray-200 shadow-inner transition-transform ${
-                  peer.media_state?.is_speaking && !peer.media_state?.is_mic_muted ? 'scale-110 ring-2 ring-emerald-400' : ''
-                }`}>
-                  {peer.name ? peer.name.charAt(0).toUpperCase() : peer.email.charAt(0).toUpperCase()}
-                </div>
-                <p className="mt-2 font-semibold text-[10px] sm:text-xs text-gray-200 capitalize truncate px-2 max-w-[95%]">
+                <RemotePeerVideo
+                  stream={remoteStreams[peer.id] || remoteStreams[peer.email]}
+                  isCameraOff={peer.media_state?.is_camera_off}
+                  fallbackName={peer.name || peer.email}
+                />
+
+                <p className="mt-2 font-semibold text-[10px] sm:text-xs text-gray-200 capitalize truncate px-2 max-w-[95%] z-10 drop-shadow">
                   {peer.name || peer.email.split('@')[0]} {peer.is_host ? '(Hôte)' : ''}
                 </p>
 
-                <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between px-2 py-0.5 rounded-full bg-black/60 backdrop-blur text-[9px] font-semibold text-gray-300">
+                <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between px-2 py-0.5 rounded-full bg-black/60 backdrop-blur text-[9px] font-semibold text-gray-300 z-10">
                   <span className="text-[9px] text-gray-400 uppercase truncate max-w-[70px]">{peer.role}</span>
                   {peer.media_state?.is_mic_muted ? (
                     <MicOff size={10} className="text-red-400 shrink-0" />
@@ -1615,7 +1786,7 @@ export default function VirtualClassroomLivePage() {
                   )}
                 </div>
 
-                <div className="absolute top-2 right-2 flex items-center gap-1 px-1.5 py-0.5 bg-black/60 backdrop-blur rounded text-[8px] font-mono text-emerald-400 border border-white/10">
+                <div className="absolute top-2 right-2 flex items-center gap-1 px-1.5 py-0.5 bg-black/60 backdrop-blur rounded text-[8px] font-mono text-emerald-400 border border-white/10 z-10">
                   <span className="w-1 h-1 rounded-full bg-emerald-400" />
                   <span>{peer.media_state?.transport_protocol || 'UDP'}</span>
                 </div>

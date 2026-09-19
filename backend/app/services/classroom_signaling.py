@@ -429,9 +429,11 @@ class ClassroomSignalingManager:
                         "kind": kind
                     }, exclude_id=user_id)
 
-            elif msg_type in ["sfu_offer", "sfu_answer", "ice_candidate"]:
-                # Relai ciblé ou SFU dispatch
+            elif msg_type in ["sfu_offer", "sfu_answer", "ice_candidate", "webrtc_offer", "webrtc_answer", "webrtc_ice_candidate"]:
+                # Relai ciblé WebRTC SDP & ICE candidates par ID ou Email
                 recipient_id = msg.get("recipient_id")
+                recipient_email = (msg.get("recipient_email") or "").strip().lower()
+
                 envelope = {
                     "type": msg_type,
                     "sender_id": user_id,
@@ -439,10 +441,15 @@ class ClassroomSignalingManager:
                     "sender_name": user["name"],
                     "payload": msg.get("payload")
                 }
-                if recipient_id:
-                    recipient_client = room["clients"].get(int(recipient_id))
-                    if recipient_client:
-                        await recipient_client["ws"].send_text(json.dumps(envelope))
+
+                target_client = None
+                if recipient_id and int(recipient_id) in room["clients"]:
+                    target_client = room["clients"][int(recipient_id)]
+                elif recipient_email:
+                    target_client = next((c for c in room["clients"].values() if c["user"]["email"].lower() == recipient_email), None)
+
+                if target_client:
+                    await target_client["ws"].send_text(json.dumps(envelope))
                 else:
                     # Relai SFU broadcast à tous les participants admis
                     await self._broadcast_to_admitted(cleaned_id, envelope, exclude_id=user_id)
