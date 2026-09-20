@@ -2,13 +2,14 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import { Link } from '@/i18n/routing';
+import { Link, useRouter } from '@/i18n/routing';
 import { apiClient } from '@/lib/api';
-import { Mail, CheckCircle2, AlertCircle, ArrowLeft, KeyRound, ShieldCheck } from 'lucide-react';
+import { Mail, CheckCircle2, AlertCircle, ArrowLeft, ArrowRight, KeyRound, ShieldCheck, Binary, RefreshCw } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import BackButton from '@/components/BackButton';
 
 export default function ForgotPasswordPage() {
+  const router = useRouter();
   const t = useTranslations('Auth');
   const tCommon = useTranslations('Common');
 
@@ -17,6 +18,11 @@ export default function ForgotPasswordPage() {
   const [submitted, setSubmitted] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+
+  // Code de confirmation reçu par mail
+  const [validationCode, setValidationCode] = useState('');
+  const [verifyingCode, setVerifyingCode] = useState(false);
+  const [codeError, setCodeError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,19 +37,51 @@ export default function ForgotPasswordPage() {
       setSubmitted(true);
       setMessage(
         response.data?.message ||
-          "Si l'adresse saisie correspond à un compte actif, un lien de réinitialisation vous a été envoyé par email."
+        "Si l'adresse saisie correspond à un compte actif, un lien de réinitialisation vous a été envoyé par email."
       );
-    } catch (err: any) {
-      const detailMsg = err?.response?.data?.detail;
-      if (err?.response?.status === 429) {
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { status?: number; data?: { detail?: string } }; message?: string };
+      const detailMsg = errorObj?.response?.data?.detail;
+      if (errorObj?.response?.status === 429) {
         setError("Trop de tentatives effectuées. Veuillez patienter quelques minutes avant de réessayer.");
-      } else if (err?.message === 'Network Error' || !err?.response) {
+      } else if (errorObj?.message === 'Network Error' || !errorObj?.response) {
         setError("Impossible de contacter le serveur backend. Veuillez vérifier votre connexion.");
       } else {
         setError(detailMsg || "Une erreur est survenue lors de l'envoi de la demande. Veuillez réessayer.");
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleConfirmCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanCode = validationCode.trim().replace(/\s+/g, '');
+    if (!cleanCode) {
+      setCodeError('Veuillez saisir votre code de validation.');
+      return;
+    }
+    if (cleanCode.length < 4) {
+      setCodeError('Le code de validation semble trop court.');
+      return;
+    }
+
+    setCodeError('');
+    setVerifyingCode(true);
+
+    try {
+      const response = await apiClient.get(`/password-reset/verify-token/${encodeURIComponent(cleanCode)}`);
+      if (response.data && response.data.valid) {
+        router.push(`/reset-password?token=${encodeURIComponent(cleanCode)}`);
+      } else {
+        setCodeError("Code de validation invalide ou déjà utilisé.");
+      }
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { detail?: string } } };
+      const detailMsg = errorObj?.response?.data?.detail;
+      setCodeError(detailMsg || "Code invalide ou expiré. Veuillez vérifier le code reçu par email.");
+    } finally {
+      setVerifyingCode(false);
     }
   };
 
@@ -107,15 +145,72 @@ export default function ForgotPasswordPage() {
               </div>
             </div>
 
+            {/* Confirmation directe du code reçu par mail */}
+            <div className="p-4 rounded-2xl bg-blue-50/70 border border-blue-200 space-y-3">
+              <div className="flex items-center gap-2.5 text-slate-900">
+                <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                  <Binary size={16} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-xs text-slate-900">Vous avez reçu votre code ?</h3>
+                  <p className="text-[11px] text-slate-500">Saisissez le code de validation reçu dans l'email :</p>
+                </div>
+              </div>
+
+              {codeError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 p-2.5 rounded-xl text-[11px] font-medium flex items-center gap-2 animate-fade-in">
+                  <AlertCircle size={14} className="shrink-0 text-red-500" />
+                  <span>{codeError}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleConfirmCode} className="space-y-2.5">
+                <div className="relative">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={12}
+                    value={validationCode}
+                    onChange={(e) => {
+                      setValidationCode(e.target.value.toUpperCase());
+                      if (codeError) setCodeError('');
+                    }}
+                    placeholder="Ex: 849201"
+                    className="w-full px-3.5 py-2.5 pl-10 rounded-xl bg-white border border-blue-200 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-slate-900 font-mono font-bold text-sm tracking-widest text-center outline-none transition-all placeholder:text-slate-300 placeholder:font-normal placeholder:tracking-normal shadow-xs"
+                  />
+                  <KeyRound size={15} className="absolute inset-y-0 left-3.5 my-auto text-blue-500 pointer-events-none" />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={verifyingCode || !validationCode.trim()}
+                  className="w-full py-2.5 rounded-xl text-xs font-bold text-white bg-[#1877f2] hover:bg-[#166fe5] active:scale-[0.99] disabled:opacity-50 transition-all shadow-md shadow-blue-500/20 flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  {verifyingCode ? (
+                    <>
+                      <RefreshCw size={14} className="animate-spin" />
+                      <span>Vérification du code...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Confirmer le code</span>
+                      <ArrowRight size={14} />
+                    </>
+                  )}
+                </button>
+              </form>
+            </div>
+
             <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-[11px] text-slate-600 space-y-1">
               <p className="font-semibold text-slate-800">💡 Conseil d'utilisation :</p>
-              <p>Le lien expire automatiquement dans <strong>60 minutes</strong>. Si vous n'avez rien reçu dans 2 minutes, pensez à vérifier vos dossiers Spam / Courriers indésirables.</p>
+              <p>Le code expire automatiquement dans <strong>60 minutes</strong>. Si vous n'avez rien reçu dans 2 minutes, pensez à vérifier vos dossiers Spam / Courriers indésirables.</p>
             </div>
 
             <div className="pt-2 space-y-2">
               <Link
                 href="/login"
-                className="w-full py-3 rounded-xl text-xs font-extrabold text-white bg-[#1877f2] hover:bg-[#166fe5] transition-all shadow-md shadow-blue-500/25 flex items-center justify-center gap-2"
+                className="w-full py-3 rounded-xl text-xs font-extrabold text-white bg-slate-800 hover:bg-slate-900 transition-all shadow-md shadow-slate-900/10 flex items-center justify-center gap-2"
               >
                 <ArrowLeft size={15} />
                 <span>Retour à la page de connexion</span>
@@ -125,6 +220,8 @@ export default function ForgotPasswordPage() {
                 onClick={() => {
                   setSubmitted(false);
                   setMessage('');
+                  setValidationCode('');
+                  setCodeError('');
                 }}
                 className="w-full py-2.5 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
               >

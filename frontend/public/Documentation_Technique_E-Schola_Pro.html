@@ -1822,10 +1822,21 @@ E-Schola Pro/
         <tr><td><code>assessment_id</code></td><td>String(36)</td><td>FK → assessments.id, Not Null, Cascade</td><td>Examen certifiant validé</td></tr>
         <tr><td><code>attempt_id</code></td><td>String(36)</td><td>FK → user_attempts.id, Not Null, Cascade</td><td>Tentative ayant validé le certificat</td></tr>
         <tr><td><code>certificate_file_url</code></td><td>String(255)</td><td>Not Null</td><td>Chemin d'accès au document diplôme officiel haute résolution généré (ex: <code>/uploads/certificates/...png</code>)</td></tr>
-        <tr><td><code>issued_at</code></td><td>DateTime</td><td>Auto</td><td>Date et heure officielle de délivrance</td></tr>
+    <!-- PASSWORD RESET TOKEN -->
+    <h3>PasswordResetToken (Jetons de Réinitialisation de Mot de Passe)</h3>
+    <table>
+      <thead><tr><th>Colonne</th><th>Type</th><th>Contraintes</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code></td><td>Integer</td><td>PK, Auto-increment</td><td>Identifiant unique du jeton</td></tr>
+        <tr><td><code>user_id</code></td><td>Integer</td><td>FK → users.id, CASCADE</td><td>Utilisateur propriétaire de la demande de réinitialisation</td></tr>
+        <tr><td><code>token</code></td><td>String(255)</td><td>Unique, Indexé, Not Null</td><td>Jeton cryptographique sécurisé unique (secrets.token_urlsafe)</td></tr>
+        <tr><td><code>code</code></td><td>String(10)</td><td>Nullable, Indexé</td><td>Code de confirmation numérique à 6 chiffres (ex: 849201)</td></tr>
+        <tr><td><code>created_at</code></td><td>DateTime</td><td>Auto, Not Null</td><td>Horodatage de création de la demande</td></tr>
+        <tr><td><code>expires_at</code></td><td>DateTime</td><td>Not Null</td><td>Horodatage d'expiration (1 heure par défaut)</td></tr>
+        <tr><td><code>is_used</code></td><td>Boolean</td><td>Default: False, Not Null</td><td>Indicateur à usage unique (True dès réinitialisation réussie)</td></tr>
       </tbody>
     </table>
-  
+
     </section>
 
     <!-- ===================================================================== -->
@@ -1851,6 +1862,16 @@ E-Schola Pro/
       <thead><tr><th>Méthode</th><th>Endpoint</th><th>Description</th><th>Accès</th></tr></thead>
       <tbody class="endpoint-row">
         <tr><td><span class="badge badge-post">POST</span></td><td><code>/login/access-token</code></td><td>Obtenir un token JWT Bearer. <strong>Protection anti-brute force :</strong> Sliding window rate limiter actif (max 15 req/min par IP, 10 req/min par compte cible) et traçabilité des tentatives d'accès.</td><td>Public (Rate Limited)</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Réinitialisation de Mot de Passe (/password-reset)</h3>
+    <table>
+      <thead><tr><th>Méthode</th><th>Endpoint</th><th>Description</th><th>Accès</th></tr></thead>
+      <tbody class="endpoint-row">
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/password-reset/forgot-password</code></td><td>Demander un lien de réinitialisation de mot de passe par email. <strong>Protection anti-brute force & anti-enumération :</strong> Rate limited à 5 req/min par IP et 3 req/5min par email, génération d'un token à expiration 1h et réponse générique sécurisée.</td><td>Public (Rate Limited)</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/password-reset/verify-token/{token}</code></td><td>Vérifier la validité d'un jeton de réinitialisation (vérification d'existence, d'expiration et de non-utilisation en base de données).</td><td>Public</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/password-reset/reset-password</code></td><td>Réinitialiser le mot de passe de l'utilisateur associé au jeton. Validation de la longueur (min 6 caractères), hachage bcrypt, marquage à usage unique (<code>is_used=True</code>) et journal d'audit <code>PASSWORD_RESET_SUCCESS</code>.</td><td>Public (Rate Limited)</td></tr>
       </tbody>
     </table>
 
@@ -1996,7 +2017,8 @@ E-Schola Pro/
         <tr><td><span class="badge badge-delete">DELETE</span></td><td><code>/classrooms/{room_id}/invitations/{invitation_id}</code></td><td>Annuler/révoquer une invitation en attente pour la salle vidéo conférence</td><td>Admin, Formateur (hôte/créateur), Pédagogique</td></tr>
         <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/invitations/{id}/accept</code></td><td>Accepter l'invitation, enregistrer la présence et obtenir le code de salle pour accès direct immédiat</td><td>Authentifié</td></tr>
         <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/invitations/{id}/decline</code></td><td>Refuser formellement l'invitation reçue (mise à jour du statut <code>declined</code>, masquage de l'appel entrant et synchronisation temps réel)</td><td>Authentifié</td></tr>
-        <tr><td><span class="badge badge-get" style="background: var(--accent-purple-bg); color: var(--accent-purple-text); border-color: #e9d5ff;">WS</span></td><td><code>/classrooms/{room_id}/ws</code> · <code>/ws/classroom/{room_id}</code></td><td>Serveur de signalisation WebRTC SFU temps réel : authentification JWT, validation des codes d'entrée, machine à états de la salle d'attente, négociation SDP Offer/Answer, échange de candidats ICE, routage de flux simulcast, modération hôte et chat segmenté</td><td>Authentifié (Jeton JWT)</td></tr>
+        <tr><td><span class="badge badge-get" style="background: var(--accent-purple-bg); color: var(--accent-purple-text); border-color: #e9d5ff;">WS</span></td><td><code>/classrooms/{room_id}/ws</code> · <code>/ws/classroom/{room_id}</code></td><td>Serveur de signalisation WebRTC SFU C++ (Mediasoup / Janus) en temps réel : authentification JWT, validation des codes d'entrée, négociation des Routers/Capabilities C++, création des WebRtcTransports ICE/DTLS, ingestion de pistes (Producers Opus/VP8/H264) et distribution sélective multi-flux (Consumers), machine à états de la salle d'attente, modération hôte et chat segmenté</td><td>Authentifié (Jeton JWT)</td></tr>
+
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/classrooms/{room_id}/state</code></td><td>Consulter l'état en direct de la session SFU (participants connectés, file d'attente d'admission active, liste des utilisateurs bloqués)</td><td>Formateur, Admin</td></tr>
         <tr><td><span class="badge badge-post">POST</span></td><td><code>/classrooms/{room_id}/block-user/{user_id}</code></td><td>Bannir et expulser immédiatement un participant : déconnexion WebSocket immédiate avec code de fermeture 4003, retrait des autorisations BDD et mise en liste noire de session</td><td>Formateur, Admin</td></tr>
         <tr><td><span class="badge badge-delete">DELETE</span></td><td><code>/classrooms/{room_id}/block-user/{user_id}</code></td><td>Débloquer un utilisateur précédemment exclu pour lui permettre de formuler une nouvelle demande d'accès</td><td>Formateur, Admin</td></tr>
@@ -2876,7 +2898,19 @@ E-Schola Pro/
         <li><strong>Raccourcis Directs & Fiches Modules :</strong> Présentation des modules pertinents pour le rôle avec description des droits exacts et bouton de redirection immédiate vers l'interface correspondante.</li>
         <li><strong>Astuces Pédagogiques & Bonnes Pratiques :</strong> Recommandations pour une utilisation optimale (optimisation de bande passante en visioconférence Jitsi, ponctualité d'émargement PIN, notation des devoirs).</li>
         <li><strong>Foire Aux Questions (FAQ) Filtrable :</strong> Réponses immédiates aux questions techniques et administratives les plus fréquentes.</li>
-        <li><strong>Moteur de Recherche Dédié :</strong> Filtre instantanément l'ensemble des fiches d'aide, checklists et questions de la modale en temps réel.</li>
+      </ul>
+    </div>
+
+    <h3>Module 16 — Réinitialisation de Mot de Passe &amp; Sécurité des Accès</h3>
+    <div class="card">
+      <p><strong>Routes Frontend :</strong> <code>/forgot-password</code> · <code>/reset-password</code></p>
+      <p><strong>Flux complet et sécurisé de réinitialisation :</strong></p>
+      <ul>
+        <li><strong>Lien « Mot de Passe Oublié » :</strong> Intégré directement sur la page de connexion (<code>/login</code>), permettant de basculer vers l'interface de saisie d'email <code>/forgot-password</code>.</li>
+        <li><strong>Génération de Token &amp; Code à 6 Chiffres (Expiration 1h) :</strong> Génération simultanée d'un jeton aléatoire sécurisé (<code>secrets.token_urlsafe(32)</code>) et d'un code de confirmation numérique à 6 chiffres (ex: <code>849201</code>) enregistrés dans la table <code>password_reset_tokens</code> avec horodatage d'expiration <code>expires_at</code> fixé à 60 minutes.</li>
+        <li><strong>Protection Anti-Énumération &amp; Anti-Spam :</strong> La demande d'email renvoie une réponse générique identique (empêchant de déterminer si un e-mail est inscrit) et applique un rate-limiting strict par IP (max 5 req/min) et par e-mail (max 3 req/5min).</li>
+        <li><strong>Email Transactionnel HTML &amp; Support d'Emails Externes :</strong> Envoi d'un email au design institutionnel E-Schola Pro contenant à la fois le code à 6 chiffres mis en valeur dans un badge haute lisibilité et le bouton de réinitialisation directe <code>https://e-schola-pro-production.up.railway.app/reset-password?token=...</code>. Le service supporte l'expédition vers tout domaine e-mail interne ou externe (Gmail, Outlook, Yahoo, domaines d'entreprise...).</li>
+        <li><strong>Double Validation Dynamique (Jeton ou Code 6 Chiffres) &amp; Hachage Bcrypt :</strong> L'utilisateur peut au choix cliquer sur le lien reçu, renseigner directement son code de validation à 6 chiffres sur l'interface de confirmation post-envoi <code>/forgot-password</code>, ou le saisir sur la page dédiée <code>/reset-password</code>. L'API <code>GET /password-reset/verify-token/{token}</code> vérifie le jeton ou le code en temps réel. La soumission valide le nouveau mot de passe (minimum 6 caractères), l'enregistre haché avec <code>bcrypt</code>, marque l'enregistrement comme utilisé (<code>is_used=True</code>) et génère une entrée d'audit <code>PASSWORD_RESET_SUCCESS</code>.</li>
       </ul>
     </div>
 </section>
