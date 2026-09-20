@@ -5,17 +5,21 @@ from datetime import datetime, timedelta
 from typing import Dict, Optional
 
 from fastapi import APIRouter, HTTPException, Request, status
-from sqlalchemy import func, or_
+from sqlalchemy import and_, func, or_
 
-from app.api.deps import SessionDep
+from app.api.deps import CurrentUser, SessionDep
 from app.core import security
 from app.core.config import settings
 from app.core.rate_limiter import rate_limiter
+from app.core.roles import require_admin
 from app.models.password_reset_request import PasswordResetRequest
 from app.models.password_reset_token import PasswordResetToken
 from app.models.user import User
 from app.models.user_session import UserSession
 from app.schemas.password_reset import (
+    BatchPasswordResetDetail,
+    BatchPasswordResetRequest,
+    BatchPasswordResetResponse,
     PasswordResetConfirm,
     PasswordResetInitResponse,
     PasswordResetRequest as PasswordResetRequestSchema,
@@ -532,3 +536,295 @@ async def verify_token_endpoint(
         masked_email=None,
         message="Le jeton ou code de réinitialisation est invalide, déjà utilisé ou expiré.",
     )
+
+
+def dispatch_single_user_reset(
+    user: User,
+    session: SessionDep,
+    expire_minutes: int = 10,
+    client_ip: Optional[str] = None,
+) -> bool:
+    """
+    Internal helper to generate a cryptographically secure OTP, record it, and dispatch the email.
+    """
+    if not user or getattr(user, "is_active", True) is False or not user.email or not is_valid_email(user.email):
+        return False
+
+    target_email = user.email.strip()
+
+    # Invalidate previous unused reset requests for this user
+    session.query(PasswordResetRequest).filter(
+        PasswordResetRequest.user_id == user.id,
+        PasswordResetRequest.used == False,
+    ).update({"used": True}, synchronize_session=False)
+
+    session.query(PasswordResetToken).filter(
+        PasswordResetToken.user_id == user.id,
+        PasswordResetToken.is_used == False,
+    ).update({"is_used": True}, synchronize_session=False)
+
+    # Generate cryptographically secure 6-digit numeric OTP code
+    otp_code = f"{secrets.randbelow(900000) + 100000:06d}"
+    otp_hash = security.get_password_hash(otp_code)
+    expires_at = datetime.utcnow() + timedelta(minutes=expire_minutes)
+
+    # Persist in password_reset_requests
+    db_request = PasswordResetRequest(
+        user_id=user.id,
+        email=target_email,
+        otp_hash=otp_hash,
+        reset_token_hash=None,
+        expires_at=expires_at,
+        attempts=0,
+        used=False,
+        created_at=datetime.utcnow(),
+        ip_address=client_ip,
+    )
+    session.add(db_request)
+
+    legacy_token = secrets.token_urlsafe(32)
+    db_token = PasswordResetToken(
+        user_id=user.id,
+        token=legacy_token,
+        code=None,
+        created_at=datetime.utcnow(),
+        expires_at=expires_at,
+        is_used=False,
+    )
+    session.add(db_token)
+    session.commit()
+
+    frontend_url = os.getenv("FRONTEND_URL", "https://e-schola-pro-production.up.railway.app").rstrip("/")
+    direct_reset_url = f"{frontend_url}/reset-password?token={legacy_token}"
+
+    user_display_name = (
+        f"{user.prenom or ''} {user.nom or ''}".strip()
+        or user.username
+        or "Utilisateur E-Schola Pro"
+    )
+
+    return send_password_reset_email(
+        to_email=target_email,
+        user_name=user_display_name,
+        reset_url=direct_reset_url,
+        confirmation_code=otp_code,
+        expires_in_minutes=expire_minutes,
+        session=session,
+    )
+
+
+@router.post("/batch", response_model=BatchPasswordResetResponse)
+async def batch_password_reset(
+    request: Request,
+    payload: BatchPasswordResetRequest,
+    session: SessionDep,
+    current_user: CurrentUser,
+) -> BatchPasswordResetResponse:
+    """
+    Admin-only bulk password reset dispatch.
+    Targets users by:
+    - user_ids: list of integer IDs
+    - emails: list of email addresses
+    - target_role: 'étudiant', 'formateur', 'all', etc.
+    - group_name: class / cohort name
+    Dispatches the official confidential reset OTP email to each user.
+    Root accounts like admin_first are protected and skipped.
+    """
+    require_admin(
+        current_user,
+        "Seuls les administrateurs peuvent déclencher des réinitialisations de mot de passe en masse."
+    )
+
+    expire_minutes = getattr(settings, "PASSWORD_RESET_OTP_EXPIRE_MINUTES", 10)
+    client_ip = extract_client_ip(request)
+
+    query = session.query(User).filter(User.is_active != False)
+
+    filters = []
+    if payload.user_ids:
+        filters.append(User.id.in_(payload.user_ids))
+    if payload.emails:
+        clean_emails = [e.strip().lower() for e in payload.emails if e.strip()]
+        if clean_emails:
+            filters.append(func.lower(User.email).in_(clean_emails))
+    if payload.target_role and payload.target_role.lower() != "all":
+        filters.append(func.lower(User.role) == payload.target_role.strip().lower())
+    if payload.group_name and payload.group_name.lower() != "all":
+        filters.append(User.group_name == payload.group_name.strip())
+
+    if filters:
+        query = query.filter(or_(*filters) if (payload.user_ids and payload.emails and not payload.target_role) else and_(*filters))
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail="Veuillez spécifier au moins un critère de ciblage (user_ids, emails, target_role ou group_name)."
+        )
+
+    matched_users = query.all()
+
+    details: list[BatchPasswordResetDetail] = []
+    dispatched_count = 0
+    skipped_count = 0
+    failed_count = 0
+
+    for u in matched_users:
+        u_name = (u.username or "").lower().strip()
+        u_email = (u.email or "").lower().strip()
+
+        # Protection intouchable pour le super-administrateur racine 'admin_first'
+        if u_name == "admin_first" or u_email == "admin_first@eschola.pro":
+            skipped_count += 1
+            details.append(
+                BatchPasswordResetDetail(
+                    user_id=u.id,
+                    email=u.email or "",
+                    username=u.username,
+                    role=u.role,
+                    status="skipped_protected",
+                    reason="Le compte administrateur racine 'admin_first' est intouchable et protégé contre les réinitialisations en masse.",
+                )
+            )
+            continue
+
+        if not u.email or not is_valid_email(u.email):
+            failed_count += 1
+            details.append(
+                BatchPasswordResetDetail(
+                    user_id=u.id,
+                    email=u.email or "",
+                    username=u.username,
+                    role=u.role,
+                    status="failed",
+                    reason="Adresse e-mail invalide ou absente du profil.",
+                )
+            )
+            continue
+
+        try:
+            ok = dispatch_single_user_reset(
+                user=u,
+                session=session,
+                expire_minutes=expire_minutes,
+                client_ip=client_ip,
+            )
+            if ok:
+                dispatched_count += 1
+                details.append(
+                    BatchPasswordResetDetail(
+                        user_id=u.id,
+                        email=u.email,
+                        username=u.username,
+                        role=u.role,
+                        status="dispatched",
+                    )
+                )
+            else:
+                failed_count += 1
+                details.append(
+                    BatchPasswordResetDetail(
+                        user_id=u.id,
+                        email=u.email,
+                        username=u.username,
+                        role=u.role,
+                        status="failed",
+                        reason="Échec du dispatcher d'e-mails.",
+                    )
+                )
+        except Exception as ex:
+            failed_count += 1
+            details.append(
+                BatchPasswordResetDetail(
+                    user_id=u.id,
+                    email=u.email,
+                    username=u.username,
+                    role=u.role,
+                    status="failed",
+                    reason=str(ex),
+                )
+            )
+
+    log_audit_event(
+        session,
+        action="BATCH_PASSWORD_RESET_DISPATCH",
+        user_id=current_user.id,
+        user_email=current_user.email,
+        resource_type="user",
+        resource_id=current_user.id,
+        details=f"Réinitialisation en masse déclenchée pour {len(matched_users)} compte(s) (envoyés: {dispatched_count}, ignorés: {skipped_count}, échecs: {failed_count})",
+        status="SUCCESS",
+        request=request,
+    )
+
+    return BatchPasswordResetResponse(
+        success=True,
+        targeted_count=len(matched_users),
+        dispatched_count=dispatched_count,
+        skipped_count=skipped_count,
+        failed_count=failed_count,
+        details=details,
+        message=f"Traitement en masse terminé : {dispatched_count} e-mail(s) de réinitialisation transmis avec succès sur {len(matched_users)} compte(s) ciblé(s).",
+    )
+
+
+@router.post("/admin-trigger/{user_id}", response_model=PasswordResetResponse)
+async def admin_trigger_password_reset(
+    user_id: int,
+    request: Request,
+    session: SessionDep,
+    current_user: CurrentUser,
+) -> PasswordResetResponse:
+    """
+    Admin-only endpoint to trigger a password reset OTP email for an individual user from the table.
+    """
+    require_admin(
+        current_user,
+        "Seuls les administrateurs peuvent déclencher l'envoi d'un e-mail de réinitialisation."
+    )
+    user = session.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Utilisateur introuvable.")
+
+    u_name = (user.username or "").lower().strip()
+    u_email = (user.email or "").lower().strip()
+    if u_name == "admin_first" or u_email == "admin_first@eschola.pro":
+        raise HTTPException(
+            status_code=403,
+            detail="Le compte administrateur racine 'admin_first' est intouchable et protégé.",
+        )
+
+    if not user.email or not is_valid_email(user.email):
+        raise HTTPException(
+            status_code=400,
+            detail="Cet utilisateur n'a pas d'adresse e-mail valide dans son profil."
+        )
+
+    expire_minutes = getattr(settings, "PASSWORD_RESET_OTP_EXPIRE_MINUTES", 10)
+    client_ip = extract_client_ip(request)
+
+    ok = dispatch_single_user_reset(
+        user=user,
+        session=session,
+        expire_minutes=expire_minutes,
+        client_ip=client_ip,
+    )
+
+    log_audit_event(
+        session,
+        action="ADMIN_TRIGGER_PASSWORD_RESET",
+        user_id=current_user.id,
+        user_email=current_user.email,
+        resource_type="user",
+        resource_id=user.id,
+        details=f"E-mail de réinitialisation OTP déclenché manuellement pour l'utilisateur ID {user.id} ({user.email})",
+        status="SUCCESS" if ok else "FAILURE",
+        request=request,
+    )
+
+    if not ok:
+        raise HTTPException(status_code=500, detail="Impossible d'expédier l'e-mail de réinitialisation.")
+
+    return PasswordResetResponse(
+        success=True,
+        message=f"E-mail officiel de réinitialisation de mot de passe transmis avec succès à {user.email}.",
+    )
+

@@ -427,6 +427,96 @@ def test_6_smtp_resilience_and_configuration():
     print("  -> Succès : Configuration dynamique SMTP et statut vérifiés avec succès.")
 
 
+def test_7_batch_password_reset():
+    print("[TEST 7] Réinitialisation en masse (Batch) & Déclencheur Administrateur...")
+    # 1. Obtenir le jeton administrateur
+    login_res = client.post(
+        "/api/v1/login/access-token",
+        data={"username": "admin_first", "password": "Admin@1212"},
+    )
+    assert login_res.status_code == 200
+    admin_token = login_res.json()["access_token"]
+    admin_headers = {"Authorization": f"Bearer {admin_token}"}
+
+    # 2. Créer 2 utilisateurs pour le test batch
+    u1 = setup_test_user("batch_test_1@eschola.pro", "batch_user_1")
+    u2 = setup_test_user("batch_test_2@eschola.pro", "batch_user_2")
+
+    try:
+        # A. Rejet pour utilisateur non-authentifié / non-admin
+        forbidden_res = client.post(
+            "/api/v1/password-reset/batch",
+            json={"user_ids": [u1.id, u2.id]},
+        )
+        assert forbidden_res.status_code == 401
+
+        # B. Exécution autorisée avec les identifiants
+        batch_res = client.post(
+            "/api/v1/password-reset/batch",
+            headers=admin_headers,
+            json={"user_ids": [u1.id, u2.id]},
+        )
+        assert batch_res.status_code == 200
+        batch_data = batch_res.json()
+        assert batch_data["success"] is True
+        assert batch_data["targeted_count"] == 2
+        assert batch_data["dispatched_count"] == 2
+        assert len(batch_data["details"]) == 2
+
+        # C. Vérification de la création des requêtes en base de données
+        db = SessionLocal()
+        try:
+            req1 = db.query(PasswordResetRequest).filter(PasswordResetRequest.user_id == u1.id).order_by(PasswordResetRequest.id.desc()).first()
+            req2 = db.query(PasswordResetRequest).filter(PasswordResetRequest.user_id == u2.id).order_by(PasswordResetRequest.id.desc()).first()
+            assert req1 is not None and req1.otp_hash is not None
+            assert req2 is not None and req2.otp_hash is not None
+            print("  -> Succès : Codes OTP générés et enregistrés de façon confidentielle pour chaque utilisateur du lot.")
+        finally:
+            db.close()
+
+        # D. Test de protection pour admin_first lors d'un envoi ciblé par rôle
+        db = SessionLocal()
+        try:
+            root_admin = db.query(User).filter(User.username == "admin_first").first()
+            assert root_admin is not None
+            batch_with_root = client.post(
+                "/api/v1/password-reset/batch",
+                headers=admin_headers,
+                json={"user_ids": [u1.id, root_admin.id]},
+            )
+            assert batch_with_root.status_code == 200
+            data_root = batch_with_root.json()
+            assert data_root["skipped_count"] >= 1
+            print("  -> Succès : Immunité confirmée — 'admin_first' est automatiquement exclu et protégé du batch reset.")
+        finally:
+            db.close()
+
+        # E. Test du déclencheur unitaire admin-trigger
+        single_trigger_res = client.post(
+            f"/api/v1/password-reset/admin-trigger/{u1.id}",
+            headers=admin_headers,
+        )
+        assert single_trigger_res.status_code == 200
+        assert single_trigger_res.json()["success"] is True
+
+        # Tentative sur admin_first doit être bloquée avec 403
+        db = SessionLocal()
+        try:
+            root_admin = db.query(User).filter(User.username == "admin_first").first()
+            protected_trigger = client.post(
+                f"/api/v1/password-reset/admin-trigger/{root_admin.id}",
+                headers=admin_headers,
+            )
+            assert protected_trigger.status_code == 403
+            print("  -> Succès : Déclencheur unitaire validé et protection stricte de 'admin_first' vérifiée.")
+        finally:
+            db.close()
+
+    finally:
+        cleanup_test_data("batch_test_1@eschola.pro")
+        cleanup_test_data("batch_test_2@eschola.pro")
+
+
 if __name__ == "__main__":
     print("==========================================================")
     print("LANCEMENT DES TESTS DE SÉCURITÉ MOT DE PASSE OUBLIÉ (OTP)")
@@ -437,7 +527,9 @@ if __name__ == "__main__":
     test_4_otp_expiration()
     test_5_full_successful_reset_and_session_invalidation()
     test_6_smtp_resilience_and_configuration()
+    test_7_batch_password_reset()
     print("==========================================================")
     print("TOUS LES TESTS DU WORKFLOW OTP ONT RÉUSSI AVEC SUCCÈS (100%)")
     print("==========================================================")
+
 

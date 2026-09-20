@@ -25,6 +25,7 @@ import {
   Plus,
   Trash2,
   Key,
+  KeyRound,
   Lock,
   Unlock,
   Laptop,
@@ -93,6 +94,16 @@ export default function AdminConsolePage() {
   const [inviteRole, setInviteRole] = useState('étudiant');
   const [inviteGroup, setInviteGroup] = useState('');
   const [inviteSubmitting, setInviteSubmitting] = useState(false);
+
+  // Sélection & Réinitialisation de mot de passe en masse (Batch)
+  const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
+  const [showBatchResetModal, setShowBatchResetModal] = useState(false);
+  const [batchTargetType, setBatchTargetType] = useState<'selected' | 'role' | 'group' | 'emails'>('selected');
+  const [batchTargetRole, setBatchTargetRole] = useState('étudiant');
+  const [batchTargetGroup, setBatchTargetGroup] = useState('');
+  const [batchEmailsInput, setBatchEmailsInput] = useState('');
+  const [batchResetting, setBatchResetting] = useState(false);
+  const [singleResettingId, setSingleResettingId] = useState<number | null>(null);
 
   const [feedbackMessage, setFeedbackMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -244,6 +255,114 @@ export default function AdminConsolePage() {
       await loadAllData();
     } catch (err: any) {
       showNotification('error', err.response?.data?.detail || 'Erreur.');
+    }
+  };
+
+  // Gestion de la sélection multiple des utilisateurs
+  const toggleSelectUser = (id: number) => {
+    setSelectedUserIds(prev =>
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
+
+  const toggleSelectAllFilteredUsers = () => {
+    const selectable = filteredUsers
+      .filter(u => (u.username || '').toLowerCase() !== 'admin_first')
+      .map(u => u.id);
+    const allSelected = selectable.length > 0 && selectable.every(id => selectedUserIds.includes(id));
+    if (allSelected) {
+      setSelectedUserIds(prev => prev.filter(id => !selectable.includes(id)));
+    } else {
+      setSelectedUserIds(prev => Array.from(new Set([...prev, ...selectable])));
+    }
+  };
+
+  // Déclencheur unitaire de réinitialisation par l'administrateur
+  const handleAdminTriggerPasswordReset = async (userId: number, email: string) => {
+    const ok = await confirm({
+      title: "Envoyer un e-mail de réinitialisation ?",
+      description: `Générer un code OTP sécurisé et expédier immédiatement l'e-mail officiel de réinitialisation de mot de passe à ${email} ?`,
+      confirmText: "Expédier l'e-mail",
+      cancelText: "Annuler",
+      variant: "info",
+      badgeText: "E-Schola Pro Sécurité • Réinitialisation de Mot de Passe",
+      itemName: email,
+      itemDetail: `Compte utilisateur ID #${userId}`,
+      icon: "mail"
+    });
+    if (!ok) return;
+
+    setSingleResettingId(userId);
+    try {
+      const res = await apiClient.post(`/password-reset/admin-trigger/${userId}`);
+      showNotification('success', res.data?.message || `E-mail officiel transmis avec succès à ${email}.`);
+    } catch (err: any) {
+      showNotification('error', err.response?.data?.detail || "Échec de l'envoi de l'e-mail.");
+    } finally {
+      setSingleResettingId(null);
+    }
+  };
+
+  // Exécution de la réinitialisation en masse (Batch)
+  const handleBatchPasswordReset = async (customPayload?: any) => {
+    const payload = customPayload || { user_ids: selectedUserIds };
+    const label = payload.user_ids ? `${payload.user_ids.length} compte(s) sélectionné(s)` : 'les utilisateurs ciblés';
+
+    const ok = await confirm({
+      title: "Lancer la réinitialisation en masse ?",
+      description: `Êtes-vous sûr de vouloir expédier un e-mail officiel de réinitialisation avec code OTP confidentiel pour ${label} ? Le compte super-administrateur reste intouchable et protégé.`,
+      confirmText: "Lancer l'envoi groupé",
+      cancelText: "Annuler",
+      variant: "warning",
+      badgeText: "E-Schola Pro Sécurité • Batch Password Reset",
+      itemName: label,
+      icon: "shield"
+    });
+    if (!ok) return;
+
+    setBatchResetting(true);
+    try {
+      const res = await apiClient.post('/password-reset/batch', payload);
+      const data = res.data;
+      showNotification(
+        'success',
+        data.message || `${data.dispatched_count} e-mail(s) de réinitialisation ont été expédiés avec succès.`
+      );
+      setSelectedUserIds([]);
+      setShowBatchResetModal(false);
+    } catch (err: any) {
+      showNotification('error', err.response?.data?.detail || "Échec de l'opération en masse.");
+    } finally {
+      setBatchResetting(false);
+    }
+  };
+
+  const handleExecuteBatchResetModal = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (batchTargetType === 'selected') {
+      if (selectedUserIds.length === 0) {
+        showNotification('error', "Aucun utilisateur sélectionné dans le tableau.");
+        return;
+      }
+      handleBatchPasswordReset({ user_ids: selectedUserIds });
+    } else if (batchTargetType === 'role') {
+      handleBatchPasswordReset({ target_role: batchTargetRole });
+    } else if (batchTargetType === 'group') {
+      if (!batchTargetGroup.trim()) {
+        showNotification('error', "Veuillez renseigner un nom de groupe ou de promotion.");
+        return;
+      }
+      handleBatchPasswordReset({ group_name: batchTargetGroup.trim() });
+    } else if (batchTargetType === 'emails') {
+      const parsedEmails = batchEmailsInput
+        .split(/[\n,;]+/)
+        .map(em => em.trim())
+        .filter(em => em.includes('@'));
+      if (parsedEmails.length === 0) {
+        showNotification('error', "Veuillez saisir au moins une adresse e-mail valide.");
+        return;
+      }
+      handleBatchPasswordReset({ emails: parsedEmails });
     }
   };
 
@@ -690,6 +809,24 @@ export default function AdminConsolePage() {
               </div>
 
               <div className="flex items-center gap-2 flex-wrap">
+                {selectedUserIds.length > 0 && (
+                  <button
+                    onClick={() => handleBatchPasswordReset()}
+                    disabled={batchResetting}
+                    className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-all shadow-sm cursor-pointer active:scale-98 animate-fade-in"
+                  >
+                    <KeyRound size={15} />
+                    <span>Réinitialiser MDP ({selectedUserIds.length})</span>
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowBatchResetModal(true)}
+                  className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-indigo-200 text-indigo-700 bg-indigo-50/70 hover:bg-indigo-100 text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-98"
+                  title="Ouvrir la boîte d'envoi groupé par rôle, groupe ou sélection"
+                >
+                  <KeyRound size={15} />
+                  <span>Réinitialisation en Masse</span>
+                </button>
                 <button
                   onClick={handleExportUsersCSV}
                   className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-slate-200/80 text-slate-700 hover:bg-slate-50 hover:border-blue-200 text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-98"
@@ -698,7 +835,7 @@ export default function AdminConsolePage() {
                 </button>
                 <button
                   onClick={() => setShowInviteModal(true)}
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#1877f2] text-white hover:bg-[#166fe5] text-xs font-bold transition-all shadow-sm"
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#1877f2] text-white hover:bg-[#166fe5] text-xs font-bold transition-all shadow-sm cursor-pointer"
                 >
                   <Plus size={15} /> Nouvelle Invitation
                 </button>
@@ -750,6 +887,20 @@ export default function AdminConsolePage() {
               <table className="w-full text-left text-xs">
                 <thead className="bg-gradient-to-r from-slate-50 to-blue-50/30 border-b border-slate-200/90 text-slate-600 font-bold uppercase tracking-wider">
                   <tr>
+                    <th className="w-10 px-3 py-3 text-center">
+                      <input
+                        type="checkbox"
+                        aria-label="Tout sélectionner"
+                        checked={
+                          filteredUsers.length > 0 &&
+                          filteredUsers
+                            .filter(u => (u.username || '').toLowerCase() !== 'admin_first')
+                            .every(u => selectedUserIds.includes(u.id))
+                        }
+                        onChange={toggleSelectAllFilteredUsers}
+                        className="rounded border-slate-300 text-[#1877f2] focus:ring-[#1877f2] cursor-pointer"
+                      />
+                    </th>
                     <th className="px-4 py-3">Utilisateur</th>
                     <th className="px-4 py-3">Rôle</th>
                     <th className="px-4 py-3">Département</th>
@@ -760,7 +911,7 @@ export default function AdminConsolePage() {
                 <tbody className="divide-y divide-slate-100">
                   {filteredUsers.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="text-center py-8 text-slate-500">
+                      <td colSpan={6} className="text-center py-8 text-slate-500">
                         Aucun utilisateur ne correspond aux critères.
                       </td>
                     </tr>
@@ -768,8 +919,20 @@ export default function AdminConsolePage() {
                     filteredUsers.slice(0, 50).map(u => {
                       const isRoot = (u.username || '').toLowerCase() === 'admin_first';
                       const isActive = u.is_active !== false;
+                      const isSelected = selectedUserIds.includes(u.id);
                       return (
-                        <tr key={u.id} className="hover:bg-blue-50/30 transition-colors">
+                        <tr key={u.id} className={`hover:bg-blue-50/30 transition-colors ${isSelected ? 'bg-blue-50/40' : ''}`}>
+                          <td className="w-10 px-3 py-3 text-center">
+                            {!isRoot && (
+                              <input
+                                type="checkbox"
+                                aria-label={`Sélectionner ${u.prenom} ${u.nom}`}
+                                checked={isSelected}
+                                onChange={() => toggleSelectUser(u.id)}
+                                className="rounded border-slate-300 text-[#1877f2] focus:ring-[#1877f2] cursor-pointer"
+                              />
+                            )}
+                          </td>
                           <td className="px-4 py-3">
                             <div className="font-bold text-slate-900">
                               {u.prenom} {u.nom}
@@ -808,8 +971,22 @@ export default function AdminConsolePage() {
                             <div className="inline-flex items-center gap-2">
                               {!isRoot && (
                                 <button
+                                  onClick={() => handleAdminTriggerPasswordReset(u.id, u.email)}
+                                  disabled={singleResettingId === u.id}
+                                  className="p-1.5 rounded-lg border border-indigo-200 text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer shadow-2xs"
+                                  title="Expédier un e-mail officiel de réinitialisation de mot de passe à cet utilisateur"
+                                >
+                                  {singleResettingId === u.id ? (
+                                    <RefreshCw size={15} className="animate-spin" />
+                                  ) : (
+                                    <KeyRound size={15} />
+                                  )}
+                                </button>
+                              )}
+                              {!isRoot && (
+                                <button
                                   onClick={() => handleToggleUserStatus(u.id, isActive, u.email)}
-                                  className={`p-1.5 rounded-lg border text-xs font-semibold transition-colors ${
+                                  className={`p-1.5 rounded-lg border text-xs font-semibold transition-colors cursor-pointer shadow-2xs ${
                                     isActive
                                       ? 'border-rose-200 text-rose-600 hover:bg-rose-50'
                                       : 'border-emerald-200 text-emerald-600 hover:bg-emerald-50'
@@ -821,7 +998,7 @@ export default function AdminConsolePage() {
                               )}
                               <button
                                 onClick={() => handleRevokeAllUserSessions(u.id, u.email)}
-                                className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 transition-colors"
+                                className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer shadow-2xs"
                                 title="Déconnecter toutes les sessions de cet utilisateur"
                               >
                                 <LogOut size={15} />
@@ -1497,6 +1674,137 @@ export default function AdminConsolePage() {
           </div>
         </div>
       )}
+      {/* ========================================================================= */}
+      {/* MODAL RÉINITIALISATION DE MOT DE PASSE EN MASSE (BATCH)                   */}
+      {/* ========================================================================= */}
+      {showBatchResetModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-lg w-full p-6 space-y-5 animate-zoom-in">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 border border-indigo-100">
+                  <KeyRound size={18} />
+                </div>
+                <div>
+                  <h3 className="font-black text-slate-900 text-sm">Réinitialisation de Mot de Passe en Masse</h3>
+                  <p className="text-[11px] text-slate-500">Expédition d'e-mails transactionnels officiels avec code OTP</p>
+                </div>
+              </div>
+              <button onClick={() => setShowBatchResetModal(false)} className="text-slate-400 hover:text-slate-700 text-lg">
+                &times;
+              </button>
+            </div>
+
+            <form onSubmit={handleExecuteBatchResetModal} className="space-y-4 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-2">Méthode de ciblage :</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { id: 'selected', label: `Sélectionnés (${selectedUserIds.length})`, desc: 'Cochés dans le tableau' },
+                    { id: 'role', label: 'Par Rôle', desc: 'Étudiants, Formateurs...' },
+                    { id: 'group', label: 'Par Groupe', desc: 'Promotion ou classe' },
+                    { id: 'emails', label: "Liste d'e-mails", desc: 'Saisie personnalisée' },
+                  ].map(target => (
+                    <button
+                      type="button"
+                      key={target.id}
+                      onClick={() => setBatchTargetType(target.id as any)}
+                      className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                        batchTargetType === target.id
+                          ? 'border-[#1877f2] bg-blue-50/80 text-blue-950 font-bold ring-1 ring-[#1877f2]'
+                          : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className="font-extrabold">{target.label}</div>
+                      <div className="text-[10px] text-slate-500 font-medium">{target.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {batchTargetType === 'selected' && (
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+                  <p className="font-bold text-slate-800">
+                    {selectedUserIds.length > 0
+                      ? `${selectedUserIds.length} utilisateur(s) actuellement coché(s).`
+                      : "Aucun utilisateur sélectionné. Cochez les cases dans le tableau ou choisissez un autre mode ci-dessus."}
+                  </p>
+                  <p className="text-[11px] text-slate-500 leading-relaxed">
+                    Chaque utilisateur sélectionné recevra son propre e-mail contenant un code OTP cryptographique unique valable 10 minutes.
+                  </p>
+                </div>
+              )}
+
+              {batchTargetType === 'role' && (
+                <div className="space-y-1.5">
+                  <label className="block font-bold text-slate-700">Rôle cible :</label>
+                  <select
+                    value={batchTargetRole}
+                    onChange={e => setBatchTargetRole(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-[#1877f2]"
+                  >
+                    <option value="étudiant">Tous les Étudiants</option>
+                    <option value="formateur">Tous les Formateurs</option>
+                    <option value="stagiaire">Tous les Stagiaires</option>
+                    <option value="employer">Tous les Partenaires Employeurs</option>
+                    <option value="pedagogique">Tous les Responsables Pédagogiques</option>
+                    <option value="dg_rh">Tous les Membres Direction / RH</option>
+                    <option value="all">Tous les Rôles de la Plateforme (hors super-admin)</option>
+                  </select>
+                </div>
+              )}
+
+              {batchTargetType === 'group' && (
+                <div className="space-y-1.5">
+                  <label className="block font-bold text-slate-700">Nom de la promotion ou classe :</label>
+                  <input
+                    type="text"
+                    placeholder="Ex: Promo 2026, Groupe A, Master 1..."
+                    value={batchTargetGroup}
+                    onChange={e => setBatchTargetGroup(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-[#1877f2]"
+                  />
+                </div>
+              )}
+
+              {batchTargetType === 'emails' && (
+                <div className="space-y-1.5">
+                  <label className="block font-bold text-slate-700">Adresses e-mails ciblées (séparées par des virgules ou retours à la ligne) :</label>
+                  <textarea
+                    rows={3}
+                    placeholder="etudiant1@eschola.pro, etudiant2@gmail.com..."
+                    value={batchEmailsInput}
+                    onChange={e => setBatchEmailsInput(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-mono focus:ring-2 focus:ring-[#1877f2]"
+                  />
+                </div>
+              )}
+
+              <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-amber-900 text-[11px] leading-relaxed">
+                <strong>🛡️ Sécurité garantie :</strong> Le compte super-administrateur racine (<code>admin_first</code>) est protégé par une immunité stricte et ne sera jamais modifié ni réinitialisé par cette opération.
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowBatchResetModal(false)}
+                  className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 cursor-pointer"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={batchResetting || (batchTargetType === 'selected' && selectedUserIds.length === 0)}
+                  className="px-5 py-2 rounded-xl bg-[#1877f2] text-white font-bold hover:bg-[#166fe5] transition-all shadow-sm cursor-pointer disabled:opacity-50"
+                >
+                  {batchResetting ? 'Expédition en cours...' : "Lancer l'envoi groupé"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

@@ -43,3 +43,29 @@ class PasswordResetConfirm(BaseModel):
 class PasswordResetResponse(BaseModel):
     success: bool
     message: str
+
+
+class BatchPasswordResetRequest(BaseModel):
+    user_ids: Optional[list[int]] = Field(None, description="Liste d'identifiants d'utilisateurs ciblés")
+    emails: Optional[list[str]] = Field(None, description="Liste d'adresses e-mail ciblées")
+    target_role: Optional[str] = Field(None, description="Rôle ciblé (ex: 'étudiant', 'formateur', 'all')")
+    group_name: Optional[str] = Field(None, description="Nom du groupe ou de la classe ciblée")
+
+
+class BatchPasswordResetDetail(BaseModel):
+    user_id: int
+    email: str
+    username: Optional[str] = None
+    role: Optional[str] = None
+    status: str = "dispatched"  # "dispatched" | "skipped_protected" | "failed"
+    reason: Optional[str] = None
+
+
+class BatchPasswordResetResponse(BaseModel):
+    success: bool
+    targeted_count: int
+    dispatched_count: int
+    skipped_count: int
+    failed_count: int
+    details: list[BatchPasswordResetDetail] = []
+    message: str
