@@ -99,12 +99,8 @@ def test_1_valid_email_request_and_zero_clear_otp():
     data = response.json()
     assert "message" in data
     assert data["expires_in_minutes"] == 10
-    assert "smtp_active" in data
-    if not data["smtp_active"]:
-        assert data.get("dev_code") is not None
-        assert len(data["dev_code"]) == 6
-    else:
-        assert data.get("dev_code") is None
+    # Confidentialité & Sécurité strictes : le code OTP ne doit JAMAIS être retourné dans l'API
+    assert "dev_code" not in data or data.get("dev_code") is None
 
     # Vérification directe en base de données : L'OTP ne doit JAMAIS être en clair
     db = SessionLocal()
