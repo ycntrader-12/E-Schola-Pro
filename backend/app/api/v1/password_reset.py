@@ -91,7 +91,7 @@ async def request_password_reset(
     expire_minutes = getattr(settings, "PASSWORD_RESET_OTP_EXPIRE_MINUTES", 10)
     smtp_active = is_smtp_configured(session=session)
 
-    # 2. Search user case-insensitively
+    # 2. Search user case-insensitively (email or username)
     user = (
         session.query(User)
         .filter(
@@ -106,118 +106,93 @@ async def request_password_reset(
         .first()
     )
 
-    dest_email = raw_input if is_valid_email(raw_input) else (user.email if user else None)
+    # Strictly target the registered user already present on the platform
+    if user and getattr(user, "is_active", True) is not False and user.email and is_valid_email(user.email):
+        target_email = user.email.strip()
 
-    if user and getattr(user, "is_active", True) is not False:
-        if dest_email and is_valid_email(dest_email) and user.email != dest_email:
-            user.email = dest_email
-            session.commit()
+        # Invalidate previous unused reset requests for this user
+        session.query(PasswordResetRequest).filter(
+            PasswordResetRequest.user_id == user.id,
+            PasswordResetRequest.used == False,
+        ).update({"used": True}, synchronize_session=False)
 
-        target_email = user.email or dest_email
+        session.query(PasswordResetToken).filter(
+            PasswordResetToken.user_id == user.id,
+            PasswordResetToken.is_used == False,
+        ).update({"is_used": True}, synchronize_session=False)
 
-        if target_email and is_valid_email(target_email):
-            # Invalidate previous unused reset requests for this user
-            session.query(PasswordResetRequest).filter(
-                PasswordResetRequest.user_id == user.id,
-                PasswordResetRequest.used == False,
-            ).update({"used": True}, synchronize_session=False)
+        # Generate cryptographically secure 6-digit numeric OTP code
+        otp_code = f"{secrets.randbelow(900000) + 100000:06d}"
+        # Cryptographic hash of OTP (NEVER store plain OTP in database!)
+        otp_hash = security.get_password_hash(otp_code)
+        expires_at = datetime.utcnow() + timedelta(minutes=expire_minutes)
 
-            session.query(PasswordResetToken).filter(
-                PasswordResetToken.user_id == user.id,
-                PasswordResetToken.is_used == False,
-            ).update({"is_used": True}, synchronize_session=False)
+        # Persist in password_reset_requests
+        db_request = PasswordResetRequest(
+            user_id=user.id,
+            email=target_email,
+            otp_hash=otp_hash,
+            reset_token_hash=None,
+            expires_at=expires_at,
+            attempts=0,
+            used=False,
+            created_at=datetime.utcnow(),
+            ip_address=client_ip,
+        )
+        session.add(db_request)
 
-            # Generate cryptographically secure 6-digit numeric OTP code
-            otp_code = f"{secrets.randbelow(900000) + 100000:06d}"
-            # Cryptographic hash of OTP (NEVER store plain OTP!)
-            otp_hash = security.get_password_hash(otp_code)
-            expires_at = datetime.utcnow() + timedelta(minutes=expire_minutes)
+        # Also maintain backward compatibility in password_reset_tokens (without storing plaintext OTP)
+        legacy_token = secrets.token_urlsafe(32)
+        db_token = PasswordResetToken(
+            user_id=user.id,
+            token=legacy_token,
+            code=None,
+            created_at=datetime.utcnow(),
+            expires_at=expires_at,
+            is_used=False,
+        )
+        session.add(db_token)
+        session.commit()
 
-            # Persist in password_reset_requests
-            db_request = PasswordResetRequest(
-                user_id=user.id,
-                email=target_email,
-                otp_hash=otp_hash,
-                reset_token_hash=None,
-                expires_at=expires_at,
-                attempts=0,
-                used=False,
-                created_at=datetime.utcnow(),
-                ip_address=client_ip,
-            )
-            session.add(db_request)
+        # Dispatch transactional email directly to the registered user's email address
+        frontend_url = os.getenv("FRONTEND_URL", "https://e-schola-pro-production.up.railway.app").rstrip("/")
+        direct_reset_url = f"{frontend_url}/reset-password?token={legacy_token}"
 
-            # Also maintain backward compatibility in password_reset_tokens
-            legacy_token = secrets.token_urlsafe(32)
-            db_token = PasswordResetToken(
-                user_id=user.id,
-                token=legacy_token,
-                code=otp_code,
-                created_at=datetime.utcnow(),
-                expires_at=expires_at,
-                is_used=False,
-            )
-            session.add(db_token)
-            session.commit()
+        user_display_name = (
+            f"{user.prenom or ''} {user.nom or ''}".strip()
+            or user.username
+            or "Utilisateur E-Schola Pro"
+        )
 
-            # Dispatch transactional email
-            frontend_url = os.getenv("FRONTEND_URL", "https://e-schola-pro-production.up.railway.app").rstrip("/")
-            direct_reset_url = f"{frontend_url}/reset-password?token={legacy_token}"
+        send_password_reset_email(
+            to_email=target_email,
+            user_name=user_display_name,
+            reset_url=direct_reset_url,
+            confirmation_code=otp_code,
+            expires_in_minutes=expire_minutes,
+            session=session,
+        )
 
-            user_display_name = (
-                f"{user.prenom or ''} {user.nom or ''}".strip()
-                or user.username
-                or "Utilisateur E-Schola Pro"
-            )
-
-            send_password_reset_email(
-                to_email=target_email,
-                user_name=user_display_name,
-                reset_url=direct_reset_url,
-                confirmation_code=otp_code,
-                expires_in_minutes=expire_minutes,
-            )
-
-            log_audit_event(
-                session,
-                action="PASSWORD_RESET_REQUEST",
-                user_id=user.id,
-                user_email=target_email,
-                resource_type="user",
-                resource_id=user.id,
-                details=f"Demande de réinitialisation OTP initiée (expiration: {expire_minutes} min, smtp_actif: {smtp_active})",
-                status="SUCCESS",
-                request=request,
-            )
-
-            if smtp_active:
-                return PasswordResetInitResponse(
-                    message="Si l'adresse saisie correspond à un compte actif, un code de validation à 6 chiffres a été expédié avec succès par email.",
-                    expires_in_minutes=expire_minutes,
-                    smtp_active=True,
-                    dev_code=None,
-                    smtp_notice=None,
-                )
-            else:
-                return PasswordResetInitResponse(
-                    message="Code OTP généré avec succès. Note : le serveur SMTP n'est pas encore configuré sur cette instance, le code de validation est fourni ci-dessous pour tester sans blocage.",
-                    expires_in_minutes=expire_minutes,
-                    smtp_active=False,
-                    dev_code=otp_code,
-                    smtp_notice="Pour recevoir les e-mails directement dans votre boîte Gmail ou professionnelle, configurez vos accès SMTP dans Railway ou dans le fichier .env.",
-                )
+        log_audit_event(
+            session,
+            action="PASSWORD_RESET_REQUEST",
+            user_id=user.id,
+            user_email=target_email,
+            resource_type="user",
+            resource_id=user.id,
+            details=f"Demande de réinitialisation OTP initiée pour utilisateur inscrit (expiration: {expire_minutes} min)",
+            status="SUCCESS",
+            request=request,
+        )
     else:
         # Anti-enumeration: compute dummy hash to eliminate timing difference
         security.get_password_hash("dummy_otp_timing_safe")
-        if dest_email and is_valid_email(dest_email):
-            send_no_account_found_email(to_email=dest_email)
 
+    # Anti-enumeration & strict confidentiality: ALWAYS return identical response with NO code exposed
     return PasswordResetInitResponse(
-        message="Si l'adresse saisie correspond à un compte actif, un code de validation à 6 chiffres vous a été envoyé par email.",
+        message="Si l'adresse saisie correspond à un compte actif sur la plateforme, un code de validation à 6 chiffres vous a été envoyé par e-mail.",
         expires_in_minutes=expire_minutes,
         smtp_active=smtp_active,
-        dev_code=None,
-        smtp_notice=None,
     )
 
 

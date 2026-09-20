@@ -517,6 +517,7 @@ def send_password_reset_email(
     reset_url: str,
     confirmation_code: Optional[str] = None,
     expires_in_minutes: Optional[int] = None,
+    session=None,
 ) -> bool:
     """
     Sends a secure password reset email containing a 6-digit OTP code, expiration, and security warning.
@@ -571,10 +572,10 @@ def send_password_reset_email(
         action_text="Réinitialiser mon mot de passe",
     )
 
-    return send_email(to_email=to_email, subject=subject, html_content=html)
+    return send_email(to_email=to_email, subject=subject, html_content=html, session=session)
 
 
-def send_no_account_found_email(to_email: str) -> bool:
+def send_no_account_found_email(to_email: str, session=None) -> bool:
     """
     Sends an email informing the user that a password reset was requested for this email,
     but no active account was found, with a link to create an account.
@@ -607,7 +608,7 @@ def send_no_account_found_email(to_email: str) -> bool:
         action_text="Créer un compte E-Schola Pro",
     )
 
-    return send_email(to_email=to_email, subject=subject, html_content=html)
+    return send_email(to_email=to_email, subject=subject, html_content=html, session=session)
 
 
 def send_notification_email(

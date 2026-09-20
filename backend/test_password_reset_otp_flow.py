@@ -100,11 +100,8 @@ def test_1_valid_email_request_and_zero_clear_otp():
     assert "message" in data
     assert data["expires_in_minutes"] == 10
     assert "smtp_active" in data
-    if not data["smtp_active"]:
-        assert "dev_code" in data
-        assert data["dev_code"] is not None
-        assert len(data["dev_code"]) == 6
-
+    # Strict confidentiality: The OTP code must NEVER be disclosed in the API response
+    assert "dev_code" not in data or data.get("dev_code") is None
 
     # Vérification directe en base de données : L'OTP ne doit JAMAIS être en clair
     db = SessionLocal()
@@ -121,7 +118,13 @@ def test_1_valid_email_request_and_zero_clear_otp():
         assert req.otp_hash.startswith("$2") or len(req.otp_hash) >= 60
         # Vérification qu'aucun attribut en clair n'existe
         assert not hasattr(req, "code") or getattr(req, "code", None) is None
-        print("  -> Succès : Requête acceptée et OTP stocké sous forme de hash bcrypt sécurisé.")
+
+        # Vérification dans la table de jetons : aucun code en clair
+        tok = db.query(PasswordResetToken).filter(PasswordResetToken.user_id == req.user_id).first()
+        if tok:
+            assert tok.code is None
+
+        print("  -> Succès : Confidentialité totale vérifiée (zéro code exposé dans la réponse API, hash bcrypt en base).")
     finally:
         db.close()
         cleanup_test_data(test_email)
