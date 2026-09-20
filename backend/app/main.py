@@ -131,10 +131,20 @@ async def lifespan(app: FastAPI):
                         conn.execute(text("ALTER TABLE password_reset_tokens ADD COLUMN code VARCHAR(10)"))
                         conn.commit()
                         print("[Database Migration] Colonne code ajoutée avec succès sur la table password_reset_tokens.")
+                    user_cols = [row[1] for row in conn.execute(text("PRAGMA table_info(users)")).fetchall()]
+                    if user_cols and "reset_token" not in user_cols:
+                        conn.execute(text("ALTER TABLE users ADD COLUMN reset_token VARCHAR(255)"))
+                        conn.commit()
+                    if user_cols and "reset_token_expires" not in user_cols:
+                        conn.execute(text("ALTER TABLE users ADD COLUMN reset_token_expires TIMESTAMP"))
+                        conn.commit()
                 elif dialect == "postgresql":
                     conn.execute(text("ALTER TABLE quizzes ADD COLUMN IF NOT EXISTS target_group VARCHAR DEFAULT 'all'"))
                     conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE"))
                     conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS token_version INTEGER DEFAULT 1"))
+                    conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token VARCHAR(255)"))
+                    conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expires TIMESTAMP WITH TIME ZONE"))
+                    conn.execute(text("CREATE INDEX IF NOT EXISTS idx_users_reset_token ON users(reset_token)"))
                     conn.execute(text("ALTER TABLE messages ADD COLUMN IF NOT EXISTS read_at TIMESTAMP"))
                     conn.execute(text("ALTER TABLE groups ADD COLUMN IF NOT EXISTS creator_id INTEGER REFERENCES users(id)"))
                     conn.execute(text("ALTER TABLE groups ADD COLUMN IF NOT EXISTS instructor_id INTEGER REFERENCES users(id)"))
@@ -169,6 +179,14 @@ else:
         "http://127.0.0.1:3002",
         "https://e-schola-pro-production.up.railway.app",
     ]
+
+# Dynamic FRONTEND_URL support from Railway environment
+frontend_url_env = os.getenv("FRONTEND_URL")
+if frontend_url_env:
+    for f_url in frontend_url_env.split(","):
+        clean_url = f_url.strip().rstrip("/")
+        if clean_url and clean_url not in allow_origins:
+            allow_origins.append(clean_url)
 
 app.add_middleware(
     CORSMiddleware,
@@ -207,6 +225,10 @@ async def add_security_headers(request: Request, call_next):
 
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
+
+# Direct alias for /api/reset-password, /api/password-recovery, and /api/forgot-password
+from app.api.v1.password_reset import router as password_reset_router
+app.include_router(password_reset_router, prefix="/api", tags=["Password Recovery Direct"])
 
 
 @app.websocket("/ws/classroom/{room_id}")

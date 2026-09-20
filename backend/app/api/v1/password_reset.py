@@ -374,6 +374,7 @@ async def reset_password(
 
     # 2. Fallback check for legacy PasswordResetToken
     legacy_token = None
+    user_direct = None
     if not db_req:
         legacy_token = (
             session.query(PasswordResetToken)
@@ -387,26 +388,40 @@ async def reset_password(
             .first()
         )
 
+    # 3. Direct check on User model (Supabase / Single-table pattern)
     if not db_req and not legacy_token:
+        user_direct = (
+            session.query(User)
+            .filter(
+                User.reset_token == raw_token,
+                User.reset_token_expires > datetime.utcnow(),
+            )
+            .first()
+        )
+
+    if not db_req and not legacy_token and not user_direct:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Le lien ou code de réinitialisation est invalide, expiré ou a déjà été utilisé.",
         )
 
-    expires_at = db_req.expires_at if db_req else legacy_token.expires_at
-    if datetime.utcnow() > expires_at:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ce lien ou code de réinitialisation a expiré. Veuillez refaire une demande.",
-        )
+    if user_direct:
+        user = user_direct
+    else:
+        expires_at = db_req.expires_at if db_req else legacy_token.expires_at
+        if datetime.utcnow() > expires_at:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Ce lien ou code de réinitialisation a expiré. Veuillez refaire une demande.",
+            )
 
-    user_id = db_req.user_id if db_req else legacy_token.user_id
-    user = session.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Utilisateur introuvable.",
-        )
+        user_id = db_req.user_id if db_req else legacy_token.user_id
+        user = session.query(User).filter(User.id == user_id).first()
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Utilisateur introuvable.",
+            )
 
     if hasattr(user, "is_active") and user.is_active is False:
         raise HTTPException(
@@ -429,6 +444,12 @@ async def reset_password(
 
     # Hash new password with bcrypt
     user.hashed_password = security.get_password_hash(payload.new_password)
+
+    # Invalidate direct reset_token on user model to block replay attacks
+    if hasattr(user, "reset_token"):
+        user.reset_token = None
+    if hasattr(user, "reset_token_expires"):
+        user.reset_token_expires = None
 
     # Invalidate all active sessions for this user
     session.query(UserSession).filter(

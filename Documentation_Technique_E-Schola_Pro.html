@@ -1378,6 +1378,8 @@ E-Schola Pro/
         <tr><td><code>avatar_url</code></td><td>Text</td><td>Nullable</td><td>Photo de profil auto-optimisée WebP 256×256 stockée de façon permanente en base de données Railway (Base64 Data URI)</td></tr>
         <tr><td><code>group_name</code></td><td>String</td><td>Nullable</td><td>Nom du groupe (hérité)</td></tr>
         <tr><td><code>token_version</code></td><td>Integer</td><td>Default: 1, Not Null</td><td>Version du jeton de sécurité. Incrémenté lors d'une réinitialisation de mot de passe pour révoquer immédiatement tous les JWT d'accès en circulation.</td></tr>
+        <tr><td><code>reset_token</code></td><td>String(255)</td><td>Indexé, Nullable</td><td>Jeton cryptographique temporaire de réinitialisation directe (invalidé et mis à <code>NULL</code> immédiatement après usage pour bloquer toute attaque par rejeu).</td></tr>
+        <tr><td><code>reset_token_expires</code></td><td>DateTime(TZ)</td><td>Nullable</td><td>Horodatage d'expiration du jeton de réinitialisation (15 à 30 minutes de validité stricte).</td></tr>
       </tbody>
     </table>
 

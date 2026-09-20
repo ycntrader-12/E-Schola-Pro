@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, Integer, String, Text
+from sqlalchemy import Boolean, Column, DateTime, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from app.db.base import Base
@@ -32,6 +32,10 @@ class User(Base):
     
     avatar_url = Column(Text, nullable=True)
     group_name = Column(String, default=None, nullable=True)
+
+    # Réinitialisation de mot de passe directe
+    reset_token = Column(String, nullable=True, index=True)
+    reset_token_expires = Column(DateTime, nullable=True)
 
     courses_enrolled = relationship(
         "Enrollment", back_populates="user", cascade="all, delete"
