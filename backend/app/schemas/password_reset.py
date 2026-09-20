@@ -10,6 +10,8 @@ class PasswordResetInitResponse(BaseModel):
     message: str
     expires_in_minutes: int
     smtp_active: bool = Field(False, description="Indique si un serveur SMTP réel est configuré et actif")
+    dev_code: Optional[str] = Field(None, description="Code OTP temporaire de secours retourné uniquement lorsque SMTP n'est pas encore configuré pour éviter tout blocage")
+    smtp_notice: Optional[str] = Field(None, description="Information pour la configuration d'un serveur d'envoi SMTP réel")
 
 
 

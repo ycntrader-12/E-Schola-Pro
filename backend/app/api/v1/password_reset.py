@@ -184,15 +184,33 @@ async def request_password_reset(
             status="SUCCESS",
             request=request,
         )
+        if smtp_active:
+            return PasswordResetInitResponse(
+                message="Si l'adresse saisie correspond à un compte actif sur la plateforme, un code de validation à 6 chiffres a été expédié avec succès par e-mail.",
+                expires_in_minutes=expire_minutes,
+                smtp_active=True,
+                dev_code=None,
+                smtp_notice=None,
+            )
+        else:
+            return PasswordResetInitResponse(
+                message="Code OTP généré avec succès. Note : le serveur SMTP n'étant pas encore configuré sur cette instance, le code de validation temporaire est affiché ci-dessous pour vous permettre de tester sans aucun blocage.",
+                expires_in_minutes=expire_minutes,
+                smtp_active=False,
+                dev_code=otp_code,
+                smtp_notice="Pour recevoir les e-mails directement dans votre boîte Gmail (ycn.iot@gmail.com), configurez vos accès SMTP dans Railway ou dans le fichier .env.",
+            )
     else:
         # Anti-enumeration: compute dummy hash to eliminate timing difference
         security.get_password_hash("dummy_otp_timing_safe")
 
-    # Anti-enumeration & strict confidentiality: ALWAYS return identical response with NO code exposed
+    # Anti-enumeration response when user does not exist
     return PasswordResetInitResponse(
         message="Si l'adresse saisie correspond à un compte actif sur la plateforme, un code de validation à 6 chiffres vous a été envoyé par e-mail.",
         expires_in_minutes=expire_minutes,
         smtp_active=smtp_active,
+        dev_code=None,
+        smtp_notice=None,
     )
 
 
