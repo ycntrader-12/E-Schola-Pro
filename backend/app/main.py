@@ -38,7 +38,7 @@ from app.admin import (
     PasswordResetTokenAdmin,
 )
 from app.api.main import api_router
-from app.core.config import is_in_railway, is_production, settings
+from app.core.config import is_production, settings
 from app.core.security import verify_password
 from app.db.base import Base
 from app.db.database import engine

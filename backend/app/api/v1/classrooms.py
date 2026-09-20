@@ -2,16 +2,13 @@ from datetime import datetime, date
 from typing import Any
 import uuid
 
-from fastapi import APIRouter, HTTPException, Query, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, HTTPException, Query, WebSocket
 from sqlalchemy import func
 
 from app.api.deps import CurrentUser, SessionDep
 from app.core.rate_limiter import rate_limiter
 from app.core.roles import (
-    ADMIN_ROLES,
-    STAFF_ROLES,
     is_admin,
-    is_learner,
     is_staff,
     matches_target_role,
     require_admin,

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { 
   Play, 
   Pause, 
@@ -16,9 +16,7 @@ import {
   RotateCw, 
   Tv, 
   Activity, 
-  Wifi, 
   Zap, 
-  Sparkles, 
   Radio, 
   HelpCircle, 
   X, 
@@ -28,7 +26,6 @@ import {
   Layers,
   ChevronLeft,
   ChevronRight,
-  ShieldAlert,
   Cast
 } from 'lucide-react';
 
@@ -67,7 +64,6 @@ export default function YoutubePlayer({ src, title, poster, autoPlay = false }: 
   const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isPip, setIsPip] = useState(false);
   const [isTheater, setIsTheater] = useState(false);
   const [isLooping, setIsLooping] = useState(false);
 

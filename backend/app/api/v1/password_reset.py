@@ -1,10 +1,9 @@
 from datetime import datetime, timedelta
 import os
 import secrets
-from typing import Any, Dict
+from typing import Dict
 
 from fastapi import APIRouter, HTTPException, Request, status
-from sqlalchemy.orm import Session
 from sqlalchemy import func, or_
 
 from app.api.deps import SessionDep

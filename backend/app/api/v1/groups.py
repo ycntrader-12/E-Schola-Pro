@@ -18,7 +18,7 @@ from app.schemas.group import (
 router = APIRouter()
 
 
-from app.core.roles import ADMIN_ROLES, STAFF_ROLES, is_admin, is_staff, normalize_role
+from app.core.roles import is_staff
 
 GLOBAL_VIEW_ROLES = {"admin", "admin_manager", "pedagogique", "dg_rh"}
 

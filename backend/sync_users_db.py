@@ -16,9 +16,7 @@ from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import sessionmaker
 
 from app.core.config import settings
-from app.core.security import get_password_hash
 from app.db.base import Base
-from app.models.group import Group, GroupMember
 from app.models.user import User
 
 

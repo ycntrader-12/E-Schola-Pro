@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Dict, List, Optional
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.models.assessment import AssessmentType, AttemptStatus
+from app.models.assessment import AssessmentType
 
 
 # ==============================================================================

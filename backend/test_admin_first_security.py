@@ -12,14 +12,14 @@ Vérifie toutes les couches de protection RBAC et d'immunité système :
 9. Idempotence et auto-guérison via 'ensure_root_admin_first'.
 """
 
-import os
 import sys
 from pathlib import Path
 
 if sys.platform == "win32":
-    import io
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 # Add backend directory to Python path
 BACKEND_DIR = Path(__file__).resolve().parent
@@ -38,7 +38,6 @@ from app.api.v1.users import (
     admin_reset_password,
     admin_update_user,
     create_user,
-    admin_create_user,
     RoleUpdate,
     PasswordReset,
 )

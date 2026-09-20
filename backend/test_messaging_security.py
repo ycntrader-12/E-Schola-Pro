@@ -29,7 +29,6 @@ from app.core.sanitizer import (
     sanitize_attachment_url,
     sanitize_filename,
     is_safe_extension,
-    FORBIDDEN_EXTENSIONS,
 )
 from app.core.rate_limiter import SlidingWindowRateLimiter
 from app.db.database import SessionLocal
@@ -175,9 +174,7 @@ def test_integration_security_api():
 
         # Tokens
         student_token = create_access_token(subject=student.id, role=student.role, email=student.email)
-        admin_token = create_access_token(subject=admin.id, role=admin.role, email=admin.email)
         student_headers = {"Authorization": f"Bearer {student_token}"}
-        admin_headers = {"Authorization": f"Bearer {admin_token}"}
 
         # 1. Test XSS in attachment_url rejection
         res = client.post(

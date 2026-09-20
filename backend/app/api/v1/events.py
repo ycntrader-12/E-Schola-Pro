@@ -13,7 +13,7 @@ from app.schemas.event import (
     EventUpdate,
 )
 
-from app.core.roles import ADMIN_ROLES, STAFF_ROLES, is_staff, matches_target_role, require_staff
+from app.core.roles import is_staff, matches_target_role, require_staff
 
 router = APIRouter()
 

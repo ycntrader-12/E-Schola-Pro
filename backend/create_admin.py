@@ -1,5 +1,4 @@
 from sqlalchemy import func
-from app.core.config import is_production, settings
 from app.core.security import get_password_hash
 from app.db.database import SessionLocal
 from app.models.user import User

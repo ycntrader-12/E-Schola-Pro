@@ -14,7 +14,7 @@ from app.core.config import settings
 from app.core.security import get_password_hash, verify_password, create_access_token
 from app.db.database import SessionLocal, engine
 from app.models.user import User
-from app.models.group import Group, GroupMember
+from app.models.group import GroupMember
 from create_admin import seed_users
 from jose import jwt
 from sqlalchemy import text

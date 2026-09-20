@@ -8,12 +8,9 @@ from app.api.deps import CurrentUser, SessionDep
 from app.core.rate_limiter import rate_limiter
 from app.core.roles import (
     ADMIN_ROLES,
-    STAFF_ROLES,
     is_admin,
     is_learner,
     is_staff,
-    normalize_role,
-    require_admin,
 )
 from app.core.sanitizer import (
     sanitize_attachment_url,
@@ -161,7 +158,6 @@ def send_or_save_message(
         action_name="envoi de messages",
     )
 
-    user_role = (current_user.role or "").strip().lower()
     is_broadcast_req = msg_in.is_broadcast or (msg_in.recipient_id == -1)
 
     # 2. Input Sanitization (XSS & Protocol Protection)

@@ -5,10 +5,10 @@ from typing import Any, List, Optional
 
 from fastapi import APIRouter, File, HTTPException, UploadFile, status
 from sqlalchemy import func
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, SessionDep
-from app.core.roles import STAFF_ROLES, is_staff, require_staff
+from app.core.roles import STAFF_ROLES, is_staff
 from app.models.assessment import (
     Assessment,
     AssessmentAssignment,
@@ -25,13 +25,10 @@ from app.schemas.assessment import (
     AssessmentCreate,
     AssessmentDetailOut,
     AssessmentOut,
-    AssessmentUpdate,
     AssignedGroupOut,
     AttemptReviewOut,
-    ChoiceIn,
     ChoiceOut,
     ChoiceReviewOut,
-    QuestionIn,
     QuestionOut,
     QuestionReviewOut,
     StartAttemptResponse,

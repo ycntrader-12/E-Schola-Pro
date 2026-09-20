@@ -11,7 +11,7 @@ Gère les interactions haute performance avec le moteur multimédia WebRTC C++:
 import asyncio
 import uuid
 import logging
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, Optional
 from datetime import datetime
 
 logger = logging.getLogger("mediasoup_sfu")

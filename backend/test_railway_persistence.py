@@ -1,12 +1,10 @@
 import os
-import unittest
 from fastapi.testclient import TestClient
 from app.main import app
 from app.core.config import expand_railway_template_variables
 from app.core.security import create_access_token
 from app.db.database import SessionLocal
 from app.models.user import User
-from app.models.message import Message
 
 client = TestClient(app)
 

@@ -1,4 +1,3 @@
-import os
 from sqlalchemy import inspect, text
 from app.db.database import engine
 

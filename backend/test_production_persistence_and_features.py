@@ -12,7 +12,7 @@ Comprehensive Verification Test Suite for E-Schola Pro:
 import os
 import sys
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 # Add backend directory to sys.path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))

@@ -592,7 +592,7 @@ export function exportGlobalQuizReportPDF(data: QuizGlobalReport) {
 
       <div class="report-title">
         <h2>SYNTHÈSE GLOBALE DES RÉSULTATS DE L'ÉVALUATION</h2>
-        <p><strong>Quiz :</strong> ${data.quiz_title} • <strong>Formateur :</strong> ${data.creator_email || 'Équipe Pédagogique'} • <strong>Public :</strong> ${data.target_roles}</p>
+        <p><strong>Quiz :</strong> ${data.quiz_title} • <strong>Formateur :</strong> ${data.creator_email || 'Équipe Pédagogique'} • <strong>Session :</strong> ${formattedDate} • <strong>Public :</strong> ${data.target_roles}</p>
       </div>
 
       <div class="stats-grid">

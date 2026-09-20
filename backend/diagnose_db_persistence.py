@@ -2,8 +2,7 @@ import os
 import sys
 import time
 import socket
-from sqlalchemy import create_engine, text, inspect
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import text
 
 print("==================================================================")
 print("  E-SCHOLA PRO — DATABASE PERSISTENCE & MUTATION DIAGNOSTIC SUITE")

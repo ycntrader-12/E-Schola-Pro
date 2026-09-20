@@ -132,7 +132,7 @@ def get_my_dashboard_performance(session: SessionDep, current_user: CurrentUser)
     )
 
 
-from app.core.roles import ADMIN_ROLES, STAFF_ROLES, is_staff, require_staff
+from app.core.roles import is_staff, require_staff
 
 
 @router.get("/user-stats/{user_id}", response_model=DashboardPerformanceOut)

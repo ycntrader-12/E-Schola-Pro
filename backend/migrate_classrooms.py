@@ -2,7 +2,6 @@ from sqlalchemy import inspect, text
 from app.db.database import engine
 
 
-from app.db.base import Base
 from app.models.classroom_invitation import ClassroomInvitation  # noqa: F401
 
 

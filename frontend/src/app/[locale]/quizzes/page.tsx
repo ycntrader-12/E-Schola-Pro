@@ -298,28 +298,7 @@ export default function QuizzesPage() {
     }
   };
 
-  // 5. Timer countdown for active examination
-  useEffect(() => {
-    if (!activeExam || reviewResult) return;
-
-    if (examTimeLeftSeconds <= 0) {
-      handleAutoSubmitExam();
-      return;
-    }
-
-    const timer = setInterval(() => {
-      setExamTimeLeftSeconds(prev => prev - 1);
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [activeExam, examTimeLeftSeconds, reviewResult]);
-
-  const handleAutoSubmitExam = async () => {
-    if (!activeExam || isSubmittingExam) return;
-    handleSubmitExam(true);
-  };
-
-  // 6. Submit Exam Answers
+  // 5. Submit Exam Answers
   const handleSubmitExam = async (isAuto: boolean = false) => {
     if (!activeExam) return;
 
@@ -354,6 +333,27 @@ export default function QuizzesPage() {
       setIsSubmittingExam(false);
     }
   };
+
+  const handleAutoSubmitExam = async () => {
+    if (!activeExam || isSubmittingExam) return;
+    handleSubmitExam(true);
+  };
+
+  // 6. Timer countdown for active examination
+  useEffect(() => {
+    if (!activeExam || reviewResult) return;
+
+    if (examTimeLeftSeconds <= 0) {
+      handleAutoSubmitExam();
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setExamTimeLeftSeconds(prev => prev - 1);
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [activeExam, examTimeLeftSeconds, reviewResult]);
 
   // 7. Inspect Review (Feedback)
   const handleOpenReview = async (attemptId: string) => {

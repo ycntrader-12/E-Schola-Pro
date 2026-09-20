@@ -5,7 +5,7 @@ les prédicats d'autorisation et les clauses de contrôle d'accès pour l'ensemb
 de l'application FastAPI.
 """
 
-from typing import Any, Optional, Set, Union
+from typing import Any, Optional, Set
 from fastapi import HTTPException, status
 
 

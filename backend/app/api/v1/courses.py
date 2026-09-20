@@ -15,7 +15,7 @@ from app.schemas.course import (
     CourseAiAssistResponse,
 )
 
-from app.core.roles import ADMIN_ROLES, is_admin, is_staff, require_staff
+from app.core.roles import is_admin, require_staff
 
 router = APIRouter()
 

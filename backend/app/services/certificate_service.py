@@ -1,5 +1,4 @@
 import os
-import uuid
 from datetime import datetime
 from PIL import Image, ImageDraw, ImageFont
 
@@ -80,7 +79,6 @@ def generate_certificate_document(
         gold_color = (197, 160, 89, 255)
         navy_color = (22, 50, 92, 255)
         blue_color = (24, 119, 242, 255)
-        dark_text = (15, 23, 42, 255)
         slate_text = (71, 85, 105, 255)
 
         # Double cadre ornementé

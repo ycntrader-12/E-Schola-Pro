@@ -15,42 +15,37 @@ Valide l'ensemble des 11 modules de gouvernance et de supervision administrative
 12. Contrôle RBAC strict (interdiction aux étudiants et formateurs, HTTP 403)
 """
 
-import io
-import json
-import os
 import sys
 import unittest
 from datetime import datetime, timedelta
 from pathlib import Path
 
 if sys.platform == "win32":
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 BACKEND_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(BACKEND_DIR))
 
-from fastapi import HTTPException
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.api.v1.admin import (
     InvitationCreateRequest,
     SystemSettingsUpdateRequest,
-    create_local_snapshot,
     create_user_invitation,
     export_database_backup,
     force_terminate_classroom,
     get_active_sessions,
     get_admin_dashboard_stats,
-    get_application_logs,
     get_audit_logs,
     get_classrooms_supervision,
     get_invitations,
     get_quizzes_supervision,
     get_security_events,
     get_system_settings,
-    get_system_status,
     resend_invitation,
     revoke_all_sessions_for_user,
     revoke_invitation,
@@ -60,13 +55,9 @@ from app.api.v1.admin import (
 from app.core.security import get_password_hash
 from app.db.base import Base
 from app.models.classroom import Classroom
-from app.models.course import Course
-from app.models.group import Group
-from app.models.quiz import Quiz, QuizAttempt, QuizQuestion
+from app.models.quiz import Quiz, QuizAttempt
 from app.models.system_setting import SystemSetting
 from app.models.user import User
-from app.models.user_invitation import UserInvitation
-from app.models.user_session import UserSession
 from app.services.audit_service import log_audit_event, register_user_session
 
 

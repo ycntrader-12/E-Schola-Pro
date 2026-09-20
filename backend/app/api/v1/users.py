@@ -1,7 +1,6 @@
 import base64
 import io
 import os
-import shutil
 import uuid
 from typing import Any
 
@@ -25,15 +24,12 @@ from app.schemas.user import (
 )
 from app.core.roles import (
     ADMIN_ROLES,
-    SUPER_ADMIN_ROLES,
     is_admin,
     is_super_admin,
     is_staff,
-    is_learner,
     normalize_role,
     require_admin,
     require_staff,
-    require_super_admin,
 )
 from app.services.audit_service import extract_client_ip
 from app.services.email_service import send_role_change_email

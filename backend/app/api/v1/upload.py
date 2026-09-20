@@ -7,7 +7,6 @@ from fastapi import APIRouter, File, HTTPException, Request, UploadFile
 from app.api.deps import CurrentUser
 from app.core.sanitizer import (
     ALLOWED_EXTENSIONS,
-    FORBIDDEN_EXTENSIONS,
     is_safe_extension,
     sanitize_filename,
 )
@@ -100,7 +99,7 @@ def upload_image_file(
     if file.content_type and not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Le fichier fourni n'est pas une image valide.")
 
-    unique_filename, safe_name, ext = save_upload_file_securely(
+    unique_filename, safe_name, _ext = save_upload_file_securely(
         file=file,
         subfolder="images",
         max_size=15 * 1024 * 1024,
@@ -125,7 +124,7 @@ def upload_document_file(
         "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "csv", "rtf",
         "odt", "ods", "odp", "zip", "rar", "7z"
     }
-    unique_filename, safe_name, ext = save_upload_file_securely(
+    unique_filename, safe_name, _ext = save_upload_file_securely(
         file=file,
         subfolder="documents",
         max_size=MAX_ATTACHMENT_SIZE,
@@ -150,7 +149,7 @@ def upload_video_file(
     if file.content_type and not file.content_type.startswith("video/"):
         raise HTTPException(status_code=400, detail="Le fichier fourni n'est pas une vidéo valide.")
 
-    unique_filename, safe_name, ext = save_upload_file_securely(
+    unique_filename, safe_name, _ext = save_upload_file_securely(
         file=file,
         subfolder="videos",
         max_size=MAX_VIDEO_SIZE,

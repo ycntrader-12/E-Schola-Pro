@@ -3,7 +3,6 @@ E-Schola Pro - Script d'Exécution Explicite des Migrations de Base de Données
 Permet d'appliquer de manière contrôlée, synchrone et idempotente les migrations
 Alembic sur PostgreSQL (Railway/Cloud) ou SQLite (Développement Local).
 """
-import os
 import sys
 import time
 from pathlib import Path
@@ -13,7 +12,7 @@ backend_dir = Path(__file__).resolve().parent
 sys.path.insert(0, str(backend_dir))
 
 from sqlalchemy import text
-from app.core.config import settings, is_production, is_in_railway
+from app.core.config import settings, is_production
 from app.db.database import engine
 import alembic.config
 

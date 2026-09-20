@@ -16,15 +16,12 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.core.config import (
     settings,
-    is_in_railway,
-    is_production,
     expand_railway_template_variables,
-    get_default_database_url,
 )
-from app.core.security import get_password_hash, verify_password, create_access_token
+from app.core.security import get_password_hash, verify_password
 from app.db.database import SessionLocal, engine
 from app.models.user import User
-from app.models.group import Group, GroupMember
+from app.models.group import GroupMember
 from create_admin import seed_users, seed_groups
 
 

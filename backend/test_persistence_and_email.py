@@ -1,4 +1,3 @@
-import os
 import sys
 from pathlib import Path
 
@@ -6,12 +5,11 @@ from pathlib import Path
 BACKEND_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(BACKEND_DIR))
 
-from app.core.config import settings, BACKEND_DIR as CFG_BACKEND_DIR
-from app.db.database import SessionLocal, engine
+from app.core.config import settings
+from app.db.database import SessionLocal
 from app.models.user import User
 from app.services.email_service import (
     is_valid_email,
-    send_email,
     send_welcome_email,
     test_smtp_connection,
 )

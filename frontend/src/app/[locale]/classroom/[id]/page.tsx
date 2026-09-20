@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { Link, useRouter } from '@/i18n/routing';
 import Image from 'next/image';
@@ -550,6 +550,27 @@ export default function VirtualClassroomLivePage() {
     if (roomId) init();
   }, [roomId]);
 
+  const stopAllMedia = useCallback(() => {
+    if (audioAnimFrameRef.current) {
+      cancelAnimationFrame(audioAnimFrameRef.current);
+      audioAnimFrameRef.current = null;
+    }
+    if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+      audioContextRef.current.close().catch(() => {});
+      audioContextRef.current = null;
+    }
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach(track => track.stop());
+      localStreamRef.current = null;
+    }
+    if (screenStreamRef.current) {
+      screenStreamRef.current.getTracks().forEach(track => track.stop());
+      screenStreamRef.current = null;
+    }
+    setAudioLevel(0);
+    setIsSpeaking(false);
+  }, []);
+
   // SFU WebRTC Real-Time Signaling & Media State Synchronization
   useEffect(() => {
     if (!roomId || !currentUser) return;
@@ -772,26 +793,6 @@ export default function VirtualClassroomLivePage() {
     });
   }, [isMicMuted, isCameraOff, isScreenSharing, isSpeaking, audioLevel, networkTransport]);
 
-  const stopAllMedia = () => {
-    if (audioAnimFrameRef.current) {
-      cancelAnimationFrame(audioAnimFrameRef.current);
-      audioAnimFrameRef.current = null;
-    }
-    if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
-      audioContextRef.current.close().catch(() => {});
-      audioContextRef.current = null;
-    }
-    if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach(track => track.stop());
-      localStreamRef.current = null;
-    }
-    if (screenStreamRef.current) {
-      screenStreamRef.current.getTracks().forEach(track => track.stop());
-      screenStreamRef.current = null;
-    }
-    setAudioLevel(0);
-    setIsSpeaking(false);
-  };
 
   // Periodic poll for subgroups, messages, join requests, and WebRTC peer heartbeat (UDP/TCP status)
   useEffect(() => {

@@ -1,6 +1,6 @@
 import time
 from typing import Any
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -55,6 +55,7 @@ def get_database_status(
     # 1. Test Read Latency
     start_time = time.time()
     read_ok = False
+    read_error = None
     try:
         session.execute(text("SELECT 1")).scalar()
         read_ok = True
@@ -115,6 +116,7 @@ def get_database_status(
         "is_sqlite_fallback": False,
         "read_operational": read_ok,
         "read_latency_ms": read_latency_ms,
+        "read_error": read_error,
         "write_operational": write_ok,
         "write_latency_ms": write_latency_ms,
         "write_error": write_error,

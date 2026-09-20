@@ -5,9 +5,6 @@ from fastapi import APIRouter, HTTPException
 
 from app.api.deps import CurrentUser, SessionDep
 from app.core.roles import (
-    ADMIN_ROLES,
-    STAFF_ROLES,
-    is_admin,
     is_staff,
     matches_target_role,
     require_staff,
@@ -63,7 +60,7 @@ def check_user_quiz_access(current_user: Any, quiz: Quiz, session: Any) -> bool:
         
     # Check GroupMember table
     try:
-        from app.models.group import Group, GroupMember
+        from app.models.group import GroupMember
         memberships = (
             session.query(GroupMember)
             .filter(GroupMember.user_id == current_user.id)

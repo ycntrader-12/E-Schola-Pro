@@ -12,14 +12,14 @@ Valide proactivement :
 9. Restriction de /email/status au rôle administrateur
 """
 
-import os
 import sys
 from pathlib import Path
 
 if sys.platform == "win32":
-    import io
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 BACKEND_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(BACKEND_DIR))
@@ -27,8 +27,6 @@ sys.path.insert(0, str(BACKEND_DIR))
 from fastapi.testclient import TestClient
 from app.main import app
 from app.core.security import create_access_token
-from app.db.database import SessionLocal
-from app.models.user import User
 
 client = TestClient(app)
 

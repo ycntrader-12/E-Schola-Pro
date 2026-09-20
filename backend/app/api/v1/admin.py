@@ -6,11 +6,10 @@ import time
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, HTTPException, Query, Request, status
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import func, text
-from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentAdminUser, CurrentSuperAdminUser, SessionDep
 from app.core.config import is_production, settings
@@ -23,16 +22,14 @@ from app.models.classroom_invitation import ClassroomInvitation
 from app.models.course import Course
 from app.models.course_video import CourseVideo
 from app.models.enrollment import Enrollment
-from app.models.group import Group, GroupMember
-from app.models.message import Message
+from app.models.group import Group
 from app.models.quiz import Quiz, QuizAttempt, QuizQuestion
 from app.models.system_setting import SystemSetting
-from app.models.task import Task, TaskSubmission
 from app.models.user import User
 from app.models.user_invitation import UserInvitation
 from app.models.user_session import UserSession
-from app.services.audit_service import extract_client_ip, log_audit_event
-from app.services.email_service import get_base_html_template, is_valid_email, send_email
+from app.services.audit_service import log_audit_event
+from app.services.email_service import get_base_html_template, send_email
 
 router = APIRouter()
 
@@ -493,7 +490,6 @@ def create_user_invitation(
     session.refresh(invitation)
 
     # Envoi de l'email d'invitation transactionnel
-    invitation_url = f"{settings.PROJECT_NAME} /register?invitation_token={token}&email={email}"
     email_body = f"""
     <p>Bonjour,</p>
     <p>Vous avez été invité à rejoindre la plateforme <strong>E-Schola Pro</strong> avec le rôle de <strong>{payload.role}</strong>.</p>

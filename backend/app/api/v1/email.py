@@ -1,8 +1,8 @@
 from typing import Any, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter
 from pydantic import BaseModel, EmailStr
 
-from app.api.deps import CurrentAdminUser, CurrentUser
+from app.api.deps import CurrentAdminUser
 from app.core.config import settings
 from app.services.email_service import test_smtp_connection
 

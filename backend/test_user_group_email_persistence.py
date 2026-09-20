@@ -7,7 +7,6 @@ Test suite validating complete persistence and synchronization of:
 - Attendance learner group assignment (POST /attendance/learners)
 - Non-destructive startup seed behavior (ensures no data wiped upon restart/commit)
 """
-import sys
 import unittest
 from fastapi.testclient import TestClient
 from app.main import app
@@ -74,27 +73,36 @@ class TestUserGroupEmailPersistence(unittest.TestCase):
         cls.db.close()
 
     def test_01_update_me_group_name_and_sync(self):
-        """Test that PUT /users/me updates group_name AND synchronizes GroupMember row."""
+        """Test that student is forbidden from changing their own group (403), while staff/admin can update and sync (200)."""
         # Find group B
         grp_b = self.db.query(Group).filter(Group.name.ilike("%Cybersécurité%")).first()
         self.assertIsNotNone(grp_b)
 
-        resp = self.client.put(
+        # 1. Student attempt must be rejected by RBAC policy (HTTP 403)
+        resp_student = self.client.put(
             "/api/v1/users/me",
             headers=self.student_headers,
             json={"group_name": grp_b.name}
         )
-        self.assertEqual(resp.status_code, 200)
-        data = resp.json()
+        self.assertEqual(resp_student.status_code, 403)
+
+        # 2. Admin / Staff can update their own group assignment and synchronize GroupMember
+        resp_admin = self.client.put(
+            "/api/v1/users/me",
+            headers=self.admin_headers,
+            json={"group_name": grp_b.name}
+        )
+        self.assertEqual(resp_admin.status_code, 200)
+        data = resp_admin.json()
         self.assertEqual(data["group_name"], grp_b.name)
 
         # Verify DB directly
-        self.db.refresh(self.student)
-        self.assertEqual(self.student.group_name, grp_b.name)
+        self.db.refresh(self.admin)
+        self.assertEqual(self.admin.group_name, grp_b.name)
 
         # Verify GroupMember row exists
         membership = self.db.query(GroupMember).filter(
-            GroupMember.user_id == self.student.id,
+            GroupMember.user_id == self.admin.id,
             GroupMember.group_id == grp_b.id
         ).first()
         self.assertIsNotNone(membership)
