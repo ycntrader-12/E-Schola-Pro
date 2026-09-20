@@ -64,6 +64,7 @@ export default function YoutubePlayer({ src, title, poster, autoPlay = false }: 
   const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isPip, setIsPip] = useState(false);
   const [isTheater, setIsTheater] = useState(false);
   const [isLooping, setIsLooping] = useState(false);
 
@@ -287,6 +288,23 @@ export default function YoutubePlayer({ src, title, poster, autoPlay = false }: 
       console.error("PiP error:", err);
     }
   };
+
+  // Synchronisation des événements Picture-in-Picture natifs
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const handleEnterPip = () => setIsPip(true);
+    const handleLeavePip = () => setIsPip(false);
+
+    video.addEventListener('enterpictureinpicture', handleEnterPip);
+    video.addEventListener('leavepictureinpicture', handleLeavePip);
+
+    return () => {
+      video.removeEventListener('enterpictureinpicture', handleEnterPip);
+      video.removeEventListener('leavepictureinpicture', handleLeavePip);
+    };
+  }, []);
 
   const handlePlaybackRateChange = (rate: number) => {
     if (videoRef.current) {
@@ -801,7 +819,9 @@ export default function YoutubePlayer({ src, title, poster, autoPlay = false }: 
             <button
               type="button"
               onClick={togglePictureInPicture}
-              className="p-2 rounded-xl hover:bg-white/15 text-white/80 hover:text-white transition-colors cursor-pointer"
+              className={`p-2 rounded-xl transition-colors cursor-pointer ${
+                isPip ? 'text-primary bg-white/15' : 'hover:bg-white/15 text-white/80 hover:text-white'
+              }`}
               title="Fenêtre flottante Picture-in-Picture (P)"
             >
               <Cast size={18} />
