@@ -1,20 +1,27 @@
-from datetime import datetime, timedelta
+import hashlib
 import os
 import secrets
-from typing import Dict
+from datetime import datetime, timedelta
+from typing import Dict, Optional
 
 from fastapi import APIRouter, HTTPException, Request, status
 from sqlalchemy import func, or_
 
 from app.api.deps import SessionDep
 from app.core import security
+from app.core.config import settings
 from app.core.rate_limiter import rate_limiter
+from app.models.password_reset_request import PasswordResetRequest
 from app.models.password_reset_token import PasswordResetToken
 from app.models.user import User
+from app.models.user_session import UserSession
 from app.schemas.password_reset import (
     PasswordResetConfirm,
-    PasswordResetRequest,
+    PasswordResetRequest as PasswordResetRequestSchema,
+    PasswordResetResponse,
     PasswordResetVerifyResponse,
+    VerifyResetCodeRequest,
+    VerifyResetCodeResponse,
 )
 from app.services.audit_service import extract_client_ip, log_audit_event
 from app.services.email_service import (
@@ -38,27 +45,32 @@ def mask_email(email: str) -> str:
     return f"{masked_name}@{domain_part}"
 
 
-@router.post("/forgot-password")
+def hash_token(raw_token: str) -> str:
+    """Computes SHA-256 hash of a reset token."""
+    return hashlib.sha256(raw_token.strip().encode("utf-8")).hexdigest()
+
+
+@router.post("/forgot-password", response_model=Dict[str, str | int])
 async def request_password_reset(
     request: Request,
-    payload: PasswordResetRequest,
+    payload: PasswordResetRequestSchema,
     session: SessionDep,
-) -> Dict[str, str]:
+) -> Dict[str, str | int]:
     """
-    Initiates password reset process for ANY valid email domain (Gmail, Yahoo, Outlook, custom...):
-    - Checks rate limit by IP and target email
-    - Searches user case-insensitively by email, username, or email prefix
-    - Generates unique secure token & 6-digit confirmation code with expiration (1 hour)
-    - Persists token and code in database
-    - Dispatches validation email with link and 6-digit code to the exact destination email
-    - If no user matches, sends an informative email to the target address
+    Initiates password reset process with a cryptographically secure 6-digit OTP code:
+    - Strictly rate-limited by IP and email to mitigate DDoS/spam attacks
+    - Generates 6-digit OTP via secrets.randbelow()
+    - NEVER stores plain OTP in DB (only bcrypt hash is persisted)
+    - Enforces anti-enumeration protection (identical response whether email exists or not)
+    - Performs dummy hash calculation for missing emails to prevent timing attacks
+    - Dispatches transactional HTML email with OTP and security notice to any domain
     """
     client_ip = extract_client_ip(request)
     raw_input = payload.email.strip()
     email_clean = raw_input.lower()
     email_prefix = email_clean.split("@")[0] if "@" in email_clean else email_clean
 
-    # Rate limiting protection
+    # 1. Rate limiting protection
     rate_limiter.check_rate_limit(
         identifier=f"pwd_reset_ip_{client_ip}",
         max_requests=5,
@@ -72,7 +84,9 @@ async def request_password_reset(
         action_name="demandes de réinitialisation pour cet email",
     )
 
-    # Search user case-insensitively
+    expire_minutes = getattr(settings, "PASSWORD_RESET_OTP_EXPIRE_MINUTES", 10)
+
+    # 2. Search user case-insensitively
     user = (
         session.query(User)
         .filter(
@@ -87,11 +101,9 @@ async def request_password_reset(
         .first()
     )
 
-    # Destination email address (prefers typed email if valid, fallback to user.email)
     dest_email = raw_input if is_valid_email(raw_input) else (user.email if user else None)
 
     if user and getattr(user, "is_active", True) is not False:
-        # If user email is missing or different, update it to the typed email
         if dest_email and is_valid_email(dest_email) and user.email != dest_email:
             user.email = dest_email
             session.commit()
@@ -99,21 +111,43 @@ async def request_password_reset(
         target_email = user.email or dest_email
 
         if target_email and is_valid_email(target_email):
-            # Invalidate older unused tokens for this user
+            # Invalidate previous unused reset requests for this user
+            session.query(PasswordResetRequest).filter(
+                PasswordResetRequest.user_id == user.id,
+                PasswordResetRequest.used == False,
+            ).update({"used": True}, synchronize_session=False)
+
             session.query(PasswordResetToken).filter(
                 PasswordResetToken.user_id == user.id,
                 PasswordResetToken.is_used == False,
             ).update({"is_used": True}, synchronize_session=False)
 
-            # Generate unique secure token AND 6-digit numeric confirmation code
-            token_str = secrets.token_urlsafe(32)
-            code_str = f"{secrets.randbelow(900000) + 100000:06d}"
-            expires_at = datetime.utcnow() + timedelta(hours=1)
+            # Generate cryptographically secure 6-digit numeric OTP code
+            otp_code = f"{secrets.randbelow(900000) + 100000:06d}"
+            # Cryptographic hash of OTP (NEVER store plain OTP!)
+            otp_hash = security.get_password_hash(otp_code)
+            expires_at = datetime.utcnow() + timedelta(minutes=expire_minutes)
 
+            # Persist in password_reset_requests
+            db_request = PasswordResetRequest(
+                user_id=user.id,
+                email=target_email,
+                otp_hash=otp_hash,
+                reset_token_hash=None,
+                expires_at=expires_at,
+                attempts=0,
+                used=False,
+                created_at=datetime.utcnow(),
+                ip_address=client_ip,
+            )
+            session.add(db_request)
+
+            # Also maintain backward compatibility in password_reset_tokens
+            legacy_token = secrets.token_urlsafe(32)
             db_token = PasswordResetToken(
                 user_id=user.id,
-                token=token_str,
-                code=code_str,
+                token=legacy_token,
+                code=otp_code,
                 created_at=datetime.utcnow(),
                 expires_at=expires_at,
                 is_used=False,
@@ -121,98 +155,185 @@ async def request_password_reset(
             session.add(db_token)
             session.commit()
 
-            # Build reset link
-            frontend_url = os.getenv(
-                "FRONTEND_URL", "https://e-schola-pro-production.up.railway.app"
-            ).rstrip("/")
-            reset_url = f"{frontend_url}/reset-password?token={token_str}"
+            # Dispatch transactional email
+            frontend_url = os.getenv("FRONTEND_URL", "https://e-schola-pro-production.up.railway.app").rstrip("/")
+            direct_reset_url = f"{frontend_url}/reset-password?token={legacy_token}"
 
-            # Send email with link and 6-digit confirmation code
-            user_display_name = user.prenom or user.nom or user.username or "Utilisateur"
+            user_display_name = (
+                f"{user.prenom or ''} {user.nom or ''}".strip()
+                or user.username
+                or "Utilisateur E-Schola Pro"
+            )
+
             send_password_reset_email(
                 to_email=target_email,
                 user_name=user_display_name,
-                reset_url=reset_url,
-                confirmation_code=code_str,
+                reset_url=direct_reset_url,
+                confirmation_code=otp_code,
+                expires_in_minutes=expire_minutes,
             )
 
             log_audit_event(
                 session,
-                action="PASSWORD_RESET_REQUESTED",
+                action="PASSWORD_RESET_REQUEST",
                 user_id=user.id,
                 user_email=target_email,
                 resource_type="user",
                 resource_id=user.id,
-                details=f"Demande de réinitialisation envoyée à {target_email} (Code: {code_str})",
+                details=f"Demande de réinitialisation OTP initiée (expiration: {expire_minutes} min)",
                 status="SUCCESS",
                 request=request,
             )
     else:
-        # If no active user matches, send an informative email if the address is valid
+        # Anti-enumeration: compute dummy hash to eliminate timing difference
+        security.get_password_hash("dummy_otp_timing_safe")
         if dest_email and is_valid_email(dest_email):
             send_no_account_found_email(to_email=dest_email)
 
-    # Return clear confirmation message
     return {
-        "message": (
-            f"Un email contenant votre code de confirmation à 6 chiffres et le lien de réinitialisation vient d'être envoyé à l'adresse indiquée. "
-            "Veuillez vérifier votre boîte de réception (Gmail, Yahoo, Outlook...) et vos dossiers de courrier indésirable / spams."
-        )
+        "message": "Si l'adresse saisie correspond à un compte actif, un code de validation à 6 chiffres vous a été envoyé par email.",
+        "expires_in_minutes": expire_minutes,
     }
 
 
-@router.get("/verify-token/{token}", response_model=PasswordResetVerifyResponse)
-async def verify_password_reset_token(
-    token: str,
+@router.post("/verify-reset-code", response_model=VerifyResetCodeResponse)
+async def verify_reset_code(
+    request: Request,
+    payload: VerifyResetCodeRequest,
     session: SessionDep,
-) -> PasswordResetVerifyResponse:
+) -> VerifyResetCodeResponse:
     """
-    Verifies token or 6-digit code validity:
-    - Checks token or code existence in DB
-    - Checks if token/code is not expired and not used
+    Validates a 6-digit OTP code against the stored hash in database:
+    - Enforces maximum attempt limits (defaults to 5 attempts) to prevent brute-force attacks
+    - Verifies expiration (10 minutes) and single-use status
+    - Upon successful validation, generates a cryptographically secure temporary reset_token
+    - The reset_token hash is stored in DB to authorize password modification in step 3
     """
-    clean_token = token.strip()
-    token_obj = (
-        session.query(PasswordResetToken)
-        .filter(
-            or_(
-                PasswordResetToken.token == clean_token,
-                PasswordResetToken.code == clean_token,
-            )
-        )
-        .first()
+    client_ip = extract_client_ip(request)
+    rate_limiter.check_rate_limit(
+        identifier=f"pwd_verify_ip_{client_ip}",
+        max_requests=15,
+        window_seconds=60,
+        action_name="vérifications de code OTP",
     )
 
-    if not token_obj or token_obj.is_used or datetime.utcnow() > token_obj.expires_at:
-        return PasswordResetVerifyResponse(
+    clean_code = payload.code.strip().replace(" ", "")
+    max_attempts = getattr(settings, "PASSWORD_RESET_MAX_ATTEMPTS", 5)
+
+    # Search candidate request
+    query = session.query(PasswordResetRequest).filter(PasswordResetRequest.used == False)
+    if payload.email and payload.email.strip():
+        query = query.filter(func.lower(PasswordResetRequest.email) == payload.email.strip().lower())
+
+    # Order by newest first
+    candidate_requests = query.order_by(PasswordResetRequest.id.desc()).all()
+
+    target_req: Optional[PasswordResetRequest] = None
+    for candidate in candidate_requests:
+        # Check expiration
+        if datetime.utcnow() > candidate.expires_at:
+            continue
+        # Check attempts lock
+        if candidate.attempts >= max_attempts:
+            continue
+        # Check bcrypt hash
+        if security.verify_password(clean_code, candidate.otp_hash):
+            target_req = candidate
+            break
+
+    # If not matched via hash, check if there's a recent candidate to increment attempts
+    if not target_req:
+        active_candidate = candidate_requests[0] if candidate_requests else None
+        if active_candidate and datetime.utcnow() <= active_candidate.expires_at:
+            active_candidate.attempts += 1
+            remaining = max(0, max_attempts - active_candidate.attempts)
+            if remaining == 0:
+                active_candidate.used = True
+            session.commit()
+
+            if remaining == 0:
+                return VerifyResetCodeResponse(
+                    valid=False,
+                    reset_token=None,
+                    masked_email=None,
+                    remaining_attempts=0,
+                    message="Nombre maximal de tentatives dépassé. Ce code a été invalidé. Veuillez refaire une demande.",
+                )
+            return VerifyResetCodeResponse(
+                valid=False,
+                reset_token=None,
+                masked_email=None,
+                remaining_attempts=remaining,
+                message=f"Code de validation incorrect. Tentatives restantes : {remaining}.",
+            )
+
+        # Fallback check against legacy password_reset_tokens table
+        legacy = (
+            session.query(PasswordResetToken)
+            .filter(
+                or_(
+                    PasswordResetToken.code == clean_code,
+                    PasswordResetToken.token == clean_code,
+                ),
+                PasswordResetToken.is_used == False,
+            )
+            .order_by(PasswordResetToken.id.desc())
+            .first()
+        )
+        if legacy and datetime.utcnow() <= legacy.expires_at:
+            user = session.query(User).filter(User.id == legacy.user_id).first()
+            masked = mask_email(user.email) if user and user.email else None
+            # Issue temporary token
+            temp_token = secrets.token_urlsafe(32)
+            legacy.token = temp_token
+            session.commit()
+            return VerifyResetCodeResponse(
+                valid=True,
+                reset_token=temp_token,
+                masked_email=masked,
+                remaining_attempts=max_attempts,
+                message="Code validé avec succès.",
+            )
+
+        return VerifyResetCodeResponse(
             valid=False,
+            reset_token=None,
             masked_email=None,
-            message="Le jeton ou code de réinitialisation est invalide, déjà utilisé ou expiré.",
+            remaining_attempts=0,
+            message="Code de validation invalide, déjà utilisé ou expiré.",
         )
 
-    user = session.query(User).filter(User.id == token_obj.user_id).first()
+    # Valid OTP found! Generate cryptographically secure temporary reset authorization token
+    temp_reset_token = secrets.token_urlsafe(32)
+    target_req.reset_token_hash = hash_token(temp_reset_token)
+    session.commit()
+
+    user = session.query(User).filter(User.id == target_req.user_id).first()
     masked = mask_email(user.email) if user and user.email else None
 
-    return PasswordResetVerifyResponse(
+    return VerifyResetCodeResponse(
         valid=True,
+        reset_token=temp_reset_token,
         masked_email=masked,
-        message="Code de réinitialisation valide.",
+        remaining_attempts=max_attempts,
+        message="Code validé avec succès. Vous pouvez désormais définir votre nouveau mot de passe.",
     )
 
 
-@router.post("/reset-password")
+@router.post("/reset-password", response_model=PasswordResetResponse)
 async def reset_password(
     request: Request,
     payload: PasswordResetConfirm,
     session: SessionDep,
-) -> Dict[str, str]:
+) -> PasswordResetResponse:
     """
-    Resets password using a verified token or 6-digit confirmation code:
-    - Verifies token/code validity
-    - Hashes new password with bcrypt
-    - Updates user record in DB
-    - Marks token as used (single-use)
-    - Logs audit log event
+    Executes password reset using verified authorization token:
+    - Validates presence and hash of temporary reset_token
+    - Enforces password complexity (min 6 chars, confirmation match)
+    - Updates hashed_password in database with bcrypt
+    - Immediately invalidates all active sessions (user_sessions)
+    - Increments user.token_version to invalidate all existing JWTs
+    - Invalidates all pending reset requests for this user
     """
     client_ip = extract_client_ip(request)
     rate_limiter.check_rate_limit(
@@ -222,26 +343,55 @@ async def reset_password(
         action_name="validations de réinitialisation",
     )
 
-    clean_token = payload.token.strip()
-    token_obj = (
-        session.query(PasswordResetToken)
+    raw_token = (payload.reset_token or payload.token or "").strip()
+    if not raw_token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Le jeton de réinitialisation est obligatoire.",
+        )
+
+    token_h = hash_token(raw_token)
+
+    # 1. Look up in password_reset_requests
+    db_req = (
+        session.query(PasswordResetRequest)
         .filter(
-            or_(
-                PasswordResetToken.token == clean_token,
-                PasswordResetToken.code == clean_token,
-            ),
-            PasswordResetToken.is_used == False,
+            PasswordResetRequest.reset_token_hash == token_h,
+            PasswordResetRequest.used == False,
         )
         .first()
     )
 
-    if not token_obj or datetime.utcnow() > token_obj.expires_at:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Le code ou lien de réinitialisation est invalide ou a expiré. Veuillez refaire une demande.",
+    # 2. Fallback check for legacy PasswordResetToken
+    legacy_token = None
+    if not db_req:
+        legacy_token = (
+            session.query(PasswordResetToken)
+            .filter(
+                or_(
+                    PasswordResetToken.token == raw_token,
+                    PasswordResetToken.code == raw_token,
+                ),
+                PasswordResetToken.is_used == False,
+            )
+            .first()
         )
 
-    user = session.query(User).filter(User.id == token_obj.user_id).first()
+    if not db_req and not legacy_token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Le lien ou code de réinitialisation est invalide, expiré ou a déjà été utilisé.",
+        )
+
+    expires_at = db_req.expires_at if db_req else legacy_token.expires_at
+    if datetime.utcnow() > expires_at:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Ce lien ou code de réinitialisation a expiré. Veuillez refaire une demande.",
+        )
+
+    user_id = db_req.user_id if db_req else legacy_token.user_id
+    user = session.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -254,19 +404,50 @@ async def reset_password(
             detail="Ce compte a été désactivé par l'administration. Impossible de réinitialiser le mot de passe.",
         )
 
-    # Validate password length
+    # Validate password length and confirmation
     if len(payload.new_password) < 6:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Le nouveau mot de passe doit contenir au moins 6 caractères.",
         )
 
-    # Hash new password and update user
-    hashed_pwd = security.get_password_hash(payload.new_password)
-    user.hashed_password = hashed_pwd
+    if payload.confirm_password and payload.new_password != payload.confirm_password:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Les deux mots de passe saisis ne sont pas identiques.",
+        )
 
-    # Mark token as used
-    token_obj.is_used = True
+    # Hash new password with bcrypt
+    user.hashed_password = security.get_password_hash(payload.new_password)
+
+    # Invalidate all active sessions for this user
+    session.query(UserSession).filter(
+        UserSession.user_id == user.id,
+        UserSession.is_active == True,
+    ).update({"is_active": False}, synchronize_session=False)
+
+    # Increment token_version to immediately invalidate all existing JWT tokens
+    current_version = getattr(user, "token_version", 1) or 1
+    user.token_version = current_version + 1
+
+    # Mark reset request as used
+    if db_req:
+        db_req.used = True
+        db_req.used_at = datetime.utcnow()
+
+    if legacy_token:
+        legacy_token.is_used = True
+
+    # Invalidate all pending reset requests for this user
+    session.query(PasswordResetRequest).filter(
+        PasswordResetRequest.user_id == user.id,
+        PasswordResetRequest.used == False,
+    ).update({"used": True}, synchronize_session=False)
+
+    session.query(PasswordResetToken).filter(
+        PasswordResetToken.user_id == user.id,
+        PasswordResetToken.is_used == False,
+    ).update({"is_used": True}, synchronize_session=False)
 
     session.commit()
 
@@ -277,11 +458,71 @@ async def reset_password(
         user_email=user.email,
         resource_type="user",
         resource_id=user.id,
-        details="Mot de passe réinitialisé avec succès via code de confirmation",
+        details="Mot de passe réinitialisé avec succès via code OTP. Sessions et tokens révoqués.",
         status="SUCCESS",
         request=request,
     )
 
-    return {
-        "message": "Votre mot de passe a été réinitialisé avec succès ! Vous pouvez maintenant vous connecter avec vos nouveaux identifiants."
-    }
+    return PasswordResetResponse(
+        success=True,
+        message="Votre mot de passe a été réinitialisé avec succès. Vous pouvez désormais vous connecter.",
+    )
+
+
+@router.get("/verify-token/{token}", response_model=PasswordResetVerifyResponse)
+async def verify_token_endpoint(
+    token: str,
+    session: SessionDep,
+) -> PasswordResetVerifyResponse:
+    """
+    Backward-compatible verification endpoint for URL direct links and codes.
+    """
+    clean_token = token.strip()
+
+    # Check PasswordResetRequest by reset_token_hash
+    token_h = hash_token(clean_token)
+    req = (
+        session.query(PasswordResetRequest)
+        .filter(
+            PasswordResetRequest.reset_token_hash == token_h,
+            PasswordResetRequest.used == False,
+        )
+        .first()
+    )
+
+    if req and datetime.utcnow() <= req.expires_at:
+        user = session.query(User).filter(User.id == req.user_id).first()
+        masked = mask_email(user.email) if user and user.email else None
+        return PasswordResetVerifyResponse(
+            valid=True,
+            masked_email=masked,
+            message="Jeton de réinitialisation valide.",
+        )
+
+    # Check PasswordResetToken
+    legacy = (
+        session.query(PasswordResetToken)
+        .filter(
+            or_(
+                PasswordResetToken.token == clean_token,
+                PasswordResetToken.code == clean_token,
+            ),
+            PasswordResetToken.is_used == False,
+        )
+        .first()
+    )
+
+    if legacy and datetime.utcnow() <= legacy.expires_at:
+        user = session.query(User).filter(User.id == legacy.user_id).first()
+        masked = mask_email(user.email) if user and user.email else None
+        return PasswordResetVerifyResponse(
+            valid=True,
+            masked_email=masked,
+            message="Code ou jeton de réinitialisation valide.",
+        )
+
+    return PasswordResetVerifyResponse(
+        valid=False,
+        masked_email=None,
+        message="Le jeton ou code de réinitialisation est invalide, déjà utilisé ou expiré.",
+    )

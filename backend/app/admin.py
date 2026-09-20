@@ -18,6 +18,7 @@ from app.models.user import User
 from app.models.user_invitation import UserInvitation
 from app.models.user_session import UserSession
 from app.models.password_reset_token import PasswordResetToken
+from app.models.password_reset_request import PasswordResetRequest
 
 
 # ==============================================================================
@@ -85,6 +86,25 @@ class PasswordResetTokenAdmin(ModelView, model=PasswordResetToken):
     name = "Jeton de Réinitialisation"
     name_plural = "Jetons de Réinitialisation"
     icon = "fa-solid fa-key"
+    category = "Utilisateurs & Accès"
+    category_icon = "fa-solid fa-users-gear"
+
+
+class PasswordResetRequestAdmin(ModelView, model=PasswordResetRequest):
+    column_list = [
+        PasswordResetRequest.id,
+        PasswordResetRequest.user_id,
+        PasswordResetRequest.email,
+        PasswordResetRequest.attempts,
+        PasswordResetRequest.used,
+        PasswordResetRequest.expires_at,
+        PasswordResetRequest.created_at,
+    ]
+    column_searchable_list = [PasswordResetRequest.email]
+    column_sortable_list = [PasswordResetRequest.id, PasswordResetRequest.created_at, PasswordResetRequest.expires_at]
+    name = "Demande de Réinitialisation (OTP)"
+    name_plural = "Demandes de Réinitialisation (OTP)"
+    icon = "fa-solid fa-shield-halved"
     category = "Utilisateurs & Accès"
     category_icon = "fa-solid fa-users-gear"
 

@@ -19,6 +19,7 @@ from app.models.enrollment import Enrollment
 from app.models.event import Event
 from app.models.group import Group, GroupMember
 from app.models.message import Message
+from app.models.password_reset_request import PasswordResetRequest
 from app.models.password_reset_token import PasswordResetToken
 from app.models.quiz import Quiz, QuizAttempt, QuizQuestion
 from app.models.system_setting import SystemSetting
@@ -44,6 +45,7 @@ __all__ = [
     "Group",
     "GroupMember",
     "Message",
+    "PasswordResetRequest",
     "PasswordResetToken",
     "Question",
     "Quiz",

@@ -25,6 +25,7 @@ api_router.include_router(admin.router, prefix="/admin", tags=["admin"])
 api_router.include_router(health.router, prefix="/health", tags=["health"])
 api_router.include_router(login.router, tags=["login"])
 api_router.include_router(password_reset.router, prefix="/password-reset", tags=["password-reset"])
+api_router.include_router(password_reset.router, prefix="/auth", tags=["auth"])
 api_router.include_router(users.router, prefix="/users", tags=["users"])
 api_router.include_router(courses.router, prefix="/courses", tags=["courses"])
 api_router.include_router(

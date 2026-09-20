@@ -1,6 +1,6 @@
 from datetime import datetime
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import backref, relationship
 
 from app.db.base import Base
 
@@ -16,7 +16,7 @@ class PasswordResetToken(Base):
     expires_at = Column(DateTime, nullable=False)
     is_used = Column(Boolean, default=False, nullable=False)
 
-    user = relationship("User", backref="reset_tokens")
+    user = relationship("User", backref=backref("reset_tokens", passive_deletes=True), passive_deletes=True)
 
     def __str__(self):
         return f"PasswordResetToken(user_id={self.user_id}, code={self.code}, used={self.is_used})"

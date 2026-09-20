@@ -36,6 +36,7 @@ from app.admin import (
     UserInvitationAdmin,
     UserSessionAdmin,
     PasswordResetTokenAdmin,
+    PasswordResetRequestAdmin,
 )
 from app.api.main import api_router
 from app.core.config import is_production, settings
@@ -107,6 +108,10 @@ async def lifespan(app: FastAPI):
                         conn.execute(text("ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT 1"))
                         conn.commit()
                         print("[Database Migration] Colonne is_active ajoutée avec succès sur la table users.")
+                    if user_cols and "token_version" not in user_cols:
+                        conn.execute(text("ALTER TABLE users ADD COLUMN token_version INTEGER DEFAULT 1"))
+                        conn.commit()
+                        print("[Database Migration] Colonne token_version ajoutée avec succès sur la table users.")
                     msg_cols = [row[1] for row in conn.execute(text("PRAGMA table_info(messages)")).fetchall()]
                     if msg_cols and "read_at" not in msg_cols:
                         conn.execute(text("ALTER TABLE messages ADD COLUMN read_at DATETIME"))
@@ -129,6 +134,7 @@ async def lifespan(app: FastAPI):
                 elif dialect == "postgresql":
                     conn.execute(text("ALTER TABLE quizzes ADD COLUMN IF NOT EXISTS target_group VARCHAR DEFAULT 'all'"))
                     conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE"))
+                    conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS token_version INTEGER DEFAULT 1"))
                     conn.execute(text("ALTER TABLE messages ADD COLUMN IF NOT EXISTS read_at TIMESTAMP"))
                     conn.execute(text("ALTER TABLE groups ADD COLUMN IF NOT EXISTS creator_id INTEGER REFERENCES users(id)"))
                     conn.execute(text("ALTER TABLE groups ADD COLUMN IF NOT EXISTS instructor_id INTEGER REFERENCES users(id)"))
@@ -295,6 +301,7 @@ admin.add_view(UserAdmin)
 admin.add_view(UserSessionAdmin)
 admin.add_view(UserInvitationAdmin)
 admin.add_view(PasswordResetTokenAdmin)
+admin.add_view(PasswordResetRequestAdmin)
 
 # 2. Formations & Cours
 admin.add_view(CourseAdmin)

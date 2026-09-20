@@ -3,14 +3,13 @@
 import { useState, useEffect, Suspense } from 'react';
 import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
-import { Link, useRouter } from '@/i18n/routing';
+import { Link } from '@/i18n/routing';
 import { apiClient } from '@/lib/api';
 import { Eye, EyeOff, CheckCircle2, AlertCircle, ShieldCheck, Lock, ArrowRight, RefreshCw, Key, Binary } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import BackButton from '@/components/BackButton';
 
 function ResetPasswordForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const urlToken = searchParams.get('token') || '';
 
@@ -35,24 +34,42 @@ function ResetPasswordForm() {
   const [formError, setFormError] = useState('');
 
   const verifyCodeOrToken = async (targetToken: string) => {
-    if (!targetToken.trim()) return;
+    const clean = targetToken.trim();
+    if (!clean) return;
     setVerifying(true);
     setVerifyMessage('');
     setFormError('');
 
     try {
-      const res = await apiClient.get(`/password-reset/verify-token/${encodeURIComponent(targetToken.trim())}`);
+      // 1. Si format code OTP (4 à 10 chiffres/caractères)
+      if (clean.length <= 10) {
+        const otpRes = await apiClient.post('/auth/verify-reset-code', { code: clean });
+        if (otpRes.data?.valid && otpRes.data?.reset_token) {
+          setTokenValid(true);
+          setActiveToken(otpRes.data.reset_token);
+          setMaskedEmail(otpRes.data?.masked_email || null);
+          return;
+        }
+      }
+
+      // 2. Vérification jeton direct / fallback
+      const res = await apiClient.get(`/password-reset/verify-token/${encodeURIComponent(clean)}`);
       if (res.data?.valid) {
         setTokenValid(true);
-        setActiveToken(targetToken.trim());
+        setActiveToken(clean);
         setMaskedEmail(res.data?.masked_email || null);
       } else {
         setTokenValid(false);
         setVerifyMessage(res.data?.message || "Le lien ou code de réinitialisation est invalide ou expiré.");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string; detail?: string } } };
       setTokenValid(false);
-      setVerifyMessage("Impossible de vérifier la validité du code. Veuillez vérifier votre connexion.");
+      setVerifyMessage(
+        errorObj?.response?.data?.message ||
+        errorObj?.response?.data?.detail ||
+        "Impossible de vérifier la validité du code. Veuillez vérifier votre connexion."
+      );
     } finally {
       setVerifying(false);
     }
@@ -61,7 +78,10 @@ function ResetPasswordForm() {
   // Auto-verify token from URL on mount
   useEffect(() => {
     if (urlToken) {
-      verifyCodeOrToken(urlToken);
+      const timer = setTimeout(() => {
+        void verifyCodeOrToken(urlToken);
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [urlToken]);
 
@@ -111,8 +131,9 @@ function ResetPasswordForm() {
         new_password: newPassword,
       });
       setResetSuccess(true);
-    } catch (err: any) {
-      const detailMsg = err?.response?.data?.detail;
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { detail?: string } } };
+      const detailMsg = errorObj?.response?.data?.detail;
       setFormError(detailMsg || 'Une erreur est survenue lors de la réinitialisation. Veuillez réessayer.');
     } finally {
       setLoading(false);

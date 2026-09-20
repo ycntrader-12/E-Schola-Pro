@@ -440,26 +440,30 @@ def send_password_reset_email(
     user_name: str,
     reset_url: str,
     confirmation_code: Optional[str] = None,
+    expires_in_minutes: Optional[int] = None,
 ) -> bool:
     """
-    Sends a secure password reset link and optional 6-digit confirmation code.
-    Supports internal and external email addresses.
+    Sends a secure password reset email containing a 6-digit OTP code, expiration, and security warning.
+    Compatible with all external domains (Gmail, Outlook, Yahoo, professional, custom).
     """
-    subject = "🔒 Code de confirmation & réinitialisation de votre mot de passe - E-Schola Pro"
-    preheader = "Demande de réinitialisation de mot de passe sur E-Schola Pro."
+    if expires_in_minutes is None:
+        expires_in_minutes = getattr(settings, "PASSWORD_RESET_OTP_EXPIRE_MINUTES", 10)
+
+    subject = "🔒 Code OTP de réinitialisation de votre mot de passe - E-Schola Pro"
+    preheader = f"Votre code OTP à 6 chiffres pour E-Schola Pro. Valable {expires_in_minutes} minutes."
 
     code_html = ""
     if confirmation_code:
         code_html = f"""
-        <div style="background-color: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 12px; padding: 20px; text-align: center; margin: 24px 0;">
-            <span style="display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #64748b; font-weight: 700; margin-bottom: 8px;">
-                🔑 Votre Code de Confirmation (6 chiffres)
+        <div style="background-color: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 12px; padding: 22px; text-align: center; margin: 24px 0;">
+            <span style="display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #475569; font-weight: 800; margin-bottom: 10px;">
+                🔑 Votre Code OTP de Validation (6 chiffres)
             </span>
-            <div style="font-family: 'JetBrains Mono', Consolas, monospace; font-size: 32px; font-weight: 900; letter-spacing: 8px; color: #1877f2; background: #ffffff; padding: 12px 24px; border-radius: 8px; border: 1px solid #cbd5e1; display: inline-block; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+            <div style="font-family: 'JetBrains Mono', Consolas, 'Courier New', monospace; font-size: 36px; font-weight: 900; letter-spacing: 10px; color: #1877f2; background: #ffffff; padding: 14px 28px; border-radius: 10px; border: 2px solid #93c5fd; display: inline-block; box-shadow: 0 4px 10px rgba(24, 119, 242, 0.1);">
                 {confirmation_code}
             </div>
-            <p style="margin: 10px 0 0 0; font-size: 12px; color: #64748b;">
-                Ce code expire dans <strong>60 minutes</strong> et ne peut être utilisé qu'une seule fois.
+            <p style="margin: 12px 0 0 0; font-size: 13px; color: #475569;">
+                Durée de validité : <strong>{expires_in_minutes} minutes</strong> &bull; Usage unique
             </p>
         </div>
         """
@@ -469,14 +473,18 @@ def send_password_reset_email(
         Bonjour <strong>{user_name}</strong>,
     </p>
     <p style="margin: 0 0 16px 0;">
-        Une demande de réinitialisation de mot de passe a été initiée pour votre compte (<strong>{to_email}</strong>).
+        Une demande de réinitialisation de mot de passe a été initiée pour votre compte <strong>E-Schola Pro</strong> (<code>{to_email}</code>).
     </p>
     
     {code_html}
 
     <p style="margin: 0 0 16px 0;">
-        Vous pouvez saisir le code à 6 chiffres ci-dessus dans l'interface de réinitialisation, ou cliquer directement sur le bouton ci-dessous :
+        Saisissez ce code dans l'application pour valider votre identité et définir un nouveau mot de passe, ou utilisez le bouton direct ci-dessous :
     </p>
+
+    <div style="background-color: #fffbeb; border-left: 4px solid #f59e0b; padding: 14px 18px; border-radius: 0 8px 8px 0; margin: 24px 0; color: #92400e; font-size: 13px; line-height: 1.5;">
+        <strong>⚠️ Avertissement de sécurité :</strong> Si vous n'avez pas demandé cette réinitialisation, vous pouvez ignorer cet e-mail en toute sécurité. Aucun changement ne sera effectué sans ce code OTP. Ne transmettez jamais ce code à un tiers.
+    </div>
     """
 
     html = get_base_html_template(

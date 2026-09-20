@@ -1377,6 +1377,7 @@ E-Schola Pro/
         <tr><td><code>specialisation</code></td><td>String</td><td>Nullable</td><td>Filière / Spécialisation académique (Étudiant &amp; Stagiaire)</td></tr>
         <tr><td><code>avatar_url</code></td><td>Text</td><td>Nullable</td><td>Photo de profil auto-optimisée WebP 256×256 stockée de façon permanente en base de données Railway (Base64 Data URI)</td></tr>
         <tr><td><code>group_name</code></td><td>String</td><td>Nullable</td><td>Nom du groupe (hérité)</td></tr>
+        <tr><td><code>token_version</code></td><td>Integer</td><td>Default: 1, Not Null</td><td>Version du jeton de sécurité. Incrémenté lors d'une réinitialisation de mot de passe pour révoquer immédiatement tous les JWT d'accès en circulation.</td></tr>
       </tbody>
     </table>
 
@@ -1686,6 +1687,25 @@ E-Schola Pro/
         <tr><td><code>last_activity</code></td><td>DateTime</td><td>Auto</td><td>Horodatage de la dernière interaction</td></tr>
         <tr><td><code>expires_at</code></td><td>DateTime</td><td>Not Null, Indexé</td><td>Date et heure d'expiration automatique du token</td></tr>
         <tr><td><code>created_at</code></td><td>DateTime</td><td>Auto</td><td>Date et heure d'ouverture de session</td></tr>
+      </tbody>
+    </table>
+
+    <!-- PASSWORD RESET REQUEST -->
+    <h3>PasswordResetRequest (Demandes de Réinitialisation OTP)</h3>
+    <table>
+      <thead><tr><th>Colonne</th><th>Type</th><th>Contraintes</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code></td><td>Integer</td><td>PK, Auto-increment</td><td>Identifiant unique de la demande</td></tr>
+        <tr><td><code>user_id</code></td><td>Integer</td><td>FK → users.id, CASCADE, Indexé</td><td>Utilisateur concerné par la demande de réinitialisation</td></tr>
+        <tr><td><code>email</code></td><td>String(255)</td><td>Indexé, Nullable</td><td>Adresse e-mail cible de la réinitialisation</td></tr>
+        <tr><td><code>otp_hash</code></td><td>String(255)</td><td>Not Null</td><td>Hachage cryptographique bcrypt du code OTP à 6 chiffres (zéro stockage en clair)</td></tr>
+        <tr><td><code>reset_token_hash</code></td><td>String(255)</td><td>Indexé, Nullable</td><td>Hachage SHA-256 du jeton d'autorisation temporaire émis après validation de l'OTP</td></tr>
+        <tr><td><code>expires_at</code></td><td>DateTime</td><td>Not Null</td><td>Horodatage d'expiration du code OTP (durée configurable, 10 minutes par défaut)</td></tr>
+        <tr><td><code>attempts</code></td><td>Integer</td><td>Default: 0, Not Null</td><td>Compteur de tentatives erronées (verrouillage anti-bruteforce à 5 échecs)</td></tr>
+        <tr><td><code>used</code></td><td>Boolean</td><td>Default: False, Not Null</td><td>Statut d'utilisation (True dès consommation ou dépassement des tentatives)</td></tr>
+        <tr><td><code>created_at</code></td><td>DateTime</td><td>Auto</td><td>Date et heure de création de la demande</td></tr>
+        <tr><td><code>used_at</code></td><td>DateTime</td><td>Nullable</td><td>Date et heure précise de consommation du jeton</td></tr>
+        <tr><td><code>ip_address</code></td><td>String(100)</td><td>Nullable</td><td>Adresse IP de provenance de la demande</td></tr>
       </tbody>
     </table>
 
@@ -2904,13 +2924,18 @@ E-Schola Pro/
     <h3>Module 16 — Réinitialisation de Mot de Passe &amp; Sécurité des Accès</h3>
     <div class="card">
       <p><strong>Routes Frontend :</strong> <code>/forgot-password</code> · <code>/reset-password</code></p>
-      <p><strong>Flux complet et sécurisé de réinitialisation :</strong></p>
+      <p><strong>Endpoints API FastAPI :</strong> <code>POST /api/v1/auth/forgot-password</code> · <code>POST /api/v1/auth/verify-reset-code</code> · <code>POST /api/v1/auth/reset-password</code></p>
+      <p><strong>Architecture et Workflow Sécurisé de Réinitialisation par Code OTP :</strong></p>
       <ul>
-        <li><strong>Lien « Mot de Passe Oublié » :</strong> Intégré directement sur la page de connexion (<code>/login</code>), permettant de basculer vers l'interface de saisie d'email <code>/forgot-password</code>.</li>
-        <li><strong>Génération de Token &amp; Code à 6 Chiffres (Expiration 1h) :</strong> Génération simultanée d'un jeton aléatoire sécurisé (<code>secrets.token_urlsafe(32)</code>) et d'un code de confirmation numérique à 6 chiffres (ex: <code>849201</code>) enregistrés dans la table <code>password_reset_tokens</code> avec horodatage d'expiration <code>expires_at</code> fixé à 60 minutes.</li>
-        <li><strong>Protection Anti-Énumération &amp; Anti-Spam :</strong> La demande d'email renvoie une réponse générique identique (empêchant de déterminer si un e-mail est inscrit) et applique un rate-limiting strict par IP (max 5 req/min) et par e-mail (max 3 req/5min).</li>
-        <li><strong>Email Transactionnel HTML &amp; Support d'Emails Externes :</strong> Envoi d'un email au design institutionnel E-Schola Pro contenant à la fois le code à 6 chiffres mis en valeur dans un badge haute lisibilité et le bouton de réinitialisation directe <code>https://e-schola-pro-production.up.railway.app/reset-password?token=...</code>. Le service supporte l'expédition vers tout domaine e-mail interne ou externe (Gmail, Outlook, Yahoo, domaines d'entreprise...).</li>
-        <li><strong>Double Validation Dynamique &amp; Réinitialisation en Place (In-Place Reset) :</strong> L'utilisateur peut au choix cliquer sur le lien reçu ou renseigner directement son code de validation à 6 chiffres sur l'interface post-envoi <code>/forgot-password</code>. Dès confirmation réussie du code par l'API <code>GET /password-reset/verify-token/{token}</code>, les champs de saisie du nouveau mot de passe et de confirmation s'affichent directement sur la même page avec jauge de robustesse et contrôle de concordance en temps réel. La soumission valide le nouveau mot de passe (minimum 6 caractères), l'enregistre haché avec <code>bcrypt</code> via <code>POST /password-reset/reset-password</code>, marque le code comme utilisé (<code>is_used=True</code>) et affiche l'écran de succès invitant à la connexion.</li>
+        <li><strong>Lien « Mot de Passe Oublié » :</strong> Intégré directement sur l'interface de connexion (<code>/login</code>), permettant de basculer vers l'écran de demande <code>/forgot-password</code>.</li>
+        <li><strong>Génération Cryptographique OTP (Secrets Python) :</strong> Code OTP à 6 chiffres généré avec le générateur pseudo-aléatoire cryptographiquement sûr <code>secrets.randbelow(900000) + 100000</code>.</li>
+        <li><strong>Stockage Zéro-Clair en Base (Zero-Knowledge OTP) :</strong> Le code OTP n'est <strong>jamais</strong> stocké en clair dans PostgreSQL ou SQLite. Seul son hachage sécurisé <code>bcrypt</code> est persisté dans la table <code>password_reset_requests</code> (colonne <code>otp_hash</code>).</li>
+        <li><strong>Expiration Courte &amp; Configurable (10 minutes) :</strong> Horodatage d'expiration <code>expires_at</code> fixé à 10 minutes par défaut (variable d'environnement <code>PASSWORD_RESET_OTP_EXPIRE_MINUTES</code>).</li>
+        <li><strong>Protection Anti-Bruteforce Stricte :</strong> Compteur d'essais <code>attempts</code> incrémenté à chaque tentative erronée. Après 5 échecs consécutifs, la demande est définitivement verrouillée et invalidée (<code>used=True</code>).</li>
+        <li><strong>Protection Anti-Énumération &amp; Timing-Safe :</strong> Le endpoint renvoie une réponse générique identique que l'email existe ou non en base. Si l'email est inexistant, une opération de hachage fictive est exécutée afin d'égaliser le temps de réponse et d'éliminer tout vecteur d'attaque temporelle (timing attacks).</li>
+        <li><strong>Jeton Temporaire d'Autorisation (Étape 2 &rarr; Étape 3) :</strong> Dès validation correcte de l'OTP, le backend émet un jeton cryptographique <code>reset_token</code> (32 octets URL-safe) dont le hash SHA-256 est enregistré dans <code>reset_token_hash</code>. Le frontend doit obligatoirement transmettre ce jeton pour autoriser la modification du mot de passe.</li>
+        <li><strong>Email Transactionnel SMTP Réel :</strong> Envoi d'un email au design institutionnel E-Schola Pro contenant le badge OTP haute visibilité, la durée de validité (10 min) et un encadré d'avertissement de sécurité invitant à ignorer l'email si l'utilisateur n'est pas l'auteur de la demande. Supporte tous les domaines externes (Gmail, Outlook, Yahoo, domaines personnalisés).</li>
+        <li><strong>Invalidation Totale &amp; Révocation des Sessions (Post-Reset) :</strong> Dès enregistrement du nouveau mot de passe (haché par <code>bcrypt</code>), le jeton est marqué comme utilisé, toutes les demandes antérieures en attente sont closes, toutes les sessions actives dans <code>user_sessions</code> sont révoquées (<code>is_active=False</code>) et la colonne <code>token_version</code> de la table <code>users</code> est incrémentée, invalidant immédiatement tous les JWT d'accès en circulation.</li>
       </ul>
     </div>
 </section>

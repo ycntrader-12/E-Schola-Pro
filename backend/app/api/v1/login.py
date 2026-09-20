@@ -141,7 +141,10 @@ async def login_access_token(
         )
 
     access_token = security.create_access_token(
-        subject=user.id, role=user.role, email=user.email
+        subject=user.id,
+        role=user.role,
+        email=user.email,
+        token_version=getattr(user, "token_version", 1),
     )
 
     # Enregistrement de la session active et de l'événement d'audit

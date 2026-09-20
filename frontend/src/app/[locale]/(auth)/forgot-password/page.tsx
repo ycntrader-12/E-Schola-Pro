@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Link } from '@/i18n/routing';
 import { apiClient } from '@/lib/api';
@@ -18,6 +18,8 @@ import {
   EyeOff,
   Lock,
   Check,
+  Clock,
+  RotateCcw,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import BackButton from '@/components/BackButton';
@@ -36,12 +38,25 @@ export default function ForgotPasswordPage() {
   const [emailMessage, setEmailMessage] = useState('');
   const [emailError, setEmailError] = useState('');
 
-  // Étape 2 : Code de confirmation
+  // Étape 2 : Code OTP de confirmation
   const [validationCode, setValidationCode] = useState('');
   const [verifyingCode, setVerifyingCode] = useState(false);
+  const [resendingCode, setResendingCode] = useState(false);
   const [codeError, setCodeError] = useState('');
-  const [verifiedToken, setVerifiedToken] = useState('');
+  const [resetToken, setResetToken] = useState('');
   const [maskedEmail, setMaskedEmail] = useState<string | null>(null);
+  const [remainingAttempts, setRemainingAttempts] = useState<number | null>(null);
+  const [isLocked, setIsLocked] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  // Cooldown timer pour le renvoi de code (évite les abus & fuites de mémoire)
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const interval = setInterval(() => {
+      setResendCooldown((prev) => (prev > 1 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [resendCooldown]);
 
   // Étape 3 : Nouveau mot de passe
   const [newPassword, setNewPassword] = useState('');
@@ -51,7 +66,7 @@ export default function ForgotPasswordPage() {
   const [resettingPassword, setResettingPassword] = useState(false);
   const [passwordError, setPasswordError] = useState('');
 
-  // Calcul robustesse du mot de passe
+  // Calcul de la robustesse du mot de passe
   const getPasswordStrength = (pwd: string): { label: string; color: string; textColor: string; score: number } => {
     if (!pwd) return { label: '', color: 'bg-slate-200', textColor: 'text-slate-400', score: 0 };
     let score = 0;
@@ -68,7 +83,7 @@ export default function ForgotPasswordPage() {
 
   const strength = getPasswordStrength(newPassword);
 
-  // Envoi de la demande par email
+  // Envoi initial de la demande par email
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setEmailError('');
@@ -76,13 +91,16 @@ export default function ForgotPasswordPage() {
     setLoading(true);
 
     try {
-      const response = await apiClient.post('/password-reset/forgot-password', {
+      const response = await apiClient.post('/auth/forgot-password', {
         email: email.trim(),
       });
       setEmailMessage(
         response.data?.message ||
-        "Si l'adresse saisie correspond à un compte actif, un code de confirmation et un lien de réinitialisation vous ont été envoyés par email."
+        "Si l'adresse saisie correspond à un compte actif, un code OTP de validation vous a été envoyé par email."
       );
+      setResendCooldown(60);
+      setRemainingAttempts(5);
+      setIsLocked(false);
       setStep('code');
     } catch (err: unknown) {
       const errorObj = err as { response?: { status?: number; data?: { detail?: string } }; message?: string };
@@ -99,9 +117,44 @@ export default function ForgotPasswordPage() {
     }
   };
 
-  // Validation du code à 6 chiffres
+  // Renvoi d'un nouveau code OTP avec cooldown anti-abus
+  const handleResendCode = async () => {
+    if (resendCooldown > 0 || resendingCode) return;
+    setResendingCode(true);
+    setCodeError('');
+
+    try {
+      const response = await apiClient.post('/auth/forgot-password', {
+        email: email.trim(),
+      });
+      setEmailMessage(
+        response.data?.message ||
+        "Un nouveau code OTP de validation à 6 chiffres vous a été envoyé par email."
+      );
+      setValidationCode('');
+      setResendCooldown(60);
+      setIsLocked(false);
+      setRemainingAttempts(5);
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { status?: number; data?: { detail?: string } } };
+      if (errorObj?.response?.status === 429) {
+        setCodeError("Limite de demandes atteinte. Veuillez patienter avant de renvoyer un code.");
+      } else {
+        setCodeError("Impossible de renvoyer un code. Veuillez réessayer.");
+      }
+    } finally {
+      setResendingCode(false);
+    }
+  };
+
+  // Validation sécurisée du code OTP
   const handleConfirmCode = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLocked) {
+      setCodeError("Ce code est bloqué suite à trop d'échecs. Veuillez faire une nouvelle demande.");
+      return;
+    }
+
     const cleanCode = validationCode.trim().replace(/\s+/g, '');
     if (!cleanCode) {
       setCodeError('Veuillez saisir votre code de validation.');
@@ -116,24 +169,39 @@ export default function ForgotPasswordPage() {
     setVerifyingCode(true);
 
     try {
-      const response = await apiClient.get(`/password-reset/verify-token/${encodeURIComponent(cleanCode)}`);
+      const response = await apiClient.post('/auth/verify-reset-code', {
+        email: email.trim(),
+        code: cleanCode,
+      });
+
       if (response.data && response.data.valid) {
-        setVerifiedToken(cleanCode);
-        setMaskedEmail(response.data?.masked_email || null);
+        setResetToken(response.data.reset_token);
+        setMaskedEmail(response.data.masked_email || null);
         setStep('password');
       } else {
-        setCodeError("Code de validation invalide, déjà utilisé ou expiré.");
+        const remaining = response.data?.remaining_attempts;
+        if (remaining !== undefined) {
+          setRemainingAttempts(remaining);
+          if (remaining === 0) {
+            setIsLocked(true);
+          }
+        }
+        setCodeError(response.data?.message || "Code de validation incorrect ou expiré.");
       }
     } catch (err: unknown) {
-      const errorObj = err as { response?: { data?: { detail?: string } } };
+      const errorObj = err as { response?: { status?: number; data?: { detail?: string } } };
       const detailMsg = errorObj?.response?.data?.detail;
-      setCodeError(detailMsg || "Code invalide ou expiré. Veuillez vérifier le code reçu par email.");
+      if (errorObj?.response?.status === 429) {
+        setCodeError("Trop d'essais infructueux. Veuillez patienter un instant.");
+      } else {
+        setCodeError(detailMsg || "Code invalide ou expiré. Veuillez vérifier le code reçu par email.");
+      }
     } finally {
       setVerifyingCode(false);
     }
   };
 
-  // Enregistrement du nouveau mot de passe
+  // Enregistrement définitif du nouveau mot de passe avec le reset_token
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setPasswordError('');
@@ -151,9 +219,10 @@ export default function ForgotPasswordPage() {
     setResettingPassword(true);
 
     try {
-      await apiClient.post('/password-reset/reset-password', {
-        token: verifiedToken,
+      await apiClient.post('/auth/reset-password', {
+        reset_token: resetToken,
         new_password: newPassword,
+        confirm_password: confirmPassword,
       });
       setStep('success');
     } catch (err: unknown) {
@@ -201,7 +270,7 @@ export default function ForgotPasswordPage() {
                 Mot de passe oublié ?
               </h2>
               <p className="text-slate-500 text-xs sm:text-sm leading-relaxed">
-                Saisissez votre adresse email ci-dessous. Nous vous enverrons un lien et un code de confirmation.
+                Saisissez votre adresse email. Nous vous enverrons un code de validation OTP à 6 chiffres.
               </p>
             </>
           )}
@@ -210,13 +279,13 @@ export default function ForgotPasswordPage() {
             <>
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-[#1877f2] text-[10px] font-extrabold uppercase tracking-wider shadow-xs">
                 <Binary size={13} className="text-[#1877f2]" />
-                <span>Validation du Code</span>
+                <span>Vérification du Code OTP</span>
               </div>
               <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
                 Confirmer le code
               </h2>
               <p className="text-slate-500 text-xs sm:text-sm leading-relaxed">
-                Saisissez le code à 6 chiffres reçu dans votre boîte email.
+                Saisissez le code à 6 chiffres reçu dans votre boîte de réception.
               </p>
             </>
           )}
@@ -240,13 +309,13 @@ export default function ForgotPasswordPage() {
             <>
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-extrabold uppercase tracking-wider shadow-xs">
                 <CheckCircle2 size={13} className="text-emerald-600" />
-                <span>Succès</span>
+                <span>Opération Réussie</span>
               </div>
               <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
                 Félicitations !
               </h2>
               <p className="text-slate-500 text-xs sm:text-sm leading-relaxed">
-                Votre mot de passe a été réinitialisé avec succès.
+                Votre mot de passe a été mis à jour et vos sessions précédentes ont été révoquées.
               </p>
             </>
           )}
@@ -286,7 +355,7 @@ export default function ForgotPasswordPage() {
                 className="w-full py-3 mt-2 rounded-xl text-xs font-extrabold text-white bg-[#1877f2] hover:bg-[#166fe5] hover:scale-[1.005] active:scale-[0.99] disabled:opacity-50 transition-all shadow-md shadow-blue-500/25 flex items-center justify-center gap-2 cursor-pointer"
               >
                 <KeyRound size={15} />
-                <span>{loading ? tCommon('loading') : 'Envoyer le lien de réinitialisation'}</span>
+                <span>{loading ? tCommon('loading') : 'Envoyer le code OTP'}</span>
               </button>
             </form>
 
@@ -299,15 +368,15 @@ export default function ForgotPasswordPage() {
           </div>
         )}
 
-        {/* ÉTAPE 2 : Saisie & Confirmation du Code reçu */}
+        {/* ÉTAPE 2 : Saisie & Vérification du Code OTP */}
         {step === 'code' && (
           <div className="space-y-4 py-1 animate-fade-in">
-            {/* Banner info succès envoi */}
+            {/* Notification de transmission */}
             <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 space-y-1.5 text-xs">
               <div className="flex items-start gap-2.5">
                 <CheckCircle2 size={18} className="text-emerald-600 shrink-0 mt-0.5" />
                 <div className="space-y-1">
-                  <p className="font-bold text-emerald-950 text-xs">Email transmis avec succès</p>
+                  <p className="font-bold text-emerald-950 text-xs">Code OTP transmis avec succès</p>
                   <p className="leading-relaxed text-emerald-800 text-[11px]">{emailMessage}</p>
                 </div>
               </div>
@@ -315,14 +384,26 @@ export default function ForgotPasswordPage() {
 
             {/* Boîte de confirmation du code */}
             <div className="p-4 rounded-2xl bg-blue-50/70 border border-blue-200 space-y-3">
-              <div className="flex items-center gap-2.5 text-slate-900">
-                <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-                  <Binary size={16} />
+              <div className="flex items-center justify-between text-slate-900">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                    <Binary size={16} />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-xs text-slate-900">Code de validation (6 chiffres)</h3>
+                    <p className="text-[11px] text-slate-500">Valable 10 minutes</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-bold text-xs text-slate-900">Vous avez reçu votre code ?</h3>
-                  <p className="text-[11px] text-slate-500">Saisissez le code de validation reçu dans l'email :</p>
-                </div>
+
+                {remainingAttempts !== null && (
+                  <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${
+                    remainingAttempts > 2
+                      ? 'bg-blue-100 text-blue-800 border-blue-200'
+                      : 'bg-rose-100 text-rose-800 border-rose-200'
+                  }`}>
+                    {remainingAttempts} essai{remainingAttempts > 1 ? 's' : ''} restant{remainingAttempts > 1 ? 's' : ''}
+                  </span>
+                )}
               </div>
 
               {codeError && (
@@ -338,21 +419,22 @@ export default function ForgotPasswordPage() {
                     type="text"
                     inputMode="numeric"
                     autoComplete="one-time-code"
-                    maxLength={12}
+                    maxLength={10}
+                    disabled={isLocked}
                     value={validationCode}
                     onChange={(e) => {
                       setValidationCode(e.target.value.toUpperCase());
                       if (codeError) setCodeError('');
                     }}
                     placeholder="Ex: 849201"
-                    className="w-full px-3.5 py-2.5 pl-10 rounded-xl bg-white border border-blue-200 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-slate-900 font-mono font-bold text-sm tracking-widest text-center outline-none transition-all placeholder:text-slate-300 placeholder:font-normal placeholder:tracking-normal shadow-xs"
+                    className="w-full px-3.5 py-2.5 pl-10 rounded-xl bg-white border border-blue-200 focus:border-[#1877f2] focus:ring-2 focus:ring-blue-100 text-slate-900 font-mono font-bold text-sm tracking-widest text-center outline-none transition-all placeholder:text-slate-300 placeholder:font-normal placeholder:tracking-normal shadow-xs disabled:opacity-50"
                   />
                   <KeyRound size={15} className="absolute inset-y-0 left-3.5 my-auto text-blue-500 pointer-events-none" />
                 </div>
 
                 <button
                   type="submit"
-                  disabled={verifyingCode || !validationCode.trim()}
+                  disabled={verifyingCode || isLocked || !validationCode.trim()}
                   className="w-full py-2.5 rounded-xl text-xs font-bold text-white bg-[#1877f2] hover:bg-[#166fe5] active:scale-[0.99] disabled:opacity-50 transition-all shadow-md shadow-blue-500/20 flex items-center justify-center gap-2 cursor-pointer"
                 >
                   {verifyingCode ? (
@@ -362,17 +444,33 @@ export default function ForgotPasswordPage() {
                     </>
                   ) : (
                     <>
-                      <span>Confirmer le code</span>
+                      <span>Vérifier le code</span>
                       <ArrowRight size={14} />
                     </>
                   )}
                 </button>
               </form>
-            </div>
 
-            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-[11px] text-slate-600 space-y-1">
-              <p className="font-semibold text-slate-800">💡 Conseil d'utilisation :</p>
-              <p>Le code expire automatiquement dans <strong>60 minutes</strong>. Si vous n'avez rien reçu dans 2 minutes, vérifiez vos spams.</p>
+              {/* Bouton de renvoi avec cooldown anti-abus */}
+              <div className="pt-1 flex items-center justify-between text-[11px] text-slate-500">
+                <span className="flex items-center gap-1">
+                  <Clock size={12} />
+                  <span>Pas reçu ?</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={handleResendCode}
+                  disabled={resendCooldown > 0 || resendingCode}
+                  className="font-bold text-[#1877f2] hover:underline disabled:opacity-50 disabled:no-underline flex items-center gap-1 cursor-pointer disabled:cursor-not-allowed"
+                >
+                  <RotateCcw size={12} className={resendingCode ? 'animate-spin' : ''} />
+                  <span>
+                    {resendCooldown > 0
+                      ? `Renvoyer un code (${resendCooldown}s)`
+                      : 'Renvoyer un nouveau code'}
+                  </span>
+                </button>
+              </div>
             </div>
 
             <div className="pt-2 space-y-2">
@@ -390,10 +488,11 @@ export default function ForgotPasswordPage() {
                   setEmailMessage('');
                   setValidationCode('');
                   setCodeError('');
+                  setIsLocked(false);
                 }}
                 className="w-full py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
               >
-                Renvoyer une autre demande
+                Changer d'adresse email
               </button>
             </div>
           </div>
@@ -516,12 +615,12 @@ export default function ForgotPasswordPage() {
               {resettingPassword ? (
                 <>
                   <RefreshCw size={15} className="animate-spin" />
-                  <span>Enregistrement du mot de passe...</span>
+                  <span>Réinitialisation en cours...</span>
                 </>
               ) : (
                 <>
                   <ShieldCheck size={15} />
-                  <span>Confirmer le nouveau mot de passe</span>
+                  <span>Réinitialiser le mot de passe</span>
                 </>
               )}
             </button>
@@ -548,9 +647,9 @@ export default function ForgotPasswordPage() {
               <div className="flex items-start gap-2.5">
                 <CheckCircle2 size={22} className="text-emerald-600 shrink-0 mt-0.5" />
                 <div className="space-y-1">
-                  <p className="font-bold text-emerald-950 text-sm">Mot de passe réinitialisé !</p>
+                  <p className="font-bold text-emerald-950 text-sm">Mot de passe modifié avec succès !</p>
                   <p className="leading-relaxed text-emerald-800 text-[11px]">
-                    Votre nouveau mot de passe a été enregistré avec succès. Vous pouvez désormais vous connecter à votre espace E-Schola Pro.
+                    Votre nouveau mot de passe a été enregistré avec succès. Toutes vos sessions antérieures ont été révoquées pour votre sécurité.
                   </p>
                 </div>
               </div>

@@ -185,12 +185,18 @@ class Settings(BaseSettings):
     SMTP_HOST: str = ""
     SMTP_PORT: int = 587
     SMTP_USER: str = ""
+    SMTP_USERNAME: str = ""
     SMTP_PASSWORD: str = ""
+    SMTP_FROM: str = ""
     SMTP_FROM_EMAIL: str = ""
     SMTP_FROM_NAME: str = "E-Schola Pro"
     SMTP_TLS: bool = True
     SMTP_SSL: bool = False
     EMAILS_ENABLED: bool = False
+
+    # Password Reset OTP Configuration
+    PASSWORD_RESET_OTP_EXPIRE_MINUTES: int = 10
+    PASSWORD_RESET_MAX_ATTEMPTS: int = 5
 
     model_config = SettingsConfigDict(
         env_file=[str(BACKEND_DIR / ".env"), ".env"],
@@ -303,6 +309,12 @@ def db_has_driver(url: str) -> bool:
 
 
 settings = Settings()
+
+# Support unified naming for SMTP_USERNAME and SMTP_FROM
+if not settings.SMTP_USER and settings.SMTP_USERNAME:
+    settings.SMTP_USER = settings.SMTP_USERNAME
+if not settings.SMTP_FROM_EMAIL and settings.SMTP_FROM:
+    settings.SMTP_FROM_EMAIL = settings.SMTP_FROM
 
 # Automatically enable EMAILS_ENABLED if SMTP_HOST and SMTP_FROM_EMAIL or SMTP_USER are provided and EMAILS_ENABLED wasn't explicitly disabled
 if not settings.EMAILS_ENABLED and settings.SMTP_HOST and (settings.SMTP_USER or settings.SMTP_FROM_EMAIL):

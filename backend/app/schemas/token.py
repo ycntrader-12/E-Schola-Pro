@@ -8,3 +8,5 @@ class Token(BaseModel):
 
 class TokenPayload(BaseModel):
     sub: str | None = None
+    role: str | None = None
+    token_version: int | None = None

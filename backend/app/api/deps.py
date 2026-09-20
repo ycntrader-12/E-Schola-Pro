@@ -48,6 +48,17 @@ def get_current_user(db: SessionDep, token: TokenDep) -> User:
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Votre compte a été désactivé par l'administration. Veuillez contacter l'administration pour réactiver votre accès (contact@eschola.pro).",
         )
+    if (
+        token_data.token_version is not None
+        and hasattr(user, "token_version")
+        and user.token_version is not None
+        and token_data.token_version != user.token_version
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session révoquée suite à une modification de mot de passe. Veuillez vous reconnecter.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     return user
 
 

@@ -26,6 +26,7 @@ def create_access_token(
     expires_delta: timedelta | None = None,
     role: str | None = None,
     email: str | None = None,
+    token_version: int | None = None,
 ) -> str:
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
@@ -34,11 +35,13 @@ def create_access_token(
             minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
         )
 
-    to_encode = {"exp": expire, "sub": str(subject)}
+    to_encode: dict = {"exp": expire, "sub": str(subject)}
     if role:
         to_encode["role"] = role
     if email:
         to_encode["email"] = email
+    if token_version is not None:
+        to_encode["token_version"] = token_version
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm="HS256")
     return encoded_jwt
 

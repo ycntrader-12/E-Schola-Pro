@@ -14,6 +14,7 @@ class User(Base):
         String, default="étudiant"
     )  # "admin", "admin_manager", "formateur", "pedagogique", "dg_rh", "employer", "stagiaire", "étudiant"
     is_active = Column(Boolean, default=True, nullable=False)
+    token_version = Column(Integer, default=1, nullable=False, server_default="1")
     
     # Profil standard étendu
     nom = Column(String, nullable=True)
