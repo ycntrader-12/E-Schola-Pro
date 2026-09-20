@@ -99,6 +99,12 @@ def test_1_valid_email_request_and_zero_clear_otp():
     data = response.json()
     assert "message" in data
     assert data["expires_in_minutes"] == 10
+    assert "smtp_active" in data
+    if not data["smtp_active"]:
+        assert "dev_code" in data
+        assert data["dev_code"] is not None
+        assert len(data["dev_code"]) == 6
+
 
     # Vérification directe en base de données : L'OTP ne doit JAMAIS être en clair
     db = SessionLocal()
@@ -361,6 +367,64 @@ def test_5_full_successful_reset_and_session_invalidation():
     cleanup_test_data(test_email)
 
 
+def test_6_smtp_resilience_and_configuration():
+    print("[TEST 6] Résilience SMTP & Configuration Dynamique...")
+    from create_admin import ensure_root_admin_first
+    from app.core.security import create_access_token
+
+    db = SessionLocal()
+    try:
+        admin = ensure_root_admin_first(db)
+        admin_token = create_access_token(admin.id)
+        admin_headers = {"Authorization": f"Bearer {admin_token}"}
+    finally:
+        db.close()
+
+    # 1. Vérification du statut email
+    st_res = client.get("/api/v1/email/status", headers=admin_headers)
+    assert st_res.status_code == 200
+    st_data = st_res.json()
+    assert "emails_enabled" in st_data
+    assert "smtp_host" in st_data
+
+    # 2. Configuration dynamique de SMTP
+    cfg_payload = {
+        "smtp_host": "smtp.mail-test-provider.com",
+        "smtp_port": 587,
+        "smtp_user": "test_smtp_user",
+        "smtp_password": "test_smtp_password",
+        "smtp_from_email": "notifications@eschola.pro",
+        "smtp_from_name": "E-Schola Pro Test",
+        "smtp_tls": True,
+        "smtp_ssl": False,
+        "emails_enabled": True,
+    }
+    cfg_res = client.post("/api/v1/email/configure", headers=admin_headers, json=cfg_payload)
+    assert cfg_res.status_code == 200
+    assert cfg_res.json()["success"] is True
+
+    # 3. Vérification que la configuration dynamique est prise en compte
+    st_updated = client.get("/api/v1/email/status", headers=admin_headers)
+    assert st_updated.status_code == 200
+    assert st_updated.json()["smtp_host"] == "smtp.mail-test-provider.com"
+    assert st_updated.json()["emails_enabled"] is True
+
+    # 4. Rétablir le mode initial pour les tests
+    reset_payload = {
+        "smtp_host": "",
+        "smtp_port": 587,
+        "smtp_user": "",
+        "smtp_password": "",
+        "smtp_from_email": "contact@eschola.pro",
+        "smtp_from_name": "E-Schola Pro",
+        "smtp_tls": True,
+        "smtp_ssl": False,
+        "emails_enabled": False,
+    }
+    client.post("/api/v1/email/configure", headers=admin_headers, json=reset_payload)
+    print("  -> Succès : Configuration dynamique SMTP et statut vérifiés avec succès.")
+
+
 if __name__ == "__main__":
     print("==========================================================")
     print("LANCEMENT DES TESTS DE SÉCURITÉ MOT DE PASSE OUBLIÉ (OTP)")
@@ -370,6 +434,8 @@ if __name__ == "__main__":
     test_3_otp_verification_bad_attempts_and_locking()
     test_4_otp_expiration()
     test_5_full_successful_reset_and_session_invalidation()
+    test_6_smtp_resilience_and_configuration()
     print("==========================================================")
     print("TOUS LES TESTS DU WORKFLOW OTP ONT RÉUSSI AVEC SUCCÈS (100%)")
     print("==========================================================")
+

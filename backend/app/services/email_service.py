@@ -115,32 +115,110 @@ def get_base_html_template(
 """
 
 
+def get_smtp_runtime_config(session=None) -> Dict[str, Any]:
+    """
+    Dynamically loads SMTP configuration:
+    1. Checks SystemSetting from database if reachable (keys: smtp_host, smtp_port, smtp_user, smtp_password, smtp_from_email, smtp_from_name, smtp_tls, smtp_ssl, emails_enabled)
+    2. Falls back to settings from config.py / environment variables.
+    """
+    config: Dict[str, Any] = {
+        "smtp_host": (settings.SMTP_HOST or "").strip(),
+        "smtp_port": int(settings.SMTP_PORT or 587),
+        "smtp_user": (settings.SMTP_USER or settings.SMTP_USERNAME or "").strip(),
+        "smtp_password": (settings.SMTP_PASSWORD or "").strip(),
+        "smtp_from_email": (settings.SMTP_FROM_EMAIL or settings.SMTP_FROM or settings.SMTP_USER or "contact@eschola.pro").strip(),
+        "smtp_from_name": (settings.SMTP_FROM_NAME or "E-Schola Pro").strip(),
+        "smtp_tls": bool(settings.SMTP_TLS),
+        "smtp_ssl": bool(settings.SMTP_SSL),
+        "emails_enabled": bool(settings.EMAILS_ENABLED),
+    }
+
+    close_session = False
+    if session is None:
+        try:
+            from app.db.database import SessionLocal
+            session = SessionLocal()
+            close_session = True
+        except Exception:
+            session = None
+
+    if session is not None:
+        try:
+            from app.models.system_setting import SystemSetting
+            db_settings = session.query(SystemSetting).filter(
+                SystemSetting.key.in_([
+                    "smtp_host", "smtp_port", "smtp_user", "smtp_password",
+                    "smtp_from_email", "smtp_from_name", "smtp_tls", "smtp_ssl",
+                    "emails_enabled", "email_notifications_enabled"
+                ])
+            ).all()
+            for s in db_settings:
+                val = (s.value or "").strip()
+                if s.key == "smtp_host" and val:
+                    config["smtp_host"] = val
+                elif s.key == "smtp_port" and val:
+                    try:
+                        config["smtp_port"] = int(val)
+                    except Exception:
+                        pass
+                elif s.key == "smtp_user" and val:
+                    config["smtp_user"] = val
+                elif s.key == "smtp_password" and val:
+                    config["smtp_password"] = val
+                elif s.key == "smtp_from_email" and val:
+                    config["smtp_from_email"] = val
+                elif s.key == "smtp_from_name" and val:
+                    config["smtp_from_name"] = val
+                elif s.key == "smtp_tls" and val:
+                    config["smtp_tls"] = val.lower() in ("true", "1", "yes", "on")
+                elif s.key == "smtp_ssl" and val:
+                    config["smtp_ssl"] = val.lower() in ("true", "1", "yes", "on")
+                elif s.key in ("emails_enabled", "email_notifications_enabled") and val:
+                    config["emails_enabled"] = val.lower() in ("true", "1", "yes", "on")
+        except Exception:
+            pass
+        finally:
+            if close_session:
+                try:
+                    session.close()
+                except Exception:
+                    pass
+
+    return config
+
+
+def is_smtp_configured(session=None) -> bool:
+    """Returns True if a valid SMTP server is configured and active."""
+    cfg = get_smtp_runtime_config(session=session)
+    return bool(cfg.get("emails_enabled") and cfg.get("smtp_host"))
+
+
 def send_email(
     to_email: str,
     subject: str,
     html_content: str,
     text_content: Optional[str] = None,
+    session=None,
 ) -> bool:
     """
     Universal, robust email dispatcher.
     
     Behavior:
-    - If SMTP credentials are configured and EMAILS_ENABLED is True:
+    - If SMTP credentials are configured and active:
       Connects to the SMTP server (TLS on 587 or SSL on 465) and sends the email.
-    - If SMTP is NOT configured (development or missing credentials):
+    - If SMTP is NOT configured (development, test or unconfigured deployments):
       Gracefully logs the email to standard output (Mock mode) and returns True.
       This ensures that user creation, password changes, and notifications never
-      fail or throw exceptions in local development or unconfigured deployments.
+      fail or throw exceptions in unconfigured environments.
     """
     if not to_email or not is_valid_email(to_email):
         print(f"[Email Service Warning] Invalid destination email: '{to_email}'. Dispatch aborted.")
         return False
 
-    # Check if SMTP is configured and active
+    cfg = get_smtp_runtime_config(session=session)
     is_active = (
-        settings.EMAILS_ENABLED
-        and bool(settings.SMTP_HOST)
-        and bool(settings.SMTP_HOST.strip())
+        cfg["emails_enabled"]
+        and bool(cfg["smtp_host"])
     )
 
     if not is_active:
@@ -152,11 +230,8 @@ def send_email(
         print(f"       -> SMTP is inactive or unconfigured in .env. Email was logged safely without error.")
         return True
 
-    from_email = settings.SMTP_FROM_EMAIL or settings.SMTP_USER
-    if not from_email:
-        from_email = "noreply@eschola.pro"
-
-    from_name = settings.SMTP_FROM_NAME or "E-Schola Pro"
+    from_email = cfg["smtp_from_email"] or cfg["smtp_user"] or "noreply@eschola.pro"
+    from_name = cfg["smtp_from_name"] or "E-Schola Pro"
 
     # Create message
     msg = MIMEMultipart("alternative")
@@ -176,19 +251,19 @@ def send_email(
     msg.attach(part_html)
 
     try:
-        host = settings.SMTP_HOST.strip()
-        port = int(settings.SMTP_PORT or 587)
+        host = cfg["smtp_host"]
+        port = int(cfg["smtp_port"] or 587)
         timeout = 15
 
-        if settings.SMTP_SSL or port == 465:
+        if cfg["smtp_ssl"] or port == 465:
             server = smtplib.SMTP_SSL(host, port, timeout=timeout)
         else:
             server = smtplib.SMTP(host, port, timeout=timeout)
-            if settings.SMTP_TLS:
+            if cfg["smtp_tls"]:
                 server.starttls()
 
-        if settings.SMTP_USER and settings.SMTP_PASSWORD:
-            server.login(settings.SMTP_USER.strip(), settings.SMTP_PASSWORD.strip())
+        if cfg["smtp_user"] and cfg["smtp_password"]:
+            server.login(cfg["smtp_user"], cfg["smtp_password"])
 
         server.sendmail(from_email, [to_email], msg.as_string())
         server.quit()
@@ -199,6 +274,7 @@ def send_email(
     except Exception as exc:
         print(f"[Email Service Error] Failed to send email to '{to_email}': {exc}")
         return False
+
 
 
 def send_welcome_email(
@@ -562,23 +638,25 @@ def send_notification_email(
     return send_email(to_email=to_email, subject=subject, html_content=html)
 
 
-def test_smtp_connection(test_recipient: Optional[str] = None) -> Dict[str, Any]:
+def test_smtp_connection(test_recipient: Optional[str] = None, session=None) -> Dict[str, Any]:
     """
     Diagnostic tool to verify SMTP network reachability, TLS/SSL handshake,
     credentials authentication, and optional test email sending.
     """
-    host = (settings.SMTP_HOST or "").strip()
-    port = int(settings.SMTP_PORT or 587)
-    from_email = settings.SMTP_FROM_EMAIL or settings.SMTP_USER or "test@eschola.pro"
+    cfg = get_smtp_runtime_config(session=session)
+    host = cfg["smtp_host"]
+    port = int(cfg["smtp_port"] or 587)
+    from_email = cfg["smtp_from_email"] or cfg["smtp_user"] or "test@eschola.pro"
+    from_name = cfg["smtp_from_name"] or "E-Schola Pro"
 
     results: Dict[str, Any] = {
         "status": "pending",
         "smtp_host": host,
         "smtp_port": port,
-        "emails_enabled": settings.EMAILS_ENABLED,
-        "tls": settings.SMTP_TLS,
-        "ssl": settings.SMTP_SSL,
-        "user_configured": bool(settings.SMTP_USER),
+        "emails_enabled": cfg["emails_enabled"],
+        "tls": cfg["smtp_tls"],
+        "ssl": cfg["smtp_ssl"],
+        "user_configured": bool(cfg["smtp_user"]),
         "steps": [],
         "message": "",
     }
@@ -602,20 +680,20 @@ def test_smtp_connection(test_recipient: Optional[str] = None) -> Dict[str, Any]
     server = None
     try:
         timeout = 10
-        if settings.SMTP_SSL or port == 465:
+        if cfg["smtp_ssl"] or port == 465:
             server = smtplib.SMTP_SSL(host, port, timeout=timeout)
             results["steps"].append({"step": "SSL Connection (port 465)", "success": True})
         else:
             server = smtplib.SMTP(host, port, timeout=timeout)
             results["steps"].append({"step": "TCP Connection", "success": True})
-            if settings.SMTP_TLS:
+            if cfg["smtp_tls"]:
                 server.starttls()
                 results["steps"].append({"step": "STARTTLS Handshake", "success": True})
 
         # Step 3: Authentication
-        if settings.SMTP_USER and settings.SMTP_PASSWORD:
-            server.login(settings.SMTP_USER.strip(), settings.SMTP_PASSWORD.strip())
-            results["steps"].append({"step": "Authentication", "success": True, "user": settings.SMTP_USER})
+        if cfg["smtp_user"] and cfg["smtp_password"]:
+            server.login(cfg["smtp_user"], cfg["smtp_password"])
+            results["steps"].append({"step": "Authentication", "success": True, "user": cfg["smtp_user"]})
 
         # Step 4: Optional Test Send
         if test_recipient:
@@ -632,7 +710,7 @@ def test_smtp_connection(test_recipient: Optional[str] = None) -> Dict[str, Any]
                 )
                 msg = MIMEMultipart("alternative")
                 msg["Subject"] = Header(test_subject, "utf-8")
-                msg["From"] = f"{settings.SMTP_FROM_NAME} <{from_email}>"
+                msg["From"] = f"{from_name} <{from_email}>"
                 msg["To"] = test_recipient
                 msg.attach(MIMEText(test_html, "html", "utf-8"))
                 server.sendmail(from_email, [test_recipient], msg.as_string())
@@ -655,3 +733,4 @@ def test_smtp_connection(test_recipient: Optional[str] = None) -> Dict[str, Any]
         results["message"] = f"Erreur lors de la connexion SMTP ({host}:{port}) : {e}"
         results["steps"].append({"step": "SMTP Handshake/Auth", "success": False, "error": str(e)})
         return results
+

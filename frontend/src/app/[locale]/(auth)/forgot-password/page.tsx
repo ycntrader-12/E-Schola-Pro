@@ -49,6 +49,11 @@ export default function ForgotPasswordPage() {
   const [isLocked, setIsLocked] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
 
+  // État du serveur SMTP & code de secours (évite le blocage si SMTP non configuré)
+  const [smtpActive, setSmtpActive] = useState<boolean | null>(null);
+  const [devCode, setDevCode] = useState<string | null>(null);
+  const [smtpNotice, setSmtpNotice] = useState<string | null>(null);
+
   // Cooldown timer pour le renvoi de code (évite les abus & fuites de mémoire)
   useEffect(() => {
     if (resendCooldown <= 0) return;
@@ -94,10 +99,23 @@ export default function ForgotPasswordPage() {
       const response = await apiClient.post('/auth/forgot-password', {
         email: email.trim(),
       });
+      const data = response.data || {};
       setEmailMessage(
-        response.data?.message ||
+        data.message ||
         "Si l'adresse saisie correspond à un compte actif, un code OTP de validation vous a été envoyé par email."
       );
+      const isSmtp = data.smtp_active ?? false;
+      const returnedDevCode = data.dev_code ?? null;
+      setSmtpActive(isSmtp);
+      setDevCode(returnedDevCode);
+      setSmtpNotice(data.smtp_notice ?? null);
+
+      if (returnedDevCode) {
+        setValidationCode(returnedDevCode);
+      } else {
+        setValidationCode('');
+      }
+
       setResendCooldown(60);
       setRemainingAttempts(5);
       setIsLocked(false);
@@ -127,11 +145,23 @@ export default function ForgotPasswordPage() {
       const response = await apiClient.post('/auth/forgot-password', {
         email: email.trim(),
       });
+      const data = response.data || {};
       setEmailMessage(
-        response.data?.message ||
+        data.message ||
         "Un nouveau code OTP de validation à 6 chiffres vous a été envoyé par email."
       );
-      setValidationCode('');
+      const isSmtp = data.smtp_active ?? false;
+      const returnedDevCode = data.dev_code ?? null;
+      setSmtpActive(isSmtp);
+      setDevCode(returnedDevCode);
+      setSmtpNotice(data.smtp_notice ?? null);
+
+      if (returnedDevCode) {
+        setValidationCode(returnedDevCode);
+      } else {
+        setValidationCode('');
+      }
+
       setResendCooldown(60);
       setIsLocked(false);
       setRemainingAttempts(5);
@@ -146,6 +176,7 @@ export default function ForgotPasswordPage() {
       setResendingCode(false);
     }
   };
+
 
   // Validation sécurisée du code OTP
   const handleConfirmCode = async (e: React.FormEvent) => {
@@ -371,16 +402,62 @@ export default function ForgotPasswordPage() {
         {/* ÉTAPE 2 : Saisie & Vérification du Code OTP */}
         {step === 'code' && (
           <div className="space-y-4 py-1 animate-fade-in">
-            {/* Notification de transmission */}
-            <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 space-y-1.5 text-xs">
-              <div className="flex items-start gap-2.5">
-                <CheckCircle2 size={18} className="text-emerald-600 shrink-0 mt-0.5" />
-                <div className="space-y-1">
-                  <p className="font-bold text-emerald-950 text-xs">Code OTP transmis avec succès</p>
-                  <p className="leading-relaxed text-emerald-800 text-[11px]">{emailMessage}</p>
+            {/* Notification de transmission adaptée à l'état SMTP */}
+            {smtpActive === false ? (
+              <div className="p-3.5 rounded-2xl bg-amber-50/90 border border-amber-200 text-amber-950 space-y-2 text-xs animate-fade-in shadow-xs">
+                <div className="flex items-start gap-2.5">
+                  <AlertCircle size={18} className="text-amber-600 shrink-0 mt-0.5" />
+                  <div className="space-y-1.5 flex-1">
+                    <div className="flex items-center justify-between">
+                      <p className="font-bold text-amber-950 text-xs">Serveur SMTP non configuré (Mode Test / Démo)</p>
+                      <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-200 text-amber-900 border border-amber-300">
+                        Code Direct
+                      </span>
+                    </div>
+                    <p className="leading-relaxed text-amber-800 text-[11px]">
+                      {emailMessage}
+                    </p>
+                    {devCode && (
+                      <div className="mt-2 p-2.5 rounded-xl bg-white border border-amber-300 flex items-center justify-between shadow-xs">
+                        <div>
+                          <span className="text-[10px] uppercase font-bold tracking-wider text-slate-500 block">Votre Code OTP généré :</span>
+                          <span className="font-mono text-lg font-black tracking-widest text-[#1877f2]">{devCode}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setValidationCode(devCode);
+                            setCodeError('');
+                          }}
+                          className="px-3 py-1.5 text-[11px] font-extrabold text-[#1877f2] bg-blue-50 hover:bg-blue-100 active:scale-95 rounded-lg transition-all border border-blue-200 cursor-pointer shadow-xs"
+                        >
+                          Remplir ce code
+                        </button>
+                      </div>
+                    )}
+                    {smtpNotice && (
+                      <p className="text-[10px] text-amber-700/90 pt-1 leading-normal italic">
+                        💡 {smtpNotice}
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 space-y-1.5 text-xs animate-fade-in shadow-xs">
+                <div className="flex items-start gap-2.5">
+                  <CheckCircle2 size={18} className="text-emerald-600 shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="font-bold text-emerald-950 text-xs">Code OTP transmis avec succès par e-mail</p>
+                    <p className="leading-relaxed text-emerald-800 text-[11px]">{emailMessage}</p>
+                    <p className="text-[10px] text-emerald-700 pt-0.5">
+                      Veuillez vérifier votre boîte de réception ainsi que votre dossier Courriers indésirables / Spams.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
 
             {/* Boîte de confirmation du code */}
             <div className="p-4 rounded-2xl bg-blue-50/70 border border-blue-200 space-y-3">

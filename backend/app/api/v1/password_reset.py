@@ -17,6 +17,7 @@ from app.models.user import User
 from app.models.user_session import UserSession
 from app.schemas.password_reset import (
     PasswordResetConfirm,
+    PasswordResetInitResponse,
     PasswordResetRequest as PasswordResetRequestSchema,
     PasswordResetResponse,
     PasswordResetVerifyResponse,
@@ -25,10 +26,12 @@ from app.schemas.password_reset import (
 )
 from app.services.audit_service import extract_client_ip, log_audit_event
 from app.services.email_service import (
+    is_smtp_configured,
     is_valid_email,
     send_no_account_found_email,
     send_password_reset_email,
 )
+
 
 router = APIRouter()
 
@@ -50,12 +53,12 @@ def hash_token(raw_token: str) -> str:
     return hashlib.sha256(raw_token.strip().encode("utf-8")).hexdigest()
 
 
-@router.post("/forgot-password", response_model=Dict[str, str | int])
+@router.post("/forgot-password", response_model=PasswordResetInitResponse)
 async def request_password_reset(
     request: Request,
     payload: PasswordResetRequestSchema,
     session: SessionDep,
-) -> Dict[str, str | int]:
+) -> PasswordResetInitResponse:
     """
     Initiates password reset process with a cryptographically secure 6-digit OTP code:
     - Strictly rate-limited by IP and email to mitigate DDoS/spam attacks
@@ -64,6 +67,7 @@ async def request_password_reset(
     - Enforces anti-enumeration protection (identical response whether email exists or not)
     - Performs dummy hash calculation for missing emails to prevent timing attacks
     - Dispatches transactional HTML email with OTP and security notice to any domain
+    - Dynamically checks SMTP reachability: provides graceful dev/test OTP fallback when SMTP is unconfigured
     """
     client_ip = extract_client_ip(request)
     raw_input = payload.email.strip()
@@ -85,6 +89,7 @@ async def request_password_reset(
     )
 
     expire_minutes = getattr(settings, "PASSWORD_RESET_OTP_EXPIRE_MINUTES", 10)
+    smtp_active = is_smtp_configured(session=session)
 
     # 2. Search user case-insensitively
     user = (
@@ -180,20 +185,41 @@ async def request_password_reset(
                 user_email=target_email,
                 resource_type="user",
                 resource_id=user.id,
-                details=f"Demande de réinitialisation OTP initiée (expiration: {expire_minutes} min)",
+                details=f"Demande de réinitialisation OTP initiée (expiration: {expire_minutes} min, smtp_actif: {smtp_active})",
                 status="SUCCESS",
                 request=request,
             )
+
+            if smtp_active:
+                return PasswordResetInitResponse(
+                    message="Si l'adresse saisie correspond à un compte actif, un code de validation à 6 chiffres a été expédié avec succès par email.",
+                    expires_in_minutes=expire_minutes,
+                    smtp_active=True,
+                    dev_code=None,
+                    smtp_notice=None,
+                )
+            else:
+                return PasswordResetInitResponse(
+                    message="Code OTP généré avec succès. Note : le serveur SMTP n'est pas encore configuré sur cette instance, le code de validation est fourni ci-dessous pour tester sans blocage.",
+                    expires_in_minutes=expire_minutes,
+                    smtp_active=False,
+                    dev_code=otp_code,
+                    smtp_notice="Pour recevoir les e-mails directement dans votre boîte Gmail ou professionnelle, configurez vos accès SMTP dans Railway ou dans le fichier .env.",
+                )
     else:
         # Anti-enumeration: compute dummy hash to eliminate timing difference
         security.get_password_hash("dummy_otp_timing_safe")
         if dest_email and is_valid_email(dest_email):
             send_no_account_found_email(to_email=dest_email)
 
-    return {
-        "message": "Si l'adresse saisie correspond à un compte actif, un code de validation à 6 chiffres vous a été envoyé par email.",
-        "expires_in_minutes": expire_minutes,
-    }
+    return PasswordResetInitResponse(
+        message="Si l'adresse saisie correspond à un compte actif, un code de validation à 6 chiffres vous a été envoyé par email.",
+        expires_in_minutes=expire_minutes,
+        smtp_active=smtp_active,
+        dev_code=None,
+        smtp_notice=None,
+    )
+
 
 
 @router.post("/verify-reset-code", response_model=VerifyResetCodeResponse)

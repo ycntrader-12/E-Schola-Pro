@@ -6,6 +6,15 @@ class PasswordResetRequest(BaseModel):
     email: str = Field(..., description="Adresse email associée au compte E-Schola Pro")
 
 
+class PasswordResetInitResponse(BaseModel):
+    message: str
+    expires_in_minutes: int
+    smtp_active: bool = Field(False, description="Indique si un serveur SMTP réel est configuré et actif")
+    dev_code: Optional[str] = Field(None, description="Code OTP de secours retourné uniquement lorsque SMTP n'est pas configuré pour éviter le blocage")
+    smtp_notice: Optional[str] = Field(None, description="Consigne d'aide pour la configuration SMTP")
+
+
+
 class VerifyResetCodeRequest(BaseModel):
     email: Optional[str] = Field(None, description="Adresse email (optionnelle si token/contexte présent)")
     code: str = Field(..., min_length=4, max_length=12, description="Code OTP à 6 chiffres reçu par email")
