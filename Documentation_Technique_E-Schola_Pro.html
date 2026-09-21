@@ -3107,6 +3107,16 @@ E-Schola Pro/
       </ul>
     </div>
 
+    <h3>Architecture Reverse Proxy API Next.js &amp; Persistance Relative des Médias (Résolution 404 &amp; CORS Railway)</h3>
+    <div class="card" style="border-left: 4px solid var(--accent-green);">
+      <p>Afin de résoudre définitivement les erreurs HTTP 404 et les restrictions CORS lors de la manipulation des cours et de la lecture des vidéos sur Railway :</p>
+      <ul>
+        <li><strong>Proxy Transparent Next.js (<code>next.config.ts rewrites</code>) :</strong> Configuration de règles de réécriture dans <code>next.config.ts</code> redirigeant de manière transparente toutes les requêtes <code>/api/:path*</code> vers le serveur backend FastAPI (<code>BACKEND_INTERNAL_URL</code> ou <code>http://127.0.0.1:8000/api/:path*</code>). Le serveur Next.js agit comme un reverse proxy de bordure, éliminant tout blocage CORS entre le domaine frontend et le backend.</li>
+        <li><strong>Chemins Relatifs Universels Côté Client (<code>api.ts</code>) :</strong> Harmonisation du client API HTTP pour cibler par défaut le chemin relatif <code>/api/v1</code> au lieu d'une URL absolue statique <code>http://127.0.0.1:8000/api/v1</code>. Cette standardisation garantit que toutes les requêtes client (création, suppression, modification de cours et quiz) ciblent directement l'instance de production active et la base de données PostgreSQL distante sur Railway sans divergence d'environnements.</li>
+        <li><strong>Stockage Relatif des Vidéos Téléversées (<code>/uploads/videos/...</code>) :</strong> Le module d'upload backend (<code>backend/app/api/v1/upload.py</code>) enregistre désormais les vidéos sous forme de chemins relatifs racine (ex: <code>/uploads/videos/video_xxx.mp4</code>) au lieu d'URLs absolues comportant l'adresse de l'hôte d'origine. Les lecteurs vidéo (HTML5 et modales de cours) streament les vidéos de manière fluide et transparente sur n'importe quel domaine hôte sans conflit de protocole HTTP/HTTPS ou de règles CSP.</li>
+      </ul>
+    </div>
+
     <h3>Système Global de Modals de Confirmation 3D &amp; Harmonisation Thématique (ConfirmModalContext)</h3>
     <div class="card" style="border-left: 4px solid #1877f2;">
       <p>Afin d'offrir une expérience utilisateur de standing industriel et d'éliminer définitivement les boîtes de dialogue natives archaïques du navigateur (<code>window.confirm()</code>), un framework global de confirmation unifié a été déployé à l'échelle de toute la plateforme :</p>
@@ -3452,11 +3462,12 @@ npm run dev
       </ul>
     </div>
 
-    <h3>Variables Frontend (frontend/.env.local)</h3>
+    <h3>Variables Frontend (frontend/.env.local &amp; Environnement Railway)</h3>
     <table>
       <thead><tr><th>Variable</th><th>Valeur recommandée</th><th>Description</th></tr></thead>
       <tbody>
-        <tr><td><code>NEXT_PUBLIC_API_URL</code></td><td><code>http://127.0.0.1:8000/api/v1</code></td><td>Point d'accès API pour le client web. Décommentez <code>https://e-schola-pro-production.up.railway.app/api/v1</code> pour tester directement l'environnement Railway distant depuis le frontend local.</td></tr>
+        <tr><td><code>NEXT_PUBLIC_API_URL</code></td><td><code>/api/v1</code> (ou <code>http://127.0.0.1:8000/api/v1</code>)</td><td>Point d'accès API pour le client web. Par défaut relatif (<code>/api/v1</code>) pour exploiter le reverse proxy Next.js ou direct vers le backend.</td></tr>
+        <tr><td><code>BACKEND_INTERNAL_URL</code></td><td><code>http://127.0.0.1:8000</code></td><td>(Côté serveur Next.js) Cible du reverse proxy pour les rewrites <code>/api/:path*</code>. Sur conteneur Docker ou Railway privé, permet d'adresser le backend directement sans traverser l'Internet public.</td></tr>
         <tr><td><code>NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME</code></td><td>—</td><td>Identifiant Cloudinary pour l'affichage direct côté client</td></tr>
         <tr><td><code>NEXT_PUBLIC_CLOUDINARY_API_KEY</code></td><td>—</td><td>Clé publique Cloudinary</td></tr>
       </tbody>
