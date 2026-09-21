@@ -175,6 +175,10 @@ def validate_recipient_email(
     if block_disposable and domain in DISPOSABLE_DOMAINS:
         return False, f"Domaine d'adresse temporaire/jetable non autorisé ({domain})", normalized
 
+    INTERNAL_ALLOWED_DOMAINS = {"eschola.pro", "localhost", "local", "example.com", "test.com"}
+    if domain in INTERNAL_ALLOWED_DOMAINS:
+        return True, "Email valide (domaine interne plateforme)", normalized
+
     if check_mx:
         try:
             resolver = dns.resolver.Resolver()
@@ -200,8 +204,8 @@ def validate_recipient_email(
 
 
 def is_valid_email(email_str: str) -> bool:
-    """Validates email format using multi-tier check."""
-    is_valid, _, _ = validate_recipient_email(email_str)
+    """Validates email RFC syntax safely without blocking DNS MX lookup."""
+    is_valid, _, _ = validate_recipient_email(email_str, check_mx=False, block_disposable=False)
     return is_valid
 
 

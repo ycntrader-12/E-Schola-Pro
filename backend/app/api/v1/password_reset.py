@@ -9,7 +9,7 @@ from sqlalchemy import and_, func, or_
 
 from app.api.deps import CurrentUser, SessionDep
 from app.core import security
-from app.core.config import settings
+from app.core.config import is_production, settings
 from app.core.rate_limiter import rate_limiter
 from app.core.roles import require_admin
 from app.models.password_reset_request import PasswordResetRequest
@@ -188,20 +188,33 @@ async def request_password_reset(
             status="SUCCESS",
             request=request,
         )
+
+        dev_code = otp_code if (not smtp_active or not is_production()) else None
+        if dev_code:
+            print(f"\n==================================================================")
+            print(f"[OTP DEV/MOCK] Code de réinitialisation généré : {dev_code}")
+            print(f"               Compte : {target_email}")
+            print(f"               Statut SMTP : {'Actif' if smtp_active else 'Inactif (Mode Simulation)'}")
+            print(f"==================================================================\n")
+
         return PasswordResetInitResponse(
             message="Si l'adresse saisie correspond à un compte actif sur la plateforme, un code de validation à 6 chiffres a été envoyé avec succès par e-mail.",
             expires_in_minutes=expire_minutes,
             smtp_active=smtp_active,
+            dev_code=dev_code,
         )
     else:
         # Anti-enumeration: compute dummy hash to eliminate timing difference
         security.get_password_hash("dummy_otp_timing_safe")
+        if not is_production():
+            print(f"[OTP INFO] Aucune adresse active trouvée correspondant à l'identifiant : '{raw_input}'")
 
     # Anti-enumeration response when user does not exist
     return PasswordResetInitResponse(
         message="Si l'adresse saisie correspond à un compte actif sur la plateforme, un code de validation à 6 chiffres vous a été envoyé par e-mail.",
         expires_in_minutes=expire_minutes,
         smtp_active=smtp_active,
+        dev_code=None,
     )
 
 

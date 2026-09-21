@@ -48,6 +48,8 @@ export default function ForgotPasswordPage() {
   const [remainingAttempts, setRemainingAttempts] = useState<number | null>(null);
   const [isLocked, setIsLocked] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
+  const [smtpActive, setSmtpActive] = useState<boolean | null>(null);
+  const [devCode, setDevCode] = useState<string | null>(null);
 
 
   // Cooldown timer pour le renvoi de code (évite les abus & fuites de mémoire)
@@ -100,7 +102,14 @@ export default function ForgotPasswordPage() {
         data.message ||
         "Si l'adresse saisie correspond à un compte actif sur la plateforme, un code de validation à 6 chiffres vous a été envoyé par e-mail."
       );
-      setValidationCode('');
+      setSmtpActive(data.smtp_active ?? false);
+      if (data.dev_code) {
+        setDevCode(data.dev_code);
+        setValidationCode(data.dev_code);
+      } else {
+        setDevCode(null);
+        setValidationCode('');
+      }
       setResendCooldown(60);
       setRemainingAttempts(5);
       setIsLocked(false);
@@ -135,7 +144,14 @@ export default function ForgotPasswordPage() {
         data.message ||
         "Un nouveau code de validation à 6 chiffres vous a été envoyé par e-mail."
       );
-      setValidationCode('');
+      setSmtpActive(data.smtp_active ?? false);
+      if (data.dev_code) {
+        setDevCode(data.dev_code);
+        setValidationCode(data.dev_code);
+      } else {
+        setDevCode(null);
+        setValidationCode('');
+      }
       setResendCooldown(60);
       setIsLocked(false);
       setRemainingAttempts(5);
@@ -399,6 +415,47 @@ export default function ForgotPasswordPage() {
               </div>
             </div>
 
+            {/* Bannière d'assistance immédiate en mode DEV / Simulation (SMTP inactif) */}
+            {devCode && (
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-300/80 text-amber-950 space-y-2.5 text-xs animate-fade-in shadow-xs">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">🔧</span>
+                    <span className="font-extrabold text-amber-950 text-xs">Mode Simulation (SMTP Inactif)</span>
+                  </div>
+                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-200/90 text-amber-900 border border-amber-300">
+                    Développement
+                  </span>
+                </div>
+                <p className="text-[11px] text-amber-900 leading-relaxed">
+                  Le serveur SMTP réel n'étant pas encore configuré dans <code className="bg-amber-200/60 px-1 py-0.5 rounded font-mono font-bold text-amber-950">.env</code>, aucun email n'a été envoyé à l'extérieur. Le code OTP de validation généré pour ce test est :
+                </p>
+                <div className="flex items-center justify-between bg-white px-3.5 py-2.5 rounded-xl border border-amber-300 shadow-2xs">
+                  <span className="font-mono font-black text-lg tracking-widest text-amber-950">{devCode}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setValidationCode(devCode);
+                      if (codeError) setCodeError('');
+                    }}
+                    className="px-3 py-1.5 rounded-lg bg-amber-600 text-white font-extrabold text-[11px] hover:bg-amber-700 transition-colors shadow-xs cursor-pointer"
+                  >
+                    Remplir automatiquement
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {smtpActive === false && !devCode && (
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-slate-700 space-y-1 text-xs animate-fade-in">
+                <p className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                  <span>ℹ️</span> Serveur SMTP réel inactif
+                </p>
+                <p className="text-[11px] text-slate-600 leading-relaxed">
+                  Le service SMTP n'est pas configuré dans <code className="bg-slate-200/70 px-1 py-0.5 rounded font-mono text-slate-800">backend/.env</code>. Si l'adresse saisie ne correspond pas à un compte déjà existant en base, aucun code n'a été généré.
+                </p>
+              </div>
+            )}
 
             {/* Boîte de confirmation du code */}
             <div className="p-4 rounded-2xl bg-blue-50/70 border border-blue-200 space-y-3">
