@@ -52,6 +52,11 @@ from create_admin import seed_users
 class TestTransactionalEmailSuite(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        # 1. Guarantee DB tables exist even on a fresh runner without pre-existing sqlite db
+        from app.db.base import Base
+        from app.db.database import engine
+        Base.metadata.create_all(bind=engine)
+
         cls.client = TestClient(app)
         cls.db = SessionLocal()
         seed_users()

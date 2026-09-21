@@ -120,20 +120,21 @@ jobs:
           fi
 
       - name: "Installation de la CLI Railway"
-        if: env.RAILWAY_TOKEN != ''
+        if: secrets.RAILWAY_TOKEN != ''
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
           npm install -g @railway/cli
 
       - name: "Déploiement sur Railway via CLI"
-        if: env.RAILWAY_TOKEN != ''
+        if: secrets.RAILWAY_TOKEN != ''
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
           railway up --detach --service "${{ secrets.RAILWAY_SERVICE_NAME || 'E-Schola-Pro' }}"
 
       - name: "Vérification post-déploiement du Healthcheck"
+        if: secrets.RAILWAY_TOKEN != ''
         run: |
           TARGET_HOST="${{ secrets.RAILWAY_PUBLIC_DOMAIN || 'e-schola-pro-production.up.railway.app' }}"
           echo "Surveillance de l'endpoint : https://$TARGET_HOST/api/v1/health"

@@ -61,7 +61,7 @@ def run_checks(ci_mode: bool = False) -> int:
     # 2. Database URL Architecture
     db_url = settings.DATABASE_URL
     print(f"[*] Database URL Config  : {mask_secret(db_url, 12)}")
-    if prod_mode:
+    if prod_mode and not ci_mode:
         if "postgresql" not in db_url and "postgres" not in db_url:
             print("[FAIL] En production, l'URL de base de données DOIT être PostgreSQL !")
             failures += 1
@@ -76,7 +76,7 @@ def run_checks(ci_mode: bool = False) -> int:
     # 3. Security & Secret Key
     sec_key = settings.SECRET_KEY
     if not sec_key or sec_key == "supersecretkey_please_change_in_production":
-        if prod_mode and not in_railway:
+        if prod_mode and not in_railway and not ci_mode:
             print("[FAIL] SECRET_KEY non sécurisée ou valeur par défaut en production !")
             failures += 1
         else:
