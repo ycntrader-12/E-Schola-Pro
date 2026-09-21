@@ -394,6 +394,7 @@ def send_or_save_message(
 
     # Active Sending
     created_primary_messages = []
+    internal_users_to_notify = set()
     if primary_users:
         for recipient in primary_users:
             main_msg = Message(
@@ -416,6 +417,8 @@ def send_or_save_message(
             )
             session.add(main_msg)
             created_primary_messages.append(main_msg)
+            if recipient.email and "@" in recipient.email:
+                internal_users_to_notify.add(recipient)
     else:
         # Relay only external recipient
         main_msg = Message(
@@ -468,6 +471,8 @@ def send_or_save_message(
                     cc_emails=cc_summary_str,
                 )
                 session.add(cc_msg)
+                if cc_user.email and "@" in cc_user.email:
+                    internal_users_to_notify.add(cc_user)
 
     # B) CC by email addresses
     for email_addr in cc_email_list:
@@ -495,6 +500,8 @@ def send_or_save_message(
                 cc_emails=cc_summary_str,
             )
             session.add(cc_msg)
+            if cc_user.email and "@" in cc_user.email:
+                internal_users_to_notify.add(cc_user)
         elif not cc_user:
             # Adresse email non trouvée en base de données : c'est un destinataire externe
             external_emails_to_notify.add(email_addr)
@@ -503,16 +510,27 @@ def send_or_save_message(
     for m in created_primary_messages:
         session.refresh(m)
 
-    # Dispatch emails to external recipients
-    if external_emails_to_notify and not msg_in.is_draft:
+    # Dispatch emails to external & internal recipients
+    if not msg_in.is_draft:
         from app.services.email_service import send_notification_email
-        for ext_email in external_emails_to_notify:
-            send_notification_email(
-                to_email=ext_email,
-                subject=clean_subject if clean_subject else "Nouveau message",
-                title="Vous avez reçu un message depuis E-Schola Pro",
-                message_text=f"<p><strong>De :</strong> {current_user.prenom} {current_user.nom} ({current_user.email})</p><br/>{clean_body}",
-            )
+        
+        if external_emails_to_notify:
+            for ext_email in external_emails_to_notify:
+                send_notification_email(
+                    to_email=ext_email,
+                    subject=clean_subject if clean_subject else "Nouveau message",
+                    title="Vous avez reçu un message depuis E-Schola Pro",
+                    message_text=f"<p><strong>De :</strong> {current_user.prenom} {current_user.nom} ({current_user.email})</p><br/>{clean_body}",
+                )
+                
+        if internal_users_to_notify:
+            for usr in internal_users_to_notify:
+                send_notification_email(
+                    to_email=usr.email,
+                    subject=f"[{current_user.prenom} {current_user.nom}] {clean_subject if clean_subject else 'Nouveau message'}",
+                    title=f"Nouveau message de {current_user.prenom} {current_user.nom}",
+                    message_text=f"<p>Bonjour {usr.prenom},</p><p>Vous avez reçu un nouveau message sur la plateforme E-Schola Pro.</p><br/><div style='padding:15px; border-left: 4px solid #4F46E5; background: #F9FAFB;'>{clean_body}</div><br/><p><a href='/inbox' style='color:#4F46E5; text-decoration:none;'><strong>Ouvrir la messagerie</strong></a></p>",
+                )
 
     return created_primary_messages[0]
 
