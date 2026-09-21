@@ -18,12 +18,9 @@ MAX_VIDEO_SIZE = 60 * 1024 * 1024       # 60 MB
 
 
 def get_base_url(request: Request) -> str:
-    # Check for reverse proxy / Railway / Nginx forwarded headers
-    forwarded_host = request.headers.get("x-forwarded-host") or request.headers.get("host")
-    if forwarded_host:
-        proto = request.headers.get("x-forwarded-proto", "https" if "https" in str(request.base_url) else "http")
-        return f"{proto}://{forwarded_host}"
-    return f"{request.url.scheme}://{request.client.host if request.client else '127.0.0.1'}:{request.url.port or 8000}"
+    # We now return an empty string to generate relative URLs (e.g., /uploads/videos/...)
+    # This completely eliminates CORS issues and domain mapping bugs, relying on Next.js proxy.
+    return ""
 
 
 def save_upload_file_securely(
