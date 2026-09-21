@@ -109,35 +109,23 @@ jobs:
       - name: "Checkout du référentiel Git"
         uses: actions/checkout@v4
 
-      - name: "Vérification du secret RAILWAY_TOKEN"
+      - name: "Déploiement et Surveillance Railway"
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_SERVICE_NAME: ${{ secrets.RAILWAY_SERVICE_NAME || 'E-Schola-Pro' }}
+          TARGET_HOST: ${{ secrets.RAILWAY_PUBLIC_DOMAIN || 'e-schola-pro-production.up.railway.app' }}
         run: |
-          if [ -z "${{ secrets.RAILWAY_TOKEN }}" ]; then
-            echo "::warning title=Railway Token Absente::Le secret 'RAILWAY_TOKEN' n'est pas configuré dans les GitHub Secrets."
-            echo "Si votre projet Railway est déjà connecté au repo GitHub, le déploiement natif s'exécute automatiquement à chaque push."
+          if [ -z "$RAILWAY_TOKEN" ]; then
+            echo "::notice title=Railway Token Non Configuré::Le secret 'RAILWAY_TOKEN' n'est pas configuré dans GitHub Secrets."
+            echo "Si votre application Railway est liée à GitHub, le déploiement continu s'effectue automatiquement via le webhook natif."
             exit 0
-          else
-            echo "[OK] Secret RAILWAY_TOKEN détecté."
           fi
 
-      - name: "Installation de la CLI Railway"
-        if: secrets.RAILWAY_TOKEN != ''
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: |
+          echo "[OK] Secret RAILWAY_TOKEN détecté. Début du déploiement CLI..."
           npm install -g @railway/cli
+          railway up --detach --service "$RAILWAY_SERVICE_NAME"
 
-      - name: "Déploiement sur Railway via CLI"
-        if: secrets.RAILWAY_TOKEN != ''
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: |
-          railway up --detach --service "${{ secrets.RAILWAY_SERVICE_NAME || 'E-Schola-Pro' }}"
-
-      - name: "Vérification post-déploiement du Healthcheck"
-        if: secrets.RAILWAY_TOKEN != ''
-        run: |
-          TARGET_HOST="${{ secrets.RAILWAY_PUBLIC_DOMAIN || 'e-schola-pro-production.up.railway.app' }}"
-          echo "Surveillance de l'endpoint : https://$TARGET_HOST/api/v1/health"
+          echo "Surveillance post-déploiement de l'endpoint : https://$TARGET_HOST/api/v1/health"
           for i in {1..24}; do
             STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://$TARGET_HOST/api/v1/health" || true)
             if [ "$STATUS" = "200" ]; then
