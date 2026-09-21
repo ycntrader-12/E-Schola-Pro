@@ -190,9 +190,22 @@ class Settings(BaseSettings):
     SMTP_FROM: str = ""
     SMTP_FROM_EMAIL: str = ""
     SMTP_FROM_NAME: str = "E-Schola Pro"
+    SMTP_REPLY_TO: str = ""
     SMTP_TLS: bool = True
     SMTP_SSL: bool = False
+    SMTP_TIMEOUT: int = 15
+    SMTP_ALLOW_INSECURE_TLS: bool = False
     EMAILS_ENABLED: bool = False
+
+    # DKIM & SPF Configuration
+    DKIM_DOMAIN: str = ""
+    DKIM_SELECTOR: str = "eschola"
+    DKIM_PRIVATE_KEY: str = ""
+    DKIM_PRIVATE_KEY_PATH: str = ""
+
+    # Recipient Validation
+    EMAIL_VALIDATE_MX: bool = True
+    BLOCK_DISPOSABLE_EMAILS: bool = True
 
     # Password Reset OTP Configuration
     PASSWORD_RESET_OTP_EXPIRE_MINUTES: int = 10
@@ -272,22 +285,33 @@ class Settings(BaseSettings):
 
         return self
 
-    @field_validator("SMTP_PORT", mode="before")
+    @field_validator("SMTP_PORT", "SMTP_TIMEOUT", mode="before")
     @classmethod
-    def validate_smtp_port(cls, v: Any) -> int:
+    def validate_smtp_numbers(cls, v: Any, info: Any) -> int:
+        field_name = getattr(info, "field_name", "SMTP_PORT")
+        default_val = 15 if field_name == "SMTP_TIMEOUT" else 587
         if v is not None and str(v).strip():
             try:
                 return int(str(v).strip())
             except Exception:
-                return 587
-        return 587
+                return default_val
+        return default_val
 
-    @field_validator("SMTP_TLS", "SMTP_SSL", mode="before")
+    @field_validator(
+        "SMTP_TLS",
+        "SMTP_SSL",
+        "SMTP_ALLOW_INSECURE_TLS",
+        "EMAIL_VALIDATE_MX",
+        "BLOCK_DISPOSABLE_EMAILS",
+        mode="before",
+    )
     @classmethod
-    def validate_smtp_bools(cls, v: Any) -> bool:
-        if v is not None and str(v).strip():
+    def validate_smtp_bools(cls, v: Any, info: Any) -> bool:
+        field_name = getattr(info, "field_name", "")
+        default_val = True if field_name in ("SMTP_TLS", "EMAIL_VALIDATE_MX", "BLOCK_DISPOSABLE_EMAILS") else False
+        if v is not None and str(v).strip() != "":
             return str(v).strip().lower() in ("true", "1", "yes", "on")
-        return False
+        return default_val
 
     @field_validator("EMAILS_ENABLED", mode="before")
     @classmethod

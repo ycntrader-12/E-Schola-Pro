@@ -41,4 +41,5 @@ api_router.include_router(attendance.router, prefix="/attendance", tags=["attend
 api_router.include_router(groups.router, prefix="/groups", tags=["groups"])
 api_router.include_router(tasks.router, prefix="/tasks", tags=["tasks"])
 api_router.include_router(email.router, prefix="/email", tags=["email"])
+api_router.include_router(email.router, prefix="/emails", tags=["emails"])
 

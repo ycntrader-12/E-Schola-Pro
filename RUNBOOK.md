@@ -252,8 +252,46 @@ Chaque mise à jour de l'interface utilisateur (composants React, CSS, landing p
    * `CLOUDINARY_CLOUD_NAME` = *[Votre Cloud Name]* (Requis pour médias Cloudinary)
    * `CLOUDINARY_API_KEY` = *[Votre API Key]*
    * `CLOUDINARY_API_SECRET` = *[Votre API Secret]*
+   * `EMAILS_ENABLED` = `true` *(Active l'envoi des emails transactionnels réels)*
+   * `SMTP_HOST` = *[ex: smtp-relay.brevo.com ou smtp.sendgrid.net]*
+   * `SMTP_PORT` = `587` *(STARTTLS)* ou `465` *(SSL direct)*
+   * `SMTP_USER` = *[Votre identifiant SMTP]*
+   * `SMTP_PASSWORD` = *[Votre mot de passe ou clé API SMTP]*
+   * `SMTP_FROM_EMAIL` = `contact@votre-domaine.pro`
+   * `SMTP_FROM_NAME` = `E-Schola Pro`
+   * `SMTP_REPLY_TO` = `support@votre-domaine.pro`
+   * `SMTP_TLS` = `true`
+   * `SMTP_SSL` = `false`
+   * `DKIM_DOMAIN` = `votre-domaine.pro`
+   * `DKIM_SELECTOR` = `eschola`
+   * `DKIM_PRIVATE_KEY` = *[Clé privée RSA 2048-bit au format PEM avec sauts de ligne]*
+   * `EMAIL_VALIDATE_MX` = `true`
+   * `BLOCK_DISPOSABLE_EMAILS` = `true`
 
-3. **Synchronisation Centralisée avec le Développement Local :**
+3. **Configuration DNS pour Délivrabilité Maximale (SPF, DKIM, DMARC) :**
+   Pour éviter tout rejet par Google Workspace, Outlook ou Yahoo, configurez les enregistrements DNS chez votre registrar (OVH, Cloudflare, Namecheap, etc.) :
+   * **Enregistrement SPF (TXT) :**
+     - Hôte : `@` (domaine racine)
+     - Valeur : `v=spf1 include:_spf.votre-relais.com ~all`
+   * **Enregistrement DKIM (TXT) :**
+     - Hôte : `eschola._domainkey`
+     - Valeur : `v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCg...` *(généré par l'endpoint `/api/v1/email/diagnostics`)*
+   * **Enregistrement DMARC (TXT) :**
+     - Hôte : `_dmarc`
+     - Valeur : `v=DMARC1; p=reject; sp=reject; rua=mailto:dmarc@votre-domaine.pro; adkim=r; aspf=r`
+
+4. **Pipeline d'Intégration & Déploiement Continu GitHub Actions (`.github/workflows/ci-cd.yml`) :**
+   * À chaque commit poussé sur `main` ou `master`, GitHub Actions déclenche :
+     1. L'installation des dépendances et compilation Python.
+     2. L'exécution du vérificateur DevOps autonome (`backend/verify_production_env.py --ci-mode`).
+     3. L'exécution de la suite de tests automatisés d'emails transactionnels (`backend/test_transactional_email_suite.py`).
+     4. La compilation Next.js du Frontend.
+     5. Le déclenchement sécurisé du déploiement Railway avec vérification du healthcheck `/api/v1/health`.
+   * **Secrets GitHub à configurer (Settings -> Secrets and variables -> Actions) :**
+     - `RAILWAY_TOKEN` : Votre token API Railway (Account Settings -> Tokens).
+     - `RAILWAY_SERVICE_NAME` : Nom de votre service (défaut : `E-Schola-Pro`).
+
+5. **Synchronisation Centralisée avec le Développement Local :**
    * **Dans Railway (Postgres Service) :** Cliquez sur le service **Postgres** -> **Settings** -> **Networking** -> Cliquez sur **Add TCP Proxy** (ex: `roundhouse.proxy.rlwy.net:43210`).
    * **Dans votre environnement local (`backend/.env`) :**
      Renseignez cette URL publique :
@@ -269,6 +307,8 @@ Chaque mise à jour de l'interface utilisateur (composants React, CSS, landing p
 3. Vérifiez la santé du déploiement en interrogeant l'endpoint :
    `https://<votre-domaine>.up.railway.app/api/v1/health`
    qui doit retourner `{"status": "healthy", "database_alive": true, "database_engine": "postgresql"}`.
+4. Vérifiez les diagnostics email via :
+   `https://<votre-domaine>.up.railway.app/api/v1/email/diagnostics`
 
 ---
 

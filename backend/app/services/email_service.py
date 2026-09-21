@@ -1,21 +1,208 @@
+import base64
+import email
+import email.utils
+import hashlib
 import os
 import re
 import smtplib
 import socket
+import ssl
+import time
+import uuid
 from email.header import Header
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Tuple, Union
+
+import dns.resolver
+from email_validator import validate_email as ext_validate_email, EmailNotValidError
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import padding, rsa
 
 from app.core.config import settings
 
+# Common disposable email domains blacklist
+DISPOSABLE_DOMAINS = {
+    "mailinator.com", "guerrillamail.com", "10minutemail.com", "tempmail.com",
+    "trashmail.com", "yopmail.com", "sharklasers.com", "dispostable.com",
+    "throwawaymail.com", "fakeinbox.com", "generator.email", "getnada.com",
+    "temp-mail.org", "nada.ltd", "mohmal.com", "inboxkitten.com", "mytemp.email"
+}
+
+
+def canonicalize_header_relaxed(name: str, value: str) -> bytes:
+    """RFC 6376 Relaxed Header Canonicalization."""
+    name_clean = name.strip().lower().encode("ascii")
+    val_clean = re.sub(r"\r?\n[ \t]+", " ", value)
+    val_clean = re.sub(r"[ \t]+", " ", val_clean).strip()
+    return name_clean + b":" + val_clean.encode("utf-8")
+
+
+def canonicalize_body_relaxed(body_bytes: bytes) -> bytes:
+    """RFC 6376 Relaxed Body Canonicalization."""
+    text = body_bytes.decode("utf-8", errors="replace").replace("\r\n", "\n").replace("\r", "\n")
+    lines = text.split("\n")
+    cleaned_lines = []
+    for line in lines:
+        l = re.sub(r"[ \t]+", " ", line).rstrip(" \t")
+        cleaned_lines.append(l)
+    while cleaned_lines and cleaned_lines[-1] == "":
+        cleaned_lines.pop()
+    if not cleaned_lines:
+        return b""
+    return ("\r\n".join(cleaned_lines) + "\r\n").encode("utf-8")
+
+
+def load_dkim_private_key(cfg: Dict[str, Any]) -> Optional[rsa.RSAPrivateKey]:
+    """Loads RSA private key for DKIM from environment variable or filesystem."""
+    key_pem = (cfg.get("dkim_private_key") or "").strip()
+    key_path = (cfg.get("dkim_private_key_path") or "").strip()
+
+    if not key_pem and key_path and os.path.exists(key_path):
+        try:
+            with open(key_path, "r", encoding="utf-8") as f:
+                key_pem = f.read().strip()
+        except Exception as e:
+            print(f"[DKIM Warning] Failed to read private key from file {key_path}: {e}")
+            return None
+
+    if not key_pem:
+        return None
+
+    if "\\n" in key_pem and "-----BEGIN" in key_pem:
+        key_pem = key_pem.replace("\\n", "\n")
+
+    try:
+        loaded = serialization.load_pem_private_key(
+            key_pem.encode("utf-8"),
+            password=None,
+        )
+        if isinstance(loaded, rsa.RSAPrivateKey):
+            return loaded
+    except Exception as e:
+        print(f"[DKIM Warning] Could not parse DKIM private key: {e}")
+    return None
+
+
+def get_dkim_dns_record_info(private_key: rsa.RSAPrivateKey, selector: str, domain: str) -> Dict[str, str]:
+    """Extracts base64 public key and formats recommended DKIM DNS TXT record."""
+    pub_der = private_key.public_key().public_bytes(
+        encoding=serialization.Encoding.DER,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+    pub_b64 = base64.b64encode(pub_der).decode("ascii")
+    record_name = f"{selector}._domainkey.{domain}".strip(".")
+    record_value = f"v=DKIM1; k=rsa; p={pub_b64}"
+    return {
+        "record_type": "TXT",
+        "record_name": record_name,
+        "record_value": record_value,
+        "public_key_b64": pub_b64,
+    }
+
+
+def sign_mime_message_dkim(
+    raw_message_bytes: bytes,
+    selector: str,
+    domain: str,
+    private_key: rsa.RSAPrivateKey,
+) -> bytes:
+    """Signs MIME message using RSA-SHA256 according to RFC 6376."""
+    parts = raw_message_bytes.split(b"\r\n\r\n", 1)
+    delimiter = b"\r\n"
+    if len(parts) != 2:
+        parts = raw_message_bytes.split(b"\n\n", 1)
+        delimiter = b"\n"
+        if len(parts) != 2:
+            return raw_message_bytes
+
+    header_bytes, body_bytes = parts
+    c_body = canonicalize_body_relaxed(body_bytes)
+    bh = base64.b64encode(hashlib.sha256(c_body).digest()).decode("ascii")
+
+    msg_parsed = email.message_from_bytes(header_bytes)
+    sign_headers = ["from", "to", "subject", "date", "message-id", "mime-version", "content-type"]
+    present_sign_headers = [h for h in sign_headers if h in msg_parsed]
+    h_param = ":".join(present_sign_headers)
+    timestamp = str(int(time.time()))
+
+    dkim_sig_header_val = (
+        f"v=1; a=rsa-sha256; c=relaxed/relaxed; d={domain}; s={selector}; "
+        f"t={timestamp}; h={h_param}; bh={bh}; b="
+    )
+
+    canon_headers = []
+    for h in present_sign_headers:
+        val = msg_parsed.get(h, "")
+        canon_headers.append(canonicalize_header_relaxed(h, val))
+    canon_headers.append(canonicalize_header_relaxed("dkim-signature", dkim_sig_header_val))
+
+    sign_data = b"\r\n".join(canon_headers)
+    sig_bytes = private_key.sign(sign_data, padding.PKCS1v15(), hashes.SHA256())
+    b_param = base64.b64encode(sig_bytes).decode("ascii")
+
+    full_dkim_header = f"DKIM-Signature: {dkim_sig_header_val}{b_param}\r\n".encode("utf-8")
+    return full_dkim_header + raw_message_bytes
+
+
+def validate_recipient_email(
+    email_str: str,
+    check_mx: Optional[bool] = None,
+    block_disposable: Optional[bool] = None,
+) -> Tuple[bool, str, str]:
+    """
+    Multi-tier recipient email address validation:
+    1. RFC 5321/5322 syntax validation via email_validator
+    2. Optional disposable/temporary domain detection
+    3. Optional DNS MX/A record reachability check
+    """
+    if not email_str or not isinstance(email_str, str):
+        return False, "Adresse email vide ou invalide", ""
+
+    email_clean = email_str.strip()
+    if check_mx is None:
+        check_mx = getattr(settings, "EMAIL_VALIDATE_MX", True)
+    if block_disposable is None:
+        block_disposable = getattr(settings, "BLOCK_DISPOSABLE_EMAILS", True)
+
+    try:
+        valid = ext_validate_email(email_clean, check_deliverability=False)
+        normalized = valid.normalized
+        domain = valid.domain.lower()
+    except EmailNotValidError as e:
+        return False, f"Format d'email invalide : {e}", email_clean
+
+    if block_disposable and domain in DISPOSABLE_DOMAINS:
+        return False, f"Domaine d'adresse temporaire/jetable non autorisé ({domain})", normalized
+
+    if check_mx:
+        try:
+            resolver = dns.resolver.Resolver()
+            resolver.lifetime = 2.0
+            answers = resolver.resolve(domain, "MX")
+            if not answers:
+                try:
+                    resolver.resolve(domain, "A")
+                except Exception:
+                    return False, f"Aucun serveur de messagerie (MX ou A) pour le domaine '{domain}'", normalized
+        except dns.resolver.NXDOMAIN:
+            return False, f"Le domaine '{domain}' n'existe pas (NXDOMAIN)", normalized
+        except (dns.resolver.NoAnswer, dns.resolver.NoNameservers):
+            try:
+                resolver.resolve(domain, "A")
+            except Exception:
+                return False, f"Le domaine '{domain}' ne possède aucun enregistrement MX ou A", normalized
+        except Exception:
+            # Network latency or offline test environment, do not reject valid RFC format
+            pass
+
+    return True, "Email valide", normalized
+
 
 def is_valid_email(email_str: str) -> bool:
-    """Validates email format using standard regex."""
-    if not email_str:
-        return False
-    email_pattern = r"^[\w\.\+\-]+@[a-zA-Z0-9\-]+(\.[a-zA-Z0-9\-]+)+$"
-    return bool(re.match(email_pattern, email_str.strip()))
+    """Validates email format using multi-tier check."""
+    is_valid, _, _ = validate_recipient_email(email_str)
+    return is_valid
 
 
 def get_base_html_template(
@@ -33,7 +220,7 @@ def get_base_html_template(
     if action_url and action_text:
         button_html = f"""
         <div style="margin: 32px 0; text-align: center;">
-            <a href="{action_url}" target="_blank" style="display: inline-block; background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: #ffffff; text-decoration: none; font-weight: 600; font-size: 15px; padding: 14px 32px; border-radius: 8px; box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35); letter-spacing: 0.3px;">
+            <a href="{action_url}" target="_blank" style="display: inline-block; background: linear-gradient(135deg, #1877f2 0%, #0052cc 100%); color: #ffffff; text-decoration: none; font-weight: 600; font-size: 15px; padding: 14px 32px; border-radius: 8px; box-shadow: 0 4px 14px rgba(24, 119, 242, 0.35); letter-spacing: 0.3px;">
                 {action_text} &rarr;
             </a>
         </div>
@@ -68,9 +255,9 @@ def get_base_html_template(
                     
                     <!-- Header -->
                     <tr>
-                        <td style="background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); padding: 36px 32px; text-align: center;">
+                        <td style="background: linear-gradient(135deg, #1877f2 0%, #16325c 100%); padding: 36px 32px; text-align: center;">
                             <h1 style="margin: 0; color: #ffffff; font-size: 26px; font-weight: 800; letter-spacing: -0.5px;">
-                                E-Schola <span style="color: #a5b4fc;">Pro</span>
+                                E-Schola <span style="color: #93c5fd;">Pro</span>
                             </h1>
                             <p style="margin: 6px 0 0 0; color: #e0e7ff; font-size: 13px; font-weight: 500; letter-spacing: 0.5px; text-transform: uppercase;">
                                 Plateforme d'Enseignement & Formation Professionnelle
@@ -117,8 +304,8 @@ def get_base_html_template(
 
 def get_smtp_runtime_config(session=None) -> Dict[str, Any]:
     """
-    Dynamically loads SMTP configuration:
-    1. Checks SystemSetting from database if reachable (keys: smtp_host, smtp_port, smtp_user, smtp_password, smtp_from_email, smtp_from_name, smtp_tls, smtp_ssl, emails_enabled)
+    Dynamically loads SMTP, DKIM and Deliverability configuration:
+    1. Checks SystemSetting from database if reachable.
     2. Falls back to settings from config.py / environment variables.
     """
     config: Dict[str, Any] = {
@@ -128,9 +315,18 @@ def get_smtp_runtime_config(session=None) -> Dict[str, Any]:
         "smtp_password": (settings.SMTP_PASSWORD or "").strip(),
         "smtp_from_email": (settings.SMTP_FROM_EMAIL or settings.SMTP_FROM or settings.SMTP_USER or "contact@eschola.pro").strip(),
         "smtp_from_name": (settings.SMTP_FROM_NAME or "E-Schola Pro").strip(),
+        "smtp_reply_to": (settings.SMTP_REPLY_TO or "").strip(),
         "smtp_tls": bool(settings.SMTP_TLS),
         "smtp_ssl": bool(settings.SMTP_SSL),
+        "smtp_timeout": int(settings.SMTP_TIMEOUT or 15),
+        "smtp_allow_insecure_tls": bool(settings.SMTP_ALLOW_INSECURE_TLS),
         "emails_enabled": bool(settings.EMAILS_ENABLED),
+        "dkim_domain": (settings.DKIM_DOMAIN or "").strip(),
+        "dkim_selector": (settings.DKIM_SELECTOR or "eschola").strip(),
+        "dkim_private_key": (settings.DKIM_PRIVATE_KEY or "").strip(),
+        "dkim_private_key_path": (settings.DKIM_PRIVATE_KEY_PATH or "").strip(),
+        "email_validate_mx": bool(settings.EMAIL_VALIDATE_MX),
+        "block_disposable_emails": bool(settings.BLOCK_DISPOSABLE_EMAILS),
     }
 
     close_session = False
@@ -148,8 +344,11 @@ def get_smtp_runtime_config(session=None) -> Dict[str, Any]:
             db_settings = session.query(SystemSetting).filter(
                 SystemSetting.key.in_([
                     "smtp_host", "smtp_port", "smtp_user", "smtp_password",
-                    "smtp_from_email", "smtp_from_name", "smtp_tls", "smtp_ssl",
-                    "emails_enabled", "email_notifications_enabled"
+                    "smtp_from_email", "smtp_from_name", "smtp_reply_to",
+                    "smtp_tls", "smtp_ssl", "smtp_timeout", "smtp_allow_insecure_tls",
+                    "emails_enabled", "email_notifications_enabled",
+                    "dkim_domain", "dkim_selector", "dkim_private_key",
+                    "email_validate_mx", "block_disposable_emails"
                 ])
             ).all()
             for s in db_settings:
@@ -169,12 +368,31 @@ def get_smtp_runtime_config(session=None) -> Dict[str, Any]:
                     config["smtp_from_email"] = val
                 elif s.key == "smtp_from_name" and val:
                     config["smtp_from_name"] = val
+                elif s.key == "smtp_reply_to" and val:
+                    config["smtp_reply_to"] = val
                 elif s.key == "smtp_tls" and val:
                     config["smtp_tls"] = val.lower() in ("true", "1", "yes", "on")
                 elif s.key == "smtp_ssl" and val:
                     config["smtp_ssl"] = val.lower() in ("true", "1", "yes", "on")
+                elif s.key == "smtp_timeout" and val:
+                    try:
+                        config["smtp_timeout"] = int(val)
+                    except Exception:
+                        pass
+                elif s.key == "smtp_allow_insecure_tls" and val:
+                    config["smtp_allow_insecure_tls"] = val.lower() in ("true", "1", "yes", "on")
                 elif s.key in ("emails_enabled", "email_notifications_enabled") and val:
                     config["emails_enabled"] = val.lower() in ("true", "1", "yes", "on")
+                elif s.key == "dkim_domain" and val:
+                    config["dkim_domain"] = val
+                elif s.key == "dkim_selector" and val:
+                    config["dkim_selector"] = val
+                elif s.key == "dkim_private_key" and val:
+                    config["dkim_private_key"] = val
+                elif s.key == "email_validate_mx" and val:
+                    config["email_validate_mx"] = val.lower() in ("true", "1", "yes", "on")
+                elif s.key == "block_disposable_emails" and val:
+                    config["block_disposable_emails"] = val.lower() in ("true", "1", "yes", "on")
         except Exception:
             pass
         finally:
@@ -193,60 +411,50 @@ def is_smtp_configured(session=None) -> bool:
     return bool(cfg.get("emails_enabled") and cfg.get("smtp_host"))
 
 
-def send_email(
+def build_mime_message(
     to_email: str,
     subject: str,
     html_content: str,
     text_content: Optional[str] = None,
-    session=None,
-) -> bool:
-    """
-    Universal, robust email dispatcher.
-    
-    Behavior:
-    - If SMTP credentials are configured and active:
-      Connects to the SMTP server (TLS on 587 or SSL on 465) and sends the email.
-    - If SMTP is NOT configured (development, test or unconfigured deployments):
-      Gracefully logs the email to standard output (Mock mode) and returns True.
-      This ensures that user creation, password changes, and notifications never
-      fail or throw exceptions in unconfigured environments.
-    """
-    if not to_email or not is_valid_email(to_email):
-        print(f"[Email Service Warning] Invalid destination email: '{to_email}'. Dispatch aborted.")
-        return False
-
-    cfg = get_smtp_runtime_config(session=session)
-    is_active = (
-        cfg["emails_enabled"]
-        and bool(cfg["smtp_host"])
-    )
-
-    if not is_active:
-        try:
-            print(f"[Email Service (DEV/MOCK)] To: {to_email} | Subject: '{subject}'")
-        except UnicodeEncodeError:
-            safe_subject = subject.encode("ascii", "replace").decode("ascii")
-            print(f"[Email Service (DEV/MOCK)] To: {to_email} | Subject: '{safe_subject}'")
-        print(f"       -> SMTP is inactive or unconfigured in .env. Email was logged safely without error.")
-        
-        # Extrait le contenu texte pour l'afficher dans la console en mode DEV
-        if not text_content:
-            clean_text = re.sub(r"<[^>]+>", " ", html_content)
-            text_content_preview = " ".join(clean_text.split())
-        else:
-            text_content_preview = text_content
-            
-        print(f"       -> [CONTENU EMAIL MOCK] :\n{text_content_preview}\n")
-        return True
+    cfg: Optional[Dict[str, Any]] = None,
+    custom_headers: Optional[Dict[str, str]] = None,
+    reply_to: Optional[str] = None,
+) -> MIMEMultipart:
+    """Constructs RFC 5322 MIME message with robust custom headers and multipart body."""
+    if cfg is None:
+        cfg = get_smtp_runtime_config()
 
     from_email = cfg["smtp_from_email"] or cfg["smtp_user"] or "noreply@eschola.pro"
     from_name = cfg["smtp_from_name"] or "E-Schola Pro"
 
-    # Create message
     msg = MIMEMultipart("alternative")
     msg["Subject"] = Header(subject, "utf-8")
     msg["From"] = f"{from_name} <{from_email}>"
     msg["To"] = to_email
+
+    # RFC 5322 Date
+    msg["Date"] = email.utils.formatdate(localtime=True)
+
+    # Cryptographic Message-ID (RFC 5322)
+    domain_part = from_email.split("@")[-1] if "@" in from_email else "eschola.pro"
+    message_id = f"<{uuid.uuid4().hex}@{domain_part}>"
+    msg["Message-ID"] = message_id
+
+    # Custom Transactional Headers & Anti-Spam Classification
+    msg["X-Mailer"] = "E-Schola-Pro-Transactional-Mailer/2.0"
+    msg["X-Entity-Ref-ID"] = str(uuid.uuid4())
+    msg["Auto-Submitted"] = "auto-generated"
+    msg["Precedence"] = "bulk"
+
+    reply_to_addr = reply_to or cfg.get("smtp_reply_to")
+    if reply_to_addr:
+        msg["Reply-To"] = reply_to_addr
+
+    # Extra custom headers if provided
+    if custom_headers:
+        for k, v in custom_headers.items():
+            if k not in msg:
+                msg[k] = v
 
     # Plain text fallback
     if not text_content:
@@ -259,30 +467,170 @@ def send_email(
     msg.attach(part_text)
     msg.attach(part_html)
 
-    try:
-        host = cfg["smtp_host"]
-        port = int(cfg["smtp_port"] or 587)
-        timeout = 15
+    return msg
 
-        if cfg["smtp_ssl"] or port == 465:
-            server = smtplib.SMTP_SSL(host, port, timeout=timeout)
+
+def send_email(
+    to_email: str,
+    subject: str,
+    html_content: str,
+    text_content: Optional[str] = None,
+    session=None,
+    custom_headers: Optional[Dict[str, str]] = None,
+    reply_to: Optional[str] = None,
+) -> bool:
+    """
+    Universal, robust and secure transactional email dispatcher with:
+    - Multi-tier external address validation (syntax, MX, disposable check)
+    - STARTTLS / SSL/TLS hardened with modern TLS 1.2+ SSLContext
+    - Cryptographic DKIM signing (RFC 6376) if configured
+    - Automatic Mock fallback in development or unconfigured environments
+    - Transient connection retry mechanism
+    """
+    cfg = get_smtp_runtime_config(session=session)
+
+    # 1. Validation
+    is_valid, reason, normalized_to = validate_recipient_email(
+        to_email,
+        check_mx=cfg["email_validate_mx"],
+        block_disposable=cfg["block_disposable_emails"],
+    )
+    if not is_valid:
+        print(f"[Email Service Warning] Destinataire rejeté '{to_email}': {reason}. Envoi annulé.")
+        return False
+
+    to_email = normalized_to
+    is_active = cfg["emails_enabled"] and bool(cfg["smtp_host"])
+
+    # 2. Mock / Dev Fallback
+    if not is_active:
+        try:
+            print(f"[Email Service (DEV/MOCK)] To: {to_email} | Subject: '{subject}'")
+        except UnicodeEncodeError:
+            safe_subject = subject.encode("ascii", "replace").decode("ascii")
+            print(f"[Email Service (DEV/MOCK)] To: {to_email} | Subject: '{safe_subject}'")
+        print(f"       -> SMTP is inactive or unconfigured in .env. Email was logged safely without error.")
+
+        if not text_content:
+            clean_text = re.sub(r"<[^>]+>", " ", html_content)
+            text_content_preview = " ".join(clean_text.split())
         else:
-            server = smtplib.SMTP(host, port, timeout=timeout)
-            if cfg["smtp_tls"]:
-                server.starttls()
+            text_content_preview = text_content
 
-        if cfg["smtp_user"] and cfg["smtp_password"]:
-            server.login(cfg["smtp_user"], cfg["smtp_password"])
-
-        server.sendmail(from_email, [to_email], msg.as_string())
-        server.quit()
-
-        print(f"[Email Service] Email successfully sent to '{to_email}' via {host}:{port}.")
+        try:
+            print(f"       -> [CONTENU EMAIL MOCK] :\n{text_content_preview[:300]}...\n")
+        except UnicodeEncodeError:
+            safe_preview = text_content_preview[:300].encode("ascii", errors="replace").decode("ascii")
+            print(f"       -> [CONTENU EMAIL MOCK] :\n{safe_preview}...\n")
         return True
 
-    except Exception as exc:
-        print(f"[Email Service Error] Failed to send email to '{to_email}': {exc}")
-        return False
+    # 3. Build RFC message
+    msg = build_mime_message(
+        to_email=to_email,
+        subject=subject,
+        html_content=html_content,
+        text_content=text_content,
+        cfg=cfg,
+        custom_headers=custom_headers,
+        reply_to=reply_to,
+    )
+
+    from_email = cfg["smtp_from_email"] or cfg["smtp_user"] or "noreply@eschola.pro"
+    raw_bytes = msg.as_bytes()
+
+    # 4. Optional DKIM signing
+    dkim_key = load_dkim_private_key(cfg)
+    dkim_domain = cfg["dkim_domain"] or (from_email.split("@")[-1] if "@" in from_email else "")
+    dkim_selector = cfg["dkim_selector"] or "eschola"
+
+    if dkim_key and dkim_domain and dkim_selector:
+        try:
+            raw_bytes = sign_mime_message_dkim(
+                raw_bytes,
+                selector=dkim_selector,
+                domain=dkim_domain,
+                private_key=dkim_key,
+            )
+        except Exception as dkim_err:
+            print(f"[Email Service Warning] DKIM signing failed: {dkim_err}. Sending unsigned.")
+
+    # 5. Connect and send with retry
+    host = cfg["smtp_host"]
+    port = int(cfg["smtp_port"] or 587)
+    timeout = int(cfg["smtp_timeout"] or 15)
+
+    ssl_context = ssl.create_default_context()
+    try:
+        ssl_context.minimum_version = ssl.TLSVersion.TLSv1_2
+    except Exception:
+        pass
+
+    if cfg["smtp_allow_insecure_tls"]:
+        ssl_context.check_hostname = False
+        ssl_context.verify_mode = ssl.CERT_NONE
+
+    max_retries = 2
+    for attempt in range(1, max_retries + 1):
+        server = None
+        try:
+            if cfg["smtp_ssl"] or port == 465:
+                server = smtplib.SMTP_SSL(host, port, timeout=timeout, context=ssl_context)
+            else:
+                server = smtplib.SMTP(host, port, timeout=timeout)
+                if cfg["smtp_tls"]:
+                    server.starttls(context=ssl_context)
+
+            if cfg["smtp_user"] and cfg["smtp_password"]:
+                server.login(cfg["smtp_user"], cfg["smtp_password"])
+
+            server.sendmail(from_email, [to_email], raw_bytes)
+            server.quit()
+            print(f"[Email Service] Email successfully sent to '{to_email}' via {host}:{port}.")
+            return True
+
+        except (socket.timeout, smtplib.SMTPServerDisconnected, ConnectionResetError) as transient_exc:
+            if server:
+                try:
+                    server.quit()
+                except Exception:
+                    pass
+            if attempt < max_retries:
+                time.sleep(1.0)
+                continue
+            print(f"[Email Service Error] Transient network error delivering to '{to_email}': {transient_exc}")
+            return False
+        except Exception as exc:
+            if server:
+                try:
+                    server.quit()
+                except Exception:
+                    pass
+            print(f"[Email Service Error] Failed to send email to '{to_email}': {exc}")
+            return False
+
+    return False
+
+
+def send_transactional_email_background(
+    background_tasks,
+    to_email: str,
+    subject: str,
+    html_content: str,
+    text_content: Optional[str] = None,
+    custom_headers: Optional[Dict[str, str]] = None,
+    reply_to: Optional[str] = None,
+) -> None:
+    """Helper to dispatch transactional email via FastAPI BackgroundTasks non-blockingly."""
+    background_tasks.add_task(
+        send_email,
+        to_email=to_email,
+        subject=subject,
+        html_content=html_content,
+        text_content=text_content,
+        custom_headers=custom_headers,
+        reply_to=reply_to,
+    )
+
 
 
 
@@ -743,4 +1091,95 @@ def test_smtp_connection(test_recipient: Optional[str] = None, session=None) -> 
         results["message"] = f"Erreur lors de la connexion SMTP ({host}:{port}) : {e}"
         results["steps"].append({"step": "SMTP Handshake/Auth", "success": False, "error": str(e)})
         return results
+
+
+def get_email_service_diagnostics(session=None) -> Dict[str, Any]:
+    """
+    Comprehensive diagnostic report covering:
+    - Runtime SMTP connectivity and configuration
+    - In-app DKIM signing readiness and DNS public key record
+    - SPF and DMARC DNS recommendations and active query status
+    - External address delivery policies (MX check, disposable block)
+    """
+    cfg = get_smtp_runtime_config(session=session)
+    from_email = cfg["smtp_from_email"] or "contact@eschola.pro"
+    domain = cfg["dkim_domain"] or (from_email.split("@")[-1] if "@" in from_email else "eschola.pro")
+    selector = cfg["dkim_selector"] or "eschola"
+
+    # 1. Base SMTP test
+    smtp_diag = test_smtp_connection(session=session)
+
+    # 2. DKIM diagnostics
+    dkim_key = load_dkim_private_key(cfg)
+    dkim_status: Dict[str, Any] = {
+        "enabled": bool(dkim_key),
+        "domain": domain,
+        "selector": selector,
+        "private_key_configured": bool(cfg["dkim_private_key"] or cfg["dkim_private_key_path"]),
+        "key_valid_rsa": bool(dkim_key is not None),
+        "dns_record": None,
+    }
+    if dkim_key:
+        dkim_status["dns_record"] = get_dkim_dns_record_info(dkim_key, selector, domain)
+
+    # 3. SPF and DMARC DNS queries and recommendations
+    spf_dns_current = None
+    dmarc_dns_current = None
+    resolver = dns.resolver.Resolver()
+    resolver.lifetime = 2.0
+
+    try:
+        spf_answers = resolver.resolve(domain, "TXT")
+        for r in spf_answers:
+            txt_val = "".join([part.decode("utf-8", errors="replace") for part in r.strings])
+            if txt_val.startswith("v=spf1"):
+                spf_dns_current = txt_val
+                break
+    except Exception:
+        spf_dns_current = None
+
+    try:
+        dmarc_domain = f"_dmarc.{domain}".strip(".")
+        dmarc_answers = resolver.resolve(dmarc_domain, "TXT")
+        for r in dmarc_answers:
+            txt_val = "".join([part.decode("utf-8", errors="replace") for part in r.strings])
+            if txt_val.startswith("v=DMARC1"):
+                dmarc_dns_current = txt_val
+                break
+    except Exception:
+        dmarc_dns_current = None
+
+    recommended_spf = f"v=spf1 include:{cfg['smtp_host']} ~all" if cfg["smtp_host"] else "v=spf1 mx ~all"
+    recommended_dmarc = f"v=DMARC1; p=reject; sp=reject; rua=mailto:dmarc@{domain}; adkim=r; aspf=r"
+
+    return {
+        "status": "ready" if smtp_diag.get("status") == "success" else smtp_diag.get("status", "unknown"),
+        "smtp": smtp_diag,
+        "dkim": dkim_status,
+        "spf": {
+            "domain": domain,
+            "current_dns_record": spf_dns_current,
+            "recommended_record": {
+                "record_type": "TXT",
+                "record_name": domain,
+                "record_value": recommended_spf,
+            }
+        },
+        "dmarc": {
+            "domain": f"_dmarc.{domain}".strip("."),
+            "current_dns_record": dmarc_dns_current,
+            "recommended_record": {
+                "record_type": "TXT",
+                "record_name": f"_dmarc.{domain}".strip("."),
+                "record_value": recommended_dmarc,
+            }
+        },
+        "policies": {
+            "email_validate_mx": cfg["email_validate_mx"],
+            "block_disposable_emails": cfg["block_disposable_emails"],
+            "smtp_timeout": cfg["smtp_timeout"],
+            "smtp_allow_insecure_tls": cfg["smtp_allow_insecure_tls"],
+        }
+    }
+
 

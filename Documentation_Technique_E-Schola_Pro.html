@@ -2119,15 +2119,18 @@ E-Schola Pro/
       </tbody>
     </table>
 
-    <h3>Service Email & Diagnostic SMTP (/email)</h3>
+    <h3>Service Email, Diagnostic SMTP & Délivrabilité (/email &amp; /emails)</h3>
     <table>
       <thead><tr><th>Méthode</th><th>Endpoint</th><th>Description</th><th>Accès</th></tr></thead>
       <tbody class="endpoint-row">
-        <tr><td><span class="badge badge-get">GET</span></td><td><code>/email/status</code></td><td>Consulter le statut du service email, hôte SMTP configuré, ports TLS/SSL et mode actif (Production vs Dev Mock). <strong>Sécurisé :</strong> réservé aux administrateurs.</td><td>Admin, Admin Manager</td></tr>
-        <tr><td><span class="badge badge-post">POST</span></td><td><code>/email/test</code></td><td>Diagnostiquer en direct la connectivité SMTP (DNS, poignée de main TCP, STARTTLS/SSL, authentification) et envoyer un email de test optionnel.</td><td>Admin, Admin Manager</td></tr>
-        <tr><td><span class="badge badge-post">POST</span></td><td><code>/email/configure</code></td><td>Configuration dynamique des paramètres SMTP (hôte, port, utilisateur, mot de passe, expéditeur, TLS/SSL, activation). Persistance directe dans <code>system_settings</code> sans nécessiter de redéploiement.</td><td>Admin, Admin Manager</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/email/status</code> · <code>/emails/status</code></td><td>Consulter le statut du service email, hôte SMTP configuré, ports TLS/SSL, état de la signature DKIM et politiques de délivrabilité. <strong>Sécurisé :</strong> réservé aux administrateurs.</td><td>Admin, Admin Manager</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/email/diagnostics</code> · <code>/emails/diagnostics</code></td><td><strong>Rapport de Diagnostic Complet :</strong> Analyse en direct de la connectivité SMTP, de l'état de la clé privée DKIM, des enregistrements DNS actuels et génération des recommandations DNS pour <strong>SPF</strong> (<code>v=spf1</code>), <strong>DKIM</strong> (clé publique TXT <code>selector._domainkey</code>) et <strong>DMARC</strong> (<code>v=DMARC1</code>).</td><td>Admin, Admin Manager</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/email/validate-address</code> · <code>/emails/validate-address</code></td><td><strong>Validation Avancée de Destinataire :</strong> Vérifie la conformité syntaxique RFC 5321/5322, rejette les domaines d'emails jetables/temporaires (Mailinator, 10minutemail, etc.) et contrôle la résolvabilité des enregistrements MX du domaine cible via DNS.</td><td>Admin, Admin Manager</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/email/test</code> · <code>/emails/test</code></td><td>Diagnostiquer en direct la connectivité SMTP (DNS, poignée de main TCP, STARTTLS/SSL, authentification) et envoyer un email transactionnel de test vers une adresse de contrôle.</td><td>Admin, Admin Manager</td></tr>
+        <tr><td><span class="badge badge-post">POST</span></td><td><code>/email/configure</code> · <code>/emails/configure</code></td><td>Configuration dynamique des paramètres SMTP et de sécurité DKIM (hôte, port, utilisateur, mot de passe, expéditeur, Reply-To, TLS/SSL, timeout, sélecteur et clé privée DKIM, filtres MX/jetables). Persistance immédiate dans <code>system_settings</code> sans interruption de service.</td><td>Admin, Admin Manager</td></tr>
       </tbody>
     </table>
+
 
 
     <h3>Console d'Administration & Supervision Sécurité (/admin)</h3>
@@ -2899,18 +2902,23 @@ E-Schola Pro/
       </ul>
     </div>
 
-    <h3>Module 12 — Système d'Emails Transactionnels &amp; Notifications</h3>
+    <h3>Module 12 — Système d'Emails Transactionnels Sécurisés, SPF/DKIM &amp; Délivrabilité</h3>
     <div class="card">
       <p><strong>Service Backend :</strong> <code>backend/app/services/email_service.py</code> · <code>backend/app/core/email_utils.py</code></p>
-      <p><strong>Architecture et propriétés :</strong></p>
+      <p><strong>Endpoints Dédiés :</strong> <code>GET /api/v1/email/diagnostics</code> · <code>POST /api/v1/email/validate-address</code> · <code>POST /api/v1/email/test</code> · <code>POST /api/v1/email/configure</code></p>
+      <p><strong>Architecture et propriétés industrielles :</strong></p>
       <ul>
-        <li><strong>Configuration SMTP Sécurisée par Variables d'Environnement :</strong> Aucune information d'authentification n'est stockée en clair dans le code source. L'expédition repose intégralement sur les variables d'environnement <code>SMTP_HOST</code>, <code>SMTP_PORT</code>, <code>SMTP_USER</code>, <code>SMTP_PASSWORD</code>, <code>SMTP_FROM</code>, <code>SMTP_TLS</code>, <code>SMTP_SSL</code> et le commutateur <code>EMAILS_ENABLED</code>.</li>
-        <li><strong>Résilience &amp; Exécution Non-Bloquante :</strong> Toutes les fonctions d'envoi d'email interceptent les exceptions SMTP de manière totalement transparente. Si le serveur SMTP est injoignable ou désactivé, l'action métier sous-jacente (création de compte, changement de rôle, invitation à une salle) s'exécute et persiste en base sans interruption ni erreur HTTP 500 pour l'utilisateur.</li>
-        <li><strong>Email de Bienvenue Professionnel (<code>send_welcome_email</code>) :</strong> Déclenché automatiquement lors de la création d'un utilisateur par l'administrateur ou par auto-inscription. Contient les salutations personnalisées, le rôle officiel attribué dans la plateforme, l'URL de connexion sécurisée et les consignes de sécurité (sans jamais exposer de mot de passe en clair).</li>
-        <li><strong>Email d'Alerte lors d'un Changement de Rôle (<code>send_role_change_email</code>) :</strong> Déclenché immédiatement après validation et commit de la modification de privilèges en base de données. Précise l'ancien rôle, le nouveau rôle accordé par l'administration, et des recommandations de sécurité en cas de modification inattendue.</li>
-        <li><strong>Email d'Invitation aux Salles Vidéo Conférence (<code>send_classroom_invitation_email</code>) :</strong> Déclenché lors de la planification d'une session interactive en direct ou de l'invitation ciblée d'apprenants/groupes. Fournit le titre de la visioconférence, le formateur hôte, la date et l'heure prévues, le code de salle unique et le lien direct d'accès en un clic.</li>
+        <li><strong>Chiffrement Durci TLS 1.2+ &amp; Authentification Sécurisée :</strong> Prise en charge transparente de <code>STARTTLS</code> (port standard 587) et de <code>SSL/TLS</code> direct (port 465). Connexions initiées avec un <code>ssl.SSLContext</code> durci (vérification d'autorité de certification, protocoles modernes TLSv1_2 minimum, vérification d'hôte stricte, option de contournement contrôlé <code>SMTP_ALLOW_INSECURE_TLS</code>).</li>
+        <li><strong>Validation Multi-Niveaux des Destinataires Externes :</strong> Avant tout dispatch, chaque adresse passe par trois filtres successifs : (1) Contrôle syntaxique RFC 5321/5322 via <code>email-validator</code> et normalisation ; (2) Détection et blocage préventif des domaines d'adresses temporaires/jetables (<code>BLOCK_DISPOSABLE_EMAILS</code> ciblant Mailinator, 10minutemail, etc.) ; (3) Résolution DNS des enregistrements <strong>MX</strong> et <strong>A</strong> (<code>dnspython</code>) avec garde-fou de timeout pour attester de l'existence réelle du serveur de messagerie distant.</li>
+        <li><strong>Signature Cryptographique Native DKIM (RFC 6376) :</strong> Signature intégrée au vol sans dépendre uniquement du relais SMTP. Exploite une clé privée RSA 2048-bit (<code>cryptography</code>), applique la canonisation <code>relaxed/relaxed</code>, calcule le hachage de corps SHA-256 (<code>bh=</code>) et scelle les en-têtes (<code>From</code>, <code>To</code>, <code>Subject</code>, <code>Date</code>, <code>Message-ID</code>, <code>Content-Type</code>) dans l'en-tête officiel <code>DKIM-Signature</code>.</li>
+        <li><strong>En-têtes Personnalisés &amp; Classification Anti-Spam Optimale :</strong> Injection automatique des en-têtes normalisés : <code>Message-ID: &lt;uuid@domaine&gt;</code>, <code>Date: RFC 2822</code>, <code>X-Mailer: E-Schola-Pro-Transactional-Mailer/2.0</code>, <code>X-Entity-Ref-ID</code> (traçabilité unitaire), <code>Auto-Submitted: auto-generated</code> (évite les réponses automatiques d'absence), <code>Precedence: bulk</code> et <code>Reply-To</code> configurable.</li>
+        <li><strong>Alignement SPF &amp; DMARC Automatisé :</strong> L'enveloppe expéditeur (<code>Envelope-From</code> / <code>Return-Path</code>) est alignée avec le domaine d'en-tête <code>From</code> pour satisfaire les critères stricts DMARC (RFC 7489) imposés par Google et Yahoo. L'endpoint <code>/email/diagnostics</code> génère automatiquement la clé publique DNS TXT DKIM et les enregistrements SPF/DMARC recommandés pour le nom de domaine de l'établissement.</li>
+        <li><strong>Exécution Asynchrone Non-Bloquante &amp; Retries :</strong> Support de <code>send_transactional_email_background</code> s'interfaçant avec les <code>BackgroundTasks</code> de FastAPI. Les requêtes HTTP ne subissent aucune latence externe. Mécanisme de reprise automatique (retry exponentiel sur 2 tentatives) en cas d'erreur de socket transitoire.</li>
+        <li><strong>Résilience &amp; Mode Mock / Dev :</strong> Si <code>EMAILS_ENABLED=False</code> ou si <code>SMTP_HOST</code> est vide en développement, les emails sont journalisés proprement en console (avec prévisualisation et masquage des secrets) et retournent un statut de succès sans faire échouer les flux d'inscription ou de réinitialisation.</li>
+        <li><strong>Gabarits Transactionnels Responsive :</strong> Modèles HTML/CSS en table imbriquée compatibles tous clients (Gmail, Outlook, Apple Mail, smartphones), avec fallback texte brut UTF-8 automatique.</li>
       </ul>
     </div>
+
 
     <h3>Module 13 — Journalisation d'Audit &amp; Traçabilité des Actions</h3>
     <div class="card">
@@ -3411,8 +3419,23 @@ npm run dev
     <div class="info-box" style="margin-top: 12px;">
       <strong>🔑 Réinitialisation rapide :</strong> En cas de mot de passe oublié ou d'erreur d'identifiant, exécutez simplement <code>python reset_admin.py Abc1234</code> depuis le dossier <code>backend/</code>.
     </div>
+
+    <h3>Pipeline CI/CD GitHub Actions &amp; Déploiement Continu sur Railway</h3>
+    <div class="card" style="margin-top: 16px;">
+      <h4 style="margin-bottom: 8px; color: var(--text-primary);">🚀 Workflow Automatisé (<code>.github/workflows/ci-cd.yml</code>)</h4>
+      <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 10px;">
+        Chaque commit poussé sur la branche <code>main</code> ou <code>master</code> déclenche automatiquement une chaîne d'intégration et de livraison continue (CI/CD) industrielle :
+      </p>
+      <ul style="font-size: 13px; color: var(--text-secondary); line-height: 1.8; margin-left: 20px;">
+        <li><strong>1. Tests &amp; Linting Backend :</strong> Installation des dépendances (Python 3.11), compilation de syntaxe sans warning, exécution du vérificateur DevOps pré-vol (<code>backend/verify_production_env.py --ci-mode</code>) et validation de la suite de tests d'emails transactionnels (<code>backend/test_transactional_email_suite.py</code>).</li>
+        <li><strong>2. Compilation &amp; Typage Frontend :</strong> Installation des paquets Node.js 20 et exécution de <code>npm run build</code> pour garantir l'absence d'erreurs TypeScript ou de composants Next.js 15 non compilables.</li>
+        <li><strong>3. Déploiement Automatisé Railway :</strong> Si les tests réussissent, la CLI Railway ou le webhook Git synchronisé déclenche la reconstruction du conteneur unifié sans aucune intervention manuelle.</li>
+        <li><strong>4. Surveillance Active du Healthcheck :</strong> Boucle de sondage automatique vérifiant la réponse <code>HTTP 200</code> sur <code>/api/v1/health</code> avant de clore le pipeline avec succès.</li>
+      </ul>
+    </div>
   
     </section>
+
 
     <!-- ===================================================================== -->
     <!-- 10 — VARIABLES D'ENVIRONNEMENT & SÉCURITÉ                             -->
@@ -3440,9 +3463,18 @@ npm run dev
         <tr><td><code>SMTP_PASSWORD</code></td><td>—</td><td>Mot de passe SMTP ou mot de passe d'application sécurisé</td></tr>
         <tr><td><code>SMTP_FROM_EMAIL</code></td><td>contact@eschola.pro</td><td>Adresse d'expédition des e-mails du système</td></tr>
         <tr><td><code>SMTP_FROM_NAME</code></td><td>E-Schola Pro</td><td>Nom affiché de l'expéditeur dans les boîtes de réception</td></tr>
-        <tr><td><code>SMTP_TLS</code></td><td><code>true</code></td><td>Activation du chiffrement STARTTLS</td></tr>
+        <tr><td><code>SMTP_REPLY_TO</code></td><td>support@eschola.pro</td><td>Adresse de réponse institutionnelle (en-tête Reply-To)</td></tr>
+        <tr><td><code>SMTP_TLS</code></td><td><code>true</code></td><td>Activation du chiffrement STARTTLS durci (TLS 1.2+ minimum)</td></tr>
         <tr><td><code>SMTP_SSL</code></td><td><code>false</code></td><td>Activation du chiffrement direct SSL (port 465)</td></tr>
+        <tr><td><code>SMTP_TIMEOUT</code></td><td>15</td><td>Timeout en secondes pour la connexion et l'envoi SMTP</td></tr>
+        <tr><td><code>SMTP_ALLOW_INSECURE_TLS</code></td><td><code>false</code></td><td>Désactiver la vérification des certificats (uniquement environnements staging fermés)</td></tr>
         <tr><td><code>EMAILS_ENABLED</code></td><td><code>false</code> (Auto: <code>true</code> si SMTP configuré)</td><td>Activation globale de l'envoi d'e-mails réels</td></tr>
+        <tr><td><code>DKIM_DOMAIN</code></td><td>eschola.pro</td><td>Domaine émetteur pour la signature cryptographique DKIM</td></tr>
+        <tr><td><code>DKIM_SELECTOR</code></td><td>eschola</td><td>Sélecteur DNS pointant sur la clé publique (<code>selector._domainkey.domain</code>)</td></tr>
+        <tr><td><code>DKIM_PRIVATE_KEY</code></td><td>—</td><td>Clé privée RSA 2048-bit au format PEM pour la signature DKIM applicative directe</td></tr>
+        <tr><td><code>DKIM_PRIVATE_KEY_PATH</code></td><td>—</td><td>Chemin absolu ou relatif vers le fichier de clé privée DKIM (ex: <code>certs/dkim.key</code>)</td></tr>
+        <tr><td><code>EMAIL_VALIDATE_MX</code></td><td><code>true</code></td><td>Vérification DNS des enregistrements MX du domaine destinataire avant dispatch</td></tr>
+        <tr><td><code>BLOCK_DISPOSABLE_EMAILS</code></td><td><code>true</code></td><td>Rejet préventif des domaines d'adresses jetables/temporaires anti-spam</td></tr>
         <tr><td><code>CLOUDINARY_CLOUD_NAME</code></td><td>—</td><td>Nom du cloud Cloudinary pour l'upload de médias</td></tr>
         <tr><td><code>CLOUDINARY_API_KEY</code></td><td>—</td><td>Clé API Cloudinary</td></tr>
         <tr><td><code>CLOUDINARY_API_SECRET</code></td><td>—</td><td>Secret API Cloudinary</td></tr>
