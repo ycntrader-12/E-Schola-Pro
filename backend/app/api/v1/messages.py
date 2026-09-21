@@ -340,27 +340,22 @@ def send_or_save_message(
                 seen_ids.add(u.id)
 
     # Fallback to external email string if non-registered recipient
+    external_emails_to_notify = set()
     external_recipient_email = None
     if msg_in.recipient_email and msg_in.recipient_email.strip():
-        external_recipient_email = sanitize_text(msg_in.recipient_email, max_length=255).strip()
-    elif msg_in.recipient_emails and len(msg_in.recipient_emails) > 0:
+        val = sanitize_text(msg_in.recipient_email, max_length=255).strip()
+        if val and "@" in val:
+            external_emails_to_notify.add(val)
+            external_recipient_email = val
+    if msg_in.recipient_emails:
         for em in msg_in.recipient_emails:
             clean_em = sanitize_text(em, max_length=255).strip()
-            if clean_em:
-                external_recipient_email = clean_em
-                break
+            if clean_em and "@" in clean_em:
+                external_emails_to_notify.add(clean_em)
+                if not external_recipient_email:
+                    external_recipient_email = clean_em
 
-    if not primary_users and external_recipient_email:
-        # If email looks valid, allow relay send
-        if "@" in external_recipient_email:
-            pass
-        else:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Destinataire '{external_recipient_email}' introuvable. Veuillez vérifier le nom d'utilisateur ou indiquer une adresse email valide avec '@'.",
-            )
-
-    if not msg_in.is_draft and not primary_users and not external_recipient_email:
+    if not msg_in.is_draft and not primary_users and not external_emails_to_notify:
         raise HTTPException(status_code=400, detail="Veuillez sélectionner au moins un destinataire valide.")
 
     cc_email_list = [
@@ -369,7 +364,7 @@ def send_or_save_message(
         if e and e.strip() and "@" in e
     ]
     cc_summary_str = ", ".join(cc_email_list) if cc_email_list else None
-    has_relay = bool(cc_email_list or (external_recipient_email and not primary_users))
+    has_relay = bool(cc_email_list or (external_emails_to_notify and not primary_users))
 
     # Draft saving
     if msg_in.is_draft:
@@ -500,10 +495,24 @@ def send_or_save_message(
                 cc_emails=cc_summary_str,
             )
             session.add(cc_msg)
+        elif not cc_user:
+            # Adresse email non trouvée en base de données : c'est un destinataire externe
+            external_emails_to_notify.add(email_addr)
 
     session.commit()
     for m in created_primary_messages:
         session.refresh(m)
+
+    # Dispatch emails to external recipients
+    if external_emails_to_notify and not msg_in.is_draft:
+        from app.services.email_service import send_notification_email
+        for ext_email in external_emails_to_notify:
+            send_notification_email(
+                to_email=ext_email,
+                subject=clean_subject if clean_subject else "Nouveau message",
+                title="Vous avez reçu un message depuis E-Schola Pro",
+                message_text=f"<p><strong>De :</strong> {current_user.prenom} {current_user.nom} ({current_user.email})</p><br/>{clean_body}",
+            )
 
     return created_primary_messages[0]
 

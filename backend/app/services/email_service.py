@@ -228,6 +228,15 @@ def send_email(
             safe_subject = subject.encode("ascii", "replace").decode("ascii")
             print(f"[Email Service (DEV/MOCK)] To: {to_email} | Subject: '{safe_subject}'")
         print(f"       -> SMTP is inactive or unconfigured in .env. Email was logged safely without error.")
+        
+        # Extrait le contenu texte pour l'afficher dans la console en mode DEV
+        if not text_content:
+            clean_text = re.sub(r"<[^>]+>", " ", html_content)
+            text_content_preview = " ".join(clean_text.split())
+        else:
+            text_content_preview = text_content
+            
+        print(f"       -> [CONTENU EMAIL MOCK] :\n{text_content_preview}\n")
         return True
 
     from_email = cfg["smtp_from_email"] or cfg["smtp_user"] or "noreply@eschola.pro"
