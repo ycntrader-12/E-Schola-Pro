@@ -152,7 +152,7 @@ export default function QuizzesPage() {
   const getCertificateUrl = (url?: string | null) => {
     if (!url) return '';
     if (url.startsWith('http://') || url.startsWith('https://')) return url;
-    const backendBase = (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api/v1').replace(/\/api\/v1\/?$/, '');
+    const backendBase = (process.env.NEXT_PUBLIC_API_URL || '/api/v1').replace(/\/api\/v1\/?$/, '');
     return `${backendBase}${url.startsWith('/') ? '' : '/'}${url}`;
   };
 

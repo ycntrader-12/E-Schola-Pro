@@ -39,6 +39,10 @@ const nextConfig: NextConfig = {
         source: '/uploads/:path*',
         destination: `${backendUrl}/uploads/:path*`,
       },
+      {
+        source: '/api/:path*',
+        destination: `${backendUrl}/api/:path*`,
+      },
     ];
   },
   async headers() {

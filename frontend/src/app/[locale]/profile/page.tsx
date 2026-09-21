@@ -195,7 +195,7 @@ export default function ProfilePage() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [avatarLoading, setAvatarLoading] = useState(false);
 
-  const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api/v1';
+  const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
   const backendBaseUrl = rawApiUrl.replace(/\/api\/v1\/?$/, '');
 
   // Admin & Formateur state

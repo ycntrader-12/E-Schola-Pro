@@ -45,7 +45,7 @@ export default function CreateCoursePage() {
       if (coverImage) {
         const formData = new FormData();
         formData.append('file', coverImage);
-        const uploadRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api/v1'}/upload/image`, {
+        const uploadRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || '/api/v1'}/upload/image`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}` },
           body: formData,
@@ -59,7 +59,7 @@ export default function CreateCoursePage() {
       if (documentFile) {
         const docData = new FormData();
         docData.append('file', documentFile);
-        const docUploadRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api/v1'}/upload/document`, {
+        const docUploadRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || '/api/v1'}/upload/document`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}` },
           body: docData,
@@ -72,7 +72,7 @@ export default function CreateCoursePage() {
         documentUrl = docUploadData.url;
       }
 
-      const courseRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api/v1'}/courses/`, {
+      const courseRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || '/api/v1'}/courses/`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

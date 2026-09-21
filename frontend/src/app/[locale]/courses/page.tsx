@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { Suspense } from "react";
 
 async function getCourses() {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
   const cleanApiUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
   try {
     const cookieStore = await cookies();

@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 export const apiClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api/v1',
+  baseURL: process.env.NEXT_PUBLIC_API_URL || '/api/v1',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -20,3 +20,14 @@ apiClient.interceptors.request.use((config) => {
   }
   return config;
 });
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response) {
+      console.error(`AxiosError: ${error.response.status} on ${error.config.method?.toUpperCase()} ${error.config.url}`);
+    } else {
+      console.error(`AxiosError: ${error.message} on ${error.config?.url}`);
+    }
+    return Promise.reject(error);
+  }
+);
