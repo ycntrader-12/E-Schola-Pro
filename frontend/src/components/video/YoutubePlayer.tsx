@@ -467,6 +467,7 @@ export default function YoutubePlayer({ src, title, poster, autoPlay = false }: 
       <video
         ref={videoRef}
         src={src}
+        crossOrigin="anonymous"
         poster={poster}
         autoPlay={autoPlay}
         loop={isLooping}
