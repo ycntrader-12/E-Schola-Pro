@@ -132,7 +132,7 @@ def get_my_dashboard_performance(session: SessionDep, current_user: CurrentUser)
     )
 
 
-from app.core.roles import is_staff, require_staff
+from app.core.roles import LEARNER_ROLES, is_staff, require_staff
 
 
 @router.get("/user-stats/{user_id}", response_model=DashboardPerformanceOut)
@@ -210,7 +210,7 @@ def get_attendance_groups(session: SessionDep, current_user: CurrentUser):
     results = (
         session.query(User.group_name)
         .filter(
-            User.role.in_(["étudiant", "stagiaire", "employer"]),
+            User.role.in_(list(LEARNER_ROLES)),
             User.group_name.isnot(None),
         )
         .distinct()
@@ -226,7 +226,7 @@ def get_learners_for_attendance(
     require_staff(current_user, "Seuls les formateurs et administrateurs peuvent accéder à la liste des apprenants.")
 
     query = session.query(User).filter(
-        User.role.in_(["étudiant", "stagiaire", "employer"])
+        User.role.in_(list(LEARNER_ROLES))
     )
     if group_name and group_name != "all":
         query = query.filter(User.group_name == group_name)
@@ -405,7 +405,7 @@ def get_attendance_global_overview(session: SessionDep, current_user: CurrentUse
     total_records = session.query(Attendance).count()
     total_students = (
         session.query(User)
-        .filter(User.role.in_(["étudiant", "stagiaire", "employer"]))
+        .filter(User.role.in_(list(LEARNER_ROLES)))
         .count()
     )
 

@@ -34,6 +34,8 @@ interface Learner {
   email: string;
   role: string;
   group_name?: string;
+  nom?: string | null;
+  prenom?: string | null;
 }
 
 interface AttendanceRecord {
@@ -729,7 +731,11 @@ export default function AttendancePage() {
   const filteredLearners = learners.filter(l => {
     if (selectedGroup !== 'all' && (l.group_name || 'Général') !== selectedGroup) return false;
     if (roleFilter !== 'all' && l.role !== roleFilter) return false;
-    if (searchFilter && !l.email.toLowerCase().includes(searchFilter.toLowerCase())) return false;
+    if (searchFilter) {
+      const q = searchFilter.toLowerCase().trim();
+      const fullName = [l.prenom, l.nom].filter(Boolean).join(' ').toLowerCase();
+      if (!l.email.toLowerCase().includes(q) && !fullName.includes(q)) return false;
+    }
     return true;
   });
 
@@ -1006,11 +1012,15 @@ export default function AttendancePage() {
                       <td className="py-3 px-2">
                         <div className="flex items-center gap-2.5">
                           <div className="w-8 h-8 rounded-full bg-primary/15 text-primary flex items-center justify-center font-bold text-xs uppercase border border-primary/20">
-                            {learner.email.charAt(0)}
+                            {learner.prenom ? learner.prenom.charAt(0) : learner.email.charAt(0)}
                           </div>
                           <div>
-                            <p className="font-bold text-text-primary">{learner.email}</p>
-                            <span className="text-[10px] text-text-secondary">ID #{learner.id}</span>
+                            <p className="font-bold text-text-primary">
+                              {[learner.prenom, learner.nom].filter(Boolean).join(' ') || learner.email}
+                            </p>
+                            <span className="text-[10px] text-text-secondary">
+                              {[learner.prenom, learner.nom].filter(Boolean).join(' ') ? `${learner.email} • ` : ''}ID #{learner.id}
+                            </span>
                           </div>
                         </div>
                       </td>

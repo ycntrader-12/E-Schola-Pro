@@ -41,6 +41,8 @@ class UserSimpleOut(BaseModel):
     email: str
     role: str
     group_name: str | None = None
+    nom: str | None = None
+    prenom: str | None = None
 
     class Config:
         from_attributes = True

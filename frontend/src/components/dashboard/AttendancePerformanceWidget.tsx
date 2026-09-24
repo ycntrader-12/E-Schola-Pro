@@ -33,6 +33,15 @@ interface OptionItem {
   badge?: string;
 }
 
+interface LearnerItem {
+  id: number;
+  email: string;
+  role?: string;
+  group_name?: string | null;
+  nom?: string | null;
+  prenom?: string | null;
+}
+
 function SearchableSelect({
   label,
   icon,
@@ -54,64 +63,86 @@ function SearchableSelect({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Find selected option
   const selectedOption = useMemo(() => {
     return options.find(opt => String(opt.id) === String(selectedValue));
   }, [options, selectedValue]);
 
-  // Keep input text in sync when not open
+  // Keep input text in sync when dropdown is closed
   useEffect(() => {
     if (!isOpen) {
       setSearchTerm(selectedOption ? selectedOption.label : '');
+      setIsTyping(false);
     }
   }, [selectedOption, isOpen]);
 
-  // Filter options based on search term
+  // Filter options: if user is typing a search query, filter; otherwise SHOW ALL OPTIONS
   const filteredOptions = useMemo(() => {
-    if (!searchTerm.trim()) return options;
+    if (!isTyping || !searchTerm.trim()) {
+      return options;
+    }
     const q = searchTerm.toLowerCase().trim();
     return options.filter(opt => 
       opt.label.toLowerCase().includes(q) || 
       (opt.sublabel && opt.sublabel.toLowerCase().includes(q)) ||
       (opt.badge && opt.badge.toLowerCase().includes(q))
     );
-  }, [options, searchTerm]);
+  }, [options, searchTerm, isTyping]);
 
   // Click outside listener
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setIsOpen(false);
+        setIsTyping(false);
+        setSearchTerm(selectedOption ? selectedOption.label : '');
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [selectedOption]);
+
+  const handleOpenDropdown = () => {
+    if (disabled) return;
+    setIsTyping(false);
+    setIsOpen(true);
+    setTimeout(() => {
+      inputRef.current?.select();
+    }, 10);
+  };
 
   return (
-    <div ref={containerRef} className="relative flex-1 min-w-[240px] w-full">
+    <div ref={containerRef} className="relative flex-1 min-w-[260px] w-full">
       {/* Field Label */}
-      <label className="block text-[11px] font-bold text-text-secondary uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-        <span className="p-1 rounded bg-primary/10 text-primary">{icon}</span>
-        <span>{label}</span>
-      </label>
+      <div className="flex items-center justify-between mb-1.5">
+        <label className="text-[11px] font-bold text-text-secondary uppercase tracking-wider flex items-center gap-1.5">
+          <span className="p-1 rounded bg-primary/10 text-primary">{icon}</span>
+          <span>{label}</span>
+        </label>
+        <span className="text-[10px] text-text-secondary font-medium">
+          {options.length} disponible{options.length > 1 ? 's' : ''}
+        </span>
+      </div>
       
       {/* Input container */}
       <div className="relative">
         <div className="relative flex items-center">
           <input
+            ref={inputRef}
             type="text"
             disabled={disabled}
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e.target.value);
+              setIsTyping(true);
               if (!isOpen) setIsOpen(true);
             }}
-            onFocus={() => {
-              setIsOpen(true);
-            }}
+            onClick={handleOpenDropdown}
+            onFocus={handleOpenDropdown}
             placeholder={placeholder}
             className="w-full text-xs font-medium bg-white border border-border rounded-xl pl-8 pr-16 py-2.5 text-text-primary placeholder:text-text-secondary/60 outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 transition-all shadow-sm disabled:opacity-60 disabled:bg-slate-50 disabled:cursor-not-allowed"
           />
@@ -124,10 +155,12 @@ function SearchableSelect({
                 onClick={(e) => {
                   e.stopPropagation();
                   setSearchTerm('');
+                  setIsTyping(false);
                   if (!isOpen) setIsOpen(true);
+                  inputRef.current?.focus();
                 }}
                 className="p-1 hover:bg-slate-100 rounded-md text-text-secondary hover:text-text-primary transition-colors"
-                title="Effacer la saisie"
+                title="Afficher tous les objets / effacer"
               >
                 <X size={12} />
               </button>
@@ -135,9 +168,17 @@ function SearchableSelect({
             <button
               type="button"
               disabled={disabled}
-              onClick={() => setIsOpen(!isOpen)}
+              onClick={() => {
+                if (isOpen) {
+                  setIsOpen(false);
+                  setIsTyping(false);
+                  setSearchTerm(selectedOption ? selectedOption.label : '');
+                } else {
+                  handleOpenDropdown();
+                }
+              }}
               className="p-1 text-text-secondary hover:text-text-primary transition-transform"
-              title={isOpen ? "Fermer la liste" : "Ouvrir la liste"}
+              title={isOpen ? "Fermer la liste" : "Afficher tous les objets à sélectionner"}
             >
               <ChevronDown size={14} className={`transition-transform duration-200 ${isOpen ? 'rotate-180 text-primary' : ''}`} />
             </button>
@@ -146,16 +187,35 @@ function SearchableSelect({
 
         {/* Dropdown Menu */}
         {isOpen && !disabled && (
-          <div className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white rounded-xl border border-border shadow-2xl max-h-64 overflow-y-auto py-1 animate-in fade-in slide-in-from-top-1 duration-150 ring-1 ring-black/5">
-            <div className="px-3 py-1.5 border-b border-border/60 text-[10px] font-bold text-text-secondary flex items-center justify-between bg-slate-50">
-              <span>{filteredOptions.length} option{filteredOptions.length > 1 ? 's' : ''}</span>
-              {searchTerm && <span className="text-primary truncate max-w-[120px]">Filtre: "{searchTerm}"</span>}
+          <div className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white rounded-xl border border-border shadow-2xl max-h-72 overflow-y-auto py-1 animate-in fade-in slide-in-from-top-1 duration-150 ring-1 ring-black/5">
+            <div className="px-3 py-1.5 border-b border-border/60 text-[10px] font-bold text-text-secondary flex items-center justify-between bg-slate-50 sticky top-0 z-10 shadow-xs">
+              {isTyping && searchTerm.trim() ? (
+                <>
+                  <span className="text-primary font-bold">{filteredOptions.length} trouvé{filteredOptions.length > 1 ? 's' : ''} sur {options.length}</span>
+                  <span className="text-text-secondary truncate max-w-[140px]">Recherche: "{searchTerm}"</span>
+                </>
+              ) : (
+                <>
+                  <span className="text-text-primary font-bold">Tous les objets ({options.length})</span>
+                  <span className="text-primary text-[10px] font-semibold">Sélectionnez un élément</span>
+                </>
+              )}
             </div>
             
             {filteredOptions.length === 0 ? (
               <div className="px-4 py-5 text-center text-xs text-text-secondary flex flex-col items-center gap-1.5">
                 <AlertCircle size={18} className="text-amber-500/70" />
                 <span>{emptyText}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchTerm('');
+                    setIsTyping(false);
+                  }}
+                  className="text-[11px] text-primary hover:underline mt-1 font-semibold"
+                >
+                  Afficher tous les {options.length} objets disponibles
+                </button>
               </div>
             ) : (
               filteredOptions.map((opt) => {
@@ -167,15 +227,16 @@ function SearchableSelect({
                     onClick={() => {
                       onSelect(opt.id);
                       setSearchTerm(opt.label);
+                      setIsTyping(false);
                       setIsOpen(false);
                     }}
-                    className={`w-full text-left px-3.5 py-2 text-xs flex items-center justify-between gap-2.5 hover:bg-primary/5 transition-colors border-b border-border/30 last:border-0 ${
+                    className={`w-full text-left px-3.5 py-2.5 text-xs flex items-center justify-between gap-2.5 hover:bg-primary/5 transition-colors border-b border-border/30 last:border-0 ${
                       isSelected ? 'bg-primary/10 font-bold text-primary' : 'text-text-primary'
                     }`}
                   >
                     <div className="flex flex-col min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
-                        {isSelected && <Check size={12} className="text-primary shrink-0" />}
+                        {isSelected && <Check size={13} className="text-primary shrink-0 stroke-[2.5]" />}
                         <span className="truncate">{opt.label}</span>
                       </div>
                       {opt.sublabel && (
@@ -183,7 +244,11 @@ function SearchableSelect({
                       )}
                     </div>
                     {opt.badge && (
-                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-100 text-text-secondary font-medium shrink-0">
+                      <span className={`text-[9px] px-2 py-0.5 rounded font-semibold shrink-0 ${
+                        isSelected 
+                          ? 'bg-primary text-white' 
+                          : 'bg-slate-100 text-text-secondary'
+                      }`}>
                         {opt.badge}
                       </span>
                     )}
@@ -232,20 +297,21 @@ interface DashboardPerformance {
 
 export default function AttendancePerformanceWidget() {
   const [data, setData] = useState<DashboardPerformance | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [isStatsLoading, setIsStatsLoading] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState<'daily' | 'monthly' | 'semester'>('monthly');
 
   // Manager states
   const [isManager, setIsManager] = useState(false);
   const [groups, setGroups] = useState<string[]>([]);
-  const [selectedGroup, setSelectedGroup] = useState<string>('');
-  const [learners, setLearners] = useState<{ id: number; email: string }[]>([]);
+  const [selectedGroup, setSelectedGroup] = useState<string>('all');
+  const [learners, setLearners] = useState<LearnerItem[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchInitial = async () => {
       try {
-        setIsLoading(true);
+        setIsInitialLoading(true);
         const res = await apiClient.get('/attendance/my-stats');
         const myData = res.data;
         
@@ -254,22 +320,25 @@ export default function AttendancePerformanceWidget() {
         
         if (isMgr) {
           const groupsRes = await apiClient.get('/attendance/groups');
-          setGroups(groupsRes.data);
+          const groupList: string[] = groupsRes.data || [];
+          setGroups(groupList);
           
-          if (groupsRes.data.length > 0) {
-            const initialGroup = groupsRes.data[0];
-            setSelectedGroup(initialGroup);
-            const learnersRes = await apiClient.get(`/attendance/learners?group_name=${encodeURIComponent(initialGroup)}`);
-            setLearners(learnersRes.data);
-            
-            if (learnersRes.data.length > 0) {
-              const firstUser = learnersRes.data[0];
-              setSelectedUserId(firstUser.id);
-              const userStatsRes = await apiClient.get(`/attendance/user-stats/${firstUser.id}`);
-              setData(userStatsRes.data);
-            } else {
-              setData(myData);
-            }
+          const initialGroup = groupList.length > 0 ? groupList[0] : 'all';
+          setSelectedGroup(initialGroup);
+
+          const learnersRes = await apiClient.get(
+            initialGroup === 'all'
+              ? '/attendance/learners?group_name=all'
+              : `/attendance/learners?group_name=${encodeURIComponent(initialGroup)}`
+          );
+          const initialLearners: LearnerItem[] = learnersRes.data || [];
+          setLearners(initialLearners);
+          
+          if (initialLearners.length > 0) {
+            const firstUser = initialLearners[0];
+            setSelectedUserId(firstUser.id);
+            const userStatsRes = await apiClient.get(`/attendance/user-stats/${firstUser.id}`);
+            setData(userStatsRes.data);
           } else {
             setData(myData);
           }
@@ -279,7 +348,7 @@ export default function AttendancePerformanceWidget() {
       } catch (err) {
         console.error('Error fetching attendance performance:', err);
       } finally {
-        setIsLoading(false);
+        setIsInitialLoading(false);
       }
     };
     fetchInitial();
@@ -288,38 +357,78 @@ export default function AttendancePerformanceWidget() {
   const handleGroupChange = async (group: string) => {
     setSelectedGroup(group);
     try {
-      setIsLoading(true);
-      const learnersRes = await apiClient.get(`/attendance/learners?group_name=${encodeURIComponent(group)}`);
-      setLearners(learnersRes.data);
-      if (learnersRes.data.length > 0) {
-        const firstUser = learnersRes.data[0];
-        setSelectedUserId(firstUser.id);
-        const userStatsRes = await apiClient.get(`/attendance/user-stats/${firstUser.id}`);
+      setIsStatsLoading(true);
+      const learnersRes = await apiClient.get(
+        group === 'all'
+          ? '/attendance/learners?group_name=all'
+          : `/attendance/learners?group_name=${encodeURIComponent(group)}`
+      );
+      const fetchedLearners: LearnerItem[] = learnersRes.data || [];
+      setLearners(fetchedLearners);
+      
+      if (fetchedLearners.length > 0) {
+        const userExists = fetchedLearners.some(l => l.id === selectedUserId);
+        const targetUserId = userExists && selectedUserId ? selectedUserId : fetchedLearners[0].id;
+        setSelectedUserId(targetUserId);
+        const userStatsRes = await apiClient.get(`/attendance/user-stats/${targetUserId}`);
         setData(userStatsRes.data);
       } else {
         setData(null);
+        setSelectedUserId(null);
       }
     } catch (err) {
       console.error(err);
     } finally {
-      setIsLoading(false);
+      setIsStatsLoading(false);
     }
   };
 
   const handleUserChange = async (userId: number) => {
     setSelectedUserId(userId);
     try {
-      setIsLoading(true);
+      setIsStatsLoading(true);
       const userStatsRes = await apiClient.get(`/attendance/user-stats/${userId}`);
       setData(userStatsRes.data);
     } catch (err) {
       console.error(err);
     } finally {
-      setIsLoading(false);
+      setIsStatsLoading(false);
     }
   };
 
-  if (isLoading) {
+  const groupOptions: OptionItem[] = useMemo(() => {
+    const list: OptionItem[] = [
+      {
+        id: 'all',
+        label: 'Tous les groupes (Toutes promotions)',
+        sublabel: `${groups.length} groupes disponibles`,
+        badge: 'Global'
+      }
+    ];
+    groups.forEach(g => {
+      list.push({
+        id: g,
+        label: g,
+        sublabel: 'Classe / Promotion',
+        badge: 'Groupe'
+      });
+    });
+    return list;
+  }, [groups]);
+
+  const learnerOptions: OptionItem[] = useMemo(() => {
+    return learners.map(l => {
+      const fullName = [l.prenom, l.nom].filter(Boolean).join(' ');
+      return {
+        id: l.id,
+        label: fullName ? `${fullName} (${l.email})` : l.email,
+        sublabel: `ID #${l.id} • ${l.group_name ? `Groupe: ${l.group_name}` : 'Sans groupe assigné'}`,
+        badge: (l.role || 'Apprenant').toUpperCase()
+      };
+    });
+  }, [learners]);
+
+  if (isInitialLoading) {
     return (
       <div className="bg-surface rounded-2xl p-6 border border-border flex items-center justify-center min-h-[160px]">
         <Loader2 className="animate-spin text-primary" size={24} />
@@ -353,13 +462,13 @@ export default function AttendancePerformanceWidget() {
 
           {/* Manager Filters */}
           {isManager && (
-            <div className="mt-4 p-3.5 bg-slate-50/90 rounded-2xl border border-border shadow-sm">
+            <div className="mt-4 p-4 bg-slate-50/90 rounded-2xl border border-border shadow-sm space-y-3">
               <div className="flex flex-col sm:flex-row items-stretch sm:items-start gap-4">
                 <SearchableSelect
                   label="Groupe / Promotion"
                   icon={<Users size={13} />}
                   placeholder="Rechercher un groupe..."
-                  options={groups.map(g => ({ id: g, label: g }))}
+                  options={groupOptions}
                   selectedValue={selectedGroup}
                   onSelect={(val) => handleGroupChange(String(val))}
                   emptyText="Aucun groupe correspondant"
@@ -370,17 +479,72 @@ export default function AttendancePerformanceWidget() {
                 <SearchableSelect
                   label="Apprenant / Étudiant"
                   icon={<UserCheck size={13} />}
-                  placeholder={learners.length === 0 ? "Aucun apprenant dans ce groupe" : "Rechercher par email..."}
-                  options={learners.map(l => ({ 
-                    id: l.id, 
-                    label: l.email,
-                    sublabel: `ID #${l.id} • ${selectedGroup || 'Groupe'}`
-                  }))}
+                  placeholder={learners.length === 0 ? "Aucun apprenant disponible" : "Rechercher par nom ou email..."}
+                  options={learnerOptions}
                   selectedValue={selectedUserId}
                   onSelect={(val) => handleUserChange(Number(val))}
                   disabled={learners.length === 0}
                   emptyText="Aucun apprenant trouvé"
                 />
+              </div>
+
+              {/* Quick Group Selection Buttons */}
+              <div className="flex items-center gap-1.5 pt-2.5 border-t border-border/50 flex-wrap">
+                <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider mr-1 flex items-center gap-1">
+                  <Users size={11} /> Groupes rapides :
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleGroupChange('all')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+                    selectedGroup === 'all'
+                      ? 'bg-primary text-white shadow-xs'
+                      : 'bg-white hover:bg-slate-100 text-text-secondary border border-border'
+                  }`}
+                >
+                  Tous ({groups.length})
+                </button>
+                {groups.map((grp) => (
+                  <button
+                    key={grp}
+                    type="button"
+                    onClick={() => handleGroupChange(grp)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+                      selectedGroup === grp
+                        ? 'bg-primary text-white shadow-xs'
+                        : 'bg-white hover:bg-slate-100 text-text-secondary border border-border'
+                    }`}
+                  >
+                    {grp}
+                  </button>
+                ))}
+              </div>
+
+              {/* Status footer displaying currently selected objects */}
+              <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-text-secondary pt-1 px-0.5">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="inline-flex items-center gap-1 font-semibold text-text-primary">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    Cible :
+                  </span>
+                  <span className="px-2 py-0.5 rounded-md bg-white border border-border font-medium">
+                    Groupe : <strong className="text-primary">{selectedGroup === 'all' ? 'Toutes promotions' : selectedGroup}</strong>
+                  </span>
+                  {selectedUserId && (
+                    <span className="px-2 py-0.5 rounded-md bg-white border border-border font-medium">
+                      Apprenant : <strong className="text-text-primary">{learnerOptions.find(o => o.id === selectedUserId)?.label || `#${selectedUserId}`}</strong>
+                    </span>
+                  )}
+                  <span className="text-[10px] text-text-secondary">
+                    ({learners.length} apprenant{learners.length > 1 ? 's' : ''} disponible{learners.length > 1 ? 's' : ''})
+                  </span>
+                </div>
+                {isStatsLoading && (
+                  <span className="inline-flex items-center gap-1 text-primary text-xs font-semibold">
+                    <Loader2 size={12} className="animate-spin" />
+                    Chargement des métriques...
+                  </span>
+                )}
               </div>
             </div>
           )}

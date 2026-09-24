@@ -1515,6 +1515,20 @@ E-Schola Pro/
       </tbody>
     </table>
 
+    <!-- SCHÉMA DTO SÉRIALISATION APPRENANTS -->
+    <h4>Schéma DTO Pydantic — UserSimpleOut (Sérialisation Apprenants &amp; Émargement)</h4>
+    <table>
+      <thead><tr><th>Champ</th><th>Type</th><th>Contraintes</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code></td><td>Integer</td><td>Requis</td><td>Identifiant numérique unique de l'utilisateur</td></tr>
+        <tr><td><code>email</code></td><td>String</td><td>Requis</td><td>Adresse email de l'apprenant</td></tr>
+        <tr><td><code>role</code></td><td>String</td><td>Requis</td><td>Rôle de l'apprenant (étudiant, stagiaire, employé)</td></tr>
+        <tr><td><code>group_name</code></td><td>String</td><td>Nullable</td><td>Nom du groupe ou de la promotion de rattachement</td></tr>
+        <tr><td><code>nom</code></td><td>String</td><td>Nullable</td><td>Nom de famille de l'apprenant (sérialisé depuis le profil utilisateur)</td></tr>
+        <tr><td><code>prenom</code></td><td>String</td><td>Nullable</td><td>Prénom de l'apprenant (sérialisé depuis le profil utilisateur)</td></tr>
+      </tbody>
+    </table>
+
     <!-- MESSAGE -->
     <h3>Message</h3>
     <table>
@@ -2016,7 +2030,7 @@ E-Schola Pro/
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/attendance/my-records</code></td><td>Historique complet des émargements personnels certifiés</td><td>Authentifié (Étudiant, Stagiaire, Employé)</td></tr>
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/attendance/user-stats/{user_id}</code></td><td>Bilan d'engagement et assiduité pour un utilisateur spécifique</td><td>Admin, Formateur</td></tr>
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/attendance/groups</code></td><td>Lister les groupes / promotions d'apprenants</td><td>Admin, Formateur</td></tr>
-        <tr><td><span class="badge badge-get">GET</span></td><td><code>/attendance/learners</code></td><td>Lister les apprenants par groupe pour l'émargement</td><td>Admin, Formateur</td></tr>
+        <tr><td><span class="badge badge-get">GET</span></td><td><code>/attendance/learners</code></td><td>Lister les apprenants par groupe ou globalement (support du paramètre <code>group_name=all</code> pour l'ensemble des promotions ; sérialisation complète <code>UserSimpleOut</code> avec <code>id</code>, <code>email</code>, <code>role</code>, <code>group_name</code>, <code>nom</code>, <code>prenom</code>)</td><td>Admin, Formateur</td></tr>
         <tr><td><span class="badge badge-post">POST</span></td><td><code>/attendance/learners</code></td><td>Inscrire un apprenant réel à un groupe</td><td>Admin, Formateur</td></tr>
         <tr><td><span class="badge badge-post">POST</span></td><td><code>/attendance/batch</code></td><td>Validation par lot de la feuille d'émargement</td><td>Admin, Formateur</td></tr>
         <tr><td><span class="badge badge-get">GET</span></td><td><code>/attendance/overview</code></td><td>Statistiques et compteurs globaux d'assiduité</td><td>Admin, Formateur</td></tr>
@@ -2524,6 +2538,15 @@ E-Schola Pro/
       <ul>
         <li><strong>Vue Apprenant (Étudiant, Stagiaire, Employé) :</strong> Tableau de bord d'engagement personnel individualisé lié au compte (Taux d'assiduité avec badge d'honneur, KPI des présences/retards/absences, score d'engagement aux quiz, sélecteur de périodes <em>Journalier, Mensuel, Semestriel, Global</em>, historique exhaustif et filtrable des pointages certifiés avec option d'impression du bilan officiel).</li>
         <li><strong>Vue Formateur, DG/RH &amp; Administrateur :</strong> Feuille d'émargement et d'appel en direct par groupe/classe, pointage multi-statuts (<em>Présent, En retard avec minutes, Absent, Justifié</em>), boutons d'émargement rapide (<em>Tout marquer présent</em>), validation par lot (batch), inscription directe d'apprenants réels dans les promotions et vue d'ensemble des statistiques globales. <strong>Possibilité d'exporter le bilan analytique en format PDF pour chaque étudiant (via la page individuelle et le Dashboard analytique).</strong></li>
+        <li><strong>Sélecteur Universel &amp; Affichage Exhaustif des Objets Concernés (<code>SearchableSelect</code>) :</strong>
+          <ul>
+            <li><em>Affichage Intégral Dès l'Ouverture :</em> Dès l'interaction ou le clic sur le sélecteur/chevron, la liste déroulante affiche immédiatement la totalité des objets disponibles sans filtrage préalable réducteur (ensemble des groupes et promotions ou totalité des apprenants).</li>
+            <li><em>Sélection Globale Multi-Promotions (<code>group_name=all</code>) :</em> Option « <strong>Tous les groupes (Toutes promotions)</strong> » permettant aux managers d'accéder d'un coup à tous les apprenants de la plateforme sans être contraint de basculer promotion par promotion.</li>
+            <li><em>Puces de Sélection Rapide ("Groupes rapides") :</em> Bandeau de raccourcis interactifs en 1-clic pour switcher instantanément entre la vue globale "Tous" et les promotions individuelles.</li>
+            <li><em>Enrichissement d'Identité &amp; Badges Multi-Critères :</em> Présentation valorisée de chaque apprenant combinant prénom, nom, adresse email, identifiant numérique (<code>#ID</code>), groupe de rattachement et badge visuel de rôle (Étudiant, Stagiaire, Employé).</li>
+            <li><em>Recherche Instantanée &amp; Réinitialisation en 1-Clic :</em> Filtrage instantané lors de la frappe (recherche multi-champs sur nom, prénom, email, ID ou groupe), bouton « ⨉ » pour effacer la saisie et réafficher immédiatement tous les objets disponibles, et pied d'indicateur dynamique confirmant la cible active et le nombre d'apprenants.</li>
+          </ul>
+        </li>
       </ul>
       <div class="screenshot-container">
         <div class="screenshot-header">
@@ -3332,6 +3355,18 @@ E-Schola Pro/
           <li>Checklist d'onboarding interactive avec sauvegarde de la progression locale par utilisateur.</li>
           <li>Moteur de recherche interne instantané filtrant tâches, modules et questions fréquentes du rôle connecté.</li>
           <li>Intégration universelle dans <code>Providers</code> via l'événement <code>open_role_guide</code>.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h4>AttendancePerformanceWidget.tsx &amp; SearchableSelect (Composant Dashboard &amp; Assiduité)</h4>
+        <p>Composant interactif haute performance (<code>frontend/src/components/dashboard/AttendancePerformanceWidget.tsx</code>) offrant un pilotage complet et réactif de l'assiduité :</p>
+        <ul>
+          <li><strong>Adaptation Contextuelle au Rôle Connecté :</strong> Vue personnalisée pour les apprenants (bilan d'engagement personnel) et poste de pilotage analytique pour les formateurs, gestionnaires et administrateurs.</li>
+          <li><strong>Sélecteur Universel Déroulant (<code>SearchableSelect</code>) :</strong> Affiche l'exhaustivité des objets concernés dès son ouverture sans nécessiter de saisie préalable, avec support de la recherche instantanée (sur nom, prénom, email, identifiant et rôle), synchronisation bidirectionnelle, fermeture au clic extérieur et bouton « ⨉ » pour tout réafficher.</li>
+          <li><strong>Gestion Multi-Promotions &amp; Accès Global (<code>group_name=all</code>) :</strong> Accès instantané à l'ensemble des étudiants de l'établissement sans rupture de contexte, complété par des puces de sélection rapide ("Groupes rapides").</li>
+          <li><strong>Indicateurs d'Assiduité 4 Périodes :</strong> Cartes KPI (taux de présence, retards, absences, points aux quiz) calculées sur 4 horizons temporels (Journalier, Mensuel, Semestriel, Global) avec état de chargement ciblé non-bloquant (<code>isStatsLoading</code>).</li>
+          <li><strong>Exportation de Bilans PDF :</strong> Intégration du composant d'impression et d'export de bilan académique certifié pour chaque apprenant.</li>
         </ul>
       </div>
 </section>
