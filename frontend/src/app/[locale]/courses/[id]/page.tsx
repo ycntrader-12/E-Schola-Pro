@@ -52,6 +52,8 @@ export default function CourseDetailPage() {
   const [activeVideo, setActiveVideo] = useState<CourseVideo | null>(null);
   
   const [isUploadingVideo, setIsUploadingVideo] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadBytes, setUploadBytes] = useState<{ loaded: number; total: number } | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [newVideoTitle, setNewVideoTitle] = useState('');
   const [newVideoDescription, setNewVideoDescription] = useState('');
@@ -59,6 +61,12 @@ export default function CourseDetailPage() {
   const [uploadError, setUploadError] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const [isDeletingCourse, setIsDeletingCourse] = useState(false);
+
+  const formatBytes = (bytes: number) => {
+    if (!bytes || bytes === 0) return '0 Mo';
+    const mb = bytes / (1024 * 1024);
+    return `${mb.toFixed(1)} Mo`;
+  };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -189,6 +197,8 @@ export default function CourseDetailPage() {
     }
     
     setIsUploadingVideo(true);
+    setUploadProgress(0);
+    setUploadBytes(null);
     setUploadError('');
     try {
       // 1. Upload video file to server
@@ -196,7 +206,14 @@ export default function CourseDetailPage() {
       formData.append('file', newVideoFile);
       
       const uploadRes = await apiClient.post('/upload/video', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (progressEvent) => {
+          if (progressEvent.total) {
+            const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            setUploadProgress(percent);
+            setUploadBytes({ loaded: progressEvent.loaded, total: progressEvent.total });
+          }
+        }
       });
       const videoUrl = uploadRes.data.url;
 
@@ -217,6 +234,8 @@ export default function CourseDetailPage() {
       setNewVideoTitle('');
       setNewVideoDescription('');
       setNewVideoFile(null);
+      setUploadProgress(0);
+      setUploadBytes(null);
       
       // Set the newly uploaded video as active
       if (addRes.data) {
@@ -584,8 +603,37 @@ export default function CourseDetailPage() {
                   </div>
                 </div>
                 {isUploadingVideo && (
-                  <div className="w-full bg-slate-200 rounded-full h-1.5 mt-3 overflow-hidden">
-                    <div className="bg-[#1877f2] h-full rounded-full animate-[pulse_1s_infinite] w-full" />
+                  <div className="mt-3.5 p-3.5 bg-blue-50/80 border border-blue-200/80 rounded-2xl space-y-2 animate-in fade-in duration-200">
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2 font-bold text-slate-800">
+                        <span className="relative flex h-2.5 w-2.5">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#1877f2]"></span>
+                        </span>
+                        <span>
+                          {uploadProgress < 100 
+                            ? 'Téléversement en cours...' 
+                            : 'Traitement et finalisation de la vidéo...'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {uploadBytes && (
+                          <span className="text-[11px] text-slate-500 font-mono font-medium">
+                            {formatBytes(uploadBytes.loaded)} / {formatBytes(uploadBytes.total)}
+                          </span>
+                        )}
+                        <span className="font-black text-[#1877f2] font-mono text-xs px-2.5 py-0.5 bg-blue-100/90 border border-blue-200 rounded-lg shadow-xs">
+                          {uploadProgress}%
+                        </span>
+                      </div>
+                    </div>
+                    {/* Barre de progression avec dégradé et transition fluide */}
+                    <div className="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden p-0.5">
+                      <div 
+                        className="bg-gradient-to-r from-[#1877f2] via-[#2563eb] to-[#0052cc] h-full rounded-full transition-all duration-300 shadow-sm"
+                        style={{ width: `${Math.max(uploadProgress, 2)}%` }}
+                      />
+                    </div>
                   </div>
                 )}
               </div>
@@ -599,6 +647,8 @@ export default function CourseDetailPage() {
                     setNewVideoDescription('');
                     setNewVideoFile(null);
                     setUploadError('');
+                    setUploadProgress(0);
+                    setUploadBytes(null);
                   }}
                   className="px-4 py-2.5 rounded-xl border border-slate-300 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition-all cursor-pointer text-xs"
                 >
@@ -607,10 +657,13 @@ export default function CourseDetailPage() {
                 <button
                   type="submit"
                   disabled={isUploadingVideo}
-                  className="btn-primary py-2.5 px-5 rounded-xl font-bold flex items-center justify-center gap-2 text-xs shadow-md shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="btn-primary py-2.5 px-5 rounded-xl font-bold flex items-center justify-center gap-2 text-xs shadow-md shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed min-w-[145px]"
                 >
                   {isUploadingVideo ? (
-                    <><Loader2 size={14} className="animate-spin" /> Téléchargement...</>
+                    <>
+                      <Loader2 size={14} className="animate-spin" />
+                      <span>{uploadProgress < 100 ? `Téléversement (${uploadProgress}%)` : 'Finalisation...'}</span>
+                    </>
                   ) : (
                     'Ajouter'
                   )}
