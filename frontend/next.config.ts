@@ -80,6 +80,7 @@ const nextConfig: NextConfig = {
               "img-src 'self' data: blob: http://localhost:8000 http://127.0.0.1:8000 https://*.up.railway.app https://res.cloudinary.com https://images.unsplash.com https://ui-avatars.com https://via.placeholder.com",
               "media-src 'self' data: blob: http://localhost:8000 http://127.0.0.1:8000 https://*.up.railway.app https://res.cloudinary.com",
               "connect-src 'self' http://localhost:8000 http://127.0.0.1:8000 https://*.up.railway.app https://* wss://* ws://* stun:* turn:*",
+              "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com",
               "frame-ancestors 'self'",
               "base-uri 'self'",
               "form-action 'self'",

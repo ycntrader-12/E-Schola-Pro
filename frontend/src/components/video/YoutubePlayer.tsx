@@ -26,7 +26,10 @@ import {
   Layers,
   ChevronLeft,
   ChevronRight,
-  Cast
+  Cast,
+  AlertTriangle,
+  RefreshCw,
+  ExternalLink
 } from 'lucide-react';
 
 interface YoutubePlayerProps {
@@ -47,7 +50,20 @@ function getYoutubeEmbedUrl(url: string): string | null {
 }
 
 export default function YoutubePlayer({ src, title, poster, autoPlay = false }: YoutubePlayerProps) {
-  const youtubeEmbedUrl = getYoutubeEmbedUrl(src);
+  // Normalisation intelligente de l'URL média :
+  // Si l'URL contient un reliquat localhost:8000 issu du développement local ou du seed,
+  // elle est automatiquement convertie en chemin relatif /uploads/...
+  const normalizedSrc = React.useMemo(() => {
+    if (!src) return '';
+    let clean = src.trim();
+    clean = clean.replace(/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/, '');
+    if (clean.startsWith('uploads/')) {
+      clean = '/' + clean;
+    }
+    return clean;
+  }, [src]);
+
+  const youtubeEmbedUrl = getYoutubeEmbedUrl(normalizedSrc);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -56,6 +72,7 @@ export default function YoutubePlayer({ src, title, poster, autoPlay = false }: 
 
   // Playback state
   const [isPlaying, setIsPlaying] = useState(false);
+  const [videoError, setVideoError] = useState<{ code: number; message: string } | null>(null);
   const [progress, setProgress] = useState(0);
   const [bufferedProgress, setBufferedProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState('0:00');
@@ -147,6 +164,46 @@ export default function YoutubePlayer({ src, title, poster, autoPlay = false }: 
       return `${h}:${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
     }
     return `${m}:${s < 10 ? '0' : ''}${s}`;
+  };
+
+  // Réinitialiser les erreurs lorsque l'URL de la vidéo change
+  useEffect(() => {
+    setVideoError(null);
+  }, [normalizedSrc]);
+
+  const handleVideoError = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
+    const video = e.currentTarget;
+    let detail = "Impossible de charger le fichier vidéo.";
+    let code = 0;
+    if (video.error) {
+      code = video.error.code;
+      switch (video.error.code) {
+        case 1:
+          detail = "Le chargement de la vidéo a été interrompu par le client.";
+          break;
+        case 2:
+          detail = "Erreur réseau / CORS : le fichier vidéo ne peut pas être téléchargé depuis le serveur.";
+          break;
+        case 3:
+          detail = "Erreur de codec : le format ou l'encodage vidéo n'est pas supporté par ce navigateur (format standard attendu : MP4 H.264/AAC ou WebM).";
+          break;
+        case 4:
+          detail = "Média introuvable sur le serveur (Erreur 404). Le fichier n'existe plus ou le conteneur a redémarré sans volume persistant.";
+          break;
+        default:
+          detail = video.error.message || detail;
+      }
+    }
+    setVideoError({ code, message: detail });
+    setIsPlaying(false);
+  };
+
+  const handleRetry = () => {
+    setVideoError(null);
+    if (videoRef.current) {
+      videoRef.current.load();
+      videoRef.current.play().then(() => setIsPlaying(true)).catch(err => console.warn('Retry play notice:', err));
+    }
   };
 
   // Trigger brief center icon animation
@@ -466,18 +523,66 @@ export default function YoutubePlayer({ src, title, poster, autoPlay = false }: 
       {/* HTML5 Native Video with Low-Latency Streaming Pipeline */}
       <video
         ref={videoRef}
-        src={src}
+        src={normalizedSrc}
         crossOrigin="anonymous"
         poster={poster}
         autoPlay={autoPlay}
         loop={isLooping}
         playsInline
+        preload="metadata"
         className="w-full h-full object-contain cursor-pointer"
         onClick={togglePlay}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
         onEnded={() => setIsPlaying(false)}
+        onError={handleVideoError}
       />
+
+      {/* Diagnostic & Fallback d'Erreur de Lecture Vidéo */}
+      {videoError && (
+        <div className="absolute inset-0 z-40 bg-slate-950/92 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center text-white space-y-4 animate-in fade-in duration-200">
+          <div className="w-16 h-16 rounded-2xl bg-rose-500/20 border border-rose-500/30 flex items-center justify-center text-rose-400 shadow-xl">
+            <AlertTriangle size={32} />
+          </div>
+          <div className="max-w-md space-y-2">
+            <h3 className="text-base sm:text-lg font-bold text-white">
+              Échec de lecture du média
+            </h3>
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              {videoError.message}
+            </p>
+            <div className="p-2.5 bg-black/50 rounded-xl border border-white/10 font-mono text-[11px] text-slate-400 break-all select-all">
+              {normalizedSrc || "URL non renseignée"}
+            </div>
+            {videoError.code === 4 && (
+              <p className="text-[11px] text-amber-400 font-medium">
+                💡 Note : Si Railway a redémarré sans volume persistant actif, les uploads précédents peuvent avoir été réinitialisés. Téléversez à nouveau la vidéo ou attachez un volume persistant.
+              </p>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+            <button
+              type="button"
+              onClick={handleRetry}
+              className="px-4 py-2 bg-[#1877f2] hover:bg-[#166fe5] text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg transition-all cursor-pointer"
+            >
+              <RefreshCw size={14} />
+              <span>Réessayer</span>
+            </button>
+            {normalizedSrc && (
+              <a
+                href={normalizedSrc}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold flex items-center gap-2 border border-white/10 transition-all"
+              >
+                <ExternalLink size={14} />
+                <span>Tester le flux direct</span>
+              </a>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Protocol HUD Header Badge (UDP Streaming Engine) */}
       <div className={`absolute top-4 left-4 z-20 flex items-center gap-2 transition-opacity duration-300 ${

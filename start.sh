@@ -19,9 +19,25 @@ mkdir -p /app/backend/uploads
 mkdir -p /app/backend/data
 mkdir -p /app/data
 mkdir -p /data 2>/dev/null || true
-if [ -n "$RAILWAY_VOLUME_MOUNT_PATH" ]; then
-    mkdir -p "$RAILWAY_VOLUME_MOUNT_PATH"
+
+# Montage persistant automatique si un Volume Railway (/data ou $RAILWAY_VOLUME_MOUNT_PATH) est disponible
+PERSISTENT_ROOT=""
+if [ -n "$RAILWAY_VOLUME_MOUNT_PATH" ] && [ -d "$RAILWAY_VOLUME_MOUNT_PATH" ]; then
+    PERSISTENT_ROOT="$RAILWAY_VOLUME_MOUNT_PATH"
+elif [ -d "/data" ] && [ -w "/data" ]; then
+    PERSISTENT_ROOT="/data"
 fi
+
+if [ -n "$PERSISTENT_ROOT" ]; then
+    echo "Configuring persistent uploads directory linking to $PERSISTENT_ROOT/uploads..."
+    mkdir -p "$PERSISTENT_ROOT/uploads"
+    if [ ! -L /app/backend/uploads ]; then
+        cp -rn /app/backend/uploads/* "$PERSISTENT_ROOT/uploads/" 2>/dev/null || true
+        rm -rf /app/backend/uploads
+        ln -s "$PERSISTENT_ROOT/uploads" /app/backend/uploads
+    fi
+fi
+
 
 # Demarrage de Supervisor pour orchestrer tous les services (FastAPI, Next.js, Nginx)
 # Le demarrage se limite strictement au lancement des serveurs web sans toucher a la base de donnees
