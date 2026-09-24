@@ -2692,6 +2692,21 @@ E-Schola Pro/
         <li><strong>Système de Chat Multi-Canaux, Notifications Sonores &amp; Échange Privé Instantané :</strong> Canal global plénier, canaux sous-groupes, et canaux privés étanches 1-à-1 avec alerte sonore biphonique personnalisée (bip doux pour chat global, double-bip aigu pour message privé), badge dynamique de messages non lus, sélecteur intelligent de participant, auto-sélection à la réception, bouton de réponse rapide en 1-clic (<em>Répondre</em>) avec focus automatique, transmission bidirectionnelle sécurisée par WebSocket SFU, partage de fichiers et émojis intégrés.</li>
 
         <li><strong>Modal Professionnelle de Clôture de Session :</strong> Lorsqu'une visioconférence est terminée par l'hôte ou l'administrateur, une modale soignée au centre de l'écran (fond flouté, icône <code>VideoOff</code>, compte à rebours de 10 secondes) informe les participants et assure une redirection fluide vers <code>/classroom</code>.</li>
+
+        <li><strong>Spécification Technique du Moteur Média Natif C++ (WebRTC SFU, FFmpeg &amp; IA Avancée) :</strong>
+          <ul>
+            <li><em>Moteur de Routage RTP C++20 Zéro-Copie :</em> Architecture SFU ultra-performante basée sur <code>libwebrtc M120+</code> ou <code>libdatachannel</code> avec buffers en mémoire partagée (<code>rtc::CopyOnWriteBuffer</code>) et ring buffers lock-free (SPSC/MPMC). Prise en charge native du Simulcast 3 couches (1080p60, 720p30, 360p15), de l'encodage SVC (VP9/AV1 profil L3T3) et de la régulation de congestion TWCC/GCC (RFC 8888).</li>
+            <li><em>Pipeline FFmpeg 6.1+ &amp; Accélération Matérielle NVENC/CUDA :</em> Décodage/encodage hardware GPU sans latence, composition dynamique de mosaïques multi-caméras avec détection de l'orateur actif (<em>Active Speaker Spotlight</em>), et enregistrement crash-proof en Fragmented MP4 (fMP4) avec segmentation HLS sans perte lors d'interruptions brutales.</li>
+            <li><em>Signalement Hybride Découplé (WebSockets WSS &amp; gRPC Protobuf) :</em> Passerelle de signalisation temps réel via <code>uWebSockets/Boost.Beast</code> pour les navigateurs (SDP Offer/Answer, Trickle ICE) et communication inter-services haut débit en gRPC bidirectionnel (<code>classroom_media.proto</code>) avec le backend FastAPI et la base de données.</li>
+            <li><em>Transfert de Fichiers Haut Débit par DataChannels SCTP :</em> Chunks binaires de 64 KB avec régulation de flux (<em>backpressure</em> sur <code>bufferedAmountLowThreshold</code>), vérification d'intégrité SHA-256 et délestage automatique vers le stockage objet S3/MinIO au-delà de 50 Mo.</li>
+            <li><em>Suppression de Bruit Neuronale &amp; Traitement Vocal :</em> Pipeline DSP C++ combinant WebRTC APM (AEC3, AGC2, VAD) et réseaux récurrents légers (RNNoise / DeepFilterNet2 avec instructions SIMD AVX2), garantissant une suppression radicale des bruits parasites sous 12 ms de latence.</li>
+            <li><em>Floutage d'Arrière-Plan &amp; Arrière-Plan Virtuel par Inférence ONNX Runtime :</em> Segmentation silhouette en temps réel (MediaPipe Selfie / RVM FP16) accélérée par DirectML ou CUDA/TensorRT, couplée à un flou gaussien séparable à deux passes avec composition alpha en moins de 6 ms par trame.</li>
+            <li><em>Transcription Intelligente &amp; Diarisation des Locuteurs :</em> Tapping audio Opus 48 kHz rééchantillonné en 16 kHz PCM mono, VAD Silero et inférence ASR continue via Whisper.cpp/Faster-Whisper avec indexation des locuteurs par SSRC RTP et génération automatisée de résumés pédagogiques par IA.</li>
+            <li><em>Traduction Automatique &amp; Sous-Titrage Multi-Langues :</em> Pipeline NMT en continu (MarianMT / SeamlessM4T) avec injection instantanée des sous-titres via WebRTC DataChannel (&lt; 800 ms de latence globale) pour les apprenants allophones.</li>
+            <li><em>Système de Vote &amp; Sondages Pédagogiques Ultra-Basse Latence :</em> Dépouillement instantané en O(1) grâce à des compteurs atomiques C++ (<code>std::atomic&lt;uint32_t&gt;</code>), bulletins signés par HMAC-SHA256 non répudiables et synchronisation directe avec le carnet de notes.</li>
+            <li><em>Module Strict de Suivi de Présence &amp; Gestion des Retards/Absences :</em> Heartbeat cryptographique par défi-réponse toutes les 30s (vérification de l'onglet actif et de l'état vidéo), tolérance micro-coupures réseau (3 min), calcul cumulatif des tranches actives ($\sum \Delta t_{\text{actif}}$), application rigoureuse de la matrice académique (Présent si arrivée $\le$ 10 min et durée $\ge$ 80%, En retard si arrivée 10-30 min et durée $\ge$ 65%, Absent sinon) et écriture transactionnelle automatique dans la table <code>attendances</code>.</li>
+          </ul>
+        </li>
       </ul>
       <div class="screenshot-container">
         <div class="screenshot-header">
@@ -2700,8 +2715,6 @@ E-Schola Pro/
             <div class="screenshot-address-bar"><span class="lock-icon">🔒</span> https://eschola.pro/fr/dashboard</div>
           </div>
           <span class="screenshot-title-text">E-Schola Pro</span>
-        </div>
-          <span>Aperçu de l'interface : Salles Vidéo Conférence (/classroom)</span>
         </div>
         <img src="docs_screenshots/classroom.png" alt="Interface Salle Vidéo Conférence E-Schola Pro" class="screenshot-img" />
       </div>
